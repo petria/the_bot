@@ -15,8 +15,26 @@ public class ServerConfigController {
 
 
     @GetMapping("/")
-    public List<String> getServerConfigs() {
-        return Arrays.asList("fufuf", "bbababa", "totototot");
+    public String getServerConfigs() {
+        String json =
+                "{\n" +
+                "        \"servers\": [\n" +
+                "            {\n" +
+                "                \"id\": \"1\",\n" +
+                "                \"name\": \"serverrrr1\",\n" +
+                "                \"type\": \"IRC\",\n" +
+                "                \"status\": \"online\"\n" +
+                "            },\n" +
+                "            {\n" +
+                "                \"id\": \"2\",\n" +
+                "                \"name\": \"server2\",\n" +
+                "                \"type\": \"Telegrammm\",\n" +
+                "                \"status\": \"offLine\"\n" +
+                "            }\n" +
+                "        ]\n" +
+                "    }";
+
+        return json;
     }
 
 }
