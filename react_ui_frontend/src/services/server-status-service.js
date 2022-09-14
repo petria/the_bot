@@ -1,5 +1,13 @@
+import axios from "axios";
+import authHeader from "./auth-header";
+
+const API_URL = "http://localhost:8080/api/server_config/";
+
 const getServerStatus = () => {
-    var data = {
+
+    return axios.get(API_URL);
+
+/*    var data = {
         "servers": [
             {
                 "id": "1",
@@ -15,7 +23,7 @@ const getServerStatus = () => {
             }
         ]
     };
-    return data;
+    return data;*/
 }
 
 const ServerStatusService = {

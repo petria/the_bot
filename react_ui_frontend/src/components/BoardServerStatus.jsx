@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from "react";
 import ServerStatusService from "../services/server-status-service";
+import EventBus from "../common/EventBus";
 
 //const data = ServerStatusService.getServerStatus();
 
@@ -8,7 +9,29 @@ const BoardServerStatus = () => {
     const [data, setData] = useState(null);
 
     useEffect(() => {
-        setData(ServerStatusService.getServerStatus());
+        ServerStatusService.getServerStatus().then(
+            (response) => {
+                console.log("got response:", response)
+                setData(response.data);
+            },
+            (error) => {
+                const _content =
+                    (error.response &&
+                        error.response.data &&
+                        error.response.data.message) ||
+                    error.message ||
+                    error.toString();
+                setData(_content);
+
+                if (error.response && error.response.status === 401) {
+                    EventBus.dispatch("logout");
+                }
+
+            }
+        );
+
+
+        //setData(ServerStatusService.getServerStatus());
     }, []);
     console.log('data -->', data);
 
