@@ -34,6 +34,7 @@
     <modules>
         <module>springboot_ui_backend</module>
         <module>the_bot_common</module>
+        <module>the_bot_io</module>
         <!--        <module>hokan_ng_springboot-custom</module>
                 <module>hokan_ng_springboot-jpa</module>
                 <module>hokan_ng_springboot-common</module>

@@ -1,4 +1,3 @@
-
 const getServerStatus = () => {
     var data = {
         "servers": [

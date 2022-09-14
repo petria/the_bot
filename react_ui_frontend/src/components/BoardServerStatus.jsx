@@ -20,7 +20,7 @@ const BoardServerStatus = () => {
     return (
         <>
             TEST
-            <table id="example" className="table table-striped table-bordered dt-responsive nowrap" >
+            <table id="example" className="table table-striped table-bordered dt-responsive nowrap">
                 <thead>
                 <tr>
                     <th>Id</th>
