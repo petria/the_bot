@@ -7,14 +7,14 @@
     <parent>
         <groupId>org.freakz</groupId>
         <artifactId>the_bot</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <!--    <groupId>org.freakz</groupId>-->
     <artifactId>springboot_ui_backend</artifactId>
     <name>springboot_ui_backend</name>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>${revision}</version>
 
     <properties>
         <!---->

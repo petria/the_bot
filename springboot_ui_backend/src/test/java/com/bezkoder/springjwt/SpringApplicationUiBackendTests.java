@@ -3,10 +3,10 @@ package com.bezkoder.springjwt;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+//@SpringBootTest
 public class SpringApplicationUiBackendTests {
 
-    @Test
+//    @Test
     public void contextLoads() {
     }
 
