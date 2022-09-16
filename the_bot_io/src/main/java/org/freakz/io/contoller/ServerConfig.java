@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/server_config")
+@RequestMapping("/api/hokan/io/server_config")
 public class ServerConfig {
 
     @GetMapping("/")
