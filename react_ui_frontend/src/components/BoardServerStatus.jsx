@@ -2,6 +2,8 @@ import React, {useEffect, useState} from "react";
 import ServerStatusService from "../services/server-status-service";
 import EventBus from "../common/EventBus";
 
+import {NotificationContainer, NotificationManager} from 'react-notifications';
+
 //const data = ServerStatusService.getServerStatus();
 
 const BoardServerStatus = () => {
@@ -15,13 +17,18 @@ const BoardServerStatus = () => {
                 setData(response.data);
             },
             (error) => {
+                console.log("got ERROR:", error);
+//                NotificationManager.error('Error message', 'Click me!', 5000, () => {
+//                    alert('callback');
+//                });
+                createNotification("error");
                 const _content =
                     (error.response &&
                         error.response.data &&
                         error.response.data.message) ||
                     error.message ||
                     error.toString();
-                setData(_content);
+//                setData(_content);
 
                 if (error.response && error.response.status === 401) {
                     EventBus.dispatch("logout");
@@ -35,8 +42,33 @@ const BoardServerStatus = () => {
     }, []);
     console.log('data -->', data);
 
+    const createNotification = (type) => {
+        console.log('>> createNotification: ' + type);
+        return () => {
+            switch (type) {
+                default:
+                case 'info':
+                    NotificationManager.info('Info message');
+                    break;
+                case 'success':
+                    NotificationManager.success('Success message', 'Title here');
+                    break;
+                case 'warning':
+                    NotificationManager.warning('Warning message', 'Close after 3000ms', 3000);
+                    break;
+                case 'error':
+                    console.log('<>>fffufufuuff');
+                    NotificationManager.error('Error message', 'Click me!', 5000, () => {
+                        alert('callback');
+                    });
+                    break;
+            }
+        };
+    };
+
     const handleStart = (server) => {
         console.log("start server: ", server);
+        createNotification('error')
         return undefined;
     }
 
@@ -69,7 +101,7 @@ const BoardServerStatus = () => {
                     )}
                 </tbody>
             </table>
-
+            <NotificationContainer/>
         </>
     )
 }

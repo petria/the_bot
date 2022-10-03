@@ -1,9 +1,11 @@
-import React, {useState, useEffect} from "react";
-import {Routes, Route, Link} from "react-router-dom";
+import React, {useEffect, useState} from "react";
+import {Link, Route, Routes} from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
+import 'react-notifications/lib/notifications.css';
 import "./App.css";
 
 import AuthService from "./services/auth.service";
+
 
 import Login from "./components/Login";
 import Register from "./components/Register";
