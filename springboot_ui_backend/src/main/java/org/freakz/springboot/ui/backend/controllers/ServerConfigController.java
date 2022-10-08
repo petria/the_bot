@@ -3,9 +3,9 @@ package org.freakz.springboot.ui.backend.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.payload.response.PingResponse;
 import org.freakz.springboot.ui.backend.clients.BotIOClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,30 +42,37 @@ public class ServerConfigController {
     }
 
     @GetMapping("/")
-    public String getServerConfigs() {
-        Response ping = botIOClient.getPing();
-        Optional<PingResponse> responseBody = getResponseBody(ping, PingResponse.class);
+    public ResponseEntity<?> getServerConfigs() {
+        try {
+/*            Response ping = botIOClient.getPing();
+            Optional<PingResponse> responseBody = getResponseBody(ping, PingResponse.class);
+*/
 
+            String json =
+                    "{\n" +
+                            "        \"servers\": [\n" +
+                            "            {\n" +
+                            "                \"id\": \"1\",\n" +
+                            "                \"name\": \"serverrrr1\",\n" +
+                            "                \"type\": \"IRC\",\n" +
+                            "                \"status\": \"online\"\n" +
+                            "            },\n" +
+                            "            {\n" +
+                            "                \"id\": \"2\",\n" +
+                            "                \"name\": \"server2\",\n" +
+                            "                \"type\": \"Telegrammm\",\n" +
+                            "                \"status\": \"offLine\"\n" +
+                            "            }\n" +
+                            "        ]\n" +
+                            "    }";
 
-        String json =
-                "{\n" +
-                "        \"servers\": [\n" +
-                "            {\n" +
-                "                \"id\": \"1\",\n" +
-                "                \"name\": \"serverrrr1\",\n" +
-                "                \"type\": \"IRC\",\n" +
-                "                \"status\": \"online\"\n" +
-                "            },\n" +
-                "            {\n" +
-                "                \"id\": \"2\",\n" +
-                "                \"name\": \"server2\",\n" +
-                "                \"type\": \"Telegrammm\",\n" +
-                "                \"status\": \"offLine\"\n" +
-                "            }\n" +
-                "        ]\n" +
-                "    }";
+            return ResponseEntity.status(401).body(json);
+//            return ResponseEntity.ok(json);
 
-        return json;
+        } catch (Exception exc) {
+            return  ResponseEntity.internalServerError().body("fffufufufuf");
+
+        }
     }
 
 }

@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from "react";
 import ServerStatusService from "../services/server-status-service";
+//import NotifyService  from "../services/notify.service";
 import EventBus from "../common/EventBus";
 
 import {NotificationContainer, NotificationManager} from 'react-notifications';
@@ -11,24 +12,33 @@ const BoardServerStatus = () => {
     const [data, setData] = useState(null);
 
     useEffect(() => {
-        ServerStatusService.getServerStatus().then(
+
+        ServerStatusService.getServerStatus(
+            (response) => {
+                console.log(">> response: ", response);
+                setData(response.data);
+            },
+            (error) => {
+                console.log(">> error.response.status: ", error.response.status);
+                console.log(">> error: ", error);
+                setData(null);
+                if (error.response && error.response.status === 401) {
+                    EventBus.dispatch("logout");
+                }
+            }
+        )
+
+/*        ServerStatusService.getServerStatus().then(
             (response) => {
                 console.log("got response:", response)
                 setData(response.data);
             },
             (error) => {
-                console.log("got ERROR:", error);
-//                NotificationManager.error('Error message', 'Click me!', 5000, () => {
-//                    alert('callback');
-//                });
-                createNotification("error");
-                const _content =
-                    (error.response &&
-                        error.response.data &&
-                        error.response.data.message) ||
-                    error.message ||
-                    error.toString();
-//                setData(_content);
+                console.log("Error-> ", error);
+                const msg = error.response;
+                    (error.response && error.response.data && error.response.data.message) || error.message ||  error.toString();
+
+                NotifyService.showErrorNotify(msg);
 
                 if (error.response && error.response.status === 401) {
                     EventBus.dispatch("logout");
@@ -36,34 +46,34 @@ const BoardServerStatus = () => {
 
             }
         );
-
+*/
 
         //setData(ServerStatusService.getServerStatus());
     }, []);
-    console.log('data -->', data);
+//    console.log('data -->', data);
 
-    const createNotification = (type) => {
-        console.log('>> createNotification: ' + type);
-        return () => {
-            switch (type) {
-                default:
-                case 'info':
-                    NotificationManager.info('Info message');
-                    break;
-                case 'success':
-                    NotificationManager.success('Success message', 'Title here');
-                    break;
-                case 'warning':
-                    NotificationManager.warning('Warning message', 'Close after 3000ms', 3000);
-                    break;
-                case 'error':
-                    console.log('<>>fffufufuuff');
-                    NotificationManager.error('Error message', 'Click me!', 5000, () => {
-                        alert('callback');
-                    });
-                    break;
-            }
-        };
+    const createNotification = (type, msg) => {
+        console.log('>>1 createNotification: ' + type);
+        switch (type) {
+            case 'info':
+                NotificationManager.info('Info message');
+                break;
+            case 'success':
+                NotificationManager.success('Success message', 'Title here');
+                break;
+            case 'warning':
+                NotificationManager.warning('Warning message', 'Close after 3000ms', 3000);
+                break;
+            case 'error':
+                console.log('<>>fffufufuuff');
+                NotificationManager.error(msg, 'Click me!', 5000, () => {
+                    alert('callback');
+                });
+                break;
+            default:
+                console.log('<>>default');
+        }
+
     };
 
     const handleStart = (server) => {

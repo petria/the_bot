@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Link, Route, Routes} from "react-router-dom";
+import {Link, Route, Routes, useNavigate} from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import 'react-notifications/lib/notifications.css';
 import "./App.css";
@@ -22,6 +22,19 @@ const App = () => {
     const [showAdminBoard, setShowAdminBoard] = useState(false);
     const [currentUser, setCurrentUser] = useState(undefined);
 
+    let navigate = useNavigate();
+    const logOut = () => {
+        console.log("App.js doing logOut() !!!");
+
+        AuthService.logout();
+        setShowModeratorBoard(false);
+        setShowAdminBoard(false);
+        setCurrentUser(undefined);
+
+        navigate("/login");
+
+    };
+
     useEffect(() => {
         const user = AuthService.getCurrentUser();
 
@@ -38,14 +51,9 @@ const App = () => {
         return () => {
             EventBus.remove("logout");
         };
+
     }, []);
 
-    const logOut = () => {
-        AuthService.logout();
-        setShowModeratorBoard(false);
-        setShowAdminBoard(false);
-        setCurrentUser(undefined);
-    };
 
     return (
         <div>
@@ -122,6 +130,7 @@ const App = () => {
             </nav>
 
             <div className="container mt-3">
+
                 <Routes>
                     <Route path="/" element={<Home/>}/>
                     <Route path="/server_status" element={<BoardServerStatus/>}/>
@@ -133,6 +142,7 @@ const App = () => {
                     <Route path="/mod" element={<BoardModerator/>}/>
                     <Route path="/admin" element={<BoardAdmin/>}/>
                 </Routes>
+
             </div>
 
         </div>
