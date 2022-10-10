@@ -17,6 +17,8 @@
     </parent>
 
     <properties>
+        <revision>1.1-SNAPSHOT</revision>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>12</maven.compiler.source>
         <maven.compiler.target>12</maven.compiler.target>
@@ -30,7 +32,6 @@
         <jsoup.version>1.14.3</jsoup.version>
         <logback.version>1.2.6</logback.version>
 
-        <revision>1.0-SNAPSHOT</revision>
 
     </properties>
 
