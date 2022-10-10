@@ -16,6 +16,7 @@ import BoardModerator from "./components/BoardModerator";
 import BoardAdmin from "./components/BoardAdmin";
 import BoardServerStatus from "./components/BoardServerStatus"
 import EventBus from "./common/EventBus";
+import {NotificationManager} from "react-notifications";
 
 const App = () => {
     const [showModeratorBoard, setShowModeratorBoard] = useState(false);
@@ -31,7 +32,9 @@ const App = () => {
         setShowAdminBoard(false);
         setCurrentUser(undefined);
 
-        navigate("/login");
+        NotificationManager.error("You have been logged off!", null, 5000, null);
+
+        navigate("/home");
 
     };
 

@@ -1,0 +1,19 @@
+{
+  "botConfig": {
+    "botName": "HokanTheBot"
+  },
+  "ircServerConfig": {
+    "name": "TestConfig",
+    "ircNetwork": {
+      "name": "TestNetwork"
+    },
+    "channelList": [
+      {
+        "name": "#HokanDEV"
+      },
+      {
+        "name": "#HokanDEV2"
+      }
+    ]
+  }
+}

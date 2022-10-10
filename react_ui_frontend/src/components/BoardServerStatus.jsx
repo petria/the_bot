@@ -1,11 +1,8 @@
 import React, {useEffect, useState} from "react";
 import ServerStatusService from "../services/server-status-service";
-//import NotifyService  from "../services/notify.service";
-import EventBus from "../common/EventBus";
+import NotifyService from "../services/notify.service";
 
 import {NotificationContainer, NotificationManager} from 'react-notifications';
-
-//const data = ServerStatusService.getServerStatus();
 
 const BoardServerStatus = () => {
 
@@ -17,36 +14,16 @@ const BoardServerStatus = () => {
             (response) => {
                 console.log(">> response: ", response);
                 setData(response.data);
+                NotificationManager.success('Success message', 'Title here');
             },
             (error) => {
                 console.log(">> error.response.status: ", error.response.status);
-                console.log(">> error: ", error);
+                console.log(">> error.response.data: ", error.response.data);
+//                console.log(">> error: ", error);
                 setData(null);
-                if (error.response && error.response.status === 401) {
-                    EventBus.dispatch("logout");
-                }
+                NotifyService.showErrorNotify(error.response.data, error.response.status);
             }
         )
-
-/*        ServerStatusService.getServerStatus().then(
-            (response) => {
-                console.log("got response:", response)
-                setData(response.data);
-            },
-            (error) => {
-                console.log("Error-> ", error);
-                const msg = error.response;
-                    (error.response && error.response.data && error.response.data.message) || error.message ||  error.toString();
-
-                NotifyService.showErrorNotify(msg);
-
-                if (error.response && error.response.status === 401) {
-                    EventBus.dispatch("logout");
-                }
-
-            }
-        );
-*/
 
         //setData(ServerStatusService.getServerStatus());
     }, []);
