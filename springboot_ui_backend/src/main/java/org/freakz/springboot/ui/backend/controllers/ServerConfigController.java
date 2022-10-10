@@ -3,6 +3,7 @@ package org.freakz.springboot.ui.backend.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.payload.response.PingResponse;
 import org.freakz.springboot.ui.backend.clients.BotIOClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -44,11 +45,10 @@ public class ServerConfigController {
     @GetMapping("/")
     public ResponseEntity<?> getServerConfigs() {
         try {
-/*            Response ping = botIOClient.getPing();
+            Response ping = botIOClient.getPing();
             Optional<PingResponse> responseBody = getResponseBody(ping, PingResponse.class);
-*/
 
-            String json =
+/*            String json =
                     "{\n" +
                             "        \"servers\": [\n" +
                             "            {\n" +
@@ -64,10 +64,11 @@ public class ServerConfigController {
                             "                \"status\": \"offLine\"\n" +
                             "            }\n" +
                             "        ]\n" +
-                            "    }";
+                            "    }";*/
+
 //            HttpStatus.INTERNAL_SERVER_ERROR.
 //            return ResponseEntity.status(503).body("Something wonderful just happened!!");
-            return ResponseEntity.ok(json);
+            return ResponseEntity.ok(responseBody.get());
 
         } catch (Exception exc) {
             return  ResponseEntity.internalServerError().body("fffufufufuf");
