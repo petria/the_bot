@@ -69,5 +69,18 @@ public class DevProfileConfig implements CommandLineRunner {
 
         log.debug("Created admin user: {}", user);
 
+        Set<Role> roles2 = new HashSet<>();
+        roles2.add(role2);
+
+        User user2 = new User();
+        user2.setUsername("user");
+        user2.setEmail("user@the_bot.invalid");
+        user2.setPassword(encoder.encode("user"));
+        user2.setRoles(roles2);
+
+        user2 = userRepository.save(user2);
+
+        log.debug("Created normal user: {}", user2);
+
     }
 }
