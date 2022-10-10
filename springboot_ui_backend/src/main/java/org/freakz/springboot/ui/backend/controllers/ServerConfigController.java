@@ -47,27 +47,6 @@ public class ServerConfigController {
         try {
             Response ping = botIOClient.getPing();
             Optional<PingResponse> responseBody = getResponseBody(ping, PingResponse.class);
-
-/*            String json =
-                    "{\n" +
-                            "        \"servers\": [\n" +
-                            "            {\n" +
-                            "                \"id\": \"1\",\n" +
-                            "                \"name\": \"serverrrr1\",\n" +
-                            "                \"type\": \"IRC\",\n" +
-                            "                \"status\": \"online\"\n" +
-                            "            },\n" +
-                            "            {\n" +
-                            "                \"id\": \"2\",\n" +
-                            "                \"name\": \"server2\",\n" +
-                            "                \"type\": \"Telegrammm\",\n" +
-                            "                \"status\": \"offLine\"\n" +
-                            "            }\n" +
-                            "        ]\n" +
-                            "    }";*/
-
-//            HttpStatus.INTERNAL_SERVER_ERROR.
-//            return ResponseEntity.status(503).body("Something wonderful just happened!!");
             return ResponseEntity.ok(responseBody.get());
 
         } catch (Exception exc) {
