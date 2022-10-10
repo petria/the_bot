@@ -66,8 +66,8 @@ public class ServerConfigController {
                             "        ]\n" +
                             "    }";
 //            HttpStatus.INTERNAL_SERVER_ERROR.
-            return ResponseEntity.status(503).body("Something wonderful just happened!!");
-//            return ResponseEntity.ok(json);
+//            return ResponseEntity.status(503).body("Something wonderful just happened!!");
+            return ResponseEntity.ok(json);
 
         } catch (Exception exc) {
             return  ResponseEntity.internalServerError().body("fffufufufuf");
