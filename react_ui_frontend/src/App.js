@@ -54,7 +54,7 @@ const App = () => {
         return () => {
             EventBus.remove("logout");
         };
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
 
