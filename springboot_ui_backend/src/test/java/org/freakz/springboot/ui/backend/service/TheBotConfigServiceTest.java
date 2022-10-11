@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.springboot.ui.backend.models.json.BotConfig;
 import org.freakz.springboot.ui.backend.models.json.IrcChannel;
 import org.freakz.springboot.ui.backend.models.json.IrcNetwork;
+import org.freakz.springboot.ui.backend.models.json.IrcServer;
 import org.freakz.springboot.ui.backend.models.json.IrcServerConfig;
 import org.freakz.springboot.ui.backend.models.json.TheBotConfig;
 import org.junit.jupiter.api.Test;
@@ -46,9 +47,17 @@ public class TheBotConfigServiceTest {
     }
 
     private IrcNetwork createIrcNetWork() {
+
+        IrcServer ircServer = IrcServer
+                .builder()
+                .host("localhost")
+                .port(6667)
+                .build();
+
         IrcNetwork network
                 = IrcNetwork.builder()
                 .name("TestNetwork")
+                .ircServer(ircServer)
                 .build();
         return network;
     }

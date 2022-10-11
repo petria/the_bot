@@ -8,5 +8,5 @@ import lombok.Data;
 public class IrcNetwork {
 
     private String name;
-
+    private IrcServer ircServer;
 }

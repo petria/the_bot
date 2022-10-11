@@ -5,7 +5,11 @@
   "ircServerConfig": {
     "name": "TestConfig",
     "ircNetwork": {
-      "name": "TestNetwork"
+      "name": "TestNetwork",
+      "ircServer": {
+        "host": "localhost",
+        "port": 6667
+      }
     },
     "channelList": [
       {
