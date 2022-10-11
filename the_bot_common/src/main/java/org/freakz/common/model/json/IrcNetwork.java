@@ -1,4 +1,4 @@
-package org.freakz.springboot.ui.backend.models.json;
+package org.freakz.common.model.json;
 
 import lombok.Builder;
 import lombok.Data;

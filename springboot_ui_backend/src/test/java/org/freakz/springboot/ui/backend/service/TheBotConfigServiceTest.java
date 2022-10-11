@@ -2,12 +2,12 @@ package org.freakz.springboot.ui.backend.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.freakz.springboot.ui.backend.models.json.BotConfig;
-import org.freakz.springboot.ui.backend.models.json.IrcChannel;
-import org.freakz.springboot.ui.backend.models.json.IrcNetwork;
-import org.freakz.springboot.ui.backend.models.json.IrcServer;
-import org.freakz.springboot.ui.backend.models.json.IrcServerConfig;
-import org.freakz.springboot.ui.backend.models.json.TheBotConfig;
+import org.freakz.common.model.json.BotConfig;
+import org.freakz.common.model.json.IrcChannel;
+import org.freakz.common.model.json.IrcNetwork;
+import org.freakz.common.model.json.IrcServer;
+import org.freakz.common.model.json.IrcServerConfig;
+import org.freakz.common.model.json.TheBotConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
