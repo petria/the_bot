@@ -11,6 +11,8 @@ import javax.annotation.PostConstruct;
 public class ConnectionManager {
 
 
+
+
     @PostConstruct
     public void init() {
         log.debug(">> Start IrcServerConnections");
