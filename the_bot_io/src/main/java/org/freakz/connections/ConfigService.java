@@ -16,14 +16,12 @@ import java.nio.file.Path;
 @Slf4j
 public class ConfigService {
 
-
     @Autowired
-    private TheBotProperties config;
-
+    private TheBotProperties botProperties;
 
     @PostConstruct
-    public void readBotConfig() throws IOException {
-        String runtimeDir = config.getRuntimeDir();
+    public TheBotConfig readBotConfig() throws IOException {
+        String runtimeDir = botProperties.getRuntimeDir();
         String cfgFile = runtimeDir + "/" + TheBotProperties.RUNTIME_CONFIG_FILE_NAME;
         log.debug("Reading runtime config from: {}", cfgFile);
 
@@ -31,8 +29,7 @@ public class ConfigService {
         Path path = Path.of(cfgFile);
         String json = Files.readString(path);
         TheBotConfig theBotConfig = mapper.readValue(json, TheBotConfig.class);
-
-        int foo = 0;
+        return  theBotConfig;
     }
 
 

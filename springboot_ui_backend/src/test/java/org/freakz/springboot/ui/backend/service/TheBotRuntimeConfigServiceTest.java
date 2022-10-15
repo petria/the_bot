@@ -26,10 +26,13 @@ public class TheBotRuntimeConfigServiceTest {
                 .channelList(createChannelList())
                 .build();
 
+        List<IrcServerConfig> configs = new ArrayList<>();
+        configs.add(ircServerConfig);
+
         TheBotConfig botConfig
                 = TheBotConfig.builder()
                 .botConfig(createBotConfig())
-                .ircServerConfig(ircServerConfig)
+                .ircServerConfigs(configs)
                 .build();
 
         ObjectMapper mapper = new ObjectMapper();

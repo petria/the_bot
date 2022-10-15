@@ -1,23 +1,25 @@
 {
   "botConfig": {
-    "botName": "HokanTheBot"
+    "botName": "HokanDEV"
   },
-  "ircServerConfig": {
-    "name": "TestConfig",
-    "ircNetwork": {
-      "name": "TestNetwork",
-      "ircServer": {
-        "host": "localhost",
-        "port": 6667
-      }
-    },
-    "channelList": [
-      {
-        "name": "#HokanDEV"
+  "ircServerConfigs": [
+    {
+      "name": "TestConfig",
+      "ircNetwork": {
+        "name": "TestNetwork",
+        "ircServer": {
+          "host": "irc.stealth.net",
+          "port": 6667
+        }
       },
-      {
-        "name": "#HokanDEV2"
-      }
-    ]
-  }
+      "channelList": [
+        {
+          "name": "#HokanDEV"
+        },
+        {
+          "name": "#HokanDEV2"
+        }
+      ]
+    }
+  ]
 }

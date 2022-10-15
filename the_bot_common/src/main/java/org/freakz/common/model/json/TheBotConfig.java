@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @Builder
 @Data
@@ -15,6 +17,6 @@ import lombok.NoArgsConstructor;
 public class TheBotConfig {
 
     private BotConfig botConfig;
-    private IrcServerConfig ircServerConfig;
+    private List<IrcServerConfig> ircServerConfigs;
 
 }

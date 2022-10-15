@@ -2,6 +2,7 @@ package org.freakz.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
+import org.freakz.common.model.json.IrcServerConfig;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.event.channel.ChannelJoinEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
@@ -25,29 +26,30 @@ public class IrcServerConnection {
         @Handler
         public void onChannelMessageEvent(ChannelMessageEvent event) {
             int foo = 0;
+            log.debug("Got msg: {}", event.getMessage());
+
         }
 
         @Handler
         public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
-            int bar = 0;
         }
 
     }
 
-    public void init() {
+    public void init(String botNick, IrcServerConfig config) {
 
         Client client
                 = Client.builder()
                 .user("hokan")
-                .nick("HokanDEV")
+                .nick(botNick)
                 .server()
-                .host("irc.stealth.net")
-                .port(6667, Client.Builder.Server.SecurityType.INSECURE)
+                .host(config.getIrcNetwork().getIrcServer().getHost())
+                .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
                 .then()
                 .buildAndConnect();
 
         client.getEventManager().registerEventListener(new Listener());
-        client.addChannel("#HokanDEV");
+        config.getChannelList().forEach(ch -> client.addChannel(ch.getName()));
 
     }
 
