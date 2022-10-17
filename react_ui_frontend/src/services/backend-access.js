@@ -2,7 +2,7 @@ import axios from "axios";
 import EventBus from "../common/EventBus";
 
 const check_not_authorized = (status) => {
-    console.log("Check not authorized status: " + status);
+//    console.log("Check not authorized status: " + status);
     if (status === 401) {
         EventBus.dispatch("logout");
     }

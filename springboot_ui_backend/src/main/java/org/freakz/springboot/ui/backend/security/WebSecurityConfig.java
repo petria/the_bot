@@ -1,5 +1,8 @@
 package org.freakz.springboot.ui.backend.security;
 
+import org.freakz.springboot.ui.backend.security.jwt.AuthEntryPointJwt;
+import org.freakz.springboot.ui.backend.security.jwt.AuthTokenFilter;
+import org.freakz.springboot.ui.backend.security.services.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,10 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import org.freakz.springboot.ui.backend.security.jwt.AuthEntryPointJwt;
-import org.freakz.springboot.ui.backend.security.jwt.AuthTokenFilter;
-import org.freakz.springboot.ui.backend.security.services.UserDetailsServiceImpl;
 
 @Configuration
 @EnableWebSecurity
@@ -60,6 +59,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .authorizeRequests().antMatchers("/api/auth/**").permitAll()
                 .antMatchers("/api/test/**").permitAll()
                 .antMatchers("/api/server_config/**").permitAll()
+                .antMatchers("/api/message_feed/**").permitAll()
                 .anyRequest().authenticated();
 
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);

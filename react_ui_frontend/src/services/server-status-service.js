@@ -13,7 +13,7 @@ const getServerStatus = (ok, error) => {
             error(error_response);
         },
         true
-    )
+    );
 
 }
 
