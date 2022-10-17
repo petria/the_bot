@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import MessageFeedService from "../services/message-feed";
+import MessageFeedService from "../services/message-feed-service";
 
 const MessageFeeder = () => {
 

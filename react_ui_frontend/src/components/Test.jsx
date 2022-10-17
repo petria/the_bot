@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from "react";
+import MessageFeedService from "../services/message-feed-service";
 
 const Test = () => {
     const [count, setCount] = useState(0);
@@ -8,12 +9,37 @@ const Test = () => {
 
     useEffect(
         () => {
+
+            const updateFeed = () => {
+                MessageFeedService.getMessagesSince(
+                    (response) => {
+                        if (response.data.length > 0) {
+
+
+                            console.log('data -> ', response.data);
+                            const date = new Date(response.data[0].timestamp);
+                            const msg = date + " " + response.data[0].sender.concat(" :: ").concat(response.data[0].message);
+
+                            console.log('msg -> ', msg);
+
+
+                            setText((text) => msg.concat("\n").concat(text));
+                        }
+                    },
+                    (error) => {
+                        // error
+                    },
+                    time
+                );
+            }
+
+
             if (count === 0) {
                 setTime(666);
             } else {
                 setTime(Date.now());
                 if (doUpdate === 1) {
-                    setText((text) => "221".concat("\n").concat(text));
+                    updateFeed();
                 }
             }
         },
