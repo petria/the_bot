@@ -13,6 +13,7 @@ import lombok.ToString;
 @ToString
 public class Message {
 
+    private long id = 0;
     private long timestamp;
     private String sender;
     private String message;

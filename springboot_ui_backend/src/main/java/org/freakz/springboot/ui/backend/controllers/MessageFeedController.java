@@ -8,10 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -23,10 +24,23 @@ public class MessageFeedController {
     @Autowired
     private MessageFeederService messageFeeder;
 
-    private static int count = 0;
+    @GetMapping("/after_id/{id}")
+    public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
+        List<Message> list = messageFeeder.getMessagesAfterId(id);
+        log.debug("after id {} -> {}", id, list.size());
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/last/{max}")
+    public ResponseEntity<?> getMessagesLastMessages(@PathVariable("max") long max) {
+        List<Message> list = messageFeeder.getLastMessages(max);
+        log.debug("last {} -> {}", max, list.size());
+        return ResponseEntity.ok(list);
+    }
+
     @GetMapping("/since/{timestamp}")
     public ResponseEntity<?> getMessagesSinceTimestamp(@PathVariable("timestamp") long timestamp) {
-        List<Message> list = new ArrayList<>();
+/*        List<Message> list = new ArrayList<>();
         int rnd = 1 + (int) (Math.random() * 100);
         if (rnd > 50) {
             Message message = Message.builder()
@@ -37,11 +51,18 @@ public class MessageFeedController {
             count++;
             list.add(message);
         }
+*/
 
-
-
-//        List<Message> messages = messageFeeder.getMessagesSinceTimestamp(0);
+        List<Message> list = messageFeeder.getMessagesSinceTimestamp(timestamp);
         return ResponseEntity.ok(list);
+    }
+
+    @PostMapping("/insert")
+    public ResponseEntity<?> insertToMessageFeed(@RequestBody Message message) {
+        log.debug("Insert to feed: {}", message);
+        int count = messageFeeder.insertMessage(message);
+        log.debug("Feed size now: {}", count);
+        return ResponseEntity.ok().build();
     }
 
 }

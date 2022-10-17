@@ -4,8 +4,9 @@ import MessageFeedService from "../services/message-feed-service";
 const Test = () => {
     const [count, setCount] = useState(0);
     const [time, setTime] = useState(0);
-    const [text, setText] = useState("fffu");
+    const [text, setText] = useState("");
     const [doUpdate, setDoUpdate] = useState(1);
+    const [afterId, setAfterId] = useState(0);
 
     useEffect(
         () => {
@@ -15,7 +16,6 @@ const Test = () => {
                     (response) => {
                         if (response.data.length > 0) {
 
-
                             console.log('data -> ', response.data);
                             const date = new Date(response.data[0].timestamp);
                             const msg = date + " " + response.data[0].sender.concat(" :: ").concat(response.data[0].message);
@@ -23,7 +23,7 @@ const Test = () => {
                             console.log('msg -> ', msg);
 
 
-                            setText((text) => msg.concat("\n").concat(text));
+                            setText((text) => text.concat(msg).concat("\n"));
                         }
                     },
                     (error) => {
@@ -33,13 +33,59 @@ const Test = () => {
                 );
             }
 
+            const firstFetch = () => {
+                MessageFeedService.getLastMessages(
+                    (response) => {
+                        if (response.data.length > 0) {
+                            response.data.forEach(
+                                m => {
+//                                    const date = new Date(m.timestamp);
+                                    const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+                                    console.log('msg -> ', msg);
+                                    setText((text) => text.concat(msg).concat("\n"));
+                                }
+                            );
+                            setAfterId(response.data[0].id);
+                        }
+                    },
+                    (error) => {
+                        // error
+                    },
+                    10
+                );
+            };
+
+            const updateFetch = () => {
+                MessageFeedService.getMessagesAfterId(
+                    (response) => {
+                        if (response.data.length > 0) {
+                            const reversed = response.data.reverse();
+                            reversed.forEach(
+                                m => {
+//                                    const date = new Date(m.timestamp);
+                                    const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+                                    console.log('msg -> ', msg);
+                                    setText((text) => msg.concat("\n").concat(text));
+                                }
+                            );
+                            setAfterId(response.data[0].id);
+                        }
+                    },
+                    (error) => {
+                        // error
+                    },
+                    afterId
+                );
+            };
+
 
             if (count === 0) {
+                firstFetch();
                 setTime(666);
             } else {
                 setTime(Date.now());
                 if (doUpdate === 1) {
-                    updateFeed();
+                    updateFetch();
                 }
             }
         },
@@ -50,7 +96,7 @@ const Test = () => {
     useEffect(() => {
         let id = setTimeout(() => {
             setCount((count) => count + 1);
-        }, 2000);
+        }, 5000);
         return () => clearInterval(id);
     });
 
@@ -66,14 +112,15 @@ const Test = () => {
         <>
             <div>
                 <textarea readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
-                <button id="doUpdateToggle" onClick={ (e) => toggleUpdate(e) }>Toggle update</button>
-                <button id="clear" onClick={ (e) => setText("") }>Clear</button>
+                <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
+                <button id="clear" onClick={(e) => setText("")}>Clear</button>
             </div>
             <br/>
 
             count: {count}<br/>
             time: {time}<br/>
             doUpdate: {doUpdate}<br/>
+            afterId: {afterId}<br/>
         </>
     );
 
