@@ -8,89 +8,50 @@ const Test = () => {
     const [doUpdate, setDoUpdate] = useState(1);
     const [afterId, setAfterId] = useState(0);
 
-    useEffect(
-        () => {
+    useEffect(() => {
 
-            const updateFeed = () => {
-                MessageFeedService.getMessagesSince(
-                    (response) => {
-                        if (response.data.length > 0) {
-
-                            console.log('data -> ', response.data);
-                            const date = new Date(response.data[0].timestamp);
-                            const msg = date + " " + response.data[0].sender.concat(" :: ").concat(response.data[0].message);
-
-                            console.log('msg -> ', msg);
-
-
-                            setText((text) => text.concat(msg).concat("\n"));
-                        }
-                    },
-                    (error) => {
-                        // error
-                    },
-                    time
-                );
-            }
-
-            const firstFetch = () => {
-                MessageFeedService.getLastMessages(
-                    (response) => {
-                        if (response.data.length > 0) {
-                            response.data.forEach(
-                                m => {
+        const firstFetch = () => {
+            MessageFeedService.getLastMessages((response) => {
+                if (response.data.length > 0) {
+                    response.data.forEach(m => {
 //                                    const date = new Date(m.timestamp);
-                                    const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
-                                    console.log('msg -> ', msg);
-                                    setText((text) => text.concat(msg).concat("\n"));
-                                }
-                            );
-                            setAfterId(response.data[0].id);
-                        }
-                    },
-                    (error) => {
-                        // error
-                    },
-                    10
-                );
-            };
-
-            const updateFetch = () => {
-                MessageFeedService.getMessagesAfterId(
-                    (response) => {
-                        if (response.data.length > 0) {
-                            const reversed = response.data.reverse();
-                            reversed.forEach(
-                                m => {
-//                                    const date = new Date(m.timestamp);
-                                    const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
-                                    console.log('msg -> ', msg);
-                                    setText((text) => msg.concat("\n").concat(text));
-                                }
-                            );
-                            setAfterId(response.data[0].id);
-                        }
-                    },
-                    (error) => {
-                        // error
-                    },
-                    afterId
-                );
-            };
-
-
-            if (count === 0) {
-                firstFetch();
-                setTime(666);
-            } else {
-                setTime(Date.now());
-                if (doUpdate === 1) {
-                    updateFetch();
+                        const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+                        console.log('msg -> ', msg);
+                        setText((text) => text.concat(msg).concat("\n"));
+                    });
+                    setAfterId(response.data[0].id);
                 }
+            }, (error) => {
+                // error
+            }, 10);
+        };
+
+        const updateFetch = () => {
+            MessageFeedService.getMessagesAfterId((response) => {
+                if (response.data.length > 0) {
+                    const reversed = response.data.reverse();
+                    reversed.forEach(m => {
+//                                    const date = new Date(m.timestamp);
+                        const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+                        console.log('msg -> ', msg);
+                        setText((text) => msg.concat("\n").concat(text));
+                    });
+                    setAfterId(response.data[0].id);
+                }
+            }, (error) => {
+                // error
+            }, afterId);
+        };
+
+        if (count === 0) {
+            firstFetch();
+        } else {
+            setTime(Date.now());
+            if (doUpdate === 1) {
+                updateFetch();
             }
-        },
-        [count]
-    );
+        }
+    }, [count]);
 
 
     useEffect(() => {
@@ -108,21 +69,19 @@ const Test = () => {
         }
     }
 
-    return (
-        <>
-            <div>
-                <textarea readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
-                <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
-                <button id="clear" onClick={(e) => setText("")}>Clear</button>
-            </div>
-            <br/>
+    return (<>
+        <div>
+            <textarea readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
+            <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
+            <button id="clear" onClick={(e) => setText("")}>Clear</button>
+        </div>
+        <br/>
 
-            count: {count}<br/>
-            time: {time}<br/>
-            doUpdate: {doUpdate}<br/>
-            afterId: {afterId}<br/>
-        </>
-    );
+        count: {count}<br/>
+        time: {time}<br/>
+        doUpdate: {doUpdate}<br/>
+        afterId: {afterId}<br/>
+    </>);
 
 }
 
