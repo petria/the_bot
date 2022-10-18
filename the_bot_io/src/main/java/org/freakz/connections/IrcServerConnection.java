@@ -11,30 +11,33 @@ import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishe
 @Slf4j
 public class IrcServerConnection {
 
+    private final EventPublisher publisher;
 
-    public static class Listener {
-        @Handler
-        public void onUserJoinChannel(ChannelJoinEvent event) {
-            if (event.getClient().isUser(event.getUser())) { // It's me!
-                event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
-                return;
-            }
-            // It's not me!
-            event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
-        }
-
-        @Handler
-        public void onChannelMessageEvent(ChannelMessageEvent event) {
-            int foo = 0;
-            log.debug("Got msg: {}", event.getMessage());
-
-        }
-
-        @Handler
-        public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
-        }
-
+    public IrcServerConnection(EventPublisher publisher) {
+        this.publisher = publisher;
     }
+
+
+    @Handler
+    public void onUserJoinChannel(ChannelJoinEvent event) {
+        if (event.getClient().isUser(event.getUser())) { // It's me!
+            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
+            return;
+        }
+        // It's not me!
+        event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
+    }
+
+    @Handler
+    public void onChannelMessageEvent(ChannelMessageEvent event) {
+        log.debug("Got msg: {}", event.getMessage());
+        publisher.publishEvent(this, event);
+    }
+
+    @Handler
+    public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
+    }
+
 
     public void init(String botNick, IrcServerConfig config) {
 
@@ -48,7 +51,7 @@ public class IrcServerConnection {
                 .then()
                 .buildAndConnect();
 
-        client.getEventManager().registerEventListener(new Listener());
+        client.getEventManager().registerEventListener(this);
         config.getChannelList().forEach(ch -> client.addChannel(ch.getName()));
 
     }

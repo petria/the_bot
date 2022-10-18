@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -23,6 +24,13 @@ public class MessageFeedController {
 
     @Autowired
     private MessageFeederService messageFeeder;
+
+
+    @GetMapping("/current_day")
+    public ResponseEntity<?> getMessagesOfCurrentDay() {
+        List<Message> list = messageFeeder.getMessagesForDay(LocalDate.now());
+        return ResponseEntity.ok(list);
+    }
 
     @GetMapping("/after_id/{id}")
     public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
@@ -40,19 +48,6 @@ public class MessageFeedController {
 
     @GetMapping("/since/{timestamp}")
     public ResponseEntity<?> getMessagesSinceTimestamp(@PathVariable("timestamp") long timestamp) {
-/*        List<Message> list = new ArrayList<>();
-        int rnd = 1 + (int) (Math.random() * 100);
-        if (rnd > 50) {
-            Message message = Message.builder()
-                    .timestamp(System.currentTimeMillis())
-                    .sender("Sender " + count)
-                    .message("Message " + count)
-                    .build();
-            count++;
-            list.add(message);
-        }
-*/
-
         List<Message> list = messageFeeder.getMessagesSinceTimestamp(timestamp);
         return ResponseEntity.ok(list);
     }
@@ -62,6 +57,19 @@ public class MessageFeedController {
         log.debug("Insert to feed: {}", message);
         int count = messageFeeder.insertMessage(message);
         log.debug("Feed size now: {}", count);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/insert_batch")
+    public ResponseEntity<?> insertBatchToMessageFeed(@RequestBody List<Message> messages) {
+
+        log.debug("Insert batch to feed: {}", messages.size());
+
+        for (Message message : messages) {
+            messageFeeder.insertMessage(message);
+        }
+
+        log.debug("Feed size now: {}", messageFeeder.getCount());
         return ResponseEntity.ok().build();
     }
 

@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,40 +19,6 @@ public class MessageFeederService {
     public MessageFeederService() {
     }
 
-    //    @PostConstruct
-    public void initFeed() {
-        int counter = 1;
-        long timestamp = System.currentTimeMillis();
-        Message msg = Message.builder()
-                .timestamp(timestamp)
-                .sender("sender: " + counter)
-                .message("msg: " + counter)
-                .build();
-//        feed.put(msg.getTimestamp(), msg);
-
-        counter++;
-
-        msg = Message.builder()
-                .timestamp((timestamp - (1000 * 5)))
-                .sender("sender: " + counter)
-                .message("msg: " + counter)
-                .build();
-//        feed.put(msg.getTimestamp(), msg);
-
-        counter++;
-
-        msg = Message.builder()
-                .timestamp((timestamp - (1000 * 10)))
-                .sender("sender: " + counter)
-                .message("msg: " + counter)
-                .build();
-        //      feed.put(msg.getTimestamp(), msg);
-
-        counter++;
-
-    }
-
-
     public List<Message> getMessagesSinceTimestamp(long timestamp) {
         List<Message> collect = this.feed.stream().filter(m -> m.getTimestamp() > timestamp).collect(Collectors.toList());
         return collect;
@@ -58,8 +26,9 @@ public class MessageFeederService {
 
     public int insertMessage(Message message) {
         message.setTimestamp(System.currentTimeMillis());
+//        message.setTime(LocalDateTime.now());
         message.setId(this.feed.size());
-        this.feed.add(0, message);
+        this.feed.add(message);
         return this.feed.size();
     }
 
@@ -84,5 +53,24 @@ public class MessageFeederService {
             }
         }
         return list;
+    }
+
+    public List<Message> getMessagesForDay(LocalDate day) {
+        String dayStr = day.format(DateTimeFormatter.ISO_DATE);
+        List<Message> list = new ArrayList<>();
+        for (Message message : this.feed) {
+            LocalDate localDate = message.getTime().toLocalDate();
+            String dayStr2 = localDate.format(DateTimeFormatter.ISO_DATE);
+            if (dayStr2.equals(dayStr)) {
+                list.add(message);
+            }
+        }
+        return list;
+
+
+    }
+
+    public int getCount() {
+        return this.feed.size();
     }
 }

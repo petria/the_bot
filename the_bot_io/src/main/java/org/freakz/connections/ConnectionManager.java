@@ -18,6 +18,9 @@ public class ConnectionManager {
     @Autowired
     private ConfigService configService;
 
+    @Autowired
+    private EventPublisher eventPublisher;
+
     @PostConstruct
     public void init() throws IOException {
 
@@ -25,9 +28,8 @@ public class ConnectionManager {
         for (IrcServerConfig config : theBotConfig.getIrcServerConfigs()) {
             log.debug("init IrcServerConfig: {}", config);
 
-            IrcServerConnection isc = new IrcServerConnection();
+            IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
             isc.init(theBotConfig.getBotConfig().getBotName(), config);
-
 
         }
 //        log.debug(">> Start IrcServerConnections");

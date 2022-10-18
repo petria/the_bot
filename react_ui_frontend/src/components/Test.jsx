@@ -13,13 +13,17 @@ const Test = () => {
         const firstFetch = () => {
             MessageFeedService.getLastMessages((response) => {
                 if (response.data.length > 0) {
-                    response.data.forEach(m => {
-//                                    const date = new Date(m.timestamp);
+                    let msgs = "";
+                    let lastId = 0;
+                    for (let i = 0; i < response.data.length; i++) {
+                        const m = response.data[i];
                         const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
-                        console.log('msg -> ', msg);
-                        setText((text) => text.concat(msg).concat("\n"));
-                    });
-                    setAfterId(response.data[0].id);
+                        msgs = msgs.concat(msg).concat('\n');
+                        lastId = m.id;
+                    }
+                    console.log('>>>msgs ', msgs);
+                    setAfterId(lastId);
+                    setText((text) => text.concat(msgs));
                 }
             }, (error) => {
                 // error
@@ -29,19 +33,22 @@ const Test = () => {
         const updateFetch = () => {
             MessageFeedService.getMessagesAfterId((response) => {
                 if (response.data.length > 0) {
-                    const reversed = response.data.reverse();
-                    reversed.forEach(m => {
-//                                    const date = new Date(m.timestamp);
+                    let msgs = "";
+                    let lastId = 0;
+                    for (let i = 0; i < response.data.length; i++) {
+                        const m = response.data[i];
                         const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
-                        console.log('msg -> ', msg);
-                        setText((text) => msg.concat("\n").concat(text));
-                    });
-                    setAfterId(response.data[0].id);
+                        msgs = msgs.concat(msg).concat('\n');
+                        lastId = m.id;
+                    }
+                    console.log('>>msgs ', msgs);
+                    setAfterId(lastId);
+                    setText((text) => text.concat(msgs));
                 }
             }, (error) => {
                 // error
             }, afterId);
-        };
+        }
 
         if (count === 0) {
             firstFetch();
