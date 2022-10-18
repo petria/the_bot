@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import MessageFeedService from "../services/message-feed-service";
+import Moment from 'moment';
 
 const Test = () => {
     const [count, setCount] = useState(0);
@@ -7,6 +8,8 @@ const Test = () => {
     const [text, setText] = useState("");
     const [doUpdate, setDoUpdate] = useState(1);
     const [afterId, setAfterId] = useState(0);
+
+    const textArea = useRef();
 
     useEffect(() => {
 
@@ -17,7 +20,8 @@ const Test = () => {
                     let lastId = 0;
                     for (let i = 0; i < response.data.length; i++) {
                         const m = response.data[i];
-                        const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+                        const mm = Moment(m.timestamp).format('HH:mm:ss')
+                        const msg = mm + " " + m.sender.concat(" :: ").concat(m.message);
                         msgs = msgs.concat(msg).concat('\n');
                         lastId = m.id;
                     }
@@ -37,27 +41,37 @@ const Test = () => {
                     let lastId = 0;
                     for (let i = 0; i < response.data.length; i++) {
                         const m = response.data[i];
-                        const msg = m.id + " :: " + m.sender.concat(" :: ").concat(m.message);
+//                        const d = new Date(m.timestamp);
+                        const mm = Moment(m.timestamp).format('HH:mm:ss')
+                        const msg = mm + " " + m.sender.concat(" :: ").concat(m.message);
                         msgs = msgs.concat(msg).concat('\n');
                         lastId = m.id;
                     }
                     console.log('>>msgs ', msgs);
                     setAfterId(lastId);
                     setText((text) => text.concat(msgs));
+                    const area = textArea.current;
+                    area.scrollTop = area.scrollHeight;
                 }
             }, (error) => {
                 // error
             }, afterId);
         }
 
-        if (count === 0) {
-            firstFetch();
-        } else {
-            setTime(Date.now());
-            if (doUpdate === 1) {
-                updateFetch();
-            }
+        /*
+                if (count === 0) {
+                    firstFetch();
+                } else {
+                    setTime(Date.now());
+                    if (doUpdate === 1) {
+                        updateFetch();
+                    }
+                }
+          */
+        if (doUpdate === 1) {
+            updateFetch();
         }
+
     }, [count]);
 
 
@@ -78,7 +92,7 @@ const Test = () => {
 
     return (<>
         <div>
-            <textarea readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
+            <textarea ref={textArea} readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
             <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
             <button id="clear" onClick={(e) => setText("")}>Clear</button>
         </div>
