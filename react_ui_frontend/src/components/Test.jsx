@@ -13,26 +13,6 @@ const Test = () => {
 
     useEffect(() => {
 
-        const firstFetch = () => {
-            MessageFeedService.getLastMessages((response) => {
-                if (response.data.length > 0) {
-                    let msgs = "";
-                    let lastId = 0;
-                    for (let i = 0; i < response.data.length; i++) {
-                        const m = response.data[i];
-                        const mm = Moment(m.timestamp).format('HH:mm:ss')
-                        const msg = mm + " " + m.sender.concat(" :: ").concat(m.message);
-                        msgs = msgs.concat(msg).concat('\n');
-                        lastId = m.id;
-                    }
-                    console.log('>>>msgs ', msgs);
-                    setAfterId(lastId);
-                    setText((text) => text.concat(msgs));
-                }
-            }, (error) => {
-                // error
-            }, 10);
-        };
 
         const updateFetch = () => {
             MessageFeedService.getMessagesAfterId((response) => {
@@ -41,7 +21,7 @@ const Test = () => {
                     let lastId = 0;
                     for (let i = 0; i < response.data.length; i++) {
                         const m = response.data[i];
-//                        const d = new Date(m.timestamp);
+
                         const mm = Moment(m.timestamp).format('HH:mm:ss')
                         const msg = mm + " " + m.sender.concat(" :: ").concat(m.message);
                         msgs = msgs.concat(msg).concat('\n');
@@ -58,16 +38,6 @@ const Test = () => {
             }, afterId);
         }
 
-        /*
-                if (count === 0) {
-                    firstFetch();
-                } else {
-                    setTime(Date.now());
-                    if (doUpdate === 1) {
-                        updateFetch();
-                    }
-                }
-          */
         if (doUpdate === 1) {
             updateFetch();
         }
