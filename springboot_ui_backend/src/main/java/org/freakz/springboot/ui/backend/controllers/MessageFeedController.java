@@ -35,7 +35,7 @@ public class MessageFeedController {
     @GetMapping("/after_id/{id}")
     public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
         List<Message> list = messageFeeder.getMessagesAfterId(id);
-        log.debug("after id {} -> {}", id, list.size());
+//        log.debug("after id {} -> {}", id, list.size());
         return ResponseEntity.ok(list);
     }
 
