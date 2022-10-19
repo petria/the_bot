@@ -61,10 +61,13 @@ const Test = () => {
     }
 
     return (<>
-        <div>
-            <textarea ref={textArea} readOnly="true" id="messages" cols="100" rows="10" value={text}></textarea>
-            <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
-            <button id="clear" onClick={(e) => setText("")}>Clear</button>
+        <div className="container">
+            <textarea className="message-feed-textarea" ref={textArea} readOnly="true" id="messages" cols="100"
+                      rows="10" value={text}></textarea>
+            <div className="container">
+                <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
+                <button id="clear" onClick={(e) => setText("")}>Clear</button>
+            </div>
         </div>
         <br/>
 
