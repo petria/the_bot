@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 
 import UserService from "../services/user.service";
-import Test from "./Test"
+import ReactTabs from './ReactTabs'
 
 const Home = () => {
     const [content, setContent] = useState("");
@@ -21,12 +21,13 @@ const Home = () => {
             }
         );
     }, []);
-
+//<!--                <Test></Test>-->
     return (
         <div className="container">
             <header className="jumbotron">
                 Fufuf:
-                <Test></Test>
+
+                <ReactTabs></ReactTabs>
                 <h3>{content}</h3>
             </header>
         </div>

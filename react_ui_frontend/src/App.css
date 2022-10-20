@@ -32,5 +32,6 @@ label {
 }
 
 .message-feed-textarea {
-  width: 100%
+  width: 100%;
+  resize: none;
 }
