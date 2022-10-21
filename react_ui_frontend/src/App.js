@@ -5,7 +5,7 @@ import 'react-notifications/lib/notifications.css';
 import "./App.css";
 
 import AuthService from "./services/auth.service";
-
+import TheBotConfigService from "./services/the-bot-config-service";
 
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -23,6 +23,13 @@ const App = () => {
     const [showAdminBoard, setShowAdminBoard] = useState(false);
     const [currentUser, setCurrentUser] = useState(undefined);
 
+    const [runtime, setRuntime]
+        = useState(
+        {
+            config: null
+        }
+    );
+
     let navigate = useNavigate();
     const logOut = () => {
         console.log("App.js doing logOut() !!!");
@@ -37,6 +44,24 @@ const App = () => {
         navigate("/home");
 
     };
+    useEffect(() => {
+//        console.log('Importing The Bot Config from backend');
+        TheBotConfigService.getBotConfig(
+            (response) => {
+                console.log('TheBotConfig -> ', response.data);
+                setRuntime(
+                    values => ({
+                        ...values,
+                        config: response.data
+                    })
+                );
+            },
+            (error) => {
+                // todo
+            }
+        );
+    }, []);
+
 
     useEffect(() => {
         const user = AuthService.getCurrentUser();
@@ -132,21 +157,32 @@ const App = () => {
                 )}
             </nav>
 
-            <div className="container mt-3">
+            {
+                runtime.config === null
+                    ?
+                    <div>
+                        loading..
+                    </div>
+                    :
+                    <div>
+                        <div className="container mt-3">
 
-                <Routes>
-                    <Route path="/" element={<Home/>}/>
-                    <Route path="/server_status" element={<BoardServerStatus/>}/>
-                    <Route path="/home" element={<Home/>}/>
-                    <Route path="/login" element={<Login/>}/>
-                    <Route path="/register" element={<Register/>}/>
-                    <Route path="/profile" element={<Profile/>}/>
-                    <Route path="/user" element={<BoardUser/>}/>
-                    <Route path="/mod" element={<BoardModerator/>}/>
-                    <Route path="/admin" element={<BoardAdmin/>}/>
-                </Routes>
+                            <Routes>
+                                <Route path="/" element={<Home runtime={runtime}/>}/>
+                                <Route path="/server_status" element={<BoardServerStatus/>}/>
+                                <Route path="/home" element={<Home runtime={runtime}/>}/>
+                                <Route path="/login" element={<Login/>}/>
+                                <Route path="/register" element={<Register/>}/>
+                                <Route path="/profile" element={<Profile/>}/>
+                                <Route path="/user" element={<BoardUser/>}/>
+                                <Route path="/mod" element={<BoardModerator/>}/>
+                                <Route path="/admin" element={<BoardAdmin/>}/>
+                            </Routes>
 
-            </div>
+                        </div>
+                    </div>
+
+            }
 
         </div>
     );
