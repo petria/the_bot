@@ -2,6 +2,8 @@ import React, {useEffect, useState} from "react";
 
 import UserService from "../services/user.service";
 import ReactTabs from './ReactTabs'
+import ChannelFeed from './messagefeed/ChannelFeed';
+
 
 const Home = () => {
     const [content, setContent] = useState("");
@@ -25,8 +27,7 @@ const Home = () => {
     return (
         <div className="container">
             <header className="jumbotron">
-                Fufuf:
-
+                <ChannelFeed title='#HokanDEV'></ChannelFeed>
                 <ReactTabs></ReactTabs>
                 <h3>{content}</h3>
             </header>

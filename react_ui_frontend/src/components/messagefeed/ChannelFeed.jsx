@@ -1,18 +1,18 @@
 import React, {useEffect, useRef, useState} from "react";
-import MessageFeedService from "../services/message-feed-service";
+import MessageFeedService from "../../services/message-feed-service";
 import Moment from 'moment';
 
-const Test = () => {
+const ChannelFeed = (props) => {
+
     const [count, setCount] = useState(0);
     const [time, setTime] = useState(0);
     const [text, setText] = useState("");
     const [doUpdate, setDoUpdate] = useState(1);
-    const [afterId, setAfterId] = useState(0);
+    const [lastMsgId, setLastMsgId] = useState(0);
 
     const textArea = useRef();
 
     useEffect(() => {
-
 
         const updateFetch = () => {
             MessageFeedService.getMessagesAfterId((response) => {
@@ -28,14 +28,14 @@ const Test = () => {
                         lastId = m.id;
                     }
                     console.log('>>msgs ', msgs);
-                    setAfterId(lastId);
+                    setLastMsgId(lastId);
                     setText((text) => text.concat(msgs));
                     const area = textArea.current;
                     area.scrollTop = area.scrollHeight;
                 }
             }, (error) => {
                 // error
-            }, afterId);
+            }, lastMsgId);
         }
 
         if (doUpdate === 1) {
@@ -62,8 +62,13 @@ const Test = () => {
 
     return (<>
         <div className="container">
-            <textarea className="message-feed-textarea" ref={textArea} readOnly="true" id="messages" cols="100"
-                      rows="10" value={text}></textarea>
+            <div>
+                <h3>{props.title}</h3>
+            </div>
+            <div>
+                <textarea className="message-feed-textarea" ref={textArea} readOnly="true" id="messages" cols="100"
+                          rows="10" value={text}></textarea>
+            </div>
             <div className="container">
                 <button id="doUpdateToggle" onClick={(e) => toggleUpdate(e)}>Toggle update</button>
                 <button id="clear" onClick={(e) => setText("")}>Clear</button>
@@ -74,12 +79,12 @@ const Test = () => {
         count: {count}<br/>
         time: {time}<br/>
         doUpdate: {doUpdate}<br/>
-        afterId: {afterId}<br/>
+        lastMsgId: {lastMsgId}<br/>
     </>);
 
 }
 
 
-export default Test;
+export default ChannelFeed;
 
 

@@ -4,6 +4,7 @@ package org.freakz.connections;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.IrcServerConfig;
 import org.freakz.common.model.json.TheBotConfig;
+import org.freakz.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
