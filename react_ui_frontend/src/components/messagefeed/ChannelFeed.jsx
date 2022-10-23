@@ -23,7 +23,8 @@ const ChannelFeed = (props) => {
                         const m = response.data[i];
 
                         const mm = Moment(m.timestamp).format('HH:mm:ss')
-                        const msg = mm + " " + m.sender.concat(" :: ").concat(m.message);
+                        const source = m.messageSource;
+                        const msg = source.concat(" -> ").concat(mm).concat(" ").concat(m.sender).concat(" :: ").concat(m.message);
                         msgs = msgs.concat(msg).concat('\n');
                         lastId = m.id;
                     }

@@ -11,6 +11,6 @@ public interface BotIOClient {
     @GetMapping("/ping")
     Response getPing();
 
-    @GetMapping("/message_feed")
+    @GetMapping("/message_feed/after_id/{id}")
     Response getMessagesAfterId(@PathVariable("id") long id);
 }

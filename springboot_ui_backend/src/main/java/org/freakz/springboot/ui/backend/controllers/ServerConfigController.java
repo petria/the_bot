@@ -1,5 +1,6 @@
 package org.freakz.springboot.ui.backend.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.payload.response.PingResponse;
@@ -22,6 +23,9 @@ public class ServerConfigController {
     private final BotIOClient botIOClient;
 
     @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
     public ServerConfigController(BotIOClient botIOClient) {
         this.botIOClient = botIOClient;
     }
@@ -31,7 +35,7 @@ public class ServerConfigController {
     public ResponseEntity<?> getServerConfigs() {
         try {
             Response ping = botIOClient.getPing();
-            Optional<PingResponse> responseBody = FeignUtils.getResponseBody(ping, PingResponse.class);
+            Optional<PingResponse> responseBody = FeignUtils.getResponseBody(ping, PingResponse.class, objectMapper);
             return ResponseEntity.ok(responseBody.get());
 
         } catch (Exception exc) {

@@ -1,5 +1,6 @@
 package org.freakz.springboot.ui.backend.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
@@ -32,6 +33,9 @@ public class MessageFeedController {
     @Autowired
     private BotIOClient botIOClient;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @GetMapping("/current_day")
     public ResponseEntity<?> getMessagesOfCurrentDay() {
         List<Message> list = messageFeeder.getMessagesForDay(LocalDate.now());
@@ -41,7 +45,7 @@ public class MessageFeedController {
     @GetMapping("/after_id/{id}")
     public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
         Response response = botIOClient.getMessagesAfterId(id);
-        Optional<MessageFeedResponse> responseBody = FeignUtils.getResponseBody(response, MessageFeedResponse.class);
+        Optional<MessageFeedResponse> responseBody = FeignUtils.getResponseBody(response, MessageFeedResponse.class, objectMapper);
 
 //        List<Message> list = messageFeeder.getMessagesAfterId(id);
 //        log.debug("after id {} -> {}", id, list.size());
