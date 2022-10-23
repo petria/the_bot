@@ -67,7 +67,7 @@ public class ConnectionManager {
         if (connection != null) {
             connection.sendMessageTo(message);
         } else {
-            throw new InvalidChannelIdException("No channel found with connectionId: " + connectionId);
+            throw new InvalidChannelIdException("No connection found with connectionId: " + connectionId);
         }
     }
 

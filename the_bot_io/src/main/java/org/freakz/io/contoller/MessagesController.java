@@ -1,7 +1,6 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.connections.BotConnection;
 import org.freakz.connections.ConnectionManager;
@@ -33,8 +32,13 @@ public class MessagesController {
     }
 
     @PostMapping("/send/{connectionId}")
-    public ResponseEntity<?> sendMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) throws InvalidChannelIdException {
-        connectionManager.sendMessageToConnection(connectionId, message);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> sendMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) {
+        try {
+            connectionManager.sendMessageToConnection(connectionId, message);
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
     }
 }
