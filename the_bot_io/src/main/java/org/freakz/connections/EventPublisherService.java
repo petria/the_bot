@@ -1,6 +1,9 @@
 package org.freakz.connections;
 
+import feign.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.clients.EngineClient;
+import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.common.model.json.feed.MessageSource;
 import org.freakz.io.service.MessageFeederService;
@@ -19,6 +22,28 @@ public class EventPublisherService implements EventPublisher {
     @Autowired
     private MessageFeederService messageFeederService;
 
+    @Autowired
+    private EngineClient engineClient;
+
+    private void publishToEngine(BotConnection connection, String message, String sender) {
+        EngineRequest request
+                = EngineRequest.builder()
+                .command(message)
+                .fromConnectionId(connection.getId())
+                .fromSender(sender)
+                .build();
+        try {
+            Response response = engineClient.handleEngineRequest(request);
+            if (response.status() == 404) {
+                log.error("404: Engine not running?!");
+            }
+            int foo = 0;
+        } catch (Exception e) {
+            log.error("Unable to send to Engine!");
+        }
+    }
+
+
     //    @Override
     public void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
         log.debug("Publish IRC event: {}", event);
@@ -31,6 +56,8 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
+
+        publishToEngine(connection, msg.getMessage(), msg.getSender());
     }
 
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
@@ -44,6 +71,9 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
+
+        publishToEngine(connection, msg.getMessage(), msg.getSender());
+
     }
 
     @Override

@@ -13,10 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class EngineController {
 
-    @PostMapping("/")
+    @PostMapping("/handle_request")
     public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) {
-
-        return null;
+        log.debug("request: {}", request);
+        String reply = "";
+        if (request.getCommand().equals("!ping")) {
+            reply = "Pong: " + System.currentTimeMillis();
+        }
+        return ResponseEntity.ok(reply);
     }
 
 }
