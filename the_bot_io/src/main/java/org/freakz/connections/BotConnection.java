@@ -1,8 +1,10 @@
 package org.freakz.connections;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
 
+@Slf4j
 public class BotConnection {
 
     static int idCounter = 0;
@@ -25,6 +27,11 @@ public class BotConnection {
 
 
     public void sendMessageTo(Message message) {
-        //
+        log.error("sendMessageTo(Message message) not implemented: " + this.getClass());
     }
+
+    public void sendRawMessage(Message message) {
+        log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
+    }
+
 }

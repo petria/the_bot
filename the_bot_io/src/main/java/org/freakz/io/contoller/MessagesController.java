@@ -41,4 +41,17 @@ public class MessagesController {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
+    @PostMapping("/send_raw/{connectionId}")
+    public ResponseEntity<?> sendRawMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) {
+        try {
+            connectionManager.sendRawMessageToConnection(connectionId, message);
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+
+
 }

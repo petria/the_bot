@@ -71,4 +71,13 @@ public class ConnectionManager {
         }
     }
 
+    public void sendRawMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {
+        BotConnection connection = this.connectionMap.get(connectionId);
+        if (connection != null) {
+            connection.sendRawMessage(message);
+        } else {
+            throw new InvalidChannelIdException("No connection found with connectionId: " + connectionId);
+        }
+    }
+
 }
