@@ -3,6 +3,7 @@ package org.freakz.springboot.ui.backend.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.json.BotConfig;
+import org.freakz.common.model.json.DiscordConfig;
 import org.freakz.common.model.json.IrcChannel;
 import org.freakz.common.model.json.IrcNetwork;
 import org.freakz.common.model.json.IrcServer;
@@ -14,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TheBotRuntimeConfigServiceTest {
-
 
 
     @Test
@@ -32,6 +32,7 @@ public class TheBotRuntimeConfigServiceTest {
         TheBotConfig botConfig
                 = TheBotConfig.builder()
                 .botConfig(createBotConfig())
+                .discordConfig(createDiscordConfig())
                 .ircServerConfigs(configs)
                 .build();
 
@@ -39,6 +40,12 @@ public class TheBotRuntimeConfigServiceTest {
         String json = mapper.writeValueAsString(botConfig);
 
         System.out.printf("JSON: %s\n", json);
+    }
+
+    private DiscordConfig createDiscordConfig() {
+        return DiscordConfig.builder()
+                .token("1245")
+                .build();
     }
 
     private BotConfig createBotConfig() {

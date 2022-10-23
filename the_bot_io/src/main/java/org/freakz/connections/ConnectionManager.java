@@ -26,6 +26,7 @@ public class ConnectionManager {
     public void init() throws IOException {
 
         TheBotConfig theBotConfig = configService.readBotConfig();
+        log.debug(">> Connecting IRC");
         for (IrcServerConfig config : theBotConfig.getIrcServerConfigs()) {
             log.debug("init IrcServerConfig: {}", config);
 
@@ -35,7 +36,13 @@ public class ConnectionManager {
         }
 //        log.debug(">> Start IrcServerConnections");
         log.debug("<< done!");
-    }
 
+        log.debug(">> Connecting DISCORD");
+        DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
+        dsc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
+        log.debug(">> done!");
+
+    }
+//https://discord.com/oauth2/authorize?client_id=288964147721404416&scope=bot%20applications.commands&permissions=0&prompt=consent
 
 }

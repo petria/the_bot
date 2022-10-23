@@ -17,6 +17,7 @@ import java.util.List;
 public class TheBotConfig {
 
     private BotConfig botConfig;
+    private DiscordConfig discordConfig;
     private List<IrcServerConfig> ircServerConfigs;
 
 }

@@ -1,7 +1,10 @@
 package org.freakz.springboot.ui.backend.controllers;
 
+import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.payload.response.MessageFeedResponse;
+import org.freakz.springboot.ui.backend.clients.BotIOClient;
 import org.freakz.springboot.ui.backend.service.MessageFeederService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -25,6 +29,8 @@ public class MessageFeedController {
     @Autowired
     private MessageFeederService messageFeeder;
 
+    @Autowired
+    private BotIOClient botIOClient;
 
     @GetMapping("/current_day")
     public ResponseEntity<?> getMessagesOfCurrentDay() {
@@ -34,9 +40,12 @@ public class MessageFeedController {
 
     @GetMapping("/after_id/{id}")
     public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
-        List<Message> list = messageFeeder.getMessagesAfterId(id);
+        Response response = botIOClient.getMessagesAfterId(id);
+        Optional<MessageFeedResponse> responseBody = FeignUtils.getResponseBody(response, MessageFeedResponse.class);
+
+//        List<Message> list = messageFeeder.getMessagesAfterId(id);
 //        log.debug("after id {} -> {}", id, list.size());
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(responseBody.get().getMessages());
     }
 
     @GetMapping("/last/{max}")

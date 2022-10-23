@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class Message {
 
     private long id = 0;
+    private MessageSource messageSource;
     private long timestamp;
     private LocalDateTime time;
     private String sender;

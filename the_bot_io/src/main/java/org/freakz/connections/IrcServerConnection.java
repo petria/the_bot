@@ -9,14 +9,14 @@ import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
 
 @Slf4j
-public class IrcServerConnection {
+public class IrcServerConnection extends BotConnection {
 
     private final EventPublisher publisher;
 
     public IrcServerConnection(EventPublisher publisher) {
+        super(BotConnectionType.IRC_CONNECTION);
         this.publisher = publisher;
     }
-
 
     @Handler
     public void onUserJoinChannel(ChannelJoinEvent event) {
