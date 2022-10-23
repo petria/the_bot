@@ -24,10 +24,6 @@
         <maven.compiler.target>12</maven.compiler.target>
         <java.version>12</java.version>
 
-<!--        <hokan.common.version>2.0.4-final</hokan.common.version>
-        <hokan.custom.version>2.0.0-final</hokan.custom.version>
-        <hokan.jpa.version>1.0.0-final</hokan.jpa.version>
--->
         <jsap.version>2.1</jsap.version>
         <jsoup.version>1.14.3</jsoup.version>
         <logback.version>1.2.6</logback.version>
@@ -39,6 +35,7 @@
         <module>springboot_ui_backend</module>
         <module>the_bot_common</module>
         <module>the_bot_io</module>
+        <module>the_bot_engine</module>
         <!--        <module>hokan_ng_springboot-custom</module>
                 <module>hokan_ng_springboot-jpa</module>
                 <module>hokan_ng_springboot-common</module>
