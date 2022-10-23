@@ -3,15 +3,20 @@ package org.freakz.connections;
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.model.json.IrcServerConfig;
+import org.freakz.common.model.json.feed.Message;
 import org.kitteh.irc.client.library.Client;
+import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.event.channel.ChannelJoinEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
+
+import java.util.Optional;
 
 @Slf4j
 public class IrcServerConnection extends BotConnection {
 
     private final EventPublisher publisher;
+    private Client client;
 
     public IrcServerConnection(EventPublisher publisher) {
         super(BotConnectionType.IRC_CONNECTION);
@@ -41,8 +46,7 @@ public class IrcServerConnection extends BotConnection {
 
     public void init(String botNick, IrcServerConfig config) {
 
-        Client client
-                = Client.builder()
+        client = Client.builder()
                 .user("hokan")
                 .nick(botNick)
                 .server()
@@ -56,4 +60,13 @@ public class IrcServerConnection extends BotConnection {
 
     }
 
+    @Override
+    public void sendMessageTo(Message message) {
+        Optional<Channel> channel = client.getChannel(message.getTarget());
+        if (channel.isPresent()) {
+            channel.get().sendMessage(message.getMessage());
+        } else {
+            log.error("Can't send message to: {}", message.getTarget());
+        }
+    }
 }
