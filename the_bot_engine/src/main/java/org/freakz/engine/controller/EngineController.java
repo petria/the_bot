@@ -2,6 +2,7 @@ package org.freakz.engine.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.engine.commands.CommandHandler;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,14 +14,21 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class EngineController {
 
+    private final CommandHandler commandHandler;
+
+    public EngineController(CommandHandler commandHandler) {
+        this.commandHandler = commandHandler;
+    }
+
     @PostMapping("/handle_request")
     public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) {
         log.debug("request: {}", request);
-        String reply = "";
+/*        String reply = "";
         if (request.getCommand().equals("!ping")) {
             reply = "Pong: " + System.currentTimeMillis();
-        }
-        return ResponseEntity.ok(reply);
+        }*/
+        this.commandHandler.handleCommand(request);
+        return ResponseEntity.ok("ack");
     }
 
 }

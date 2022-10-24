@@ -25,10 +25,11 @@ public class EventPublisherService implements EventPublisher {
     @Autowired
     private EngineClient engineClient;
 
-    private void publishToEngine(BotConnection connection, String message, String sender) {
+    private void publishToEngine(BotConnection connection, String message, String sender, String replyTo) {
         EngineRequest request
                 = EngineRequest.builder()
                 .command(message)
+                .replyTo(replyTo)
                 .fromConnectionId(connection.getId())
                 .fromSender(sender)
                 .build();
@@ -57,22 +58,26 @@ public class EventPublisherService implements EventPublisher {
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
 
-        publishToEngine(connection, msg.getMessage(), msg.getSender());
+        publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget());
     }
 
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
+        String channelStr = event.getChannel().toString();
+        int idx1 = channelStr.indexOf("name: ");
+        String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1);
+        log.debug("replyTo: '{}'", replyTo);
         Message msg = Message.builder()
                 .messageSource(MessageSource.DISCORD_MESSAGE)
                 .time(LocalDateTime.now())
                 .sender(event.getMessageAuthor().getName())
-                .target(event.getChannel().toString())
+                .target(channelStr)
                 .message(event.getMessageContent())
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
 
-        publishToEngine(connection, msg.getMessage(), msg.getSender());
+        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo);
 
     }
 
