@@ -45,7 +45,6 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
-    //    @Override
     public void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
@@ -64,9 +63,11 @@ public class EventPublisherService implements EventPublisher {
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
         String channelStr = event.getChannel().toString();
+        // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
         int idx1 = channelStr.indexOf("name: ");
         String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1);
         log.debug("replyTo: '{}'", replyTo);
+
         Message msg = Message.builder()
                 .messageSource(MessageSource.DISCORD_MESSAGE)
                 .time(LocalDateTime.now())
