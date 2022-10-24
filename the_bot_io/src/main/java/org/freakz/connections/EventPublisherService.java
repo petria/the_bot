@@ -35,10 +35,9 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         try {
             Response response = engineClient.handleEngineRequest(request);
-            if (response.status() == 404) {
-                log.error("404: Engine not running?!");
+            if (response.status() != 200) {
+                log.error("{}: Engine not running?!", response.status());
             }
-            int foo = 0;
         } catch (Exception e) {
             log.error("Unable to send to Engine!");
         }
