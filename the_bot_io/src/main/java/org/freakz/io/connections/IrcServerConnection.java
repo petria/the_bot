@@ -1,4 +1,4 @@
-package org.freakz.connections;
+package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;

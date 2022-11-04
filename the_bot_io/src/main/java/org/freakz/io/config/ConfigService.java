@@ -1,4 +1,4 @@
-package org.freakz.config;
+package org.freakz.io.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

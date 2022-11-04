@@ -1,4 +1,4 @@
-package org.freakz.connections;
+package org.freakz.io.connections;
 
 public interface EventPublisher {
 

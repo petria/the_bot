@@ -1,4 +1,4 @@
-package org.freakz.config;
+package org.freakz.io.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

@@ -1,4 +1,4 @@
-package org.freakz.connections;
+package org.freakz.io.connections;
 
 
 import lombok.extern.slf4j.Slf4j;
@@ -6,7 +6,7 @@ import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.model.json.IrcServerConfig;
 import org.freakz.common.model.json.TheBotConfig;
 import org.freakz.common.model.json.feed.Message;
-import org.freakz.config.ConfigService;
+import org.freakz.io.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

@@ -2,8 +2,8 @@ package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
-import org.freakz.connections.BotConnection;
-import org.freakz.connections.ConnectionManager;
+import org.freakz.io.connections.BotConnection;
+import org.freakz.io.connections.ConnectionManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

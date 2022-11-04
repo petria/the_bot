@@ -1,4 +1,4 @@
-package org.freakz.clients;
+package org.freakz.io.clients;
 
 import feign.Response;
 import org.freakz.common.model.json.engine.EngineRequest;
