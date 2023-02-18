@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PingCmd extends AbstractCmd {
     @Override
-    void executeCommand(EngineRequest request) {
+    public void executeCommand(EngineRequest request) {
 
     }
 }

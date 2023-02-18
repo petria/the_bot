@@ -4,6 +4,7 @@ import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.services.HokanServices;
 import org.freakz.services.RequestHandler;
 import org.freakz.services.ServiceRequest;
+import org.freakz.services.ServiceResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public abstract class AbstractCmd implements HokanCmd {
@@ -19,9 +20,9 @@ public abstract class AbstractCmd implements HokanCmd {
         return name;
     }
 
-    abstract void executeCommand(EngineRequest request);
+    public abstract void executeCommand(EngineRequest request);
 
-    public <T> T doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
+    public <T extends ServiceResponse> T doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
         return hokanServices.doService(request, clazz, requestHandler);
     }
 }

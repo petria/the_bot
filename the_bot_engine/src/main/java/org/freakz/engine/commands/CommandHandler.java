@@ -7,10 +7,8 @@ import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.engine.commands.handlers.AbstractCmd;
 import org.springframework.context.ApplicationContext;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -40,7 +38,9 @@ public class CommandHandler {
         Thread.sleep(3000L);
         if (request.getCommand().equals("!ping")) {
             reply = "Pong " + System.currentTimeMillis();
-        } else if (request.getCommand().equals("!date")) {
+        } else if (request.getCommand().equals("!test")) {
+            AbstractCmd cmd = getCommandHandler("kelikameratCmd");
+            cmd.executeCommand(request);
             reply = "Date: " + LocalDateTime.now();
         }
 
@@ -65,18 +65,13 @@ public class CommandHandler {
         }
     }
 
-    @PostConstruct
-    public void init() {
-        initCommandHandlers();
-    }
 
-
-    @Async
-    void initCommandHandlers() {
+    //    @Async
+    private AbstractCmd getCommandHandler(String name) {
         log.debug("Scanning command handlers..");
         Map<String, AbstractCmd> beansOfType = applicationContext.getBeansOfType(AbstractCmd.class);
         log.debug("Found: {}", beansOfType.size());
-        int foo = 0;
+        return beansOfType.get(name);
     }
 
 }

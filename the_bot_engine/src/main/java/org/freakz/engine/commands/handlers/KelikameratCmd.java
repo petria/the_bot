@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 public class KelikameratCmd extends AbstractCmd {
 
     @Override
-    void executeCommand(EngineRequest engineRequest) {
+    public void executeCommand(EngineRequest engineRequest) {
         ServiceRequest request = ServiceRequest.builder()
                 .engineRequest(engineRequest)
                 .build();
         KelikameratResponse kelikameratResponse = doService(request, KelikameratResponse.class, RequestHandler.KeliKameratService);
-
+        int foo = 0;
     }
 }

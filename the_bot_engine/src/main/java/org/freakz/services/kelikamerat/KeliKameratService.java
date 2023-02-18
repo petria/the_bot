@@ -5,11 +5,10 @@ import org.freakz.common.util.StringStuff;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
-import org.freakz.services.RequestHandler;
 import org.freakz.services.ServiceMessageHandler;
 import org.freakz.services.ServiceRequest;
-import org.freakz.services.ServiceRequestHandler;
 import org.freakz.services.ServiceRequestType;
+import org.freakz.services.ServiceResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -30,7 +29,7 @@ import java.util.List;
 @Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
-public class KeliKameratService implements ServiceRequestHandler {
+public class KeliKameratService {
 
     private static final String BASE_ULR = "https://www.kelikamerat.info";
 
@@ -192,12 +191,17 @@ public class KeliKameratService implements ServiceRequestHandler {
         this.weatherDataList = weatherDataList;
     }
 
+    public <T extends ServiceResponse> T doService(ServiceRequest request) {
+        T foo = (T) new KelikameratResponse();
+        return foo;
+    }
 
-    @Override
+
+/*    @Override
     public <T> KelikameratResponse doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
         KelikameratResponse response = new KelikameratResponse();
         return response;
-    }
+    }*/
 
 
 
