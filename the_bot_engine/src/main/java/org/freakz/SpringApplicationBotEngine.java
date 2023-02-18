@@ -8,9 +8,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.Executor;
 
 @SpringBootApplication
 @EnableFeignClients
+@EnableAsync
 public class SpringApplicationBotEngine {
 
     @Bean
@@ -20,8 +25,21 @@ public class SpringApplicationBotEngine {
                 .addModule(new JavaTimeModule()).build();
     }
 
+
+    @Bean
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("GithubLookup-");
+        executor.initialize();
+        return executor;
+    }
+
     public static void main(String[] args) {
         //System.out.println("Hello world!");
         org.springframework.boot.SpringApplication.run(SpringApplicationBotEngine.class, args);
     }
+
 }
