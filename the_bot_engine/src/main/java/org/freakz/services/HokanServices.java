@@ -6,9 +6,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class HokanServices {
-    enum RequestHandler {
-        KeliKameratService
-    }
 
     //    class ServiceRequest<R extends ServiceResponse> {
 //    }
@@ -17,10 +14,10 @@ public class HokanServices {
     KeliKameratService keliKameratService;
 
 
-    public ServiceResponse<?> handleServiceRequest(ServiceRequest request) {
-        ServiceResponse<?> serviceResponse = keliKameratService.handleServiceRequest(request);
+    public <T> T doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
+        ServiceResponse serviceResponse = keliKameratService.doService(request, clazz, null);
 
-        return serviceResponse;
+        return (T) serviceResponse;
     }
 
 

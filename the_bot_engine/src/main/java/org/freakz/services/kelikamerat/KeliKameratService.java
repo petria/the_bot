@@ -5,11 +5,11 @@ import org.freakz.common.util.StringStuff;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
+import org.freakz.services.RequestHandler;
 import org.freakz.services.ServiceMessageHandler;
 import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestHandler;
 import org.freakz.services.ServiceRequestType;
-import org.freakz.services.ServiceResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -192,11 +192,11 @@ public class KeliKameratService implements ServiceRequestHandler {
         this.weatherDataList = weatherDataList;
     }
 
+
     @Override
-    public ServiceResponse<?> handleServiceRequest(ServiceRequest request) {
+    public <T> KelikameratResponse doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
         KelikameratResponse response = new KelikameratResponse();
-        ServiceResponse<KelikameratResponse> r = new ServiceResponse<>(response);
-        return r;
+        return response;
     }
 
 

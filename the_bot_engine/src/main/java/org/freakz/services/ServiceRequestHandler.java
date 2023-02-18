@@ -2,6 +2,6 @@ package org.freakz.services;
 
 public interface ServiceRequestHandler {
 
-    ServiceResponse handleServiceRequest(ServiceRequest request);
+    <T> ServiceResponse doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler);
 
 }
