@@ -20,4 +20,9 @@ public class HokanServices {
     }
 
 
+    public <T extends ServiceResponse> T test(ServiceRequest request, RequestHandler requestHandler) {
+
+        return keliKameratService.doService(request);
+    }
+
 }

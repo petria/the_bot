@@ -25,4 +25,9 @@ public abstract class AbstractCmd implements HokanCmd {
     public <T extends ServiceResponse> T doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
         return hokanServices.doService(request, clazz, requestHandler);
     }
+
+    public <T extends ServiceResponse> T test(ServiceRequest request, RequestHandler requestHandler) {
+        return hokanServices.test(request, requestHandler);
+    }
+
 }
