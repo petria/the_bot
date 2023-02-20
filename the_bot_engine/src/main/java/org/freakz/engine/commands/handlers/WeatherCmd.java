@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import static org.freakz.services.RequestHandler.KeliKameratService;
 
 @Component
-public class KelikameratCmd extends AbstractCmd {
+public class WeatherCmd extends AbstractCmd {
 
     @Override
     public void executeCommand(EngineRequest engineRequest) {
