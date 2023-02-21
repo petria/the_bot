@@ -3,50 +3,48 @@ package org.freakz.engine.commands;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.clients.MessageSendClient;
+import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.engine.commands.handlers.AbstractCmd;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Service
 @Slf4j
 public class CommandHandler {
 
-    private final ApplicationContext applicationContext;
+    //    private final ApplicationContext applicationContext;
     private final MessageSendClient messageSendClient;
+    private final CommandHandlers commandHandlers;
 
-    public CommandHandler(ApplicationContext applicationContext, MessageSendClient messageSendClient) {
-        this.applicationContext = applicationContext;
+    public CommandHandler(MessageSendClient messageSendClient) throws InitializeFailedException {
         this.messageSendClient = messageSendClient;
+        this.commandHandlers = new CommandHandlers();
     }
 
 
-    public void handleCommand(EngineRequest request) {
+    public String handleCommand(EngineRequest request) {
         if (request.getCommand().startsWith("!")) {
             parseAndExecute(request);
         }
+        return null;
     }
 
     @SneakyThrows
     private void parseAndExecute(EngineRequest request) {
-        log.debug("Handle request!");
-        String reply = null;
-        Thread.sleep(3000L);
-        if (request.getCommand().equals("!ping")) {
-            reply = "Pong " + System.currentTimeMillis();
-        } else if (request.getCommand().equals("!test")) {
-            AbstractCmd cmd = getCommandHandler("kelikameratCmd");
-            cmd.executeCommand(request);
-            reply = "Date: " + LocalDateTime.now();
+        log.debug("Handle request: {}", request);
+
+        String firstWord = request.getCommand().split(" ")[0].toLowerCase();
+
+        AbstractCmd handler = getCommandHandler(firstWord);
+        if (handler != null) {
+
+            String reply = handler.executeCommand(request);
+            if (reply != null) {
+                sendReplyMessage(request, reply);
+            }
         }
 
-        if (reply != null) {
-            sendReplyMessage(request, reply);
-        }
 
     }
 
@@ -68,10 +66,13 @@ public class CommandHandler {
 
     //    @Async
     private AbstractCmd getCommandHandler(String name) {
-        log.debug("Scanning command handlers..");
-        Map<String, AbstractCmd> beansOfType = applicationContext.getBeansOfType(AbstractCmd.class);
-        log.debug("Found: {}", beansOfType.size());
-        return beansOfType.get(name);
+        try {
+            AbstractCmd handler = this.commandHandlers.getMatchingCommandHandlers(name);
+            return handler;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }

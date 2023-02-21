@@ -2,16 +2,16 @@ package org.freakz.engine.commands.handlers;
 
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
+import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.services.ServiceRequest;
-import org.springframework.stereotype.Component;
 
 import static org.freakz.services.RequestHandler.KeliKameratService;
 
-@Component
+@HokanCommandHandler
 public class WeatherCmd extends AbstractCmd {
 
     @Override
-    public void executeCommand(EngineRequest engineRequest) {
+    public String executeCommand(EngineRequest engineRequest) {
         ServiceRequest request = ServiceRequest.builder()
                 .engineRequest(engineRequest)
                 .build();
@@ -20,5 +20,7 @@ public class WeatherCmd extends AbstractCmd {
         KelikameratResponse kelikameratResponse = test(request, KeliKameratService);
 
         int foo = 0;
+
+        return "null";
     }
 }

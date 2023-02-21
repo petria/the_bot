@@ -29,6 +29,7 @@
         <jsoup.version>1.14.3</jsoup.version>
         <logback.version>1.2.6</logback.version>
         <org.kitteh.irc.version>8.0.0</org.kitteh.irc.version>
+        <org.reflections.version>0.10.2</org.reflections.version>
         <org.javacord.version>3.6.0</org.javacord.version>
 
     </properties>
