@@ -17,10 +17,10 @@ public class WeatherCmd extends AbstractCmd {
                 .build();
 //        doServiceRequest(request, RequestHandler.KeliKameratService);
 //        KelikameratResponse kelikameratResponse = doService(request, KeliKameratService.getResponseClazz(), KeliKameratService);
-        KelikameratResponse kelikameratResponse = test(request, KeliKameratService);
+        KelikameratResponse kelikameratResponse = doServiceRequest(request, KeliKameratService);
 
         int foo = 0;
 
-        return "null";
+        return "weather reply!";
     }
 }

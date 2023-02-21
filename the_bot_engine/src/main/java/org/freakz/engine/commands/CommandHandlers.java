@@ -3,7 +3,7 @@ package org.freakz.engine.commands;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
-import org.freakz.engine.commands.handlers.AbstractCmd;
+import org.freakz.engine.commands.handlers.HokanCmd;
 import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
@@ -49,13 +49,15 @@ public class CommandHandlers {
     }
 
 
-    public AbstractCmd getMatchingCommandHandlers(String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public HokanCmd getMatchingCommandHandlers(CommandHandler commandHandler, String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         for (String key : this.handlersMap.keySet()) {
             String match = String.format("!%s", key.toLowerCase());
             if (match.equals(trigger)) {
                 Class<?> aClass = this.handlersMap.get(key);
                 Object o = aClass.getConstructor().newInstance();
-                return (AbstractCmd) o;
+                HokanCmd hokanCmd = (HokanCmd) o;
+                hokanCmd.setCommandHandler(commandHandler);
+                return (HokanCmd) o;
             }
         }
         return null;

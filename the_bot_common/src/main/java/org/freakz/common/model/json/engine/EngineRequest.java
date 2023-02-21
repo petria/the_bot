@@ -17,4 +17,8 @@ public class EngineRequest {
     private String replyTo;
     private int fromConnectionId;
     private String fromSender;
+
+    public String getMessage() {
+        return command;
+    }
 }

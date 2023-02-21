@@ -1,12 +1,16 @@
 package org.freakz.engine.commands;
 
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.clients.MessageSendClient;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
-import org.freakz.engine.commands.handlers.AbstractCmd;
+import org.freakz.engine.commands.handlers.HokanCmd;
+import org.freakz.services.HokanServices;
+import org.freakz.services.wholelinetricker.WholeLineTriggers;
+import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,39 +20,46 @@ public class CommandHandler {
     //    private final ApplicationContext applicationContext;
     private final MessageSendClient messageSendClient;
     private final CommandHandlers commandHandlers;
+    @Getter
+    private final HokanServices hokanServices;
 
-    public CommandHandler(MessageSendClient messageSendClient) throws InitializeFailedException {
+    public CommandHandler(MessageSendClient messageSendClient, HokanServices hokanServices) throws InitializeFailedException {
         this.messageSendClient = messageSendClient;
+        this.hokanServices = hokanServices;
         this.commandHandlers = new CommandHandlers();
     }
 
+    private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
     public String handleCommand(EngineRequest request) {
+        wholeLineTriggers.checkWholeLineTrigger(request);
+
         if (request.getCommand().startsWith("!")) {
-            parseAndExecute(request);
+            return parseAndExecute(request);
         }
         return null;
     }
 
     @SneakyThrows
-    private void parseAndExecute(EngineRequest request) {
+    private String parseAndExecute(EngineRequest request) {
         log.debug("Handle request: {}", request);
 
         String firstWord = request.getCommand().split(" ")[0].toLowerCase();
 
-        AbstractCmd handler = getCommandHandler(firstWord);
+        HokanCmd handler = getCommandHandler(firstWord);
         if (handler != null) {
 
             String reply = handler.executeCommand(request);
             if (reply != null) {
                 sendReplyMessage(request, reply);
+                return reply;
             }
         }
 
-
+        return null;
     }
 
-    private void sendReplyMessage(EngineRequest request, String reply) {
+    public void sendReplyMessage(EngineRequest request, String reply) {
         Message message
                 = Message.builder()
                 .sender("BotName")
@@ -65,9 +76,9 @@ public class CommandHandler {
 
 
     //    @Async
-    private AbstractCmd getCommandHandler(String name) {
+    private HokanCmd getCommandHandler(String name) {
         try {
-            AbstractCmd handler = this.commandHandlers.getMatchingCommandHandlers(name);
+            HokanCmd handler = this.commandHandlers.getMatchingCommandHandlers(this, name);
             return handler;
         } catch (Exception e) {
             e.printStackTrace();
