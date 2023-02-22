@@ -63,6 +63,8 @@ public class CommandHandler {
         Message message
                 = Message.builder()
                 .sender("BotName")
+                .timestamp(System.currentTimeMillis())
+                .requestTimestamp(request.getTimestamp())
                 .message(reply)
                 .target(request.getReplyTo())
                 .build();

@@ -13,6 +13,7 @@ import lombok.ToString;
 @ToString
 public class EngineRequest {
 
+    private long timestamp;
     private String command;
     private String replyTo;
     private int fromConnectionId;

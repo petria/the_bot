@@ -97,6 +97,14 @@ public class ConnectionManager {
     }
 
     public void sendMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {
+/*
+        long current = System.currentTimeMillis();
+        long diff1 = current - message.getTimestamp();
+        long diff2 = current - message.getRequestTimestamp();
+
+        log.debug("diff1: {}", diff1);
+        log.debug("diff2: {}", diff2);
+*/
         BotConnection connection = this.connectionMap.get(connectionId);
         if (connection != null) {
             connection.sendMessageTo(message);

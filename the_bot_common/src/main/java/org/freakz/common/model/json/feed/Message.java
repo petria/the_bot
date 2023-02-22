@@ -18,11 +18,12 @@ public class Message {
     private long id = 0;
     private MessageSource messageSource;
     private long timestamp;
+    private long requestTimestamp;
+
     private LocalDateTime time;
     private String sender;
     private String target;
     private String message;
-
 
 
 }

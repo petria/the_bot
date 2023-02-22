@@ -28,6 +28,7 @@ public class EventPublisherService implements EventPublisher {
     private void publishToEngine(BotConnection connection, String message, String sender, String replyTo) {
         EngineRequest request
                 = EngineRequest.builder()
+                .timestamp(System.currentTimeMillis())
                 .command(message)
                 .replyTo(replyTo)
                 .fromConnectionId(connection.getId())

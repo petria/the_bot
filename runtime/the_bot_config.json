@@ -11,16 +11,13 @@
       "ircNetwork": {
         "name": "TestNetwork",
         "ircServer": {
-          "host": "xububuntu",
+          "host": "irc.stealth.net",
           "port": 6667
         }
       },
       "channelList": [
         {
-          "name": "#HokanDEV"
-        },
-        {
-          "name": "#HokanDEV2"
+          "name": "#HokanDEVv"
         }
       ]
     }
