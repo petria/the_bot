@@ -11,7 +11,7 @@
       "ircNetwork": {
         "name": "TestNetwork",
         "ircServer": {
-          "host": "irc.stealth.net",
+          "host": "xububuntu",
           "port": 6667
         }
       },

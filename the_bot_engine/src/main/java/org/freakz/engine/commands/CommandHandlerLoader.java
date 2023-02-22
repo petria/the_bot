@@ -12,10 +12,10 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public class CommandHandlers {
+public class CommandHandlerLoader {
 
 
-    public CommandHandlers() throws InitializeFailedException {
+    public CommandHandlerLoader() throws InitializeFailedException {
         try {
             initializeCommandHandlers();
 
@@ -31,7 +31,6 @@ public class CommandHandlers {
 
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
         for (Class<?> clazz : typesAnnotatedWith) {
-//            clazz.newInstance()
             Object o = clazz.getDeclaredConstructor().newInstance();
 
             String name = o.getClass().getSimpleName();

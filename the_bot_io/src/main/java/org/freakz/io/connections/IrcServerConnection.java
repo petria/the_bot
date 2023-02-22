@@ -1,5 +1,6 @@
 package org.freakz.io.connections;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.model.json.IrcServerConfig;
@@ -12,6 +13,7 @@ import org.kitteh.irc.client.library.event.channel.ChannelKickEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelPartEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelUsersUpdatedEvent;
+import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
 
 import java.util.Optional;
@@ -22,6 +24,10 @@ public class IrcServerConnection extends BotConnection {
 
     private final EventPublisher publisher;
     private Client client;
+    private ConnectionManager connectionManager;
+
+    @Getter
+    private IrcServerConfig config;
 
     public IrcServerConnection(EventPublisher publisher) {
         super(BotConnectionType.IRC_CONNECTION);
@@ -64,15 +70,31 @@ public class IrcServerConnection extends BotConnection {
 
     @Handler
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
+        this.connectionManager.ircConnectionEstablished(this);
         int foo = 0;
     }
 
+    @Handler
+    public void handleConnectionEnded(ClientConnectionEndedEvent event) {
+        log.debug(">> ENDED, shutting down this client");
+        event.setAttemptReconnect(false);
+        this.connectionManager.ircConnectionEnded(this);
+        this.client.shutdown();
+    }
 
-    public void init(String botNick, IrcServerConfig config) {
+//    @Handler
+//    public void handleConnectionClosed(ClientConnectionClosedEvent event) {
+//        log.debug(">> CLOSED");
+//    }
+
+    public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
+        this.connectionManager = connectionManager;
+        this.config = config;
 
         client = Client.builder()
                 .user("hokan")
                 .nick(botNick)
+
                 .server()
                 .host(config.getIrcNetwork().getIrcServer().getHost())
                 .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
@@ -81,6 +103,7 @@ public class IrcServerConnection extends BotConnection {
 
         client.getEventManager().registerEventListener(this);
         config.getChannelList().forEach(ch -> client.addChannel(ch.getName()));
+
 
     }
 

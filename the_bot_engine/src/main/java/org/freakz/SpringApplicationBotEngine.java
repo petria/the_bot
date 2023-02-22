@@ -32,7 +32,7 @@ public class SpringApplicationBotEngine {
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(2);
         executor.setQueueCapacity(500);
-        executor.setThreadNamePrefix("GithubLookup-");
+        executor.setThreadNamePrefix("BotEngine-");
         executor.initialize();
         return executor;
     }

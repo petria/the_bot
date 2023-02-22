@@ -19,14 +19,14 @@ public class CommandHandler {
 
     //    private final ApplicationContext applicationContext;
     private final MessageSendClient messageSendClient;
-    private final CommandHandlers commandHandlers;
+    private final CommandHandlerLoader commandHandlerLoader;
     @Getter
     private final HokanServices hokanServices;
 
     public CommandHandler(MessageSendClient messageSendClient, HokanServices hokanServices) throws InitializeFailedException {
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
-        this.commandHandlers = new CommandHandlers();
+        this.commandHandlerLoader = new CommandHandlerLoader();
     }
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
@@ -78,7 +78,7 @@ public class CommandHandler {
     //    @Async
     private HokanCmd getCommandHandler(String name) {
         try {
-            HokanCmd handler = this.commandHandlers.getMatchingCommandHandlers(this, name);
+            HokanCmd handler = this.commandHandlerLoader.getMatchingCommandHandlers(this, name);
             return handler;
         } catch (Exception e) {
             e.printStackTrace();

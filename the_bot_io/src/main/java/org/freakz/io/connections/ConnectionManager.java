@@ -43,8 +43,8 @@ public class ConnectionManager {
             log.debug("init IrcServerConfig: {}", config);
 
             IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
-            isc.init(theBotConfig.getBotConfig().getBotName(), config);
-            addConnection(isc);
+            isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
+//            addConnection(isc);
 
         }
 //        log.debug(">> Start IrcServerConnections");
@@ -57,6 +57,40 @@ public class ConnectionManager {
         log.debug(">> done!");
 
     }
+
+
+    public void reconnectIrcServer(IrcServerConfig config) {
+        log.debug("Reconnecting IRC: {}", config);
+        try {
+            TheBotConfig theBotConfig = configService.readBotConfig();
+
+            long waitTime = 10000L;
+            log.debug("Reconnect wait time: {}", waitTime);
+            Thread.sleep(waitTime);
+            log.debug("Try reconnect: {}", config);
+
+            IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
+            isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
+//            addConnection(isc);
+
+        } catch (Exception e) {
+            log.error("RECONNECT FAILED", e);
+        }
+    }
+
+
+    public void ircConnectionEstablished(IrcServerConnection connection) {
+        log.debug("IRC connected: {}", connection);
+        addConnection(connection);
+    }
+
+    public void ircConnectionEnded(IrcServerConnection connection) {
+        log.debug("IRC connection ended: {}", connection.getId());
+        IrcServerConnection remove = (IrcServerConnection) this.connectionMap.remove(connection.getId());
+        log.debug("End IrcConnectionEnded: {}", remove);
+        reconnectIrcServer(connection.getConfig());
+    }
+
 
     public Map<Integer, BotConnection> getConnectionMap() {
         return this.connectionMap;
