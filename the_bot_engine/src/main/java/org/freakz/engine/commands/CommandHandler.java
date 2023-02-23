@@ -7,7 +7,7 @@ import org.freakz.clients.MessageSendClient;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
-import org.freakz.engine.commands.handlers.HokanCmd;
+import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.services.HokanServices;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;

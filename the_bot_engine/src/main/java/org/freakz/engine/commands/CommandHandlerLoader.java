@@ -3,7 +3,7 @@ package org.freakz.engine.commands;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
-import org.freakz.engine.commands.handlers.HokanCmd;
+import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;

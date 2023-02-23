@@ -1,4 +1,4 @@
-package org.freakz.engine.commands.handlers;
+package org.freakz.engine.commands.api;
 
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;

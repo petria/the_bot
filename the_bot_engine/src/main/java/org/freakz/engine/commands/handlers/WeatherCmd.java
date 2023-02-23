@@ -3,6 +3,7 @@ package org.freakz.engine.commands.handlers;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.engine.commands.HokanCommandHandler;
+import org.freakz.engine.commands.api.AbstractCmd;
 
 import static org.freakz.services.RequestHandler.KeliKameratService;
 
