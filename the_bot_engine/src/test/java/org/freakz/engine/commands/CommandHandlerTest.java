@@ -12,7 +12,6 @@ public class CommandHandlerTest {
 
 
     private ApplicationContext applicationContext = Mockito.mock(ApplicationContext.class);
-
     private MessageSendClient messageSendClient = Mockito.mock(MessageSendClient.class);
     private HokanServices hokanServices = Mockito.mock(HokanServices.class);
 

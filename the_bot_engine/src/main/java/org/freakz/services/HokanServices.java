@@ -14,7 +14,6 @@ public class HokanServices {
     KeliKameratService keliKameratService;
 
 
-
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, RequestHandler requestHandler) {
 
         return keliKameratService.doService(request);
