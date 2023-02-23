@@ -1,6 +1,7 @@
 package org.freakz.engine.commands.handlers;
 
 import org.apache.commons.cli.Options;
+import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.services.RequestHandler;
 import org.freakz.services.ServiceRequest;
@@ -17,7 +18,10 @@ public abstract class AbstractCmd implements HokanCmd {
         this.commandHandler = commandHandler;
     }
 
-    public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, RequestHandler requestHandler) {
+    public <T extends ServiceResponse> T doServiceRequest(EngineRequest engineRequest, RequestHandler requestHandler) {
+        ServiceRequest request = ServiceRequest.builder()
+                .engineRequest(engineRequest)
+                .build();
         return commandHandler.getHokanServices().doServiceRequest(request, requestHandler);
     }
 
