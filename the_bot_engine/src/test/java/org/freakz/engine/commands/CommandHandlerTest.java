@@ -46,7 +46,7 @@ public class CommandHandlerTest {
                 .dataList(getMockWeatherDataList())
                 .build();
 
-        response.setStatus("MOCKED RESPONSE");
+        response.setStatus("OK: MOCKED RESPONSE");
         return response;
     }
 

@@ -2,10 +2,14 @@ package org.freakz.services.kelikamerat;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.util.StringStuff;
+import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
+import org.freakz.services.ServiceHandler;
 import org.freakz.services.ServiceMessageHandler;
+import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
+import org.freakz.services.ServiceResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -25,7 +29,7 @@ import java.util.List;
 //@Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
-public class KeliKameratService {
+public class KeliKameratService implements ServiceHandler {
 
     private static final String BASE_ULR = "https://www.kelikamerat.info";
 
@@ -191,25 +195,13 @@ public class KeliKameratService {
         this.weatherDataList = weatherDataList;
     }
 
-/*    public <T extends ServiceResponse> T doService(ServiceRequest request) {
-        T foo = (T) new KelikameratResponse();
-        return foo;
-    }
-*/
-
-/*    @Override
-    public <T> KelikameratResponse doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
-        KelikameratResponse response = new KelikameratResponse();
+    @Override
+    public <T extends ServiceResponse> KelikameratResponse handleServiceRequest(ServiceRequest request) {
+        KelikameratResponse response
+                = KelikameratResponse.builder()
+                .build();
+        response.setStatus("NOK hello from KelikameratService!");
         return response;
-    }*/
-
-
-
-/*    @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.WEATHER_REQUEST_NEW)
-    public void handleWeatherRequest(ServiceRequest request, ServiceResponse response) {
-        String originalText = (String) request.getParameters()[0];
-        KelikameratResponse response1 = new KelikameratResponse();
-        response.setResponseData(request.getType().getResponseDataKey(), response1);
     }
-*/
+
 }
