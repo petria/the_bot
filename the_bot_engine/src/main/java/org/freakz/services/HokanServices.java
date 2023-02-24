@@ -1,22 +1,38 @@
 package org.freakz.services;
 
-import org.freakz.services.kelikamerat.KeliKameratService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
+
+import java.util.Set;
 
 @Service
 public class HokanServices {
 
-    //    class ServiceRequest<R extends ServiceResponse> {
-//    }
+    public HokanServices() {
+        scanServiceMessageHandlers();
+    }
 
-    @Autowired
-    KeliKameratService keliKameratService;
+//    @Autowired
+//    KeliKameratService keliKameratService;
 
 
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, RequestHandler requestHandler) {
 
-        return keliKameratService.doService(request);
+        return null; //keliKameratService.doService(request);
+    }
+
+
+    private void scanServiceMessageHandlers() {
+        Reflections reflections = new Reflections("org.freakz.services");
+        Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
+        typesAnnotatedWith.forEach(
+                aClass -> {
+                    ServiceMessageHandler annotation = aClass.getAnnotation(ServiceMessageHandler.class);
+                    ServiceRequestType serviceRequestType = annotation.ServiceRequestType();
+                    int foo = 0;
+                }
+        );
+
     }
 
 }

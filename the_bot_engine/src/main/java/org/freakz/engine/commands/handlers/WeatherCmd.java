@@ -14,7 +14,6 @@ public class WeatherCmd extends AbstractCmd {
     public String executeCommand(EngineRequest engineRequest) {
 
         KelikameratResponse weatherData = doServiceRequest(engineRequest, KeliKameratService);
-
         return "weather reply!";
     }
 }

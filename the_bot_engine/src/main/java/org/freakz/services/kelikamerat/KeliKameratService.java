@@ -2,18 +2,14 @@ package org.freakz.services.kelikamerat;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.util.StringStuff;
-import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.services.ServiceMessageHandler;
-import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
-import org.freakz.services.ServiceResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -26,7 +22,7 @@ import java.util.List;
 /**
  * Created by Petri Airio on 08.02.2023.
  */
-@Service
+//@Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
 public class KeliKameratService {
@@ -70,7 +66,11 @@ public class KeliKameratService {
                 Element div = elements.get(xx);
                 Element href = div.child(0);
                 String hrefUrl = BASE_ULR + href.attributes().get("href");
-                KelikameratUrl kelikameratUrl = new KelikameratUrl(url, hrefUrl);
+                KelikameratUrl kelikameratUrl
+                        = KelikameratUrl.builder()
+                        .areaUrl(hrefUrl)
+                        .stationUrl(url)
+                        .build();
                 stations.add(kelikameratUrl);
             }
         }
@@ -191,11 +191,11 @@ public class KeliKameratService {
         this.weatherDataList = weatherDataList;
     }
 
-    public <T extends ServiceResponse> T doService(ServiceRequest request) {
+/*    public <T extends ServiceResponse> T doService(ServiceRequest request) {
         T foo = (T) new KelikameratResponse();
         return foo;
     }
-
+*/
 
 /*    @Override
     public <T> KelikameratResponse doService(ServiceRequest request, Class<T> clazz, RequestHandler requestHandler) {
