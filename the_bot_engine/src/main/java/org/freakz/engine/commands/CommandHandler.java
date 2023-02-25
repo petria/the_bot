@@ -7,7 +7,9 @@ import org.freakz.clients.MessageSendClient;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
+import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
+import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.services.HokanServices;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
@@ -44,12 +46,17 @@ public class CommandHandler {
     private String parseAndExecute(EngineRequest request) {
         log.debug("Handle request: {}", request);
 
-        String firstWord = request.getCommand().split(" ")[0].toLowerCase();
+        CommandArgs args = new CommandArgs(request.getMessage());
+        AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
+        if (abstractCmd != null) {
 
-        HokanCmd handler = getCommandHandler(firstWord);
-        if (handler != null) {
+            if (args.hasArgs() && args.getArg(0).equals("?")) {
+                return abstractCmd.getCommandName() + " :: usage: !?";
+            }
 
-            String reply = handler.executeCommand(request);
+            abstractCmd.abstractInitCommandOptions();
+
+            String reply = abstractCmd.executeCommand(request);
             if (reply != null) {
                 sendReplyMessage(request, reply);
                 return reply;

@@ -39,13 +39,6 @@
         <module>the_bot_common</module>
         <module>the_bot_io</module>
         <module>the_bot_engine</module>
-        <!--        <module>hokan_ng_springboot-custom</module>
-                <module>hokan_ng_springboot-jpa</module>
-                <module>hokan_ng_springboot-common</module>
-                <module>hokan_ng_springboot-io</module>
-                <module>hokan_ng_springboot-io-telegram</module>
-                <module>hokan_ng_springboot-engine</module>
-                <module>hokan_ng_springboot-services</module>-->
     </modules>
 
 </project>

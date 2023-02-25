@@ -26,14 +26,27 @@ public class CommandHandlerTest {
     @Test
     public void testWeatherCmd() throws Exception {
         String command = "!weather oulu";
-
-
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
         CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
         String reply = commandHandler.handleCommand(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
+        } else {
+            throw new Exception(command + ": NULL reply!");
+        }
+
+    }
+
+    @Test
+    public void testCmdUsage() throws Exception {
+        String command = "!weather ?";
+        when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
+
+        CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
+        String reply = commandHandler.handleCommand(createMockRequest(command));
+        if (reply != null) {
+            System.out.printf("reply: %s\n", reply);
         } else {
             throw new Exception(command + ": NULL reply!");
         }
@@ -54,23 +67,25 @@ public class CommandHandlerTest {
         List<KelikameratWeatherData> list = new ArrayList<>();
 
         int count = 0;
+        while (count < 10) {
+            LocalDateTime time = LocalDateTime.of(2020, 10, 10, 10, 10 + count);
+            KelikameratUrl url
+                    = KelikameratUrl.builder()
+                    .areaUrl("Mock area url")
+                    .stationUrl("Mock station url")
+                    .build();
+            String place = "Place: " + count;
+            String placeFromUrl = "PlaceFromUrl: " + count;
 
-        LocalDateTime time = LocalDateTime.of(2020, 10, 10, 10, 10);
-        KelikameratUrl url
-                = KelikameratUrl.builder()
-                .areaUrl("Mock area url")
-                .stationUrl("Mock station url")
-                .build();
-        String place = "Place: " + count;
-        String placeFromUrl = "PlaceFromUrl: " + count;
+            Float air = 10.0F + (count);
+            Float road = 20.0F + (count);
+            Float ground = 30.0F + (count);
+            Float humidity = 40.0F + (count);
+            Float dewPoint = 50.0F + (count);
 
-        Float air = 10.0F + (count);
-        Float road = 20.0F + (count);
-        Float ground = 30.0F + (count);
-        Float humidity = 40.0F + (count);
-        Float dewPoint = 50.0F + (count);
-
-        list.add(getMockWeatherDataNode(time, url, place, placeFromUrl, air, road, ground, humidity, dewPoint));
+            list.add(getMockWeatherDataNode(time, url, place, placeFromUrl, air, road, ground, humidity, dewPoint));
+            count++;
+        }
         return list;
     }
 
