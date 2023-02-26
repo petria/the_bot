@@ -1,11 +1,13 @@
 package org.freakz.engine.commands;
 
 import org.freakz.clients.MessageSendClient;
+import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.services.HokanServices;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -39,17 +41,19 @@ public class CommandHandlerTest {
     }
 
     @Test
-    public void testCmdUsage() throws Exception {
-        String command = "!weather ?";
+    public void test_if_init_parameters_not_implemented_exception_is_thrown() throws Exception {
+        String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
         CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
-        String reply = commandHandler.handleCommand(createMockRequest(command));
-        if (reply != null) {
+
+
+        NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {
+            String reply = commandHandler.handleCommand(createMockRequest(command));
             System.out.printf("%s\n", reply);
-        } else {
-            throw new Exception(command + ": NULL reply!");
-        }
+        }, "NumberFormatException was expected");
+
+        Assertions.assertEquals("Comamnd handler must Override initCommandOptions(): TestNoInitParamsCmd", thrown.getMessage());
 
     }
 

@@ -34,7 +34,13 @@ public class CommandHandler {
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
     public String handleCommand(EngineRequest request) {
-        wholeLineTriggers.checkWholeLineTrigger(request);
+        return handleCommand(request, false);
+    }
+
+    public String handleCommand(EngineRequest request, boolean doWholeLineTriggerCheck) {
+        if (doWholeLineTriggerCheck) {
+            wholeLineTriggers.checkWholeLineTrigger(request);
+        }
 
         if (request.getCommand().startsWith("!")) {
             return parseAndExecute(request);
@@ -54,7 +60,7 @@ public class CommandHandler {
 
             if (args.hasArgs() && args.getArg(0).equals("?")) {
                 StringBuilder sb = new StringBuilder();
-                String usage = "!" + abstractCmd.getName() + " " + abstractCmd.getJsap().getUsage();
+                String usage = "!" + abstractCmd.getCommandName() + " " + abstractCmd.getJsap().getUsage();
                 String help = abstractCmd.getJsap().getHelp();
                 sb.append("Usage    : ");
                 sb.append(usage);

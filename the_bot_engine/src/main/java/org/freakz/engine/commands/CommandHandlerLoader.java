@@ -51,7 +51,7 @@ public class CommandHandlerLoader {
     public HokanCmd getMatchingCommandHandlers(CommandHandler commandHandler, String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         for (String key : this.handlersMap.keySet()) {
             String match = String.format("!%s", key.toLowerCase());
-            if (match.equals(trigger)) {
+            if (match.equalsIgnoreCase(trigger)) {
                 Class<?> aClass = this.handlersMap.get(key);
                 Object o = aClass.getConstructor().newInstance();
                 HokanCmd hokanCmd = (HokanCmd) o;

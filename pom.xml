@@ -24,7 +24,6 @@
         <maven.compiler.target>12</maven.compiler.target>
         <java.version>12</java.version>
 
-        <commons-cli.version>1.5.0</commons-cli.version>
         <jsap.version>2.1</jsap.version>
         <jsoup.version>1.14.3</jsoup.version>
         <logback.version>1.2.6</logback.version>
