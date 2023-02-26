@@ -32,7 +32,7 @@ public abstract class AbstractCmd implements HokanCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        throw new NotImplementedException("Comamnd handler must Override initCommandOptions(): " + getClass().getSimpleName());
+        throw new NotImplementedException("Command handler must Override initCommandOptions(): " + getClass().getSimpleName());
     }
 
     @Override

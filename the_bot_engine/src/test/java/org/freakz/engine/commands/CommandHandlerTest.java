@@ -53,7 +53,7 @@ public class CommandHandlerTest {
             System.out.printf("%s\n", reply);
         }, "NumberFormatException was expected");
 
-        Assertions.assertEquals("Comamnd handler must Override initCommandOptions(): TestNoInitParamsCmd", thrown.getMessage());
+        Assertions.assertEquals("Command handler must Override initCommandOptions(): TestNoInitParamsCmd", thrown.getMessage());
 
     }
 
