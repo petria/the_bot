@@ -50,11 +50,24 @@ public class CommandHandler {
         AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
         if (abstractCmd != null) {
 
+            abstractCmd.abstractInitCommandOptions();
+
             if (args.hasArgs() && args.getArg(0).equals("?")) {
-                return abstractCmd.getCommandName() + " :: usage: !?";
+                StringBuilder sb = new StringBuilder();
+                String usage = "!" + abstractCmd.getName() + " " + abstractCmd.getJsap().getUsage();
+                String help = abstractCmd.getJsap().getHelp();
+                sb.append("Usage    : ");
+                sb.append(usage);
+//                sb.append("\n");
+
+/*                sb.append("Help     : ");
+                sb.append(help);
+                sb.append("|");*/
+
+                sendReplyMessage(request, sb.toString());
+                return sb.toString();
             }
 
-            abstractCmd.abstractInitCommandOptions();
 
             String reply = abstractCmd.executeCommand(request);
             if (reply != null) {

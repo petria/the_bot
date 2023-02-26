@@ -46,7 +46,7 @@ public class CommandHandlerTest {
         CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
         String reply = commandHandler.handleCommand(createMockRequest(command));
         if (reply != null) {
-            System.out.printf("reply: %s\n", reply);
+            System.out.printf("%s\n", reply);
         } else {
             throw new Exception(command + ": NULL reply!");
         }

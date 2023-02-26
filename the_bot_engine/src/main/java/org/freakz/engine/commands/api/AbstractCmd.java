@@ -35,6 +35,9 @@ public abstract class AbstractCmd implements HokanCmd {
         return this.getClass().getSimpleName();
     }
 
+    public String getName() {
+        return this.getClass().getSimpleName().replaceAll("Cmd", "").toLowerCase();
+    }
 
     public void abstractInitCommandOptions() throws NotImplementedException, JSAPException {
         initCommandOptions(this.jsap);
