@@ -33,6 +33,7 @@ public class MessagesController {
 
     @PostMapping("/send/{connectionId}")
     public ResponseEntity<?> sendMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) {
+        log.debug("to connection: {}", connectionId);
         try {
             connectionManager.sendMessageToConnection(connectionId, message);
             return ResponseEntity.ok().build();

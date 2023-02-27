@@ -15,7 +15,9 @@ import org.kitteh.irc.client.library.event.channel.ChannelPartEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelUsersUpdatedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
+import org.kitteh.irc.client.library.util.Cutter;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -102,6 +104,7 @@ public class IrcServerConnection extends BotConnection {
                 .buildAndConnect();
 
         client.getEventManager().registerEventListener(this);
+
         config.getChannelList().forEach(ch -> client.addChannel(ch.getName()));
 
 
@@ -111,7 +114,11 @@ public class IrcServerConnection extends BotConnection {
     public void sendMessageTo(Message message) {
         Optional<Channel> channel = client.getChannel(message.getTarget());
         if (channel.isPresent()) {
-            channel.get().sendMessage(message.getMessage());
+            Cutter messageCutter = client.getMessageCutter();
+            List<String> split = messageCutter.split(message.getMessage(), 400);
+            for (String line : split) {
+                channel.get().sendMessage(line);
+            }
         } else {
             log.error("Can't send message to: {}", message.getTarget());
         }

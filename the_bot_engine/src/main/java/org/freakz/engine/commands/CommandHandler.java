@@ -1,5 +1,8 @@
 package org.freakz.engine.commands;
 
+import com.martiansoftware.jsap.IDMap;
+import com.martiansoftware.jsap.JSAPResult;
+import feign.Response;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,8 @@ import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.Iterator;
 
 @Service
 @Slf4j
@@ -77,11 +82,29 @@ public class CommandHandler {
                 return sb.toString();
             }
 
+            boolean parseRes;
+            JSAPResult results = null;
+            IDMap map = abstractCmd.getJsap().getIDMap();
+            Iterator iterator = map.idIterator();
+            String[] commandArgs = args.getArgs();
+            if (iterator.hasNext()) {
+                results = abstractCmd.getJsap().parse(commandArgs);
+                parseRes = results.success();
+            } else {
+                parseRes = true;
+            }
 
-            String reply = abstractCmd.executeCommand(request);
-            if (reply != null) {
+            if (!parseRes) {
+                String reply = String.format("Invalid arguments, usage: %s %s", abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
                 sendReplyMessage(request, reply);
                 return reply;
+
+            } else {
+                String reply = abstractCmd.executeCommand(request, results);
+                if (reply != null) {
+                    sendReplyMessage(request, reply);
+                    return reply;
+                }
             }
         }
 
@@ -99,7 +122,9 @@ public class CommandHandler {
                 .build();
 
         try {
-            messageSendClient.sendMessage(request.getFromConnectionId(), message);
+            Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
+            int status = response.status();
+            log.debug("reply send status: {}", status);
         } catch (Exception ex) {
             log.error("Sending reply failed: {}", ex.getMessage());
         }

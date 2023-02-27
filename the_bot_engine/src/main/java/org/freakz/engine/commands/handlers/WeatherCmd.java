@@ -2,6 +2,7 @@ package org.freakz.engine.commands.handlers;
 
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
+import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
@@ -45,17 +46,17 @@ public class WeatherCmd extends AbstractCmd {
     }
 
     @Override
-    public String executeCommand(EngineRequest engineRequest) {
+    public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
 
 //        boolean verbose = results.getBoolean(ARG_VERBOSE);
         boolean verbose = false;
-
+        String place = results.getString(ARG_PLACE);
+        log.debug("Place: {}", place);
 
         KelikameratResponse data = doServiceRequest(engineRequest, ServiceRequestType.KelikameratService);
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
             int xx = 0;
-            String place = "";
             String regexp = ".*" + place + ".*";
 
             for (KelikameratWeatherData wd : data.getDataList()) {

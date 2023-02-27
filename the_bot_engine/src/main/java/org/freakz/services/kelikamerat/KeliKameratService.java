@@ -227,7 +227,7 @@ public class KeliKameratService implements ServiceHandler {
             dataList.add(weatherDataList.get(0));
             dataList.add(weatherDataList.get(1));
             response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
-            response.setDataList(dataList);
+            response.setDataList(weatherDataList);
 
         }
 
