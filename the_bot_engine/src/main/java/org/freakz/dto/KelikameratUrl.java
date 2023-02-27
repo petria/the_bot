@@ -12,6 +12,11 @@ import java.io.Serializable;
 @Builder
 public class KelikameratUrl implements Serializable {
 
+    public KelikameratUrl(String areaUrl, String stationUrl) {
+        this.areaUrl = areaUrl;
+        this.stationUrl = stationUrl;
+    }
+
     private String areaUrl;
 
     private String stationUrl;

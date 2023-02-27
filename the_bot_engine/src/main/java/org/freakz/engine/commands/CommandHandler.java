@@ -13,6 +13,7 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.services.HokanServices;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,7 +34,9 @@ public class CommandHandler {
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
+    @Async
     public String handleCommand(EngineRequest request) {
+        log.debug("Start handle in service >>>");
         return handleCommand(request, false);
     }
 

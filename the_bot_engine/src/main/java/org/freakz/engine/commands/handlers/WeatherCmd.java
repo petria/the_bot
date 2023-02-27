@@ -3,6 +3,7 @@ package org.freakz.engine.commands.handlers;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.UnflaggedOption;
+import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.engine.commands.HokanCommandHandler;
@@ -13,6 +14,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 
 @HokanCommandHandler
+@Slf4j
 public class WeatherCmd extends AbstractCmd {
 
     @Override
@@ -34,12 +36,12 @@ public class WeatherCmd extends AbstractCmd {
 
         KelikameratResponse data = doServiceRequest(engineRequest, ServiceRequestType.KelikameratService);
         if (data.getStatus().startsWith("OK")) {
-
+            return data.getStatus();
         } else {
             return this.getClass().getSimpleName() + " error :: " + data.getStatus();
         }
 
 
-        return "weather reply!";
+//        return "weather reply!";
     }
 }

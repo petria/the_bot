@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -55,11 +56,16 @@ public class KeliKameratService implements ServiceHandler {
             "https://www.kelikamerat.info/kelikamerat/Varsinais-Suomi"
     };
 
-    private List<KelikameratUrl> stationUrls;
+    private static List<KelikameratUrl> stationUrls;
 
-    private List<KelikameratWeatherData> weatherDataList;
+    private static List<KelikameratWeatherData> weatherDataList;
 
-    public void updateStations() throws IOException {
+    private static AtomicBoolean isFirstUpdateStarted = new AtomicBoolean(false);
+    private static AtomicBoolean isFirstUpdateDone = new AtomicBoolean(false);
+    private static int toUpdate = 0;
+    private static int updateDone = 0;
+
+    public synchronized void updateStations() throws IOException {
         List<KelikameratUrl> stations = new ArrayList<>();
         for (String url : KELIKAMERAT_URLS) {
             Document doc = Jsoup.connect(url).get();
@@ -70,15 +76,12 @@ public class KeliKameratService implements ServiceHandler {
                 Element div = elements.get(xx);
                 Element href = div.child(0);
                 String hrefUrl = BASE_ULR + href.attributes().get("href");
-                KelikameratUrl kelikameratUrl
-                        = KelikameratUrl.builder()
-                        .areaUrl(hrefUrl)
-                        .stationUrl(url)
-                        .build();
+                KelikameratUrl kelikameratUrl = new KelikameratUrl(url, hrefUrl);
                 stations.add(kelikameratUrl);
             }
         }
         this.stationUrls = stations;
+
     }
 
     private Float parseFloat(String str) {
@@ -171,36 +174,64 @@ public class KeliKameratService implements ServiceHandler {
 
     //    @Override
     public void doUpdateData() throws Exception {
-        if (this.stationUrls == null) {
-            updateStations();
-        }
-        List<KelikameratWeatherData> weatherDataList = new ArrayList<>();
+        List<KelikameratWeatherData> weatherDataListDone = new ArrayList<>();
+        toUpdate = this.stationUrls.size();
+
         int success = 0;
         int failed = 0;
         for (KelikameratUrl url : this.stationUrls) {
             //            log.debug("Handle url: {}", url);
             KelikameratWeatherData data = updateKelikameratWeatherData(url);
             if (data != null) {
-                weatherDataList.add(data);
+                weatherDataListDone.add(data);
                 success++;
             } else {
                 failed++;
             }
+            updateDone++;
             //      log.debug("{}", String.format("%s: %1.2f °C", data.getPlaceFromUrl(), data.getAir()));
         }
-
         log.debug("Update done, success: {} / failed: {}", success, failed);
-//        Collections.sort(weatherDataList);
-//        this.itemCount = weatherDataList.size();
-        this.weatherDataList = weatherDataList;
+        weatherDataList = weatherDataListDone;
     }
 
     @Override
     public <T extends ServiceResponse> KelikameratResponse handleServiceRequest(ServiceRequest request) {
+
+        log.debug("Handle request: {}", request);
+
         KelikameratResponse response
                 = KelikameratResponse.builder()
                 .build();
-        response.setStatus("NOK hello from KelikameratService!");
+
+        if (isFirstUpdateStarted.get() == false) {
+            isFirstUpdateStarted.set(true);
+            log.debug("Start initial update");
+            try {
+                log.debug("Get station list");
+                updateStations();
+                log.debug("Update 1st time: {}", stationUrls.size());
+                doUpdateData();
+            } catch (Exception e) {
+                e.printStackTrace();
+                response.setStatus("NOK: Initial data update failed: " + e.getMessage());
+            } finally {
+                isFirstUpdateDone.set(true);
+            }
+        }
+
+        if (isFirstUpdateDone.get() == false) {
+            response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", updateDone, toUpdate));
+        } else {
+            List<KelikameratWeatherData> dataList = new ArrayList<>();
+            dataList.add(weatherDataList.get(0));
+            dataList.add(weatherDataList.get(1));
+            response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
+            response.setDataList(dataList);
+
+        }
+
+
         return response;
     }
 
