@@ -1,16 +1,24 @@
 package org.freakz.services;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.services.kelikamerat.AbstractService;
 import org.reflections.Reflections;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 @Service
 @Slf4j
 public class HokanServices {
 
+    private final Executor executor;
+
+    public HokanServices(@Qualifier("Services") Executor executor) {
+        this.executor = executor;
+    }
 
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
@@ -35,7 +43,9 @@ public class HokanServices {
             ServiceMessageHandler annotation = aClass.getAnnotation(ServiceMessageHandler.class);
             ServiceRequestType annotatedType = annotation.ServiceRequestType();
             if (serviceRequestType.equals(annotatedType)) {
-                return (ServiceHandler) aClass.getConstructor().newInstance();
+                AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
+                service.setExecutor(this.executor);
+                return (ServiceHandler) service;
             }
         }
         return null;

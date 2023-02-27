@@ -1,18 +1,19 @@
 package org.freakz.engine.commands.handlers;
 
+import com.martiansoftware.jsap.FlaggedOption;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
-import org.freakz.common.util.StringStuff;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 
@@ -24,6 +25,12 @@ public class WeatherCmd extends AbstractCmd {
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
         jsap.setHelp("Get weather for city.");
+
+        FlaggedOption flg = new FlaggedOption(ARG_COUNT)
+                .setStringParser(JSAP.INTEGER_PARSER)
+                .setDefault("5")
+                .setShortFlag('c');
+        jsap.registerParameter(flg);
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setDefault("Oulu")
@@ -53,41 +60,31 @@ public class WeatherCmd extends AbstractCmd {
         String place = results.getString(ARG_PLACE);
         log.debug("Place: {}", place);
 
-        KelikameratResponse data = doServiceRequest(engineRequest, ServiceRequestType.KelikameratService);
+        KelikameratResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.KelikameratService);
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
             int xx = 0;
-            String regexp = ".*" + place + ".*";
 
             for (KelikameratWeatherData wd : data.getDataList()) {
-                String placeFromUrl = wd.getPlaceFromUrl();
-                String stationFromUrl = wd.getUrl().getStationUrl();
-                if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
-                    if (wd.getAir() == null) {
-                        continue;
-                    }
-                    String formatted = formatWeather(wd, verbose);
-                    if (formatted.contains("Rantatunneli")) {
-                        continue;
-                    }
+                String formatted = formatWeather(wd, verbose);
 
-                    if (xx != 0) {
-                        sb.append(", ");
-                    }
-                    sb.append(formatted);
-                    xx++;
-/*                    if (xx > results.getInt(ARG_COUNT)) {
-                        break;
-                    }*/
+                if (formatted.contains("Rantatunneli")) {
+                    continue;
+                }
+
+                if (xx != 0) {
+                    sb.append(", ");
+                }
+                sb.append(formatted);
+                xx++;
+                if (xx >= results.getInt(ARG_COUNT)) {
+                    break;
                 }
             }
             return sb.toString();
-//            return data.getStatus();
         } else {
             return this.getClass().getSimpleName() + " error :: " + data.getStatus();
         }
 
-
-//        return "weather reply!";
     }
 }

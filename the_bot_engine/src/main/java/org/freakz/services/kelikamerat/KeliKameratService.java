@@ -21,7 +21,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 
 /**
@@ -30,7 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 //@Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
-public class KeliKameratService implements ServiceHandler {
+public class KeliKameratService extends AbstractService implements ServiceHandler {
 
     private static final String BASE_ULR = "https://www.kelikamerat.info";
 
@@ -195,6 +198,14 @@ public class KeliKameratService implements ServiceHandler {
         weatherDataList = weatherDataListDone;
     }
 
+
+    @Override
+    public void setExecutor(Executor executor) {
+        super.setExecutor(executor);
+        isFirstUpdateStarted.set(true);
+        this.executor.execute(this::firstUpdate);
+    }
+
     @Override
     public <T extends ServiceResponse> KelikameratResponse handleServiceRequest(ServiceRequest request) {
 
@@ -204,35 +215,53 @@ public class KeliKameratService implements ServiceHandler {
                 = KelikameratResponse.builder()
                 .build();
 
-        if (isFirstUpdateStarted.get() == false) {
+        if (!isFirstUpdateStarted.get()) {
             isFirstUpdateStarted.set(true);
-            log.debug("Start initial update");
-            try {
-                log.debug("Get station list");
-                updateStations();
-                log.debug("Update 1st time: {}", stationUrls.size());
-                doUpdateData();
-            } catch (Exception e) {
-                e.printStackTrace();
-                response.setStatus("NOK: Initial data update failed: " + e.getMessage());
-            } finally {
-                isFirstUpdateDone.set(true);
+            this.executor.execute(this::firstUpdate);
+            response.setStatus("NOK: Starting initial update of stations!");
+        } else {
+
+            if (!isFirstUpdateDone.get()) {
+                response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", updateDone, toUpdate));
+            } else {
+                List<KelikameratWeatherData> dataList = new ArrayList<>();
+                String regexp = String.format(".*%s.*", request.getResults().getString(ARG_PLACE));
+
+                for (KelikameratWeatherData wd : weatherDataList) {
+
+                    String placeFromUrl = wd.getPlaceFromUrl();
+                    String stationFromUrl = wd.getUrl().getStationUrl();
+                    if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
+                        if (wd.getAir() == null) {
+                            continue;
+                        }
+                        dataList.add(wd);
+                    }
+                }
+
+                response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
+                response.setDataList(dataList);
+
             }
         }
 
-        if (isFirstUpdateDone.get() == false) {
-            response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", updateDone, toUpdate));
-        } else {
-            List<KelikameratWeatherData> dataList = new ArrayList<>();
-            dataList.add(weatherDataList.get(0));
-            dataList.add(weatherDataList.get(1));
-            response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
-            response.setDataList(weatherDataList);
+        return response;
+    }
 
+    private void firstUpdate() {
+        log.debug("Start initial update");
+        try {
+            log.debug("Get station list");
+            updateStations();
+            log.debug("Update 1st time: {}", stationUrls.size());
+            doUpdateData();
+        } catch (Exception e) {
+            e.printStackTrace();
+            //response.setStatus("NOK: Initial data update failed: " + e.getMessage());
+        } finally {
+            isFirstUpdateDone.set(true);
         }
 
-
-        return response;
     }
 
 }

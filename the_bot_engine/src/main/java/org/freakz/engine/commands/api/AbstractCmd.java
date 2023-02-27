@@ -2,6 +2,7 @@ package org.freakz.engine.commands.api;
 
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
+import com.martiansoftware.jsap.JSAPResult;
 import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
@@ -40,9 +41,10 @@ public abstract class AbstractCmd implements HokanCmd {
         this.commandHandler = commandHandler;
     }
 
-    public <T extends ServiceResponse> T doServiceRequest(EngineRequest engineRequest, ServiceRequestType serviceRequestType) {
+    public <T extends ServiceResponse> T doServiceRequest(EngineRequest engineRequest, JSAPResult results, ServiceRequestType serviceRequestType) {
         ServiceRequest request = ServiceRequest.builder()
                 .engineRequest(engineRequest)
+                .results(results)
                 .build();
         return commandHandler.getHokanServices().doServiceRequest(request, serviceRequestType);
     }
