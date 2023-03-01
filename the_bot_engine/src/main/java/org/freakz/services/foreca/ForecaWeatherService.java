@@ -1,9 +1,16 @@
 package org.freakz.services.foreca;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.json.foreca.CountryCityLink;
+import org.freakz.common.model.json.foreca.CountryScanLinksByLetter;
+import org.freakz.common.model.json.foreca.ForecaData;
+import org.freakz.common.model.json.foreca.ForecaWeatherData;
+import org.freakz.dto.ForecaResponse;
 import org.freakz.services.AbstractService;
 import org.freakz.services.ServiceMessageHandler;
+import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
+import org.freakz.services.ServiceResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,41 +25,68 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
+
 
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.ForecaWeatherService)
 public class ForecaWeatherService extends AbstractService {
+
+    private static Map<String, CountryCityLink> toCollectLinks = null;
+
     String urlBase = "https://www.foreca.fi";
 
+
     public void initializeService() throws Exception {
-        Map<String, List<String>> links = collectCountryCitiLinks();
+        String countryMatch = "Suomi";
+
+        Map<String, CountryCityLink> toCollectLinks = new HashMap<>();
+        Map<String, CountryScanLinksByLetter> links = collectCountryCityLinks();
+
+        for (String country : links.keySet()) {
+            if (country.matches(countryMatch)) {
+                CountryScanLinksByLetter byLetterLinks = links.get(country);
+                for (String byLetterLink : byLetterLinks.byLetterLinks) {
+                    toCollectLinks = scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
+
+                }
+            }
+        }
+        this.toCollectLinks = toCollectLinks;
+        log.debug("City map ready, size: {}", this.toCollectLinks.size());
+
     }
 
-    public Map<String, List<String>> collectCountryCitiLinks() throws Exception {
+    public Map<String, CountryScanLinksByLetter> collectCountryCityLinks() throws Exception {
         String url = "https://www.foreca.fi/Europe/haku";
-        Map<String, List<String>> byCountryLinks = new HashMap<>();
+        Map<String, CountryScanLinksByLetter> byCountryLinks = new HashMap<>();
         Document doc = Jsoup.connect(url).get();
         Elements a = doc.getElementsByTag("a");
         for (Element element : a) {
             String href1 = element.attributes().get("href");
             if (href1.startsWith("/Europe/") && href1.endsWith("/haku")) {
                 String country = element.text();
-                int foo = 0;
-                List<String> list = scanCountry(country, href1);
-                byCountryLinks.put(country, list);
+                CountryScanLinksByLetter countryScanLinksByLetter = scanCountry(country, href1);
+                byCountryLinks.put(country, countryScanLinksByLetter);
             }
         }
         return byCountryLinks;
     }
 
-    public List<String> scanCountry(String country, String href) throws Exception {
+
+    public CountryScanLinksByLetter scanCountry(String country, String href) throws Exception {
         log.debug("Scan for country: {} -> {}", country, href);
         String url = urlBase + href;
         Document doc = Jsoup.connect(url).get();
         Elements active = doc.getElementsByClass("active");
         String activeLetter = active.text();
         //      log.debug("Active letter: {}", activeLetter);
-        List<String> byLetterLinks = new ArrayList<>();
+
+        CountryScanLinksByLetter data = new CountryScanLinksByLetter();
+        data.countryFin = country;
+        data.countryEng = href.split("/")[2];
+        List<String> byLetterLinks = data.byLetterLinks;
+
         byLetterLinks.add(String.format("%s?bl=%s", href, activeLetter));
 
         Elements a = doc.getElementsByTag("a");
@@ -64,29 +98,37 @@ public class ForecaWeatherService extends AbstractService {
                 byLetterLinks.add(String.format("%s?bl=%s", href, letter));
             }
         }
-        return byLetterLinks;
+        return data;
     }
 
-    public Map<String, String> scanCities(String baseLink, String byLetterLink, Map<String, String> toCollectLinks) throws Exception {
+
+    public Map<String, CountryCityLink> scanCities(String baseLink, String byLetterLink, Map<String, CountryCityLink> toCollectLinks) throws Exception {
         String url = urlBase + byLetterLink;
         log.debug("scanCities: {}", url);
         Document doc = Jsoup.connect(url).get();
         Elements a = doc.getElementsByTag("a");
-        //      List<String> byCityLinks = new ArrayList<>();
-//        Map<String, String> cityNameToCityLinkMap = new HashMap<>();
+        String[] split = byLetterLink.split("/");
+
+        String region = split[1];
+        String country = split[2];
         for (Element element : a) {
             String href1 = element.attributes().get("href");
             if (href1.startsWith(baseLink)) {
                 String city = element.text();
                 log.debug("city: {}", city);
-                toCollectLinks.put(city, String.format("%s/%s", baseLink, city));
+                CountryCityLink data = new CountryCityLink();
+                data.region = region;
+                data.country = country;
+                data.city = city;
+                data.cityUrl = String.format("%s/%s", baseLink, city);
+                toCollectLinks.put(city, data);
 //                byCityLinks.add(String.format("%s/%s", baseLink, city));
             }
         }
         return toCollectLinks;
     }
 
-    public List<ForecaData> fetchCityWeather(String cityName, String cityUrl) throws Exception {
+    public List<ForecaWeatherData> fetchCityWeather(String cityName, String cityUrl) throws Exception {
 
         String url = urlBase + cityUrl;
         log.debug("fetch city data: {} -> {}", cityName, cityUrl);
@@ -109,8 +151,8 @@ public class ForecaWeatherService extends AbstractService {
 
     private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
 
-    private List<ForecaData> extractWeatherData(String s) {
-        List<ForecaData> forecaData = new ArrayList<>();
+    private List<ForecaWeatherData> extractWeatherData(String s) {
+        List<ForecaWeatherData> forecaData = new ArrayList<>();
         int idx1 = s.indexOf("var observations = {");
         if (idx1 != -1) {
             int idx2 = s.indexOf("};", idx1);
@@ -126,8 +168,8 @@ public class ForecaWeatherService extends AbstractService {
                         for (Object object : dataMap.keySet()) {
                             Map values = (Map) dataMap.get(object);
                             try {
-                                ForecaData foreca
-                                        = ForecaData.builder()
+                                ForecaWeatherData foreca
+                                        = ForecaWeatherData.builder()
                                         .date((String) values.get("date"))
                                         .time((String) values.get("time"))
                                         .temp(getTemp(values.get("temp")))
@@ -164,4 +206,48 @@ public class ForecaWeatherService extends AbstractService {
         String str = "" + temp;
         return Double.valueOf(str);
     }
+
+
+    @Override
+    public <T extends ServiceResponse> ForecaResponse handleServiceRequest(ServiceRequest request) {
+        ForecaResponse response
+                = ForecaResponse.builder()
+                .build();
+
+        if (toCollectLinks == null) {
+            response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", 0, -1));
+        } else {
+            String place = request.getResults().getString(ARG_PLACE);
+            List<CountryCityLink> matching = new ArrayList<>();
+            for (String cityKey : toCollectLinks.keySet()) {
+                if (cityKey.toLowerCase().matches(place)) {
+                    matching.add(toCollectLinks.get(cityKey));
+                }
+            }
+            log.debug("{} matching {} cities", place, matching.size());
+            List<ForecaData> forecaDataList = new ArrayList<>();
+            response.setForecaDataList(forecaDataList);
+            for (CountryCityLink match : matching) {
+                try {
+                    List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl);
+                    if (forecaWeatherData != null && forecaWeatherData.size() > 0) {
+                        ForecaData forecaData
+                                = ForecaData.builder()
+                                .cityLink(match)
+                                .weatherData(forecaWeatherData.get(0))
+                                .build();
+                        forecaDataList.add(forecaData);
+                    }
+                } catch (Exception e) {
+                    response.setStatus("NOK: Foreca data fetch error: " + e.getMessage());
+                    break;
+                }
+            }
+            response.setStatus("OK: data size " + forecaDataList.size());
+
+        }
+
+        return response;
+    }
+
 }

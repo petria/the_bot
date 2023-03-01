@@ -19,7 +19,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @HokanCommandHandler
 @Slf4j
-public class WeatherCmd extends AbstractCmd {
+public class KeliCmd extends AbstractCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {

@@ -1,12 +1,7 @@
 package org.freakz.services;
 
-import org.freakz.services.foreca.ForecaData;
 import org.freakz.services.foreca.ForecaWeatherService;
 import org.junit.jupiter.api.Test;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class ForecaWeatherServiceTest {
 
@@ -15,21 +10,24 @@ public class ForecaWeatherServiceTest {
     public void test_initialize_service() throws Exception {
         ForecaWeatherService sut = new ForecaWeatherService();
 
-//        sut.initializeService();
-//        List<String> byLetterLinks = sut.scanCountry("Bosnia ja Hertsegovina", "/Europe/Bosnia_and_Herzegovina/haku");
+        sut.initializeService();
 
+        int foo = 0;
 
-//        String byLetterLink = "/Europe/Bosnia_and_Herzegovina/haku?bl=M";
-//        Map<String, String> toCollectLinks = new HashMap<>();
-//        toCollectLinks = sut.scanCities("/Bosnia_and_Herzegovina", byLetterLink, toCollectLinks);
+//        Map<String, ForecaWeatherService.CountryCityLink> toCollectLinks = new HashMap<>();
+//        ForecaWeatherService.CountryScanLinksByLetter byLetterLinks = sut.scanCountry("Bosnia ja Hertsegovina", "/Europe/Bosnia_and_Herzegovina/haku");
+//        String byLetterLink = byLetterLinks.byLetterLinks.get(0);
+//        toCollectLinks = sut.scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
 
 //        List<ForecaData> forecaData = sut.fetchCityWeather("Mostar", "/Bosnia_and_Herzegovina/Mostar");
-        Map<String, List<String>> stringListMap = sut.collectCountryCitiLinks();
+
+
+
+/*        Map<String, List<String>> stringListMap = sut.collectCountryCitiLinks();
 
         List<String> letterLinksByCountry = stringListMap.get("Suomi");
 
         for (String byLetterLink : letterLinksByCountry) {
-//            String byLetterLink = letterLinksByCountry.get(0);
             String countryPart = "/" + byLetterLink.split("/")[2];
             Map<String, String> toCollectLinks = new HashMap<>();
             toCollectLinks = sut.scanCities(countryPart, byLetterLink, toCollectLinks);
@@ -43,8 +41,8 @@ public class ForecaWeatherServiceTest {
                 }
             }
         }
-        int foo = 0;
 
+*/
 
     }
 

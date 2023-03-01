@@ -21,4 +21,5 @@ public class RuntimeConfigReader {
         return mapper.readValue(json, TheBotConfig.class);
     }
 
+//    public void storeForecaData()
 }

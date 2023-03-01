@@ -1,11 +1,11 @@
-package org.freakz.services.foreca;
+package org.freakz.common.model.json.foreca;
 
 import lombok.Builder;
 import lombok.Data;
 
 @Builder
 @Data
-public class ForecaData {
+public class ForecaWeatherData {
 
     private String date;
     private String time;
