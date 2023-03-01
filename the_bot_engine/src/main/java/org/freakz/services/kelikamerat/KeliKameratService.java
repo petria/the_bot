@@ -5,7 +5,7 @@ import org.freakz.common.util.StringStuff;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
-import org.freakz.services.ServiceHandler;
+import org.freakz.services.AbstractService;
 import org.freakz.services.ServiceMessageHandler;
 import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
@@ -33,7 +32,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 //@Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
-public class KeliKameratService extends AbstractService implements ServiceHandler {
+public class KeliKameratService extends AbstractService {
 
     private static final String BASE_ULR = "https://www.kelikamerat.info";
 
@@ -67,6 +66,7 @@ public class KeliKameratService extends AbstractService implements ServiceHandle
     private static AtomicBoolean isFirstUpdateDone = new AtomicBoolean(false);
     private static int toUpdate = 0;
     private static int updateDone = 0;
+
 
     public synchronized void updateStations() throws IOException {
         List<KelikameratUrl> stations = new ArrayList<>();
@@ -200,10 +200,9 @@ public class KeliKameratService extends AbstractService implements ServiceHandle
 
 
     @Override
-    public void setExecutor(Executor executor) {
-        super.setExecutor(executor);
+    public void initializeService() throws Exception {
         isFirstUpdateStarted.set(true);
-        this.executor.execute(this::firstUpdate);
+        firstUpdate();
     }
 
     @Override
@@ -215,35 +214,30 @@ public class KeliKameratService extends AbstractService implements ServiceHandle
                 = KelikameratResponse.builder()
                 .build();
 
-        if (!isFirstUpdateStarted.get()) {
-            isFirstUpdateStarted.set(true);
-            this.executor.execute(this::firstUpdate);
-            response.setStatus("NOK: Starting initial update of stations!");
+
+        if (!isFirstUpdateDone.get()) {
+            response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", updateDone, toUpdate));
         } else {
+            List<KelikameratWeatherData> dataList = new ArrayList<>();
+            String regexp = String.format(".*%s.*", request.getResults().getString(ARG_PLACE));
 
-            if (!isFirstUpdateDone.get()) {
-                response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", updateDone, toUpdate));
-            } else {
-                List<KelikameratWeatherData> dataList = new ArrayList<>();
-                String regexp = String.format(".*%s.*", request.getResults().getString(ARG_PLACE));
+            for (KelikameratWeatherData wd : weatherDataList) {
 
-                for (KelikameratWeatherData wd : weatherDataList) {
-
-                    String placeFromUrl = wd.getPlaceFromUrl();
-                    String stationFromUrl = wd.getUrl().getStationUrl();
-                    if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
-                        if (wd.getAir() == null) {
-                            continue;
-                        }
-                        dataList.add(wd);
+                String placeFromUrl = wd.getPlaceFromUrl();
+                String stationFromUrl = wd.getUrl().getStationUrl();
+                if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
+                    if (wd.getAir() == null) {
+                        continue;
                     }
+                    dataList.add(wd);
                 }
-
-                response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
-                response.setDataList(dataList);
-
             }
+
+            response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
+            response.setDataList(dataList);
+
         }
+
 
         return response;
     }

@@ -1,11 +1,11 @@
 package org.freakz.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.services.kelikamerat.AbstractService;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -35,16 +35,33 @@ public class HokanServices {
         return null;
     }
 
+    @PostConstruct
+    public void runInitializeService() throws Exception {
+        log.debug("Initializing all services...");
+        Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
+        for (Class<?> aClass : typesAnnotatedWith) {
+            AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
+            this.executor.execute(() -> {
+                try {
+                    log.debug("Init services: " + service.getClass().getSimpleName());
+                    service.initializeService();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+    }
+
+    private Reflections reflections = new Reflections("org.freakz.services");
 
     private ServiceHandler findServiceMessageHandlers(ServiceRequestType serviceRequestType) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        Reflections reflections = new Reflections("org.freakz.services");
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
         for (Class<?> aClass : typesAnnotatedWith) {
             ServiceMessageHandler annotation = aClass.getAnnotation(ServiceMessageHandler.class);
             ServiceRequestType annotatedType = annotation.ServiceRequestType();
             if (serviceRequestType.equals(annotatedType)) {
                 AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
-                service.setExecutor(this.executor);
                 return (ServiceHandler) service;
             }
         }
