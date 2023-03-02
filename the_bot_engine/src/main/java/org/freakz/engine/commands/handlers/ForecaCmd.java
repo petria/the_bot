@@ -26,7 +26,7 @@ public class ForecaCmd extends AbstractCmd {
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Get FORECA weather for city.");
+        jsap.setHelp("Get Foreca weather data for city. See https://www.foreca.fi/haku for city names!");
 
         FlaggedOption flg = new FlaggedOption(ARG_COUNT)
                 .setStringParser(JSAP.INTEGER_PARSER)
