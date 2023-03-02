@@ -45,6 +45,7 @@ public class CommandHandler {
         return handleCommand(request, false);
     }
 
+    @Async
     public String handleCommand(EngineRequest request, boolean doWholeLineTriggerCheck) {
         if (doWholeLineTriggerCheck) {
             wholeLineTriggers.checkWholeLineTrigger(request);

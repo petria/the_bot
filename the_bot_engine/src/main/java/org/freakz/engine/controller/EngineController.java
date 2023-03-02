@@ -22,14 +22,10 @@ public class EngineController {
 
     @PostMapping("/handle_request")
     public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) {
-        log.debug("request: {}", request);
-/*        String reply = "";
-        if (request.getCommand().equals("!ping")) {
-            reply = "Pong: " + System.currentTimeMillis();
-        }*/
-        log.debug(">>> Start handle");
+//        log.debug("request: {}", request);
+//        log.debug(">>> Start handle");
         this.commandHandler.handleCommand(request, true);
-        log.debug("<<<< handle done");
+//        log.debug("<<<< handle done");
         return ResponseEntity.ok("ack");
     }
 
