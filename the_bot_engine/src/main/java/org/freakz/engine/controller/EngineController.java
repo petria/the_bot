@@ -28,7 +28,7 @@ public class EngineController {
             reply = "Pong: " + System.currentTimeMillis();
         }*/
         log.debug(">>> Start handle");
-        this.commandHandler.handleCommand(request);
+        this.commandHandler.handleCommand(request, true);
         log.debug("<<<< handle done");
         return ResponseEntity.ok("ack");
     }
