@@ -1,7 +1,12 @@
 package org.freakz.services;
 
+import org.freakz.common.model.json.foreca.CountryCityLink;
+import org.freakz.common.model.json.foreca.CountryScanLinksByLetter;
 import org.freakz.services.foreca.ForecaWeatherService;
 import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ForecaWeatherServiceTest {
 
@@ -10,17 +15,18 @@ public class ForecaWeatherServiceTest {
     public void test_initialize_service() throws Exception {
         ForecaWeatherService sut = new ForecaWeatherService();
 
-        sut.initializeService();
+//        sut.initializeService();
 
-        int foo = 0;
 
-//        Map<String, ForecaWeatherService.CountryCityLink> toCollectLinks = new HashMap<>();
-//        ForecaWeatherService.CountryScanLinksByLetter byLetterLinks = sut.scanCountry("Bosnia ja Hertsegovina", "/Europe/Bosnia_and_Herzegovina/haku");
-//        String byLetterLink = byLetterLinks.byLetterLinks.get(0);
-//        toCollectLinks = sut.scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
+        Map<String, CountryCityLink> toCollectLinks = new HashMap<>();
+//https://www.foreca.fi/
+        CountryScanLinksByLetter byLetterLinks = sut.scanCountry("Yhdysvallat", "/North_America/United_States/haku");
+        String byLetterLink = byLetterLinks.byLetterLinks.get(11);
+        toCollectLinks = sut.scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
 
 //        List<ForecaData> forecaData = sut.fetchCityWeather("Mostar", "/Bosnia_and_Herzegovina/Mostar");
 
+        int foo = 0;
 
 
 /*        Map<String, List<String>> stringListMap = sut.collectCountryCitiLinks();

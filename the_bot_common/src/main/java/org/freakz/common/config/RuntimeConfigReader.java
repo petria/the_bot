@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.TheBotConfig;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -21,5 +22,10 @@ public class RuntimeConfigReader {
         return mapper.readValue(json, TheBotConfig.class);
     }
 
-//    public void storeForecaData()
+    public void storeStringToRuntimeDirectory(String stringData, String runtimeDir, String jsonFileName) throws IOException {
+        String dataFile = runtimeDir + "/" + jsonFileName;
+        log.debug("Writing '{}' to runtime directory", dataFile);
+        Path path = Path.of(dataFile);
+        Files.writeString(path, stringData, Charset.defaultCharset());
+    }
 }

@@ -62,7 +62,7 @@ public class HokanServices {
             ServiceRequestType annotatedType = annotation.ServiceRequestType();
             if (serviceRequestType.equals(annotatedType)) {
                 AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
-                return (ServiceHandler) service;
+                return service;
             }
         }
         return null;

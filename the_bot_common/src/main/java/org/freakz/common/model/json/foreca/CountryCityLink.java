@@ -6,6 +6,8 @@ public class CountryCityLink {
     public String country;
     public String city;
 
+    public String city2;
+
     public String cityUrl;
 
 }

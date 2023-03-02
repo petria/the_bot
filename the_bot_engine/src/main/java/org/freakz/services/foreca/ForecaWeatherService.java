@@ -1,5 +1,6 @@
 package org.freakz.services.foreca;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.foreca.CountryCityLink;
 import org.freakz.common.model.json.foreca.CountryScanLinksByLetter;
@@ -20,6 +21,8 @@ import org.jsoup.select.Elements;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.io.File;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,35 +39,60 @@ public class ForecaWeatherService extends AbstractService {
 
     String urlBase = "https://www.foreca.fi";
 
+    public String[] REGION_URLS
+            = {
+            "https://www.foreca.fi/Asia/haku",
+            "https://www.foreca.fi/Africa/haku",
+            "https://www.foreca.fi/Antarctica/haku",
+            "https://www.foreca.fi/Australia_and_Oceania/haku",
+            "https://www.foreca.fi/Europe/haku",
+            "https://www.foreca.fi/South_America/haku",
+            "https://www.foreca.fi/North_America/haku",
+            "https://www.foreca.fi/North_America/United_States/haku"
+    };
 
     public void initializeService() throws Exception {
-        String countryMatch = "Suomi";
+        String countryMatch = ".*";
 
-        Map<String, CountryCityLink> toCollectLinks = new HashMap<>();
-        Map<String, CountryScanLinksByLetter> links = collectCountryCityLinks();
+        Map<String, CountryCityLink> toCollectLinksMap = new HashMap<>();
+        for (String regionUrl : REGION_URLS) {
 
-        for (String country : links.keySet()) {
-            if (country.matches(countryMatch)) {
-                CountryScanLinksByLetter byLetterLinks = links.get(country);
-                for (String byLetterLink : byLetterLinks.byLetterLinks) {
-                    toCollectLinks = scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
+            log.debug("Scanning region: {}", regionUrl);
+            Map<String, CountryScanLinksByLetter> links = collectCountryCityLinks(regionUrl);
 
+            for (String country : links.keySet()) {
+                if (country.matches(countryMatch)) {
+                    CountryScanLinksByLetter byLetterLinks = links.get(country);
+                    for (String byLetterLink : byLetterLinks.byLetterLinks) {
+                        toCollectLinksMap = scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinksMap);
+
+                    }
                 }
             }
         }
-        this.toCollectLinks = toCollectLinks;
-        log.debug("City map ready, size: {}", this.toCollectLinks.size());
+
+        toCollectLinks = toCollectLinksMap;
+        log.debug("City map ready, size: {}", toCollectLinks.size());
+
+        log.debug("Writing data to json start!");
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.writeValue(new File("foreca_data.json"), toCollectLinksMap);
+        log.debug("Write done!");
 
     }
 
-    public Map<String, CountryScanLinksByLetter> collectCountryCityLinks() throws Exception {
-        String url = "https://www.foreca.fi/Europe/haku";
+    public Map<String, CountryScanLinksByLetter> collectCountryCityLinks(String regionUrl) throws Exception {
+//        String url = "https://www.foreca.fi/Europe/haku";
+
+        String region = regionUrl.split("/")[3];
+
         Map<String, CountryScanLinksByLetter> byCountryLinks = new HashMap<>();
-        Document doc = Jsoup.connect(url).get();
+        Document doc = Jsoup.connect(regionUrl).get();
         Elements a = doc.getElementsByTag("a");
         for (Element element : a) {
             String href1 = element.attributes().get("href");
-            if (href1.startsWith("/Europe/") && href1.endsWith("/haku")) {
+            if (href1.startsWith("/" + region + "/") && href1.endsWith("/haku")) {
+//            if (href1.startsWith("/Europe/") && href1.endsWith("/haku")) {
                 String country = element.text();
                 CountryScanLinksByLetter countryScanLinksByLetter = scanCountry(country, href1);
                 byCountryLinks.put(country, countryScanLinksByLetter);
@@ -105,7 +133,14 @@ public class ForecaWeatherService extends AbstractService {
     public Map<String, CountryCityLink> scanCities(String baseLink, String byLetterLink, Map<String, CountryCityLink> toCollectLinks) throws Exception {
         String url = urlBase + byLetterLink;
         log.debug("scanCities: {}", url);
-        Document doc = Jsoup.connect(url).get();
+        Document doc;
+        try {
+            doc = Jsoup.connect(url).get();
+        } catch (MalformedURLException ex) {
+            log.error("Can't scan url: {}", url);
+            return toCollectLinks;
+        }
+
         Elements a = doc.getElementsByTag("a");
         String[] split = byLetterLink.split("/");
 
@@ -115,14 +150,15 @@ public class ForecaWeatherService extends AbstractService {
             String href1 = element.attributes().get("href");
             if (href1.startsWith(baseLink)) {
                 String city = element.text();
-                log.debug("city: {}", city);
+//                log.debug("city: {}", city);
                 CountryCityLink data = new CountryCityLink();
                 data.region = region;
                 data.country = country;
                 data.city = city;
+                String[] hrefSplit = href1.split("/");
+                data.city2 = hrefSplit[hrefSplit.length - 1];
                 data.cityUrl = String.format("%s/%s", baseLink, city);
                 toCollectLinks.put(city, data);
-//                byCityLinks.add(String.format("%s/%s", baseLink, city));
             }
         }
         return toCollectLinks;
@@ -217,11 +253,12 @@ public class ForecaWeatherService extends AbstractService {
         if (toCollectLinks == null) {
             response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", 0, -1));
         } else {
-            String place = request.getResults().getString(ARG_PLACE);
+            String place = request.getResults().getString(ARG_PLACE).toLowerCase();
             List<CountryCityLink> matching = new ArrayList<>();
             for (String cityKey : toCollectLinks.keySet()) {
-                if (cityKey.toLowerCase().matches(place)) {
-                    matching.add(toCollectLinks.get(cityKey));
+                CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
+                if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
+                    matching.add(countryCityLink);
                 }
             }
             log.debug("{} matching {} cities", place, matching.size());

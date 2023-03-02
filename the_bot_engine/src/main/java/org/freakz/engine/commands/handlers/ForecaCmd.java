@@ -4,6 +4,7 @@ import com.martiansoftware.jsap.FlaggedOption;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.Switch;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
@@ -15,6 +16,7 @@ import org.freakz.services.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VERBOSE;
 
 
 @HokanCommandHandler
@@ -29,8 +31,15 @@ public class ForecaCmd extends AbstractCmd {
         FlaggedOption flg = new FlaggedOption(ARG_COUNT)
                 .setStringParser(JSAP.INTEGER_PARSER)
                 .setDefault("5")
+                .setLongFlag("count")
                 .setShortFlag('c');
         jsap.registerParameter(flg);
+
+        Switch verbose = new Switch(ARG_VERBOSE)
+                .setLongFlag("verbose")
+                .setShortFlag('v');
+
+        jsap.registerParameter(verbose);
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setDefault("Oulu")
@@ -42,12 +51,16 @@ public class ForecaCmd extends AbstractCmd {
     }
 
     private String formatWeather(ForecaData d, boolean verbose) {
-        String template = "%s: %2.1f°C";
-        String placeFromUrl = d.getCityLink().city;
-        String ret = String.format(template, placeFromUrl, d.getWeatherData().getTemp());
-/*        if (verbose) {
-            ret += " [" + d.getUrl() + "]";
-        }*/
+
+        String v = "";
+        if (verbose) {
+            v = d.getCityLink().region + "/" + d.getCityLink().country + "/";
+        }
+        String template = "%s%s: %s %2.1f°C (feels like: %2.1f°C)";
+
+        String placeFromUrl = d.getCityLink().city2;
+
+        String ret = String.format(template, v, placeFromUrl, d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), d.getWeatherData().getFeelsLike());
         return ret;
     }
 
@@ -55,24 +68,30 @@ public class ForecaCmd extends AbstractCmd {
     public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
 
 
-        boolean verbose = false;
+        boolean verbose = results.getBoolean(ARG_VERBOSE);
         String place = results.getString(ARG_PLACE);
+
         log.debug("Place: {}", place);
         ForecaResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.ForecaWeatherService);
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
-            int xx = 0;
-            for (ForecaData forecaData : data.getForecaDataList()) {
-                String formatted = formatWeather(forecaData, verbose);
-                if (xx != 0) {
-                    sb.append(", ");
-                }
-                sb.append(formatted);
-                xx++;
-                if (xx >= results.getInt(ARG_COUNT)) {
-                    break;
-                }
 
+            if (data.getForecaDataList().size() == 0) {
+                sb.append("Check spelling, no Foreca data found with: ");
+                sb.append(place);
+            } else {
+                int xx = 0;
+                for (ForecaData forecaData : data.getForecaDataList()) {
+                    String formatted = formatWeather(forecaData, verbose);
+                    if (xx != 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(formatted);
+                    xx++;
+                    if (xx >= results.getInt(ARG_COUNT)) {
+                        break;
+                    }
+                }
             }
             return sb.toString();
         } else {
