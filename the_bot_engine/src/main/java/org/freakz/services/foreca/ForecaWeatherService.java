@@ -10,6 +10,7 @@ import org.freakz.common.model.json.foreca.CountryScanLinksByLetter;
 import org.freakz.common.model.json.foreca.ForecaData;
 import org.freakz.common.model.json.foreca.ForecaSunUpDown;
 import org.freakz.common.model.json.foreca.ForecaWeatherData;
+import org.freakz.config.ConfigService;
 import org.freakz.dto.ForecaResponse;
 import org.freakz.services.AbstractService;
 import org.freakz.services.ServiceMessageHandler;
@@ -65,15 +66,17 @@ public class ForecaWeatherService extends AbstractService {
             "https://www.foreca.fi/North_America/United_States/haku"
     };
 
-    public void initializeService() throws Exception {
+    public void initializeService(ConfigService configService) throws Exception {
         String countryMatch = ".*";
 
-        File dataFile = new File("foreca_data_cache.json");
+
+        File dataFile = configService.getRuntimeDirFile("foreca_data_cache.json");
+
         if (dataFile.exists()) {
-            log.debug("Reading cached data file");
+            log.debug("Reading cached data file: {}", dataFile.getAbsoluteFile());
             CachedLinks cachedLinks = mapper.readValue(dataFile, CachedLinks.class);
             toCollectLinks = cachedLinks.getToCollectLinks();
-            log.debug("Reading cached data file DONE!");
+            log.debug("Reading cached data file DONE, city count: {}", toCollectLinks.size());
             return;
         } else {
             log.warn("Cache file not exists: {}", dataFile.getName());
@@ -98,14 +101,15 @@ public class ForecaWeatherService extends AbstractService {
         }
 
         toCollectLinks = toCollectLinksMap;
-        log.debug("City map ready, size: {}", toCollectLinks.size());
+        log.debug("City map ready, city count: {}", toCollectLinks.size());
 
-        log.debug("Writing data to json start: ", dataFile.getName());
+        log.debug("Writing data to json start: {}", dataFile.getName());
         CachedLinks cachedLinks = new CachedLinks(toCollectLinks);
         mapper.writeValue(dataFile, cachedLinks);
         log.debug("Write done!");
 
     }
+
 
     public Map<String, CountryScanLinksByLetter> collectCountryCityLinks(String regionUrl) throws Exception {
 //        String url = "https://www.foreca.fi/Europe/haku";

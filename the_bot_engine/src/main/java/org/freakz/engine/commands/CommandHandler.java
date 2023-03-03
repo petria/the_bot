@@ -40,15 +40,16 @@ public class CommandHandler {
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
     @Async
-    public String handleCommand(EngineRequest request) {
+    public String handleEngineRequest(EngineRequest request) {
         log.debug("Start handle in service >>>");
-        return handleCommand(request, false);
+        return handleEngineRequest(request, false);
     }
 
     @Async
-    public String handleCommand(EngineRequest request, boolean doWholeLineTriggerCheck) {
+    public String handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+
         if (doWholeLineTriggerCheck) {
-            wholeLineTriggers.checkWholeLineTrigger(request);
+            handleWholeLineTriggers(request);
         }
 
         if (request.getCommand().startsWith("!")) {
@@ -56,6 +57,12 @@ public class CommandHandler {
         }
         return null;
     }
+
+    @Async
+    public void handleWholeLineTriggers(EngineRequest request) {
+        wholeLineTriggers.checkWholeLineTrigger(request);
+    }
+
 
     @SneakyThrows
     private String parseAndExecute(EngineRequest request) {

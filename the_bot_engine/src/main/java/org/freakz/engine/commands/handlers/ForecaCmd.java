@@ -82,9 +82,9 @@ public class ForecaCmd extends AbstractCmd {
         if (feelsLike) {
             feels = String.format(" (feels like: %2.1f°C)", d.getWeatherData().getFeelsLike());
         }
-        String template = "%s%s: %s %2.1f°C%s%s";
+        String template = "%s%s: %s %s %2.1f°C%s%s";
 
-        return String.format(template, v, d.getCityLink().city2, d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), feels, upDown);
+        return String.format(template, v, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), feels, upDown);
     }
 
     @Override

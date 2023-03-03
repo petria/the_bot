@@ -2,6 +2,7 @@ package org.freakz.services.kelikamerat;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.util.StringStuff;
+import org.freakz.config.ConfigService;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
@@ -200,7 +201,7 @@ public class KeliKameratService extends AbstractService {
 
 
     @Override
-    public void initializeService() throws Exception {
+    public void initializeService(ConfigService configService) throws Exception {
         isFirstUpdateStarted.set(true);
         firstUpdate();
     }

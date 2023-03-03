@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
 import java.io.IOException;
 
 @Service
@@ -25,5 +26,9 @@ public class ConfigService {
         return configReader.readBotConfig(mapper, botProperties.getRuntimeDir());
     }
 
+    public File getRuntimeDirFile(String fileName) {
+        File file = new File(botProperties.getRuntimeDir() + fileName);
+        return file;
+    }
 
 }

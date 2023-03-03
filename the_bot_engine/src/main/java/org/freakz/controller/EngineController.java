@@ -24,7 +24,7 @@ public class EngineController {
     public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
-        this.commandHandler.handleCommand(request, true);
+        this.commandHandler.handleEngineRequest(request, true);
 //        log.debug("<<<< handle done");
         return ResponseEntity.ok("ack");
     }

@@ -15,7 +15,7 @@ import static org.freakz.common.config.ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
 public class RuntimeConfigReader {
 
     public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir) throws IOException {
-        String cfgFile = runtimeDir + "/" + RUNTIME_CONFIG_FILE_NAME;
+        String cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
         log.debug("Reading runtime config from: {}", cfgFile);
         Path path = Path.of(cfgFile);
         String json = Files.readString(path);

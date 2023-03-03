@@ -1,6 +1,7 @@
 package org.freakz.services;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.config.ConfigService;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -16,8 +17,11 @@ public class HokanServices {
 
     private final Executor executor;
 
-    public HokanServices(@Qualifier("Services") Executor executor) {
+    private final ConfigService configService;
+
+    public HokanServices(@Qualifier("Services") Executor executor, ConfigService configService) {
         this.executor = executor;
+        this.configService = configService;
     }
 
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
@@ -44,7 +48,7 @@ public class HokanServices {
             this.executor.execute(() -> {
                 try {
                     log.debug("Init services: " + service.getClass().getSimpleName());
-                    service.initializeService();
+                    service.initializeService(configService);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
