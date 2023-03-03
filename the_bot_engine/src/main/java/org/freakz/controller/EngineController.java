@@ -1,4 +1,4 @@
-package org.freakz.engine.controller;
+package org.freakz.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;

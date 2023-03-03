@@ -71,7 +71,7 @@ public class ForecaCmd extends AbstractCmd {
         String upDown = "";
         if (sunUpDown) {
             upDown
-                    = String.format(" - Sun: %s - %s (%dh %dm)",
+                    = String.format(" - Sun up/down: %s - %s (%dh %dm)",
                     d.getSunUpDown().getSunUpTime(),
                     d.getSunUpDown().getSunDownTime(),
                     d.getSunUpDown().getDayLengthHours(),
