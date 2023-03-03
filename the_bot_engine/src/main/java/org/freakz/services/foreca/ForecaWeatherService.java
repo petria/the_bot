@@ -1,10 +1,14 @@
 package org.freakz.services.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.foreca.CountryCityLink;
 import org.freakz.common.model.json.foreca.CountryScanLinksByLetter;
 import org.freakz.common.model.json.foreca.ForecaData;
+import org.freakz.common.model.json.foreca.ForecaSunUpDown;
 import org.freakz.common.model.json.foreca.ForecaWeatherData;
 import org.freakz.dto.ForecaResponse;
 import org.freakz.services.AbstractService;
@@ -35,7 +39,17 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.ForecaWeatherService)
 public class ForecaWeatherService extends AbstractService {
 
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    static class CachedLinks {
+        private Map<String, CountryCityLink> toCollectLinks;
+    }
+
+
     private static Map<String, CountryCityLink> toCollectLinks = null;
+    private ObjectMapper mapper = new ObjectMapper();
 
     String urlBase = "https://www.foreca.fi";
 
@@ -53,6 +67,18 @@ public class ForecaWeatherService extends AbstractService {
 
     public void initializeService() throws Exception {
         String countryMatch = ".*";
+
+        File dataFile = new File("foreca_data_cache.json");
+        if (dataFile.exists()) {
+            log.debug("Reading cached data file");
+            CachedLinks cachedLinks = mapper.readValue(dataFile, CachedLinks.class);
+            toCollectLinks = cachedLinks.getToCollectLinks();
+            log.debug("Reading cached data file DONE!");
+            return;
+        } else {
+            log.warn("Cache file not exists: {}", dataFile.getName());
+        }
+
 
         Map<String, CountryCityLink> toCollectLinksMap = new HashMap<>();
         for (String regionUrl : REGION_URLS) {
@@ -74,9 +100,9 @@ public class ForecaWeatherService extends AbstractService {
         toCollectLinks = toCollectLinksMap;
         log.debug("City map ready, size: {}", toCollectLinks.size());
 
-        log.debug("Writing data to json start!");
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(new File("foreca_data.json"), toCollectLinksMap);
+        log.debug("Writing data to json start: ", dataFile.getName());
+        CachedLinks cachedLinks = new CachedLinks(toCollectLinks);
+        mapper.writeValue(dataFile, cachedLinks);
         log.debug("Write done!");
 
     }
@@ -164,7 +190,7 @@ public class ForecaWeatherService extends AbstractService {
         return toCollectLinks;
     }
 
-    public List<ForecaWeatherData> fetchCityWeather(String cityName, String cityUrl) throws Exception {
+    public List<ForecaWeatherData> fetchCityWeather(String cityName, String cityUrl, ForecaSunUpDown sunUpDown) throws Exception {
 
         String url = urlBase + cityUrl;
         log.debug("fetch city data: {} -> {}", cityName, cityUrl);
@@ -176,7 +202,14 @@ public class ForecaWeatherService extends AbstractService {
                 Node node = script.childNode(0);
                 String s = node.toString();
                 if (s.startsWith("fcainit.push")) {
-                    return extractWeatherData(s);
+                    List<ForecaWeatherData> forecaWeatherData = extractWeatherData(s, "var observations = {", "};");
+                    ForecaSunUpDown upDown = extractSunRiseData(s, "var sun = {", "};");
+                    sunUpDown.setDayLengthTotalMinutes(upDown.getDayLengthTotalMinutes());
+                    sunUpDown.setDayLengthHours(upDown.getDayLengthHours());
+                    sunUpDown.setDayLengthMinutes(upDown.getDayLengthMinutes());
+                    sunUpDown.setSunUpTime(upDown.getSunUpTime());
+                    sunUpDown.setSunDownTime(upDown.getSunDownTime());
+                    return forecaWeatherData;
                 }
 
             }
@@ -185,57 +218,98 @@ public class ForecaWeatherService extends AbstractService {
         return null;
     }
 
-    private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
+    private ForecaSunUpDown extractSunRiseData(String from, String start, String end) {
+        String sun = extractPart(from, start, end);
+        if (engine != null) {
+            String script = String.format("%s\n sun", sun);
+            try {
+                Object eval = engine.eval(script);
+                Map values = (Map) eval;
+                try {
+                    ForecaSunUpDown sunUpDown
+                            = ForecaSunUpDown.builder()
+                            .dayLengthTotalMinutes(getAsInteger(values.get("daylen")))
+                            .dayLengthHours(getAsInteger(values.get("daylen_h")))
+                            .dayLengthMinutes(getAsInteger(values.get("daylen_m")))
+                            .sunUpTime((String) values.get("sunup"))
+                            .sunDownTime((String) values.get("sundown"))
+                            .build();
 
-    private List<ForecaWeatherData> extractWeatherData(String s) {
-        List<ForecaWeatherData> forecaData = new ArrayList<>();
-        int idx1 = s.indexOf("var observations = {");
-        if (idx1 != -1) {
-            int idx2 = s.indexOf("};", idx1);
-            if (idx2 != -1) {
-                String data = s.substring(idx1, idx2 + 2);
+                    return sunUpDown;
 
-                if (engine != null) {
-                    String script = String.format("%s\n observations", data);
-                    try {
-                        Object eval = engine.eval(script);
-//                        return e
-                        Map dataMap = (Map) eval;
-                        for (Object object : dataMap.keySet()) {
-                            Map values = (Map) dataMap.get(object);
-                            try {
-                                ForecaWeatherData foreca
-                                        = ForecaWeatherData.builder()
-                                        .date((String) values.get("date"))
-                                        .time((String) values.get("time"))
-                                        .temp(getTemp(values.get("temp")))
-                                        .feelsLike(getTemp(values.get("flike")))
-                                        .relativeHumidity(getTemp(values.get("rhum")))
-                                        .visibility(getTemp(values.get("vis")))
-                                        .visibilityUnit((String) values.get("visunit"))
-                                        .pressure(getTemp(values.get("pressure")))
-                                        .build();
-                                forecaData.add(foreca);
-
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        int fuu = 3;
-                    } catch (ScriptException e) {
-                        throw new RuntimeException(e);
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+
+            } catch (ScriptException e) {
+                throw new RuntimeException(e);
             }
         }
 
+        return null;
+    }
 
-        int foo = 0;
+    private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
+
+    private String extractPart(String from, String start, String end) {
+        String part = null;
+        int idx1 = from.indexOf(start);
+        if (idx1 != -1) {
+            int idx2 = from.indexOf(end, idx1);
+            if (idx2 != -1) {
+                part = from.substring(idx1, idx2 + 2);
+            }
+        }
+        return part;
+    }
+
+
+    private List<ForecaWeatherData> extractWeatherData(String from, String start, String end) {
+        List<ForecaWeatherData> forecaData = new ArrayList<>();
+        String observations = extractPart(from, start, end);
+        if (engine != null) {
+            String script = String.format("%s\n observations", observations);
+            try {
+                Object eval = engine.eval(script);
+                Map dataMap = (Map) eval;
+                for (Object object : dataMap.keySet()) {
+                    Map values = (Map) dataMap.get(object);
+                    Integer key = Integer.parseInt((String) object);
+                    try {
+                        ForecaWeatherData foreca = ForecaWeatherData.builder()
+                                .key(key)
+                                .date((String) values.get("date"))
+                                .time((String) values.get("time"))
+                                .temp(getAsDouble(values.get("temp")))
+                                .feelsLike(getAsDouble(values.get("flike")))
+                                .relativeHumidity(getAsDouble(values.get("rhum")))
+                                .visibility(getAsDouble(values.get("vis")))
+                                .visibilityUnit((String) values.get("visunit"))
+                                .pressure(getAsDouble(values.get("pressure")))
+                                .build();
+                        forecaData.add(foreca);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                forecaData.sort((o1, o2) -> o1.getKey().compareTo(o2.getKey()));
+            } catch (ScriptException e) {
+                throw new RuntimeException(e);
+            }
+        }
         return forecaData;
     }
 
-    private Double getTemp(Object temp) {
+    private Integer getAsInteger(Object temp) {
+        if (temp == null) {
+            return null;
+        }
+        String str = "" + temp;
+        return Integer.valueOf(str);
+    }
+
+    private Double getAsDouble(Object temp) {
         if (temp == null) {
             return Double.NaN;
         }
@@ -266,12 +340,14 @@ public class ForecaWeatherService extends AbstractService {
             response.setForecaDataList(forecaDataList);
             for (CountryCityLink match : matching) {
                 try {
-                    List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl);
+                    ForecaSunUpDown sunUpDown = ForecaSunUpDown.builder().build();
+                    List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl, sunUpDown);
                     if (forecaWeatherData != null && forecaWeatherData.size() > 0) {
                         ForecaData forecaData
                                 = ForecaData.builder()
                                 .cityLink(match)
                                 .weatherData(forecaWeatherData.get(0))
+                                .sunUpDown(sunUpDown)
                                 .build();
                         forecaDataList.add(forecaData);
                     }

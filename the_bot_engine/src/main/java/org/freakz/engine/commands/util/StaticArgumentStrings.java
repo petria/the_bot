@@ -22,6 +22,7 @@ public class StaticArgumentStrings {
     public static final String ARG_CURRENCY = "Currency";
     public static final String ARG_EMAIL = "Email";
     public static final String ARG_EXPRESSION = "expression";
+    public static final String ARG_FEELS_LIKE = "FeelsLike";
     public static final String ARG_FLAGS = "Flags";
     public static final String ARG_FROM = "From";
     public static final String ARG_FULL_NAME = "FullName";
@@ -50,6 +51,8 @@ public class StaticArgumentStrings {
     public static final String ARG_SEARCH = "Search";
     public static final String ARG_STATION = "Station";
     public static final String ARG_STARTUP_STATE = "StartupState";
+
+    public static final String ARG_SUN_UP_DOWN = "SunUpDown";
     public static final String ARG_TARGET = "Target";
     public static final String ARG_TEXT = "Text";
     public static final String ARG_TELEGRAM_ID = "TelegramID";

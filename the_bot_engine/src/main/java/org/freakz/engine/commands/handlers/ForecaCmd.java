@@ -15,7 +15,9 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_FEELS_LIKE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_SUN_UP_DOWN;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VERBOSE;
 
 
@@ -35,11 +37,21 @@ public class ForecaCmd extends AbstractCmd {
                 .setShortFlag('c');
         jsap.registerParameter(flg);
 
+        Switch feelsLike = new Switch(ARG_FEELS_LIKE)
+                .setLongFlag("feelsLike")
+                .setShortFlag('f');
+        jsap.registerParameter(feelsLike);
+
+        Switch sunUpDown = new Switch(ARG_SUN_UP_DOWN)
+                .setLongFlag("sunUpDown")
+                .setShortFlag('s');
+        jsap.registerParameter(sunUpDown);
+
         Switch verbose = new Switch(ARG_VERBOSE)
                 .setLongFlag("verbose")
                 .setShortFlag('v');
-
         jsap.registerParameter(verbose);
+
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setDefault("Oulu")
@@ -50,18 +62,29 @@ public class ForecaCmd extends AbstractCmd {
 
     }
 
-    private String formatWeather(ForecaData d, boolean verbose) {
+    private String formatWeather(ForecaData d, boolean verbose, boolean sunUpDown, boolean feelsLike) {
 
         String v = "";
         if (verbose) {
             v = d.getCityLink().region + "/" + d.getCityLink().country + "/";
         }
-        String template = "%s%s: %s %2.1f°C (feels like: %2.1f°C)";
+        String upDown = "";
+        if (sunUpDown) {
+            upDown
+                    = String.format(" - Sun: %s - %s (%dh %dm)",
+                    d.getSunUpDown().getSunUpTime(),
+                    d.getSunUpDown().getSunDownTime(),
+                    d.getSunUpDown().getDayLengthHours(),
+                    d.getSunUpDown().getDayLengthMinutes()
+            );
+        }
+        String feels = "";
+        if (feelsLike) {
+            feels = String.format(" (feels like: %2.1f°C)", d.getWeatherData().getFeelsLike());
+        }
+        String template = "%s%s: %s %2.1f°C%s%s";
 
-        String placeFromUrl = d.getCityLink().city2;
-
-        String ret = String.format(template, v, placeFromUrl, d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), d.getWeatherData().getFeelsLike());
-        return ret;
+        return String.format(template, v, d.getCityLink().city2, d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), feels, upDown);
     }
 
     @Override
@@ -69,6 +92,9 @@ public class ForecaCmd extends AbstractCmd {
 
 
         boolean verbose = results.getBoolean(ARG_VERBOSE);
+        boolean sunUpDown = results.getBoolean(ARG_SUN_UP_DOWN);
+        boolean feelsLike = results.getBoolean(ARG_FEELS_LIKE);
+
         String place = results.getString(ARG_PLACE);
 
         log.debug("Place: {}", place);
@@ -82,7 +108,7 @@ public class ForecaCmd extends AbstractCmd {
             } else {
                 int xx = 0;
                 for (ForecaData forecaData : data.getForecaDataList()) {
-                    String formatted = formatWeather(forecaData, verbose);
+                    String formatted = formatWeather(forecaData, verbose, sunUpDown, feelsLike);
                     if (xx != 0) {
                         sb.append(", ");
                     }

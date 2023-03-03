@@ -11,4 +11,6 @@ public class ForecaData {
 
     private ForecaWeatherData weatherData;
 
+    private ForecaSunUpDown sunUpDown;
+
 }

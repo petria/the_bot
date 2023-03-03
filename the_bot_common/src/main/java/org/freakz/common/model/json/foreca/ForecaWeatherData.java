@@ -7,6 +7,8 @@ import lombok.Data;
 @Data
 public class ForecaWeatherData {
 
+    private Integer key;
+
     private String date;
     private String time;
     private Double temp;
