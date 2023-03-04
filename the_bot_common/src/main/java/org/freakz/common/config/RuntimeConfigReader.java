@@ -34,6 +34,7 @@ public class RuntimeConfigReader {
 
 
     public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir, String secretPropertiesFile) throws IOException {
+
         readSecretsProperties(secretPropertiesFile);
 
         String cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
@@ -43,7 +44,21 @@ public class RuntimeConfigReader {
 
         Path path = Path.of(cfgFile);
         String json = Files.readString(path);
-        return mapper.readValue(json, TheBotConfig.class);
+
+        String[] temp = new String[1];
+        temp[0] = json;
+
+        this.secretProperties.forEach((key, value) -> {
+            String jsonReplaced = temp[0];
+            String toReplace = String.format("\\$\\{%s}", key);
+            String replaceValue = (String) this.secretProperties.get(key);
+            log.debug("Replacing with secret: {}", toReplace);
+            temp[0] = jsonReplaced.replaceAll(toReplace, replaceValue);
+        });
+
+        String replacedJson = temp[0];
+
+        return mapper.readValue(replacedJson, TheBotConfig.class);
     }
 
     public void storeStringToRuntimeDirectory(String stringData, String runtimeDir, String jsonFileName) throws IOException {
