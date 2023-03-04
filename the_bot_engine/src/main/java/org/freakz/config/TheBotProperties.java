@@ -13,5 +13,6 @@ public class TheBotProperties {
     private String dataDir;
     private String runtimeDir;
 
+    private String secretPropertiesFile;
 
 }

@@ -3,7 +3,7 @@
     "botName": "HokanDEVv"
   },
   "discordConfig": {
-    "token": "FROM_SECRETS: DISCORD_SECRET"
+    "token": "${DISCORD_SECRET}"
   },
   "ircServerConfigs": [
     {

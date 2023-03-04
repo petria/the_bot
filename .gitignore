@@ -2,4 +2,4 @@
 .DS_Store**
 /the_bot_io/target/
 /the_bot_common/target/
-secrets.properties
+secret.properties

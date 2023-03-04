@@ -23,7 +23,7 @@ public class ConfigService {
     @PostConstruct
     public TheBotConfig readBotConfig() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir());
+        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile());
     }
 
     public File getRuntimeDirFile(String fileName) {
