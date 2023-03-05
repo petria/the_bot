@@ -15,4 +15,6 @@ public class TheBotProperties {
 
     private String secretPropertiesFile;
 
+    private String logDir;
+
 }

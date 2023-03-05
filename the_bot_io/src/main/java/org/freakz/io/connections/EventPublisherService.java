@@ -6,6 +6,7 @@ import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.common.model.json.feed.MessageSource;
 import org.freakz.io.clients.EngineClient;
+import org.freakz.io.config.ConfigService;
 import org.freakz.io.service.MessageFeederService;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
@@ -18,6 +19,8 @@ import java.time.LocalDateTime;
 @Slf4j
 public class EventPublisherService implements EventPublisher {
 
+    @Autowired
+    private ConfigService configService;
 
     @Autowired
     private MessageFeederService messageFeederService;
