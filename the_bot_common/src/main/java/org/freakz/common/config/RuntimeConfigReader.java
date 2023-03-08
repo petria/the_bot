@@ -52,7 +52,7 @@ public class RuntimeConfigReader {
             String jsonReplaced = temp[0];
             String toReplace = String.format("\\$\\{%s}", key);
             String replaceValue = (String) this.secretProperties.get(key);
-            log.debug("Replacing with secret: {}", toReplace);
+            log.debug("Replacing with secret: key={} -> {}", key, toReplace);
             temp[0] = jsonReplaced.replaceAll(toReplace, replaceValue);
         });
 
