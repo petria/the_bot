@@ -36,6 +36,11 @@ public class IrcServerConnection extends BotConnection {
         this.publisher = publisher;
     }
 
+    @Override
+    public String getNetwork() {
+        return config.getIrcNetwork().getName();
+    }
+
     @Handler
     public void onUserJoinChannel(ChannelJoinEvent event) {
         if (event.getClient().isUser(event.getUser())) { // It's me!

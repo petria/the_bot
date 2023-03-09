@@ -23,6 +23,11 @@ public class DiscordServerConnection extends BotConnection {
         this.publisher = publisher;
     }
 
+    @Override
+    public String getNetwork() {
+        return "Discord";
+    }
+
     public void init(String botNick, DiscordConfig config) {
 
         String token = config.getToken();

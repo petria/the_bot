@@ -34,4 +34,8 @@ public class BotConnection {
         log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
     }
 
+    public String getNetwork() {
+        return "ConnectionNetwork";
+    }
+
 }

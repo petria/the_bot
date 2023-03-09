@@ -2,15 +2,19 @@ package org.freakz.io.connections;
 
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.logger.LogService;
+import org.freakz.common.logger.LogServiceImpl;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.common.model.json.feed.MessageSource;
 import org.freakz.io.clients.EngineClient;
 import org.freakz.io.config.ConfigService;
+import org.freakz.io.config.TheBotProperties;
 import org.freakz.io.service.MessageFeederService;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,6 +31,17 @@ public class EventPublisherService implements EventPublisher {
 
     @Autowired
     private EngineClient engineClient;
+
+
+    private final TheBotProperties theBotProperties;
+
+    private final LogService logService;
+
+    @Autowired
+    public EventPublisherService(TheBotProperties theBotProperties) {
+        this.theBotProperties = theBotProperties;
+        logService = new LogServiceImpl(this.theBotProperties.getLogDir());
+    }
 
     private void publishToEngine(BotConnection connection, String message, String sender, String replyTo) {
         EngineRequest request
@@ -48,6 +63,21 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
+    @Async
+    void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
+        log.debug("Do log: {}", messageSource);
+
+        LocalDateTime ldt = LocalDateTime.now();
+
+        String time = String.format("%02d:%02d:%02d", ldt.getHour(), ldt.getMinute(), ldt.getSecond());
+        String logMessage = String.format("%s %s: %s", time, sender, message);
+
+        this.logService.logChannelMessage(ldt, messageSource, network, channel, logMessage);
+//        logService.logChannelMessage();
+//        this.logService.logChannelMessage();
+    }
+
+
     public void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
@@ -59,6 +89,7 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
+        logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
         publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget());
     }
@@ -80,7 +111,7 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
-
+        logMessage(MessageSource.DISCORD_MESSAGE, "discord", event.getChannel().toString(), event.getMessageAuthor().getName(), event.getMessageContent());
         publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo);
 
     }
