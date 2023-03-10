@@ -11,6 +11,7 @@ import org.freakz.io.clients.EngineClient;
 import org.freakz.io.config.ConfigService;
 import org.freakz.io.config.TheBotProperties;
 import org.freakz.io.service.MessageFeederService;
+import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +66,7 @@ public class EventPublisherService implements EventPublisher {
 
     @Async
     void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
-        log.debug("Do log: {}", messageSource);
+//        log.debug("Do log: {}", messageSource);
 
         LocalDateTime ldt = LocalDateTime.now();
 
@@ -111,9 +112,25 @@ public class EventPublisherService implements EventPublisher {
                 .build();
         int size = messageFeederService.insertMessage(msg);
         log.debug("Feed size after insert: {}", size);
-        logMessage(MessageSource.DISCORD_MESSAGE, "discord", event.getChannel().toString(), event.getMessageAuthor().getName(), event.getMessageContent());
-        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo);
 
+        String logMessage;
+        if (event.getMessage().getAttachments().size() > 0) {
+            StringBuilder sb = new StringBuilder(event.getMessageContent());
+            sb.append(" [");
+            for (MessageAttachment attachment : event.getMessage().getAttachments()) {
+                sb.append("<attachment>");
+            }
+            sb.append("]");
+            logMessage = sb.toString();
+        } else {
+            logMessage = event.getMessageContent();
+        }
+        logMessage(MessageSource.DISCORD_MESSAGE, "discord", replyTo, event.getMessageAuthor().getName(), logMessage);
+
+        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo);
+/*
+Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
+ */
     }
 
     @Override
