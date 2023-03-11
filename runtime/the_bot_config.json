@@ -4,7 +4,7 @@
   },
   "discordConfig": {
     "token": "${DISCORD_SECRET}",
-    "connectStartup": "true"
+    "connectStartup": "false"
   },
   "telegramConfig": {
     "token": "${TELEGRAM_SECRET}",
@@ -25,7 +25,7 @@
           "name": "#HokanDEVv"
         }
       ],
-      "connectStartup": "true"
+      "connectStartup": "false"
     }
   ]
 }

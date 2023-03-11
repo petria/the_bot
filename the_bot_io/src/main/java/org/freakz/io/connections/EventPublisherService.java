@@ -17,6 +17,8 @@ import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.time.LocalDateTime;
 
@@ -79,7 +81,7 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
-    public void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
+    private void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
                 .messageSource(MessageSource.IRC_MESSAGE)
@@ -94,6 +96,25 @@ public class EventPublisherService implements EventPublisher {
 
         publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget());
     }
+
+    private void publishTelegramEvent(BotConnection connection, Update update) {
+        log.debug("Publish TELEGRAM event: {}", update);
+
+        User from = update.getMessage().getFrom();
+
+
+        Message msg = Message.builder()
+                .messageSource(MessageSource.TELEGRAM_MESSAGE)
+                .time(LocalDateTime.now())
+                .sender(from.getUserName())
+                .target(update.getMessage().getChat().getId() + "")
+                .message(update.getMessage().getText())
+                .build();
+        publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget());
+
+    }
+
+
 
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
@@ -138,6 +159,8 @@ Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/10
         switch (connection.getType()) {
             case IRC_CONNECTION -> publishIrcEvent(connection, (ChannelMessageEvent) source);
             case DISCORD_CONNECTION -> publishDiscordEvent(connection, (MessageCreateEvent) source);
+            case TELEGRAM_CONNECTION -> publishTelegramEvent(connection, (Update) source);
         }
     }
+
 }

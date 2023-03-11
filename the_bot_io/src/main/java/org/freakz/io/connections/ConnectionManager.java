@@ -65,6 +65,7 @@ public class ConnectionManager {
         if (theBotConfig.getTelegramConfig().isConnectStartup()) {
             TelegramConnection tc = new TelegramConnection(this.eventPublisher);
             tc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
+            addConnection(tc);
         } else {
             log.warn("TELEGRAM Startup connect disabled: {}", theBotConfig.getTelegramConfig());
         }
@@ -121,6 +122,7 @@ public class ConnectionManager {
 */
         BotConnection connection = this.connectionMap.get(connectionId);
         if (connection != null) {
+            log.debug("sendTo: {}", connection);
             connection.sendMessageTo(message);
         } else {
             throw new InvalidChannelIdException("No connection found with connectionId: " + connectionId);

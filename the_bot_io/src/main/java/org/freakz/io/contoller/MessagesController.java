@@ -39,6 +39,7 @@ public class MessagesController {
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
