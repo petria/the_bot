@@ -2,7 +2,7 @@ package org.freakz.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.TheBotConfig;
+import org.freakz.common.model.json.botconfig.TheBotConfig;
 
 import java.io.FileInputStream;
 import java.io.IOException;

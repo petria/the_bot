@@ -1,4 +1,4 @@
-package org.freakz.common.model.json;
+package org.freakz.common.model.json.botconfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 @NoArgsConstructor
-public class IrcServer {
+public class TelegramConfig {
 
-    private String host;
-    private int port;
+    private String token;
 
+    private boolean connectStartup;
 
 }

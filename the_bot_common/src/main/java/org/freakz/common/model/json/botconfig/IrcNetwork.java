@@ -1,4 +1,4 @@
-package org.freakz.common.model.json;
+package org.freakz.common.model.json.botconfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

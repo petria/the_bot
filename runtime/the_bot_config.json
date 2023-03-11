@@ -3,7 +3,12 @@
     "botName": "HokanDEVv"
   },
   "discordConfig": {
-    "token": "${DISCORD_SECRET}"
+    "token": "${DISCORD_SECRET}",
+    "connectStartup": "true"
+  },
+  "telegramConfig": {
+    "token": "${TELEGRAM_SECRET}",
+    "connectStartup": "true"
   },
   "ircServerConfigs": [
     {
@@ -19,7 +24,8 @@
         {
           "name": "#HokanDEVv"
         }
-      ]
+      ],
+      "connectStartup": "true"
     }
   ]
 }

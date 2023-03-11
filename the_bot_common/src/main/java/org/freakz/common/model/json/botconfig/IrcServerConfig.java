@@ -1,4 +1,4 @@
-package org.freakz.common.model.json;
+package org.freakz.common.model.json.botconfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,5 +16,7 @@ public class IrcServerConfig {
     private String name;
     private IrcNetwork ircNetwork;
     private List<IrcChannel> channelList;
+
+    private boolean connectStartup;
 
 }

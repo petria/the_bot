@@ -3,12 +3,13 @@ package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidChannelIdException;
-import org.freakz.common.model.json.IrcServerConfig;
-import org.freakz.common.model.json.TheBotConfig;
+import org.freakz.common.model.json.botconfig.IrcServerConfig;
+import org.freakz.common.model.json.botconfig.TheBotConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.freakz.io.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -35,25 +36,38 @@ public class ConnectionManager {
 
 
     @PostConstruct
-    public void init() throws IOException {
+    public void init() throws IOException, TelegramApiException {
 
         TheBotConfig theBotConfig = configService.readBotConfig();
         log.debug(">> Connecting IRC");
         for (IrcServerConfig config : theBotConfig.getIrcServerConfigs()) {
             log.debug("init IrcServerConfig: {}", config);
-
-            IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
-            isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
-//            addConnection(isc);
-
+            if (config.isConnectStartup()) {
+                IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
+                isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
+            } else {
+                log.warn("IRC Startup connect disabled: {}", config);
+            }
         }
-//        log.debug(">> Start IrcServerConnections");
         log.debug("<< done!");
 
         log.debug(">> Connecting DISCORD");
-        DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
-        dsc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
-        addConnection(dsc);
+        if (theBotConfig.getDiscordConfig().isConnectStartup()) {
+            DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
+            dsc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
+            addConnection(dsc);
+        } else {
+            log.warn("DISCORD Startup connect disabled: {}", theBotConfig.getDiscordConfig());
+        }
+        log.debug(">> done!");
+
+        log.debug(">> Connecting TELEGRAM");
+        if (theBotConfig.getTelegramConfig().isConnectStartup()) {
+            TelegramConnection tc = new TelegramConnection(this.eventPublisher);
+            tc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
+        } else {
+            log.warn("TELEGRAM Startup connect disabled: {}", theBotConfig.getTelegramConfig());
+        }
         log.debug(">> done!");
 
     }

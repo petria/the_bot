@@ -2,10 +2,8 @@ package org.freakz.data;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
-import org.freakz.common.model.json.TheBotConfig;
 import org.freakz.config.TheBotProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

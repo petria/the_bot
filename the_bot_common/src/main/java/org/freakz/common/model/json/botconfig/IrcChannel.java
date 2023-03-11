@@ -1,4 +1,4 @@
-package org.freakz.common.model.json;
+package org.freakz.common.model.json.botconfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 @NoArgsConstructor
-public class BotConfig {
+public class IrcChannel {
 
-    private String botName;
+    private String name;
 
 }

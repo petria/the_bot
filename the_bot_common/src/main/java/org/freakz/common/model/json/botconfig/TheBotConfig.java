@@ -1,4 +1,4 @@
-package org.freakz.common.model.json;
+package org.freakz.common.model.json.botconfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +18,8 @@ public class TheBotConfig {
 
     private BotConfig botConfig;
     private DiscordConfig discordConfig;
+
+    private TelegramConfig telegramConfig;
     private List<IrcServerConfig> ircServerConfigs;
 
 }

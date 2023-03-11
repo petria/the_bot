@@ -30,7 +30,7 @@
         <org.kitteh.irc.version>8.0.0</org.kitteh.irc.version>
         <org.reflections.version>0.10.2</org.reflections.version>
         <org.javacord.version>3.6.0</org.javacord.version>
-
+        <telegrambots.version>6.5.0</telegrambots.version>
     </properties>
 
     <modules>
