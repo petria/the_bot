@@ -94,9 +94,10 @@ public class CommandHandler {
             JSAPResult results = null;
             IDMap map = abstractCmd.getJsap().getIDMap();
             Iterator iterator = map.idIterator();
-            String[] commandArgs = args.getArgs();
+
+            String argsLine = args.joinArgs(0);
             if (iterator.hasNext()) {
-                results = abstractCmd.getJsap().parse(commandArgs);
+                results = abstractCmd.getJsap().parse(argsLine);
                 parseRes = results.success();
             } else {
                 parseRes = true;

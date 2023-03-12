@@ -53,10 +53,12 @@ public class CommandArgs implements Serializable {
     public String[] getArgs() {
         return this.args;
     }
-/*    public String getArgs() {
-        return joinArgs(1);
-    }
 
+    /*    public String getArgs() {
+            return joinArgs(1);
+        }
+
+    */
     public String joinArgs(int fromArg) {
         boolean isFirst = true;
         StringBuilder sb = new StringBuilder();
@@ -71,5 +73,4 @@ public class CommandArgs implements Serializable {
         return sb.toString();
     }
 
-*/
 }
