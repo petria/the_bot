@@ -49,6 +49,7 @@ public class TelegramConnection extends BotConnection {
 //        telegramBot.
          bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+        //botsApi.
         botsApi.registerBot(bot);
 
     }

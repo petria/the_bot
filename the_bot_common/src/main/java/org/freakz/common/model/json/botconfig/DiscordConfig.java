@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @Builder
 @Data
@@ -12,6 +14,8 @@ import lombok.NoArgsConstructor;
 public class DiscordConfig {
 
     private String token;
+
+    private List<Channel> channelList;
 
     private boolean connectStartup;
 

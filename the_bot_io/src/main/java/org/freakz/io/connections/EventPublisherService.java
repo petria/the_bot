@@ -58,10 +58,10 @@ public class EventPublisherService implements EventPublisher {
         try {
             Response response = engineClient.handleEngineRequest(request);
             if (response.status() != 200) {
-                log.error("{}: Engine not running?!", response.status());
+                log.error("{}: Engine not running: {}", response.status(), response.reason());
             }
         } catch (Exception e) {
-            log.error("Unable to send to Engine!");
+            log.error("Unable to send to Engine: {}", e.getMessage());
         }
     }
 
@@ -110,6 +110,9 @@ public class EventPublisherService implements EventPublisher {
                 .target(update.getMessage().getChat().getId() + "")
                 .message(update.getMessage().getText())
                 .build();
+        logMessage(MessageSource.TELEGRAM_MESSAGE, "telegram", msg.getTarget(), msg.getSender(), msg.getMessage());
+
+
         publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget());
 
     }

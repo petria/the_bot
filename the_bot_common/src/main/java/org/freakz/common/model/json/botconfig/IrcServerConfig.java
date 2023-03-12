@@ -15,7 +15,7 @@ public class IrcServerConfig {
 
     private String name;
     private IrcNetwork ircNetwork;
-    private List<IrcChannel> channelList;
+    private List<Channel> channelList;
 
     private boolean connectStartup;
 

@@ -4,10 +4,27 @@
   },
   "discordConfig": {
     "token": "${DISCORD_SECRET}",
-    "connectStartup": "false"
+    "channelList": [
+      {
+        "id": "1033431599708123278",
+        "description": "bot dev discord",
+        "name": "hokandev",
+        "type": "SERVER_TEXT_CHANNEL"
+      }
+    ],
+    "connectStartup": "true"
   },
   "telegramConfig": {
     "token": "${TELEGRAM_SECRET}",
+    "channelList": [
+      {
+        "id": "-907862942",
+        "description": "bot dev telegram",
+        "name": "HokanDEVGroup",
+        "type": "group"
+      }
+    ],
+
     "connectStartup": "true"
   },
   "ircServerConfigs": [
@@ -22,7 +39,10 @@
       },
       "channelList": [
         {
-          "name": "#HokanDEVv"
+          "id": "test_0",
+          "description": "bot dev",
+          "name": "#HokanDEVv",
+          "type": "IrcPublic"
         }
       ],
       "connectStartup": "false"

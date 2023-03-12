@@ -7,6 +7,8 @@ import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.MessageCreateEvent;
 
 import java.util.Optional;
@@ -36,10 +38,14 @@ public class DiscordServerConnection extends BotConnection {
                 .setAllIntents()
                 .setToken(token).login().join();
         this.api.addMessageCreateListener(this::messageListener);
-
+//
+//        apithis.api.getChannels().stream().toList().get(0).asServerTextChannel().get().getServer().
 //        String botInvite = api.createBotInvite();
 //        int foo = 0;
-
+        Set<Server> servers = api.getServers();
+        Server server = servers.stream().toList().get(0);
+        Set<User> members = server.getMembers();
+        int foo = 0;
     }
 
     @Override

@@ -9,8 +9,16 @@ import lombok.NoArgsConstructor;
 @Builder
 @Data
 @NoArgsConstructor
-public class IrcChannel {
+public class Channel {
+
+
+    private String id;
+
+    private String description;
 
     private String name;
+
+
+    private String type;
 
 }
