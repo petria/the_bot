@@ -46,9 +46,10 @@ public class EventPublisherService implements EventPublisher {
         logService = new LogServiceImpl(this.theBotProperties.getLogDir());
     }
 
-    private void publishToEngine(BotConnection connection, String message, String sender, String replyTo) {
+    private void publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId) {
         EngineRequest request
                 = EngineRequest.builder()
+                .fromChannelId(channelId)
                 .timestamp(System.currentTimeMillis())
                 .command(message)
                 .replyTo(replyTo)
@@ -94,7 +95,7 @@ public class EventPublisherService implements EventPublisher {
         log.debug("Feed size after insert: {}", size);
         logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
-        publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget());
+        publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null);
     }
 
     private void publishTelegramEvent(BotConnection connection, Update update) {
@@ -113,7 +114,7 @@ public class EventPublisherService implements EventPublisher {
         logMessage(MessageSource.TELEGRAM_MESSAGE, "telegram", msg.getTarget(), msg.getSender(), msg.getMessage());
 
 
-        publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget());
+        publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null);
 
     }
 
@@ -121,6 +122,8 @@ public class EventPublisherService implements EventPublisher {
 
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
+        long id = event.getChannel().getId();
+
         String channelStr = event.getChannel().toString();
         // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
         int idx1 = channelStr.indexOf("name: ");
@@ -128,6 +131,7 @@ public class EventPublisherService implements EventPublisher {
         log.debug("replyTo: '{}'", replyTo);
 
         Message msg = Message.builder()
+                .id(id)
                 .messageSource(MessageSource.DISCORD_MESSAGE)
                 .time(LocalDateTime.now())
                 .sender(event.getMessageAuthor().getName())
@@ -151,7 +155,7 @@ public class EventPublisherService implements EventPublisher {
         }
         logMessage(MessageSource.DISCORD_MESSAGE, "discord", replyTo, event.getMessageAuthor().getName(), logMessage);
 
-        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo);
+        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id);
 /*
 Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
  */

@@ -6,6 +6,7 @@ import org.freakz.common.model.json.feed.Message;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
+import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
@@ -51,7 +52,12 @@ public class DiscordServerConnection extends BotConnection {
     @Override
     public void sendMessageTo(Message message) {
         Channel channel = null;
-        for (Channel ch : api.getChannels()) {
+        Set<Channel> channels = api.getChannels();
+        for (Channel ch : channels) {
+            if (ch.getId() == message.getId()) {
+                channel = ch;
+                break;
+            }
             String t = ch.toString();
             if (t.contains("name: " + message.getTarget())) {
                 channel = ch;
@@ -63,10 +69,14 @@ public class DiscordServerConnection extends BotConnection {
             Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
             if (serverTextChannel.isPresent()) {
                 serverTextChannel.get().sendMessage(message.getMessage());
-            } else {
-                log.error("{} is not a text channel!", message.getTarget());
+                return;
             }
-
+            Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
+            if (privateChannel.isPresent()) {
+                privateChannel.get().sendMessage(message.getMessage());
+                return;
+            }
+            log.error("Could not send reply: {}" ,message);
         } else {
             log.error("Can't send message to: {}", message.getTarget());
         }

@@ -17,6 +17,8 @@ public class EngineRequest {
     private String command;
     private String replyTo;
     private int fromConnectionId;
+
+    private Long fromChannelId;
     private String fromSender;
 
     public String getMessage() {
