@@ -1,4 +1,4 @@
-package org.freakz.io.connections;
+package org.freakz.common.dto;
 
 public enum BotConnectionType {
 

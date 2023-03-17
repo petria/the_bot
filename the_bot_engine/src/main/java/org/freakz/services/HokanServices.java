@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.reflections.Reflections;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -19,15 +20,18 @@ public class HokanServices {
 
     private final ConfigService configService;
 
-    public HokanServices(@Qualifier("Services") Executor executor, ConfigService configService) {
+    public HokanServices(@Qualifier("Services") Executor executor, ConfigService configService, ApplicationContext applicationContext) {
         this.executor = executor;
         this.configService = configService;
+        this.applicationContext = applicationContext;
     }
 
+    private final ApplicationContext applicationContext;
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
             ServiceHandler serviceHandler = findServiceMessageHandlers(serviceRequestType);
             if (serviceHandler != null) {
+                request.setApplicationContext(applicationContext);
                 return (T) serviceHandler.handleServiceRequest(request);
             } else {
                 log.error("Service handler not found for: {}", serviceRequestType);
