@@ -11,7 +11,6 @@ import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @HokanCommandHandler
 @Slf4j

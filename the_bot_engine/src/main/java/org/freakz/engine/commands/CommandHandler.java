@@ -128,7 +128,7 @@ public class CommandHandler {
                 .requestTimestamp(request.getTimestamp())
                 .message(reply)
                 .target(request.getReplyTo())
-                .id(request.getFromChannelId())
+                .id(""+ request.getFromChannelId())
                 .build();
 
         try {

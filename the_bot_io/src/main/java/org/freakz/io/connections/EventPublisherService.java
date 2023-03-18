@@ -132,7 +132,7 @@ public class EventPublisherService implements EventPublisher {
         log.debug("replyTo: '{}'", replyTo);
 
         Message msg = Message.builder()
-                .id(id)
+                .id("" + id)
                 .messageSource(MessageSource.DISCORD_MESSAGE)
                 .time(LocalDateTime.now())
                 .sender(event.getMessageAuthor().getName())

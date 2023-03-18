@@ -27,7 +27,7 @@ public class MessageFeederService {
     public int insertMessage(Message message) {
         message.setTimestamp(System.currentTimeMillis());
 //        message.setTime(LocalDateTime.now());
-        message.setId(this.feed.size());
+        message.setId("" + this.feed.size());
         this.feed.add(message);
         return this.feed.size();
     }
@@ -48,7 +48,8 @@ public class MessageFeederService {
     public List<Message> getMessagesAfterId(long id) {
         List<Message> list = new ArrayList<>();
         for (Message message : this.feed) {
-            if (message.getId() > id) {
+            int msgId = Integer.parseInt(message.getId());
+            if (msgId > id) {
                 list.add(message);
             }
         }

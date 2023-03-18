@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @ToString
 public class Message {
 
-    private long id = 0;
+    private String id = "0";
     private MessageSource messageSource;
     private long timestamp;
     private long requestTimestamp;
@@ -24,6 +24,5 @@ public class Message {
     private String sender;
     private String target;
     private String message;
-
 
 }
