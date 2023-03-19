@@ -9,7 +9,6 @@ import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.server.Server;
-import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.MessageCreateEvent;
 
 import java.util.Optional;
@@ -36,17 +35,40 @@ public class DiscordServerConnection extends BotConnection {
         String token = config.getToken();
         this.api
                 = new DiscordApiBuilder()
+                .addMessageCreateListener(this::messageListener)
+                .addServerBecomesAvailableListener(event -> {
+                    log.debug("loaded: {}", event);
+                    updateChannelMap(event.getApi());
+                })
                 .setAllIntents()
-                .setToken(token).login().join();
-        this.api.addMessageCreateListener(this::messageListener);
-//
-//        apithis.api.getChannels().stream().toList().get(0).asServerTextChannel().get().getServer().
-//        String botInvite = api.createBotInvite();
-//        int foo = 0;
+                .setToken(token)
+                .setWaitForServersOnStartup(false)
+                .login()
+                .join();
+
+    }
+
+    private void updateChannelMap(DiscordApi api) {
         Set<Server> servers = api.getServers();
-        Server server = servers.stream().toList().get(0);
-        Set<User> members = server.getMembers();
-        int foo = 0;
+        for (Server server : servers) {
+            for (Channel channel : server.getChannels()) {
+                String channelStr = channel.toString();
+                int idx1 = channelStr.indexOf("name: ");
+                String name = channelStr.substring(idx1 + 6, channelStr.length() - 1);
+
+                BotConnectionChannel botConnectionChannel = getChannelMap().get(name);
+                if (botConnectionChannel == null) {
+                    botConnectionChannel = new BotConnectionChannel();
+                    getChannelMap().put(name, botConnectionChannel);
+                }
+                botConnectionChannel.setId("" + channel.getId());
+                botConnectionChannel.setName(name);
+                botConnectionChannel.setNetwork(getNetwork());
+                botConnectionChannel.setType(getType().toString());
+
+            }
+        }
+
     }
 
     @Override
@@ -87,8 +109,7 @@ public class DiscordServerConnection extends BotConnection {
     private void messageListener(MessageCreateEvent event) {
         log.debug("Discord msg: {}", event.toString());
         publisher.publishEvent(this, event);
-        Set<Channel> channels = this.api.getChannels();
-        int foo = 0;
+        updateChannelMap(event.getApi());
     }
 
 }

@@ -3,21 +3,18 @@ package org.freakz.common.model.json.connectionmanager;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
+import lombok.ToString;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BotConnectionResponse {
+@ToString
+public class BotConnectionChannelResponse {
 
-    private int id;
+    private String id;
 
     private String type;
 
     private String network;
-
-    private List<BotConnectionChannelResponse> channels = new ArrayList<>();
-
+    private String name;
 }
