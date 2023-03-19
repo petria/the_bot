@@ -2,6 +2,7 @@ package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.dto.BotConnection;
+import org.freakz.common.mappers.DataToDTOMapper;
 import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.ConnectionManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,17 +19,20 @@ import java.util.Map;
 public class ConnectionManagerController {
 
     private final ConnectionManager connectionManager;
+    private final DataToDTOMapper mapper;
 
     @Autowired
-    public ConnectionManagerController(ConnectionManager connectionManager) {
+    public ConnectionManagerController(ConnectionManager connectionManager, DataToDTOMapper mapper) {
         this.connectionManager = connectionManager;
+        this.mapper = mapper;
     }
 
     @GetMapping("/get_connection_map")
     public ResponseEntity<?> getConnectionMap() {
         Map<Integer, BotConnection> connectionMap = connectionManager.getConnectionMap();
-        GetConnectionMapResponse response = new GetConnectionMapResponse();
-        response.setConnectionMap(connectionMap);
+        GetConnectionMapResponse response = mapper.toGetConnectionMapResponse(connectionMap);
+        //new GetConnectionMapResponse();
+//        response.setConnectionMap(connectionMap);
         return ResponseEntity.ok(response);
     }
 

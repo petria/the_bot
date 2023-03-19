@@ -24,6 +24,6 @@ public class ConnectionMapCmd extends AbstractCmd {
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
         ConnectionsResponse response = doServiceRequest(request, results, ServiceRequestType.ConnectionControlService);
-        return "ConnectionMap!";
+        return "ConnectionMap: " + response.getConnectionMap();
     }
 }
