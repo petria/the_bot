@@ -4,6 +4,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.feed.Message;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 public class BotConnection {
 
@@ -11,6 +14,9 @@ public class BotConnection {
 
     @Getter
     private int id;
+
+    @Getter
+    private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
 
     @Getter
     private BotConnectionType type;

@@ -49,6 +49,7 @@ public class IrcServerConnection extends BotConnection {
         }
         // It's not me!
         event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
+        updateChannelMap(event.getChannel().getName());
     }
 
     @Handler
@@ -66,19 +67,37 @@ public class IrcServerConnection extends BotConnection {
 
     @Handler
     public void onChannelUsersUpdatedEvent(ChannelUsersUpdatedEvent event) {
+        String channelName = event.getChannel().getName();
+        log.debug("onChannelUsersUpdatedEvent: {}", channelName);
+        updateChannelMap(channelName);
         int foo = 0;
+    }
+
+    private void updateChannelMap(String channelName) {
+        BotConnectionChannel botConnectionChannel = getChannelMap().get(channelName);
+        if (botConnectionChannel == null) {
+            botConnectionChannel = new BotConnectionChannel();
+            getChannelMap().put(channelName, botConnectionChannel);
+        }
+        botConnectionChannel.setName(channelName);
+        botConnectionChannel.setType(getType().name());
+        botConnectionChannel.setNetwork(getNetwork());
+
+        log.debug("Updated channel: {}", botConnectionChannel);
     }
 
     @Handler
     public void onChannelMessageEvent(ChannelMessageEvent event) {
         log.debug("Got msg: {}", event.getMessage());
         publisher.publishEvent(this, event);
+        updateChannelMap(event.getChannel().getName());
     }
 
     @Handler
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
         this.connectionManager.ircConnectionEstablished(this);
-        int foo = 0;
+        log.debug("Clear channel map to 0!");
+        getChannelMap().clear();
     }
 
     @Handler
