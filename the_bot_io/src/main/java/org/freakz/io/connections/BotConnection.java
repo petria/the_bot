@@ -1,4 +1,4 @@
-package org.freakz.common.dto;
+package org.freakz.io.connections;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

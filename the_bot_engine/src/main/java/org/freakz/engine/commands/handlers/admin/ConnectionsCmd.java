@@ -14,7 +14,7 @@ import org.freakz.services.ServiceRequestType;
 
 @HokanCommandHandler
 @Slf4j
-public class ConnectionMapCmd extends AbstractCmd {
+public class ConnectionsCmd extends AbstractCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {

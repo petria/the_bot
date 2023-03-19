@@ -1,10 +1,10 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.dto.BotConnection;
-import org.freakz.common.mappers.DataToDTOMapper;
 import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
+import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
+import org.freakz.io.mappers.DataToDTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

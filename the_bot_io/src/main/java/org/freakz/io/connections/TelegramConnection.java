@@ -1,8 +1,6 @@
 package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.dto.BotConnection;
-import org.freakz.common.dto.BotConnectionType;
 import org.freakz.common.model.json.botconfig.TelegramConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;

@@ -1,8 +1,8 @@
-package org.freakz.common.mappers;
+package org.freakz.io.mappers;
 
-import org.freakz.common.dto.BotConnection;
 import org.freakz.common.model.json.connectionmanager.BotConnectionResponse;
 import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
+import org.freakz.io.connections.BotConnection;
 
 import java.util.HashMap;
 import java.util.Map;

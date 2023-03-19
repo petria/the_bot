@@ -2,7 +2,6 @@ package org.freakz.io.connections;
 
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.dto.BotConnection;
 import org.freakz.common.logger.LogService;
 import org.freakz.common.logger.LogServiceImpl;
 import org.freakz.common.model.json.engine.EngineRequest;

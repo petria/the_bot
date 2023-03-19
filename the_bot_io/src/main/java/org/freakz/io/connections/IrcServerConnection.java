@@ -3,8 +3,6 @@ package org.freakz.io.connections;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
-import org.freakz.common.dto.BotConnection;
-import org.freakz.common.dto.BotConnectionType;
 import org.freakz.common.model.json.botconfig.IrcServerConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.kitteh.irc.client.library.Client;
