@@ -47,7 +47,7 @@ public class TelegramConnection extends BotConnection {
     public void init(String botName, TelegramConfig telegramConfig) throws TelegramApiException {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
-         bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName);
+         bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         //botsApi.
         botsApi.registerBot(bot);
@@ -59,18 +59,21 @@ public class TelegramConnection extends BotConnection {
         private final String botName;
         private final EventPublisher publisher;
         private final BotConnection connection;
+        private final TelegramConfig telegramConfig;
 
-        public HokanTelegram(String botToken, BotConnection connection, EventPublisher eventPublisher, String botName) {
+        public HokanTelegram(String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig telegramConfig) {
             super(botToken);
             this.botName = botName;
             this.publisher = eventPublisher;
             this.connection = connection;
+            this.telegramConfig = telegramConfig;
         }
 
         @Override
         public void onUpdateReceived(Update update) {
+            log.debug("Telegram update: {}", update);
             if (update.hasMessage() && update.getMessage().hasText()) {
-                log.debug("telegram update: {}", update);
+//                log.debug("telegram update: {}", update);
                 publisher.publishEvent(this.connection, update);
             }
 
@@ -79,6 +82,20 @@ public class TelegramConnection extends BotConnection {
         @Override
         public String getBotUsername() {
             return this.botName;
+        }
+
+        @Override
+        public void onRegister() {
+            log.debug("Telegram onRegister() !!");
+            telegramConfig.getChannelList().forEach(ch -> {
+                BotConnectionChannel channel = new BotConnectionChannel();
+                channel.setId(ch.getId());
+                channel.setNetwork(connection.getNetwork());
+                channel.setType(connection.getType().toString());
+                channel.setName(ch.getName());
+                connection.getChannelMap().put(ch.getId(), channel);
+            });
+
         }
     }
 
