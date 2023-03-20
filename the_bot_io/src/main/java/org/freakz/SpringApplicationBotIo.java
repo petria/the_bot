@@ -12,6 +12,11 @@ public class SpringApplicationBotIo {
 
     public static void main(String[] args) {
         //System.out.println("Hello world!");
-        org.springframework.boot.SpringApplication.run(SpringApplicationBotIo.class, args);
+        try {
+            org.springframework.boot.SpringApplication.run(SpringApplicationBotIo.class, args);
+
+        } catch (Exception e) {
+            int foo = 0;
+        }
     }
 }

@@ -4,6 +4,8 @@ public enum ServiceRequestType {
 
     ConnectionControlService,
     ForecaWeatherService,
-    KelikameratService
+    KelikameratService,
+
+    SendMessageByTargetAlias
 
 }

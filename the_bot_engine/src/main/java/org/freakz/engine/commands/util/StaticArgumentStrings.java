@@ -53,7 +53,7 @@ public class StaticArgumentStrings {
     public static final String ARG_STARTUP_STATE = "StartupState";
 
     public static final String ARG_SUN_UP_DOWN = "SunUpDown";
-    public static final String ARG_TARGET = "Target";
+    public static final String ARG_TARGET_ALIAS = "TargetAlias";
     public static final String ARG_TEXT = "Text";
     public static final String ARG_TELEGRAM_ID = "TelegramID";
     public static final String ARG_TIMEZONE = "TimeZone";
