@@ -59,6 +59,8 @@ public class DiscordServerConnection extends BotConnection {
                 BotConnectionChannel botConnectionChannel = getChannelMap().get(name);
                 if (botConnectionChannel == null) {
                     botConnectionChannel = new BotConnectionChannel();
+
+                    botConnectionChannel.setTargetAlias("DISCORD-" + getChannelMap().size());
                     getChannelMap().put(name, botConnectionChannel);
                 }
                 botConnectionChannel.setId("" + channel.getId());

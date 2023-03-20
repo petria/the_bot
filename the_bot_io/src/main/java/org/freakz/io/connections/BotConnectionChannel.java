@@ -13,6 +13,8 @@ public class BotConnectionChannel {
 
     private String id;
 
+    private String targetAlias;
+
     private String type;
 
     private String network;

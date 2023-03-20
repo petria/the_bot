@@ -30,7 +30,7 @@ public class MessageCmd extends AbstractCmd {
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
         String message = results.getString(ARG_MESSAGE);
-
+// TODO        doServiceRequest(request, results, ServiceRequestType.KelikameratService)
         return "Test from admin packag: " + message;
     }
 }

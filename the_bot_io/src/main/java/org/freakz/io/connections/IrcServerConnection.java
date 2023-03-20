@@ -77,7 +77,11 @@ public class IrcServerConnection extends BotConnection {
         BotConnectionChannel botConnectionChannel = getChannelMap().get(channelName);
         if (botConnectionChannel == null) {
             botConnectionChannel = new BotConnectionChannel();
+            botConnectionChannel.setId("" + getChannelMap().size());
+
+            botConnectionChannel.setTargetAlias("IRC-" + getChannelMap().size());
             getChannelMap().put(channelName, botConnectionChannel);
+
         }
         botConnectionChannel.setName(channelName);
         botConnectionChannel.setType(getType().name());

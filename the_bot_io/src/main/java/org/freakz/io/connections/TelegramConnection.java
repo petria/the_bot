@@ -47,7 +47,7 @@ public class TelegramConnection extends BotConnection {
     public void init(String botName, TelegramConfig telegramConfig) throws TelegramApiException {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
-         bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
+        bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         //botsApi.
         botsApi.registerBot(bot);
@@ -93,6 +93,7 @@ public class TelegramConnection extends BotConnection {
                 channel.setNetwork(connection.getNetwork());
                 channel.setType(connection.getType().toString());
                 channel.setName(ch.getName());
+                channel.setTargetAlias("TELEGRAM-" + connection.getChannelMap().size());
                 connection.getChannelMap().put(ch.getId(), channel);
             });
 

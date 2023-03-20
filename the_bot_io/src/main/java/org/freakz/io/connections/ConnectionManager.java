@@ -3,9 +3,11 @@ package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidChannelIdException;
+import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.IrcServerConfig;
 import org.freakz.common.model.json.botconfig.TheBotConfig;
 import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.json.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -109,6 +111,48 @@ public class ConnectionManager {
 
     public Map<Integer, BotConnection> getConnectionMap() {
         return this.connectionMap;
+    }
+
+
+    public void sendMessageByTargetAlias(String messageText, String targetAlias) throws InvalidTargetAliasException {
+        Dual dual = findChannelByTargetAlias(targetAlias);
+        if (dual != null) {
+            BotConnectionChannel channel = dual.channel;
+            BotConnection connection = dual.connection;
+
+            Message message = Message.builder()
+                    .message(messageText)
+                    .messageSource(MessageSource.NONE)
+                    .target(channel.getName())
+                    .build();
+
+            connection.sendMessageTo(message);
+
+        } else {
+            throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
+        }
+
+
+    }
+
+    class Dual {
+        public BotConnection connection;
+        public BotConnectionChannel channel;
+    }
+
+
+    private Dual findChannelByTargetAlias(String targetAlias) {
+        for (BotConnection connection : this.connectionMap.values()) {
+            for (BotConnectionChannel channel : connection.getChannelMap().values()) {
+                if (channel.getTargetAlias().matches(targetAlias)) {
+                    Dual r = new Dual();
+                    r.connection = connection;
+                    r.channel = channel;
+                    return r;
+                }
+            }
+        }
+        return null;
     }
 
     public void sendMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {
