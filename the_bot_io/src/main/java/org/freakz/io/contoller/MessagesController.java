@@ -1,6 +1,7 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasRequest;
 import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.common.model.json.feed.Message;
@@ -51,15 +52,15 @@ public class MessagesController {
     @PostMapping("/send_message_by_target_alias")
     public ResponseEntity<?> sendByTargetAlias(@RequestBody SendMessageByTargetAliasRequest request) {
         log.debug("Request: {}", request);
+        SendMessageByTargetAliasResponse response = new SendMessageByTargetAliasResponse();
         try {
-//            connectionManager.sendRawMessageToConnection(connectionId, message);
-            SendMessageByTargetAliasResponse response = new SendMessageByTargetAliasResponse();
-            response.setSentTo("Fufufu");
-            return ResponseEntity.ok(response);
+            connectionManager.sendMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
+            response.setSentTo(request.getTargetAlias());
 
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+        } catch (InvalidTargetAliasException e) {
+            response.setSentTo("NOK:  " + e.getMessage());
         }
+        return ResponseEntity.ok(response);
     }
 
 }

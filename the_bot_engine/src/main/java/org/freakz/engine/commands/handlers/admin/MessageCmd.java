@@ -38,8 +38,14 @@ public class MessageCmd extends AbstractCmd {
 
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
-//        String message = results.getString(ARG_MESSAGE);
         SendMessageByTargetResponse response = doServiceRequest(request, results, ServiceRequestType.SendMessageByTargetAlias);
-        return "Sent message to: " + response.getSendTo();
+        if (response.getSendTo().startsWith("NOK: ")) {
+            return "Could not send message: " + response.getSendTo();
+
+        } else {
+            return "Sent message to: " + response.getSendTo();
+
+        }
+
     }
 }
