@@ -227,19 +227,21 @@ public class KeliKameratService extends AbstractService {
                 String placeFromUrl = wd.getPlaceFromUrl();
                 String stationFromUrl = wd.getUrl().getStationUrl();
                 if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
-                    if (wd.getAir() == null) {
+
+                    KelikameratUrl url = wd.getUrl();
+                    log.debug("Refresh weather data: {}", wd.getPlace());
+                    KelikameratWeatherData updated = updateKelikameratWeatherData(url);
+
+                    if (updated.getAir() == null) {
                         continue;
                     }
-                    dataList.add(wd);
+                    dataList.add(updated);
                 }
             }
 
             response.setStatus(String.format("OK: %d from %d", dataList.size(), weatherDataList.size()));
             response.setDataList(dataList);
-
         }
-
-
         return response;
     }
 
@@ -248,8 +250,8 @@ public class KeliKameratService extends AbstractService {
         try {
             log.debug("Get station list");
             updateStations();
-            log.debug("Update 1st time: {}", stationUrls.size());
-            doUpdateData();
+//            log.debug("Update 1st time: {}", stationUrls.size());
+//            doUpdateData();
         } catch (Exception e) {
             e.printStackTrace();
             //response.setStatus("NOK: Initial data update failed: " + e.getMessage());

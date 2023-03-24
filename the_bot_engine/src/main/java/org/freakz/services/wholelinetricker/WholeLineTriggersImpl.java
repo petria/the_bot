@@ -60,7 +60,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
     public void checkPallo(EngineRequest eRequest) {
         int rnd = 1 + (int) (Math.random() * 100);
-        log.debug("rnd: {}", rnd);
+//        log.debug("rnd: {}", rnd);
         if (rnd > 20) {
             return;
         }
