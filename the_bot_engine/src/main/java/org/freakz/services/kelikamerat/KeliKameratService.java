@@ -229,7 +229,7 @@ public class KeliKameratService extends AbstractService {
                 if (StringStuff.match(placeFromUrl, regexp) || StringStuff.match(stationFromUrl, regexp)) {
 
                     KelikameratUrl url = wd.getUrl();
-                    log.debug("Refresh weather data: {}", wd.getPlace());
+                    log.debug("Refresh weather data: {}", wd);
                     KelikameratWeatherData updated = updateKelikameratWeatherData(url);
 
                     if (updated.getAir() == null) {
