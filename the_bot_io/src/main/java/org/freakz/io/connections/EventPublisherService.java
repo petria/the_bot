@@ -55,6 +55,7 @@ public class EventPublisherService implements EventPublisher {
                 .replyTo(replyTo)
                 .fromConnectionId(connection.getId())
                 .fromSender(sender)
+                .network(connection.getNetwork())
                 .build();
         try {
             Response response = engineClient.handleEngineRequest(request);

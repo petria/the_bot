@@ -19,7 +19,10 @@ public class EngineRequest {
     private int fromConnectionId;
 
     private Long fromChannelId;
+
     private String fromSender;
+
+    private String network;
 
     public String getMessage() {
         return command;
