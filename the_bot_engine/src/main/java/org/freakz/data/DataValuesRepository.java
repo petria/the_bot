@@ -2,7 +2,6 @@ package org.freakz.data;
 
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.storage.DataValues;
-import org.freakz.config.ConfigService;
 
 import java.util.List;
 
@@ -15,5 +14,4 @@ public interface DataValuesRepository {
 
     DataValues save(DataValues data) throws DataRepositoryException;
 
-    void initialize(ConfigService configService) throws Exception;
 }

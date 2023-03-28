@@ -6,7 +6,7 @@ import java.util.List;
 public enum TopCountsEnum {
 
     GLUGGA_COUNT(".*(\\*glugga\\*|\\*glug\\*).*", "GLUGGA_COUNT", "%s_LAST_GLUGGA", "*glugga*", "glugga", true),
-    RYYST_COUNT(".*(\\*ryyst\\*|\\*sip\\*|\\*sipasu\\*).*", "RYYST_COUNT", "%s_LAST_GLUGGA", "*ryyst*", "ryyst", true),
+    RYYST_COUNT(".*(\\*ryyst\\*|\\*sip\\*|\\*sipasu\\*).*", "RYYST_COUNT", "%s_LAST_RYYST", "*ryyst*", "ryyst", true),
     PUUH_COUNT("puuh", "PUUH_COUNT", "%s_LAST_PUUH", "*puuh", "puuh", true),
     JAATAVA_COUNT(".*(jäätävä).*", "JÄÄTÄVÄ_COUNT", "%s_LAST_JÄÄTÄVÄ", "*jäätävä*", "jäätävä", true),
     KALEERI_COUNT(".*(kaleeri).*", "KALEERI_COUNT", "%s_LAST_KALEERI", "*kaleeri*", "kaleeri", true),

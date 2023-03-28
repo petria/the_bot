@@ -6,6 +6,8 @@ public enum ServiceRequestType {
     ForecaWeatherService,
     KelikameratService,
 
-    SendMessageByTargetAlias
+    SendMessageByTargetAlias,
+
+    GetTopCountsService
 
 }

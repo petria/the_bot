@@ -18,13 +18,19 @@ public class EngineRequest {
     private String replyTo;
     private int fromConnectionId;
 
+    private boolean isPrivateChannel;
     private Long fromChannelId;
 
     private String fromSender;
 
     private String network;
 
+
     public String getMessage() {
         return command;
+    }
+
+    public boolean isPrivateChannel() {
+        return false;
     }
 }

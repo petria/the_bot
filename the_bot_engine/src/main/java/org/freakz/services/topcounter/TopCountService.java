@@ -71,6 +71,7 @@ public class TopCountService {
     private boolean doCalc(EngineRequest request, TopCountsEnum countEnum) throws DataRepositoryException {
         String message = request.getCommand(); //getIrcMessageEvent().getMessage().toLowerCase();
         if (message.matches(countEnum.getRegex())) {
+            log.debug("Match: {}", countEnum);
             String nick = request.getFromSender();//; getIrcMessageEvent().getSender().toLowerCase();
             String channel = request.getReplyTo(); //getIrcMessageEvent().getChannel().toLowerCase();
             String network = request.getNetwork();
@@ -160,6 +161,10 @@ public class TopCountService {
         );
 
         return keyWithTimeInfo;
+    }
+
+    public List<DataValuesModel> getDataValuesAsc(String channel, String network, String key) {
+        return this.dataValuesService.getDataValuesAsc(channel, network, key);
     }
 
 /*    private void processReply(IrcMessageEvent iEvent, String reply) {

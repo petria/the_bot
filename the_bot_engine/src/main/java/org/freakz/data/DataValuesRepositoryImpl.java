@@ -10,17 +10,24 @@ import org.freakz.common.storage.DataValues;
 import org.freakz.config.ConfigService;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 public class DataValuesRepositoryImpl implements DataValuesRepository {
 
-    private List<DataValues> dataValues = new ArrayList<>();
+    private final List<DataValues> dataValues = new ArrayList<>();
+    private final ConfigService configService;
 
     private ObjectMapper mapper = new ObjectMapper();
     private long highestId;
 
+
+    public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
+        this.configService = configService;
+        initialize();
+    }
 
     @Data
     @AllArgsConstructor
@@ -29,11 +36,11 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         private List<DataValues> data_values;
     }
 
-    public void initialize(ConfigService configService) throws Exception {
+    public void initialize() throws Exception {
         File dataFile = configService.getRuntimeDirFile("data_values.json");
         if (dataFile.exists()) {
             DataValuesJson dataValuesJson = mapper.readValue(dataFile, DataValuesJson.class);
-            this.dataValues = dataValuesJson.getData_values();
+            this.dataValues.addAll(dataValuesJson.getData_values());
             long highestId = -1;
             for (DataValues values : this.dataValues) {
                 if (values.getId() > highestId) {
@@ -47,6 +54,17 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         }
     }
 
+    public void saveDataValues() throws IOException {
+        synchronized (this.dataValues) {
+            File dataFile = configService.getRuntimeDirFile("data_values.json");
+            log.debug("synchronized start writing data values: {}", dataFile.getName());
+            DataValuesJson json = new DataValuesJson();
+            json.setData_values(this.dataValues);
+            mapper.writeValue(dataFile, json);
+            log.debug("synchronized block write done: {}", this.dataValues.size());
+        }
+    }
+
     @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
@@ -56,6 +74,15 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
     @Override
     public List<DataValues> findAllByChannelAndNetworkAndKeyNameIsLike(String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
+        for (DataValues values : this.dataValues) {
+            boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
+            boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
+            boolean matchKey = values.getKeyName().matches(keyLike);
+            if (matchChannel && matchNetwork && matchKey) {
+                matching.add(values);
+            }
+
+        }
         return matching;
     }
 
@@ -82,6 +109,7 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         if (data.getId() == null) {
             data.setId(getNextId());
             saved = data;
+            this.dataValues.add(saved);
         } else {
             saved = findById(data.getId());
         }
@@ -92,7 +120,15 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         saved.setNick(data.getNick());
         saved.setNetwork(data.getNetwork());
         saved.setChannel(data.getChannel());
+        log.debug("Saved: {}", saved);
         this.isDirty = true;
+
+        try {
+            saveDataValues();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         return saved;
     }
 
@@ -107,6 +143,7 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
 
     private Long getNextId() {
         this.highestId++; // TODO how to handle ?
+        log.debug("new highestId: {}", this.highestId);
         return this.highestId;
 //        return (long) this.dataValues.size();
     }

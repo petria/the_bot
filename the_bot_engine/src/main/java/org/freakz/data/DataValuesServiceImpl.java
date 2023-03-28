@@ -9,7 +9,6 @@ import org.freakz.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,19 +22,14 @@ import java.util.stream.IntStream;
 public class DataValuesServiceImpl implements DataValuesService {
 
     //    @Autowired
-    private DataValuesRepository dataValuesRepository = new DataValuesRepositoryImpl();
+    private final DataValuesRepository dataValuesRepository;
+
+    private final ConfigService configService;
 
     @Autowired
-    private ConfigService configService;
-
-
-    @PostConstruct
-    public void initializeService() {
-        try {
-            this.dataValuesRepository.initialize(configService);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public DataValuesServiceImpl(ConfigService configService) throws Exception {
+        this.configService = configService;
+        this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
     }
 
 
@@ -151,7 +145,7 @@ public class DataValuesServiceImpl implements DataValuesService {
     @Override
 //    @Transactional(readOnly = true)
     public List<DataValuesModel> getDataValuesAsc(String channel, String network, String key) {
-        String keyLike = key + "%";
+        String keyLike = key + ".*";
         List<DataValues> modelsList = dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, keyLike);
 
         final Map<String, DataValuesModel> combinedMap = combineCounters(modelsList, key);
