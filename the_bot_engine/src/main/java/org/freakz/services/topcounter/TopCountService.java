@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.storage.DataValuesModel;
-import org.freakz.common.storage.repository.DataValuesService;
 import org.freakz.common.util.StringStuff;
+import org.freakz.data.DataValuesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +24,6 @@ public class TopCountService {
     @Autowired
     public TopCountService(DataValuesService dataValuesService) {
         this.dataValuesService = dataValuesService;
-
     }
 
     //    @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TOP_COUNT_REQUEST)

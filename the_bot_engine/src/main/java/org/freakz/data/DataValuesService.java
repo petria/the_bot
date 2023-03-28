@@ -1,4 +1,4 @@
-package org.freakz.common.storage.repository;
+package org.freakz.data;
 
 import org.freakz.common.storage.DataValueStatsModel;
 import org.freakz.common.storage.DataValuesModel;

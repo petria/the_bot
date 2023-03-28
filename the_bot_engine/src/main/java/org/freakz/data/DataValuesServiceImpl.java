@@ -1,11 +1,14 @@
-package org.freakz.common.storage.repository;
+package org.freakz.data;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.storage.DataValueStatsModel;
 import org.freakz.common.storage.DataValues;
 import org.freakz.common.storage.DataValuesModel;
+import org.freakz.config.ConfigService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,7 +22,21 @@ import java.util.stream.IntStream;
 public class DataValuesServiceImpl implements DataValuesService {
 
     //    @Autowired
-    private DataValuesRepository dataValuesRepository;
+    private DataValuesRepository dataValuesRepository = new DataValuesRepositoryImpl();
+
+    @Autowired
+    private ConfigService configService;
+
+
+    @PostConstruct
+    public void initializeService() {
+        try {
+            this.dataValuesRepository.initialize(configService);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     private Map<String, DataValuesModel> combineCounters(List<DataValues> modelsList, String key) {
         Map<String, DataValuesModel> combinedMap = new HashMap<>();

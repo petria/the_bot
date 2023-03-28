@@ -1,5 +1,7 @@
 package org.freakz.common.storage;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,22 +21,28 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DataValues implements Serializable {
 
+    @JsonProperty("id")
     private long id;
 
+    @JsonProperty("nick")
     private String nick;
 
 
+    @JsonProperty("network")
     private String network;
 
 
+    @JsonProperty("channel")
     private String channel;
 
-
+    @JsonProperty("keyName")
     private String keyName;
 
 
+    @JsonProperty("value")
     private String value;
 
 }
