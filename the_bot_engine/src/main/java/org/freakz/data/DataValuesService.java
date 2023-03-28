@@ -1,5 +1,6 @@
 package org.freakz.data;
 
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.storage.DataValueStatsModel;
 import org.freakz.common.storage.DataValuesModel;
 
@@ -15,7 +16,7 @@ public interface DataValuesService {
 
     String getValue(String nick, String channel, String network, String key);
 
-    void setValue(String nick, String channel, String network, String key, String value);
+    void setValue(String nick, String channel, String network, String key, String value) throws DataRepositoryException;
 
     DataValueStatsModel getValueStats(String nick, String channel, String network, String key);
 }

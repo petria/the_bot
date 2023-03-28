@@ -1,5 +1,6 @@
 package org.freakz.data;
 
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.storage.DataValues;
 import org.freakz.config.ConfigService;
 
@@ -12,7 +13,7 @@ public interface DataValuesRepository {
 
     DataValues findByNickAndChannelAndNetworkAndKeyName(String nick, String channel, String network, String key);
 
-    DataValues save(DataValues data);
+    DataValues save(DataValues data) throws DataRepositoryException;
 
     void initialize(ConfigService configService) throws Exception;
 }

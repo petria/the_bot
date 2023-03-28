@@ -1,6 +1,7 @@
 package org.freakz.data;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.storage.DataValueStatsModel;
 import org.freakz.common.storage.DataValues;
 import org.freakz.common.storage.DataValuesModel;
@@ -196,7 +197,7 @@ public class DataValuesServiceImpl implements DataValuesService {
 
     @Override
 //    @Transactional
-    public void setValue(String nick, String channel, String network, String key, String value) {
+    public void setValue(String nick, String channel, String network, String key, String value) throws DataRepositoryException {
         DataValues data = dataValuesRepository.findByNickAndChannelAndNetworkAndKeyName(nick, channel, network, key);
         if (data == null) {
             data = new DataValues();

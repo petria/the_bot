@@ -2,6 +2,7 @@ package org.freakz.services.topcounter;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.storage.DataValuesModel;
 import org.freakz.common.util.StringStuff;
@@ -28,11 +29,15 @@ public class TopCountService {
 
     //    @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TOP_COUNT_REQUEST)
     public void calculateTopCounters(EngineRequest request) {
-
-        for (TopCountsEnum countEnum : TopCountsEnum.values()) {
-            if (doCalc(request, countEnum)) {
-                handleLastTime(request, countEnum);
+        try {
+            for (TopCountsEnum countEnum : TopCountsEnum.values()) {
+                if (doCalc(request, countEnum)) {
+                    handleLastTime(request, countEnum);
+                }
             }
+
+        } catch (DataRepositoryException e) {
+            log.error("TopCount failed", e);
         }
     }
 
@@ -41,7 +46,11 @@ public class TopCountService {
         String channel = request.getReplyTo(); //request.getEngineRequest().   getIrcMessageEvent().getChannel().toLowerCase();
         String network = request.getNetwork(); //request.getIrcMessageEvent().getNetwork().toLowerCase();
         String key = String.format(countEnum.getLastTimeKeyName(), nick.toUpperCase());
-        dataValuesService.setValue(nick, channel, network, key, System.currentTimeMillis() + "");
+        try {
+            dataValuesService.setValue(nick, channel, network, key, System.currentTimeMillis() + "");
+        } catch (DataRepositoryException e) {
+            log.error("Could not handleLastTime", e);
+        }
     }
 
     //                              0     1     2     3     4     5     6
@@ -59,7 +68,7 @@ public class TopCountService {
     }
 
 
-    private boolean doCalc(EngineRequest request, TopCountsEnum countEnum) {
+    private boolean doCalc(EngineRequest request, TopCountsEnum countEnum) throws DataRepositoryException {
         String message = request.getCommand(); //getIrcMessageEvent().getMessage().toLowerCase();
         if (message.matches(countEnum.getRegex())) {
             String nick = request.getFromSender();//; getIrcMessageEvent().getSender().toLowerCase();

@@ -25,7 +25,7 @@ import java.io.Serializable;
 public class DataValues implements Serializable {
 
     @JsonProperty("id")
-    private long id;
+    private Long id;
 
     @JsonProperty("nick")
     private String nick;
