@@ -38,12 +38,12 @@ public class DataValuesServiceImpl implements DataValuesService {
         Map<String, DataValuesModel> combinedMap = new HashMap<>();
 
         for (DataValues v : modelsList) {
-            String mapKey = String.format("%s_%s_%s", v.getNick(), v.getNetwork(), v.getChannel());
+            String mapKey = String.format("%s_%s_%s", v.getNick().toLowerCase(), v.getNetwork().toLowerCase(), v.getChannel().toLowerCase());
 
             DataValuesModel n = combinedMap.get(mapKey);
             if (n == null) {
-                n = new DataValuesModel(v.getNick(), v.getNetwork(), v.getChannel(), key, "1");
-                n.setNumberValue(1);
+                n = new DataValuesModel(v.getNick(), v.getNetwork(), v.getChannel(), key, "" + v.getValue());
+                n.setNumberValue(Integer.parseInt(v.getValue()));
                 combinedMap.put(mapKey, n);
             } else {
                 n.addToNumberValue(Integer.parseInt(v.getValue()));

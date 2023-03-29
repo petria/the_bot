@@ -7,6 +7,7 @@ import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.storage.DataValuesModel;
 import org.freakz.common.util.StringStuff;
 import org.freakz.data.DataValuesService;
+import org.freakz.engine.commands.CommandHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +21,21 @@ import java.util.Map;
 @Slf4j
 public class TopCountService {
 
+    private final CommandHandler commandHandler;
+
     private final DataValuesService dataValuesService;
 
     @Autowired
-    public TopCountService(DataValuesService dataValuesService) {
+    public TopCountService(CommandHandler commandHandler, DataValuesService dataValuesService) {
+        this.commandHandler = commandHandler;
         this.dataValuesService = dataValuesService;
     }
 
-    //    @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TOP_COUNT_REQUEST)
+
+    private void processReply(EngineRequest eRequest, String reply) {
+        commandHandler.sendReplyMessage(eRequest, reply);
+    }
+
     public void calculateTopCounters(EngineRequest request) {
         try {
             for (TopCountsEnum countEnum : TopCountsEnum.values()) {
@@ -69,7 +77,7 @@ public class TopCountService {
 
 
     private boolean doCalc(EngineRequest request, TopCountsEnum countEnum) throws DataRepositoryException {
-        String message = request.getCommand(); //getIrcMessageEvent().getMessage().toLowerCase();
+        String message = request.getCommand().toLowerCase();
         if (message.matches(countEnum.getRegex())) {
             log.debug("Match: {}", countEnum);
             String nick = request.getFromSender();//; getIrcMessageEvent().getSender().toLowerCase();
@@ -91,11 +99,8 @@ public class TopCountService {
                 for (int limit : COUNTS) {
                     if (count == limit) {
                         String rndMsg = StringStuff.getRandomString(COUNT_MSGS.get(limit));
-/*                        IrcMessageEvent iEvent = request.getIrcMessageEvent();
                         String positionChange = String.format("%s: %d. -> %s!!", countEnum.getPrettyName(), count, rndMsg);
-                        processReply(iEvent, iEvent.getSender() + ": " + positionChange);
-                        TODO
-                        */
+                        processReply(request, request.getFromSender() + ": " + positionChange);
                     }
                 }
 
@@ -138,9 +143,7 @@ public class TopCountService {
                         );
 
                     }
-//                    IrcMessageEvent iEvent = request.getIrcMessageEvent();
-//                    String positionChange = String.format("%s: %d. -> %d. !!", countEnum.getKeyName(), oldPos.position, newPos.position);
-//                    processReply(iEvent, iEvent.getSender() + ": " + posText);
+                    processReply(request, request.getFromSender() + ": " + posText);
                 }
             }
             return true;
@@ -171,13 +174,6 @@ public class TopCountService {
         return this.dataValuesService;
     }
 
-/*    private void processReply(IrcMessageEvent iEvent, String reply) {
-
-        NotifyRequest notifyRequest = new NotifyRequest();
-        notifyRequest.setNotifyMessage(reply);
-        notifyRequest.setTargetChannelId(iEvent.getChannelId());
-        jmsSender.send(HokanModule.HokanServices, HokanModule.HokanIo.getQueueName(), "WHOLE_LINE_TRIGGER_NOTIFY_REQUEST", notifyRequest, false);
-    }*/
 
     class PositionChange {
         DataValuesModel ahead = null;
