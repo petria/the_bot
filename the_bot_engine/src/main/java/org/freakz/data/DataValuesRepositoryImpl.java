@@ -114,9 +114,9 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
     @Override
     public DataValues findByNickAndChannelAndNetworkAndKeyName(String nick, String channel, String network, String key) {
         for (DataValues values : this.dataValues) {
-            boolean matchNick = values.getNick().equals(nick);
-            boolean matchChannel = values.getChannel().equals(channel);
-            boolean matchNetwork = values.getNetwork().equals(network);
+            boolean matchNick = values.getNick().equalsIgnoreCase(nick);
+            boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
+            boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
             boolean matchKey = values.getKeyName().equals(key);
             if (matchNick && matchChannel && matchNetwork && matchKey) {
                 return values;

@@ -1,4 +1,4 @@
-package org.freakz.engine.commands.handlers;
+package org.freakz.engine.commands.handlers.topcount;
 
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
@@ -49,7 +49,6 @@ public class TopCountsCmd extends AbstractCmd {
         String key = results.getString(ARG_TOP_KEY);
         if (key == null) {
             String ret = String.format("%s\n  TopKey must be one of: %s", getJsap().getUsage(), formatKeys());
-//            response.setResponseMessage(ret);
             return ret;
         }
 
@@ -59,9 +58,8 @@ public class TopCountsCmd extends AbstractCmd {
         } else {
             channel = results.getString(ARG_CHANNEL, engineRequest.getReplyTo()).toLowerCase();
         }
-        String network = engineRequest.getNetwork().toLowerCase();
 
-//        List<DataValuesModel> dataValues = dataValuesService.getDataValuesAsc(channel, network, key);
+
         TopCountsResponse response = doServiceRequest(engineRequest, results, ServiceRequestType.GetTopCountsService);
         List<DataValuesModel> dataValues = response.getDataValues();
         if (dataValues.size() > 0) {

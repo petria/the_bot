@@ -167,6 +167,10 @@ public class TopCountService {
         return this.dataValuesService.getDataValuesAsc(channel, network, key);
     }
 
+    public DataValuesService getDataValuesService() {
+        return this.dataValuesService;
+    }
+
 /*    private void processReply(IrcMessageEvent iEvent, String reply) {
 
         NotifyRequest notifyRequest = new NotifyRequest();

@@ -1,4 +1,4 @@
-package org.freakz.engine.commands.handlers;
+package org.freakz.engine.commands.handlers.topcount;
 
 import com.martiansoftware.jsap.FlaggedOption;
 import com.martiansoftware.jsap.JSAP;
