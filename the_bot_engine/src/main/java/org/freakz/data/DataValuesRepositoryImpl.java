@@ -20,8 +20,14 @@ import java.util.List;
 @Slf4j
 public class DataValuesRepositoryImpl implements DataValuesRepository {
 
+    private static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
+    private static final String DATA_VALUES_FILE_NAME = "data_values.json";
     private final List<DataValues> dataValues = new ArrayList<>();
     private final ConfigService configService;
+
+    private int saveTrigger = -1;
+
+    private boolean isDirty = false;
 
     private ObjectMapper mapper = new ObjectMapper();
     private long highestId;
@@ -40,7 +46,7 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
     }
 
     public void initialize() throws Exception {
-        File dataFile = configService.getRuntimeDirFile("data_values.json");
+        File dataFile = configService.getRuntimeDirFile(DATA_VALUES_FILE_NAME);
         if (dataFile.exists()) {
             DataValuesJson dataValuesJson = mapper.readValue(dataFile, DataValuesJson.class);
             this.dataValues.addAll(dataValuesJson.getData_values());
@@ -59,7 +65,7 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
 
     public void saveDataValues() throws IOException {
         synchronized (this.dataValues) {
-            String dataFileName = configService.getRuntimeDirFileName("data_values.json");
+            String dataFileName = configService.getRuntimeDirFileName(DATA_VALUES_FILE_NAME);
             log.debug("synchronized start writing data values: {}", dataFileName);
 
             DataValuesJson jsonPojo = new DataValuesJson();
@@ -71,7 +77,6 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         }
     }
 
-    private int saveTrigger = -1;
 
     @Override
     public void checkIsSavingNeeded() {
@@ -93,6 +98,15 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
     @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
+        for (DataValues values : this.dataValues) {
+            boolean matchNick = values.getNick().equalsIgnoreCase(nick);
+            boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
+            boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
+            boolean matchKey = values.getKeyName().matches(keyLike);
+            if (matchNick && matchChannel && matchNetwork && matchKey) {
+                matching.add(values);
+            }
+        }
         return matching;
     }
 
@@ -106,7 +120,6 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
             if (matchChannel && matchNetwork && matchKey) {
                 matching.add(values);
             }
-
         }
         return matching;
     }
@@ -125,8 +138,6 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         }
         return null;
     }
-
-    private boolean isDirty = false;
 
     @Override
     public DataValues save(DataValues data) throws DataRepositoryException {
@@ -147,12 +158,7 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         saved.setChannel(data.getChannel());
         log.debug("Saved: {}", saved);
         this.isDirty = true;
-        this.saveTrigger = 500;
-/*        try {
-            saveDataValues();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }*/
+        this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
 
         return saved;
     }
@@ -167,10 +173,9 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
     }
 
     private Long getNextId() {
-        this.highestId++; // TODO how to handle ?
+        this.highestId++;
         log.debug("new highestId: {}", this.highestId);
         return this.highestId;
-//        return (long) this.dataValues.size();
     }
 
 }

@@ -59,7 +59,7 @@ public class DataValuesServiceImpl implements DataValuesService {
         DataValueStatsModel stats = new DataValueStatsModel();
         String[] days = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
 
-        String keyLike = key + "%";
+        String keyLike = key + ".*";
         List<DataValues> modelsList = dataValuesRepository.findAllByNickAndChannelAndNetworkAndKeyNameIsLike(nick, channel, network, keyLike);
         Map<String, Integer> dayCounts = new HashMap<>();
         for (String day : days) {
