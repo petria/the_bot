@@ -17,6 +17,7 @@ public abstract class AbstractCmd implements HokanCmd {
     @Getter
     private JSAP jsap = new JSAP();
 
+    @Getter
     private CommandHandler commandHandler;
 
     public String getCommandClassName() {

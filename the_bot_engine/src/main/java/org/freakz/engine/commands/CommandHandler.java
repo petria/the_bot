@@ -27,6 +27,7 @@ public class CommandHandler {
 
     //    private final ApplicationContext applicationContext;
     private final MessageSendClient messageSendClient;
+    @Getter
     private final CommandHandlerLoader commandHandlerLoader;
     @Getter
     private final HokanServices hokanServices;

@@ -145,7 +145,10 @@ public class IrcServerConnection extends BotConnection {
             Cutter messageCutter = client.getMessageCutter();
             List<String> split = messageCutter.split(message.getMessage(), 400);
             for (String line : split) {
-                channel.get().sendMessage(line);
+                String splitted[] = line.split("\n");
+                for (String splitLine : splitted) {
+                    channel.get().sendMessage(splitLine);
+                }
             }
         } else {
             log.error("Can't send message to: {}", message.getTarget());

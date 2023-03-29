@@ -1,5 +1,6 @@
 package org.freakz.engine.commands;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
@@ -24,6 +25,7 @@ public class CommandHandlerLoader {
         }
     }
 
+    @Getter
     private Map<String, Class> handlersMap = new HashMap<>();
 
     public void initializeCommandHandlers() throws Exception {
