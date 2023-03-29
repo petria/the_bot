@@ -31,6 +31,10 @@ public class ConfigService {
         return file;
     }
 
+    public String getRuntimeDirFileName(String fileName) {
+        return botProperties.getRuntimeDir() + fileName;
+    }
+
     public void saveJsonToDataDir(String json, String fileName) {
 
     }

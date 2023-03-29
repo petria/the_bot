@@ -11,6 +11,9 @@ import org.freakz.config.ConfigService;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,11 +59,14 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
 
     public void saveDataValues() throws IOException {
         synchronized (this.dataValues) {
-            File dataFile = configService.getRuntimeDirFile("data_values.json");
-            log.debug("synchronized start writing data values: {}", dataFile.getName());
-            DataValuesJson json = new DataValuesJson();
-            json.setData_values(this.dataValues);
-            mapper.writeValue(dataFile, json);
+            String dataFileName = configService.getRuntimeDirFileName("data_values.json");
+            log.debug("synchronized start writing data values: {}", dataFileName);
+
+            DataValuesJson jsonPojo = new DataValuesJson();
+            jsonPojo.setData_values(this.dataValues);
+            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonPojo);
+            Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
+
             log.debug("synchronized block write done: {}", this.dataValues.size());
         }
     }
