@@ -26,7 +26,12 @@ public class CommandHandlerLoader {
     }
 
     @Getter
-    private Map<String, Class> handlersMap = new HashMap<>();
+    private Map<String, HandlerClass> handlersMap = new HashMap<>();
+
+    public class HandlerClass {
+        Class clazz;
+        Map<String, Class> aliases = new HashMap<>();
+    }
 
     public void initializeCommandHandlers() throws Exception {
         Reflections reflections = new Reflections("org.freakz.engine.commands.handlers");
@@ -42,8 +47,15 @@ public class CommandHandlerLoader {
                 throw new InvalidAnnotationException("Annotation class not ending Cmd: " + clazz);
             }
             log.debug("init: {}", name);
-            this.handlersMap.put(name, clazz);
-            int foo = 0;
+            HokanCmd hokanCmd = (HokanCmd) o;
+
+            HandlerClass handlerClass = new HandlerClass();
+            handlerClass.clazz = clazz;
+            for (String alias : ((HokanCmd) o).getAliases()) {
+                handlerClass.aliases.put(alias, clazz);
+            }
+
+            this.handlersMap.put(name, handlerClass);
         }
 
 
@@ -54,7 +66,8 @@ public class CommandHandlerLoader {
         for (String key : this.handlersMap.keySet()) {
             String match = String.format("!%s", key.toLowerCase());
             if (match.equalsIgnoreCase(trigger)) {
-                Class<?> aClass = this.handlersMap.get(key);
+                HandlerClass handlerClass = this.handlersMap.get(key);
+                Class<?> aClass = handlerClass.clazz;
                 Object o = aClass.getConstructor().newInstance();
                 HokanCmd hokanCmd = (HokanCmd) o;
                 hokanCmd.setCommandHandler(commandHandler);

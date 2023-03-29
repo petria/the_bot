@@ -11,6 +11,9 @@ import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
 import org.freakz.services.ServiceResponse;
 
+import java.util.Collections;
+import java.util.List;
+
 public abstract class AbstractCmd implements HokanCmd {
 
 
@@ -35,6 +38,11 @@ public abstract class AbstractCmd implements HokanCmd {
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
         throw new NotImplementedException("Command handler must Override initCommandOptions(): " + getClass().getSimpleName());
+    }
+
+    @Override
+    public List<String> getAliases() {
+        return Collections.emptyList();
     }
 
     @Override

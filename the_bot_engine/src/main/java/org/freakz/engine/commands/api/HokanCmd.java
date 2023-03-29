@@ -7,6 +7,8 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 
+import java.util.List;
+
 public interface HokanCmd {
 
     void setCommandHandler(CommandHandler commandHandler);
@@ -15,5 +17,5 @@ public interface HokanCmd {
 
     String executeCommand(EngineRequest request, JSAPResult results);
 
-
+    List<String> getAliases();
 }
