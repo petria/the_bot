@@ -71,6 +71,25 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         }
     }
 
+    private int saveTrigger = -1;
+
+    @Override
+    public void checkIsSavingNeeded() {
+        if (this.saveTrigger >= 0) {
+            this.saveTrigger = this.saveTrigger - 100;
+        }
+        if (isDirty) {
+            if (saveTrigger <= 0) {
+                try {
+                    saveDataValues();
+                    isDirty = false;
+                } catch (IOException e) {
+                    log.error("Saving data values failed", e);
+                }
+            }
+        }
+    }
+
     @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
@@ -128,12 +147,12 @@ public class DataValuesRepositoryImpl implements DataValuesRepository {
         saved.setChannel(data.getChannel());
         log.debug("Saved: {}", saved);
         this.isDirty = true;
-
-        try {
+        this.saveTrigger = 500;
+/*        try {
             saveDataValues();
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
+        }*/
 
         return saved;
     }

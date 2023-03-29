@@ -14,4 +14,5 @@ public interface DataValuesRepository {
 
     DataValues save(DataValues data) throws DataRepositoryException;
 
+    void checkIsSavingNeeded();
 }

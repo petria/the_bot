@@ -7,6 +7,7 @@ import org.freakz.common.storage.DataValues;
 import org.freakz.common.storage.DataValuesModel;
 import org.freakz.config.ConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -203,6 +204,12 @@ public class DataValuesServiceImpl implements DataValuesService {
         data.setValue(value);
         data = dataValuesRepository.save(data);
 
+    }
+
+
+    @Scheduled(fixedRate = 100)
+    public void repositorySaveTimer() {
+        this.dataValuesRepository.checkIsSavingNeeded();
     }
 
 }
