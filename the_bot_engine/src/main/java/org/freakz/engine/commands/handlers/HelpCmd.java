@@ -5,7 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
-import org.freakz.engine.commands.CommandHandlerLoader;
+import org.freakz.engine.commands.HandlerClass;
 import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
@@ -24,7 +24,7 @@ public class HelpCmd extends AbstractCmd {
 
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
-        Map<String, CommandHandlerLoader.HandlerClass> handlersMap = getCommandHandler().getCommandHandlerLoader().getHandlersMap();
+        Map<String, HandlerClass> handlersMap = getCommandHandler().getCommandHandlerLoader().getHandlersMap();
         String[] strings = new String[handlersMap.keySet().size()];
         String[] cmdNames = handlersMap.keySet().toArray(strings);
         Arrays.sort(cmdNames);

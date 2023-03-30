@@ -69,7 +69,15 @@ public class CommandHandler {
     private String parseAndExecute(EngineRequest request) {
         log.debug("Handle request: {}", request);
 
-        CommandArgs args = new CommandArgs(request.getMessage());
+
+        String message = request.getMessage();
+        HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);
+        if (handlerAlias != null) {
+            log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
+            message = handlerAlias.getTarget();
+        }
+
+        CommandArgs args = new CommandArgs(message);
         AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
         if (abstractCmd != null) {
 

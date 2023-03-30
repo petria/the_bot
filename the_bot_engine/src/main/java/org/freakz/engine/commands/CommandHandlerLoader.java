@@ -8,9 +8,9 @@ import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 @Slf4j
 public class CommandHandlerLoader {
@@ -26,12 +26,10 @@ public class CommandHandlerLoader {
     }
 
     @Getter
-    private Map<String, HandlerClass> handlersMap = new HashMap<>();
+    private Map<String, HandlerClass> handlersMap = new TreeMap<>();
 
-    public class HandlerClass {
-        Class clazz;
-        Map<String, Class> aliases = new HashMap<>();
-    }
+    @Getter
+    private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
     public void initializeCommandHandlers() throws Exception {
         Reflections reflections = new Reflections("org.freakz.engine.commands.handlers");
@@ -49,11 +47,14 @@ public class CommandHandlerLoader {
             log.debug("init: {}", name);
             HokanCmd hokanCmd = (HokanCmd) o;
 
-            HandlerClass handlerClass = new HandlerClass();
-            handlerClass.clazz = clazz;
-            for (String alias : ((HokanCmd) o).getAliases()) {
-                handlerClass.aliases.put(alias, clazz);
+            for (HandlerAlias handlerAlias : hokanCmd.getAliases()) {
+                this.handlerAliasMap.put(handlerAlias.getAlias(), handlerAlias);
             }
+
+            HandlerClass handlerClass
+                    = HandlerClass.builder()
+                    .clazz(clazz)
+                    .build();
 
             this.handlersMap.put(name, handlerClass);
         }

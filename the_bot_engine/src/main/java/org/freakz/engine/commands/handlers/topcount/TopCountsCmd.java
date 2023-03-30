@@ -9,10 +9,12 @@ import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.storage.DataValuesModel;
 import org.freakz.dto.TopCountsResponse;
+import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_CHANNEL;
@@ -39,6 +41,14 @@ public class TopCountsCmd extends AbstractCmd {
         jsap.registerParameter(uflg);
     }
 
+    @Override
+    public List<HandlerAlias> getAliases() {
+        List<HandlerAlias> list = new ArrayList<>();
+        list.add(createAlias("!topgl", "!topcounts GLUGGA_COUNT"));
+        list.add(createAlias("!topkor", "!topcounts KORINA_COUNT"));
+        list.add(createAlias("!topryyst", "!topcounts RYYST_COUNT"));
+        return list;
+    }
 
     private String formatKeys() {
         return String.join(", ", TopCountsEnum.getPrettyNames());

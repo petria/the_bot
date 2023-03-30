@@ -7,6 +7,7 @@ import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.services.ServiceRequest;
 import org.freakz.services.ServiceRequestType;
 import org.freakz.services.ServiceResponse;
@@ -41,9 +42,14 @@ public abstract class AbstractCmd implements HokanCmd {
     }
 
     @Override
-    public List<String> getAliases() {
+    public List<HandlerAlias> getAliases() {
         return Collections.emptyList();
     }
+
+    public HandlerAlias createAlias(String alias, String target) {
+        return HandlerAlias.builder().alias(alias).target(target).build();
+    }
+
 
     @Override
     public void setCommandHandler(CommandHandler commandHandler) {
