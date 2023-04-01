@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @AllArgsConstructor
 @Builder
 @Data
@@ -20,5 +22,7 @@ public class Channel {
 
 
     private String type;
+
+    private List<String> echoToAliases;
 
 }

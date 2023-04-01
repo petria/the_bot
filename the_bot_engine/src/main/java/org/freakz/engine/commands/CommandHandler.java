@@ -89,11 +89,11 @@ public class CommandHandler {
                 String help = abstractCmd.getJsap().getHelp();
                 sb.append("Usage    : ");
                 sb.append(usage);
-//                sb.append("\n");
+                sb.append("\n");
 
-/*                sb.append("Help     : ");
+                sb.append("Help     : ");
                 sb.append(help);
-                sb.append("|");*/
+                sb.append("\n");
 
                 sendReplyMessage(request, sb.toString());
                 return sb.toString();

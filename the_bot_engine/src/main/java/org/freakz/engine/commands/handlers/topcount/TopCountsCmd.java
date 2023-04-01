@@ -90,6 +90,6 @@ public class TopCountsCmd extends AbstractCmd {
             }
             return sb.toString();
         }
-        return "N/A!?";
+        return String.format("TopCounts with %s: none yet!", key);
     }
 }

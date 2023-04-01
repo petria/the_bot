@@ -9,7 +9,8 @@
         "id": "1033431599708123278",
         "description": "bot dev discord",
         "name": "hokandev",
-        "type": "SERVER_TEXT_CHANNEL"
+        "type": "SERVER_TEXT_CHANNEL",
+        "echoToAliases": []
       }
     ],
     "connectStartup": "true"
@@ -21,7 +22,8 @@
         "id": "-907862942",
         "description": "bot dev telegram",
         "name": "HokanDEVGroup",
-        "type": "group"
+        "type": "group",
+        "echoToAliases": []
       }
     ],
 
@@ -42,7 +44,10 @@
           "id": "test_0",
           "description": "bot dev",
           "name": "#HokanDEVv",
-          "type": "IrcPublic"
+          "type": "IrcPublic",
+          "echoToAliases": [
+            "DISCORD-1"
+          ]
         }
       ],
       "connectStartup": "true"

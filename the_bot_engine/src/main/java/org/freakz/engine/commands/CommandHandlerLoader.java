@@ -4,10 +4,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
+import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -76,5 +79,24 @@ public class CommandHandlerLoader {
             }
         }
         return null;
+    }
+
+    public List<AbstractCmd> getMatchingCommandInstances(String command) {
+        List<AbstractCmd> list = new ArrayList<>();
+        try {
+            for (String key : this.handlersMap.keySet()) {
+                if (key.equalsIgnoreCase(command)) {
+                    Class<?> aClass = this.handlersMap.get(key).getClazz();
+                    AbstractCmd cmd = (AbstractCmd) aClass.getConstructor().newInstance();
+                    cmd.abstractInitCommandOptions();
+                    list.add(cmd);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("getMatchingCommandInstances: " + command, e);
+        }
+        return list;
+
     }
 }
