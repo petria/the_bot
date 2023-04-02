@@ -66,7 +66,7 @@ public class ConnectionManager {
         log.debug(">> Connecting TELEGRAM");
         if (theBotConfig.getTelegramConfig().isConnectStartup()) {
             TelegramConnection tc = new TelegramConnection(this.eventPublisher);
-            tc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
+            tc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
             addConnection(tc);
         } else {
             log.warn("TELEGRAM Startup connect disabled: {}", theBotConfig.getTelegramConfig());
@@ -121,6 +121,7 @@ public class ConnectionManager {
             BotConnection connection = dual.connection;
 
             Message message = Message.builder()
+                    .id(channel.getId())
                     .message(messageText)
                     .messageSource(MessageSource.NONE)
                     .target(channel.getName())

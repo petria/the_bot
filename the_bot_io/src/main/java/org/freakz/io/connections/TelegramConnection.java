@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.TelegramConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -31,7 +32,7 @@ public class TelegramConnection extends BotConnection {
     public void sendMessageTo(Message message) {
         log.debug("Send messageTo: {}", message);
         SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getTarget());
+        sendMessage.setChatId(message.getId());
         sendMessage.setText(message.getMessage());
         try {
             bot.execute(sendMessage);
@@ -44,10 +45,10 @@ public class TelegramConnection extends BotConnection {
 
     private HokanTelegram bot;
 
-    public void init(String botName, TelegramConfig telegramConfig) throws TelegramApiException {
+    public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
-        bot = new HokanTelegram(telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
+        bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         //botsApi.
         botsApi.registerBot(bot);
@@ -59,14 +60,17 @@ public class TelegramConnection extends BotConnection {
         private final String botName;
         private final EventPublisher publisher;
         private final BotConnection connection;
-        private final TelegramConfig telegramConfig;
+        private final TelegramConfig config;
 
-        public HokanTelegram(String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig telegramConfig) {
+        private final ConnectionManager connectionManager;
+
+        public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig config) {
             super(botToken);
             this.botName = botName;
             this.publisher = eventPublisher;
             this.connection = connection;
-            this.telegramConfig = telegramConfig;
+            this.config = config;
+            this.connectionManager = connectionManager;
         }
 
         @Override
@@ -75,9 +79,31 @@ public class TelegramConnection extends BotConnection {
             if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
                 publisher.publishEvent(this.connection, update);
+                checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), update.getMessage().getFrom().getUserName(), update.getMessage().getText());
             }
 
         }
+
+
+        protected void checkEchoTo(TelegramConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+            String name = channelName; //event.getChannel().getName();
+            config.getChannelList().forEach(ch -> {
+                if (ch.getName().equals(name)) {
+                    if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
+                        for (String echoToAlias : ch.getEchoToAliases()) {
+                            log.debug("Echo to: {}", echoToAlias);
+                            try {
+                                String msg = String.format("<%s: %s>", actorName, message);
+                                connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                            } catch (InvalidTargetAliasException e) {
+                                log.error("Can not echo message to: {}", echoToAlias);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
 
         @Override
         public String getBotUsername() {
@@ -87,7 +113,7 @@ public class TelegramConnection extends BotConnection {
         @Override
         public void onRegister() {
             log.debug("Telegram onRegister() !!");
-            telegramConfig.getChannelList().forEach(ch -> {
+            config.getChannelList().forEach(ch -> {
                 BotConnectionChannel channel = new BotConnectionChannel();
                 channel.setId(ch.getId());
                 channel.setNetwork(connection.getNetwork());
