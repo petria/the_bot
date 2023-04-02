@@ -25,14 +25,15 @@ import java.util.Iterator;
 @Slf4j
 public class CommandHandler {
 
-    //    private final ApplicationContext applicationContext;
+    private final AccessService accessService;
     private final MessageSendClient messageSendClient;
     @Getter
     private final CommandHandlerLoader commandHandlerLoader;
     @Getter
     private final HokanServices hokanServices;
 
-    public CommandHandler(MessageSendClient messageSendClient, HokanServices hokanServices) throws InitializeFailedException {
+    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices) throws InitializeFailedException {
+        this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
         this.commandHandlerLoader = new CommandHandlerLoader();
@@ -68,6 +69,7 @@ public class CommandHandler {
     @SneakyThrows
     private String parseAndExecute(EngineRequest request) {
         log.debug("Handle request: {}", request);
+        User user = accessService.getUser(request);
 
 
         String message = request.getMessage();

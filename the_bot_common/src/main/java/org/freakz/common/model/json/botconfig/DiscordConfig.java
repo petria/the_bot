@@ -19,4 +19,5 @@ public class DiscordConfig {
 
     private boolean connectStartup;
 
+    private Long theBotUserId;
 }

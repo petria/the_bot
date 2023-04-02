@@ -96,19 +96,19 @@ public class IrcServerConnection extends BotConnection {
         log.debug("Got msg: {}", event.getMessage());
         publisher.publishEvent(this, event);
         updateChannelMap(event.getChannel().getName());
-        checkEchoTo(event);
+        checkEchoTo(this.config, this.connectionManager, event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
     }
 
-    private void checkEchoTo(ChannelMessageEvent event) {
-        String name = event.getChannel().getName();
-        this.config.getChannelList().forEach(ch -> {
+    protected void checkEchoTo(IrcServerConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+        String name = channelName; //event.getChannel().getName();
+        config.getChannelList().forEach(ch -> {
             if (ch.getName().equals(name)) {
                 if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
                     for (String echoToAlias : ch.getEchoToAliases()) {
                         log.debug("Echo to: {}", echoToAlias);
                         try {
-                            String msg = String.format("<%s: %s>", event.getActor().getNick(), event.getMessage());
-                            this.connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                            String msg = String.format("<%s: %s>", actorName, message);
+                            connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
                         } catch (InvalidTargetAliasException e) {
                             log.error("Can not echo message to: {}", echoToAlias);
                         }
@@ -117,6 +117,7 @@ public class IrcServerConnection extends BotConnection {
             }
         });
     }
+
 
     @Handler
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {

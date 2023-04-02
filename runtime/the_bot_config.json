@@ -10,10 +10,13 @@
         "description": "bot dev discord",
         "name": "hokandev",
         "type": "SERVER_TEXT_CHANNEL",
-        "echoToAliases": []
+        "echoToAliases": [
+          "IRC-0"
+        ]
       }
     ],
-    "connectStartup": "true"
+    "connectStartup": "true",
+    "theBotUserId": 288964147721404416
   },
   "telegramConfig": {
     "token": "${TELEGRAM_SECRET}",

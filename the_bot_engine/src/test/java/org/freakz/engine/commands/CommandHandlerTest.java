@@ -25,12 +25,14 @@ public class CommandHandlerTest {
 
     private HokanServices hokanServices = Mockito.mock(HokanServices.class);
 
+    private AccessService accessService = Mockito.mock(AccessService.class);
+
     @Test
     public void testWeatherCmd() throws Exception {
         String command = "!weather oulu";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
+        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices);
         String reply = commandHandler.handleEngineRequest(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
@@ -45,7 +47,7 @@ public class CommandHandlerTest {
         String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(messageSendClient, hokanServices);
+        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices);
 
 
         NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {

@@ -56,7 +56,7 @@ public class ConnectionManager {
         log.debug(">> Connecting DISCORD");
         if (theBotConfig.getDiscordConfig().isConnectStartup()) {
             DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
-            dsc.init(theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
+            dsc.init(this, theBotConfig.getDiscordConfig());
             addConnection(dsc);
         } else {
             log.warn("DISCORD Startup connect disabled: {}", theBotConfig.getDiscordConfig());

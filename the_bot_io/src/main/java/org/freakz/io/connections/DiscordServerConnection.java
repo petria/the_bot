@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.DiscordConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.javacord.api.DiscordApi;
@@ -8,6 +9,7 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.event.message.MessageCreateEvent;
 
@@ -19,6 +21,8 @@ public class DiscordServerConnection extends BotConnection {
 
     private final EventPublisher publisher;
     private DiscordApi api;
+    private ConnectionManager connectionManager;
+    private DiscordConfig config;
 
     public DiscordServerConnection(EventPublisher publisher) {
         super(BotConnectionType.DISCORD_CONNECTION);
@@ -30,7 +34,10 @@ public class DiscordServerConnection extends BotConnection {
         return "Discord";
     }
 
-    public void init(String botNick, DiscordConfig config) {
+    public void init(ConnectionManager connectionManager, DiscordConfig config) {
+
+        this.connectionManager = connectionManager;
+        this.config = config;
 
         String token = config.getToken();
         this.api
@@ -112,6 +119,39 @@ public class DiscordServerConnection extends BotConnection {
         log.debug("Discord msg: {}", event.toString());
         publisher.publishEvent(this, event);
         updateChannelMap(event.getApi());
+
+        String channelStr = event.getChannel().toString();
+        // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
+        int idx1 = channelStr.indexOf("name: ");
+        String channelName = channelStr.substring(idx1 + 6, channelStr.length() - 1);
+        log.debug("replyTo: '{}'", channelName);
+
+        MessageAuthor messageAuthor = event.getMessageAuthor();
+        if (messageAuthor.asUser().isPresent()) {
+            if (messageAuthor.asUser().get().getId() != this.config.getTheBotUserId()) { // dont echo back own messages
+                checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), event.getMessageContent());
+            }
+        }
     }
+
+    protected void checkEchoTo(DiscordConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+        String name = channelName; //event.getChannel().getName();
+        config.getChannelList().forEach(ch -> {
+            if (ch.getName().equals(name)) {
+                if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
+                    for (String echoToAlias : ch.getEchoToAliases()) {
+                        log.debug("Echo to: {}", echoToAlias);
+                        try {
+                            String msg = String.format("<%s: %s>", actorName, message);
+                            connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                        } catch (InvalidTargetAliasException e) {
+                            log.error("Can not echo message to: {}", echoToAlias);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
 
 }
