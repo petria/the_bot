@@ -1,4 +1,4 @@
-package org.freakz.common.storage;
+package org.freakz.common.data.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -24,7 +24,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @ToString
-public class DataValues implements Serializable {
+public class DataValues extends DataBase {
 
     @JsonProperty("id")
     private Long id;

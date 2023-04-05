@@ -1,11 +1,13 @@
-package org.freakz.data;
+package org.freakz.data.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
-import org.freakz.common.storage.DataValueStatsModel;
-import org.freakz.common.storage.DataValues;
-import org.freakz.common.storage.DataValuesModel;
+import org.freakz.common.data.dto.DataValueStatsModel;
+import org.freakz.common.data.dto.DataValues;
+import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
+import org.freakz.data.repository.DataValuesRepository;
+import org.freakz.data.repository.DataValuesRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;

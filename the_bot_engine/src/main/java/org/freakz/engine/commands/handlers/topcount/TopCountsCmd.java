@@ -7,7 +7,7 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.json.engine.EngineRequest;
-import org.freakz.common.storage.DataValuesModel;
+import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.dto.TopCountsResponse;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HokanCommandHandler;

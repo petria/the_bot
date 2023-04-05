@@ -1,8 +1,8 @@
-package org.freakz.data;
+package org.freakz.data.service;
 
 import org.freakz.common.exception.DataRepositoryException;
-import org.freakz.common.storage.DataValueStatsModel;
-import org.freakz.common.storage.DataValuesModel;
+import org.freakz.common.data.dto.DataValueStatsModel;
+import org.freakz.common.data.dto.DataValuesModel;
 
 import java.util.List;
 

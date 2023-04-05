@@ -6,7 +6,7 @@ import com.martiansoftware.jsap.JSAPResult;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.util.Uptime;
-import org.freakz.data.DataValuesService;
+import org.freakz.data.service.DataValuesService;
 import org.freakz.dto.GetDataValuesServiceResponse;
 import org.freakz.engine.commands.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;

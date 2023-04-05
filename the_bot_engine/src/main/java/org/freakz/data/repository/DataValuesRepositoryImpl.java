@@ -1,4 +1,4 @@
-package org.freakz.data;
+package org.freakz.data.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
-import org.freakz.common.storage.DataValues;
+import org.freakz.common.data.dto.DataValues;
 import org.freakz.config.ConfigService;
 
 import java.io.File;
@@ -18,25 +18,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class DataValuesRepositoryImpl implements DataValuesRepository {
+public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements DataValuesRepository {
 
     private static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
     private static final String DATA_VALUES_FILE_NAME = "data_values.json";
-    private final List<DataValues> dataValues = new ArrayList<>();
-    private final ConfigService configService;
-
-    private int saveTrigger = -1;
-
-    private boolean isDirty = false;
-
-    private ObjectMapper mapper = new ObjectMapper();
-    private long highestId;
-
 
     public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
-        this.configService = configService;
+        super(configService);
         initialize();
     }
+
 
     @Data
     @AllArgsConstructor

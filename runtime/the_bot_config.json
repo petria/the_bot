@@ -27,7 +27,7 @@
         "name": "HokanDEVGroup",
         "type": "group",
         "echoToAliases": [
-          "IRC-0"
+          "IRC-0", "DISCORD-1"
         ]
       }
     ],

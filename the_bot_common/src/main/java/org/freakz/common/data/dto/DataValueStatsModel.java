@@ -1,4 +1,4 @@
-package org.freakz.common.storage;
+package org.freakz.common.data.dto;
 
 import java.io.Serializable;
 

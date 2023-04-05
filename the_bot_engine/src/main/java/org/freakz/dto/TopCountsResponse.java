@@ -2,7 +2,7 @@ package org.freakz.dto;
 
 import lombok.Builder;
 import lombok.Data;
-import org.freakz.common.storage.DataValuesModel;
+import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.services.ServiceResponse;
 
 import java.util.List;

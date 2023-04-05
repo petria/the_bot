@@ -2,7 +2,7 @@ package org.freakz.dto;
 
 import lombok.Builder;
 import lombok.Data;
-import org.freakz.data.DataValuesService;
+import org.freakz.data.service.DataValuesService;
 import org.freakz.services.ServiceResponse;
 
 @Builder
