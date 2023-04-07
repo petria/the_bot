@@ -13,13 +13,11 @@ import java.util.List;
 @NoArgsConstructor
 public class Channel {
 
-
     private String id;
 
     private String description;
 
     private String name;
-
 
     private String type;
 

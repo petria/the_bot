@@ -44,13 +44,13 @@ public class IrcServerConnection extends BotConnection {
 
     @Handler
     public void onUserJoinChannel(ChannelJoinEvent event) {
+        updateChannelMap(event.getChannel().getName());
         if (event.getClient().isUser(event.getUser())) { // It's me!
-            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
+//            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
             return;
         }
         // It's not me!
-        event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
-        updateChannelMap(event.getChannel().getName());
+//        event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
     }
 
     @Handler
