@@ -3,6 +3,7 @@ package org.freakz.services;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.reflections.Reflections;
+import org.reflections.util.ClasspathHelper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -45,8 +46,9 @@ public class HokanServices {
 
     @PostConstruct
     public void runInitializeService() throws Exception {
-        log.debug("Initializing all services...");
+        log.debug("Finding ServiceMessageHandlers...");
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
+        log.debug("... found ServiceMessageHandler: {}", typesAnnotatedWith.size());
         for (Class<?> aClass : typesAnnotatedWith) {
             AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
             this.executor.execute(() -> {
@@ -61,7 +63,7 @@ public class HokanServices {
 
     }
 
-    private Reflections reflections = new Reflections("org.freakz.services");
+    private Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
     private ServiceHandler findServiceMessageHandlers(ServiceRequestType serviceRequestType) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);

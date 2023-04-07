@@ -7,6 +7,7 @@ import org.freakz.common.exception.InvalidAnnotationException;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
+import org.reflections.util.ClasspathHelper;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -35,7 +36,8 @@ public class CommandHandlerLoader {
     private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
     public void initializeCommandHandlers() throws Exception {
-        Reflections reflections = new Reflections("org.freakz.engine.commands.handlers");
+//        Reflections reflections = new Reflections("org.freakz.engine.commands.handlers");
+        Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
         for (Class<?> clazz : typesAnnotatedWith) {
