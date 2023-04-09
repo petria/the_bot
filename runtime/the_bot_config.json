@@ -27,7 +27,16 @@
         "name": "HokanDEVGroup",
         "type": "group",
         "echoToAliases": [
-          "IRC-0", "DISCORD-1"
+          "IRC-0"
+        ]
+      },
+      {
+        "id": "-1001833411914",
+        "description": "bot dev telegram",
+        "name": "#AmigaFIN",
+        "type": "group",
+        "echoToAliases": [
+          "IRC-1"
         ]
       }
     ],
@@ -51,7 +60,6 @@
           "name": "#HokanDEVv",
           "type": "IrcPublic",
           "echoToAliases": [
-            "DISCORD-1",
             "TELEGRAM-0"
           ]
         }

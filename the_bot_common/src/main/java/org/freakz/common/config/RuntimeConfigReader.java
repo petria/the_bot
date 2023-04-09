@@ -58,7 +58,8 @@ public class RuntimeConfigReader {
 
         String replacedJson = temp[0];
 
-        return mapper.readValue(replacedJson, TheBotConfig.class);
+        TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);;
+        return theConfig;
     }
 
     public void storeStringToRuntimeDirectory(String stringData, String runtimeDir, String jsonFileName) throws IOException {

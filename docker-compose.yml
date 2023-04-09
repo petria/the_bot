@@ -1,0 +1,16 @@
+version: '2.4'
+services:
+#  db:
+#    image: postgres
+  bot-engine:
+    build: ./the_bot_engine
+    volumes:
+      - ./runtime:/runtime
+    ports:
+      - "8100:8100"
+  bot-io:
+    build: ./the_bot_io
+    volumes:
+      - ./runtime:/runtime
+    ports:
+      - "8090:8090"
