@@ -59,7 +59,7 @@
           "description": "bot dev",
           "name": "#HokanDEVv",
           "type": "IrcPublic",
-          "joinOnStart": "false",
+          "joinOnStart": "true",
           "echoToAliases": [
             "TELEGRAM-0"
           ]
