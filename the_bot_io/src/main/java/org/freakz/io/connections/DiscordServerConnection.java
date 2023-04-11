@@ -9,6 +9,7 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.event.message.MessageCreateEvent;
@@ -108,7 +109,7 @@ public class DiscordServerConnection extends BotConnection {
                 privateChannel.get().sendMessage(message.getMessage());
                 return;
             }
-            log.error("Could not send reply: {}" ,message);
+            log.error("Could not send reply: {}", message);
         } else {
             log.error("Can't send message to: {}", message.getTarget());
         }
@@ -129,7 +130,15 @@ public class DiscordServerConnection extends BotConnection {
         MessageAuthor messageAuthor = event.getMessageAuthor();
         if (messageAuthor.asUser().isPresent()) {
             if (messageAuthor.asUser().get().getId() != this.config.getTheBotUserId()) { // dont echo back own messages
-                checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), event.getMessageContent());
+                StringBuilder messageTxt = new StringBuilder(event.getMessage().getContent());
+                if (event.getMessage().getAttachments().size() > 0) {
+                    for (MessageAttachment attachment : event.getMessageAttachments()) {
+                        messageTxt.append(" [");
+                        messageTxt.append(attachment.getUrl().toString());
+                        messageTxt.append("]");
+                    }
+                }
+                checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
             }
         }
     }
