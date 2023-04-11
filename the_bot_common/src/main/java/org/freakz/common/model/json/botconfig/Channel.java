@@ -23,4 +23,5 @@ public class Channel {
 
     private List<String> echoToAliases;
 
+    private Boolean joinOnStart = true;
 }

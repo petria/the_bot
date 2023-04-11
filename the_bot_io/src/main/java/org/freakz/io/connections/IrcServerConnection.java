@@ -155,8 +155,15 @@ public class IrcServerConnection extends BotConnection {
 
         client.getEventManager().registerEventListener(this);
 
-        config.getChannelList().forEach(ch -> client.addChannel(ch.getName()));
-
+        config.getChannelList().forEach(ch -> {
+                    if (ch.getJoinOnStart()) {
+                        log.debug("Join channel: {}", ch.getName());
+                        client.addChannel(ch.getName());
+                    } else {
+                        log.debug("Not join channel: {}", ch.getName());
+                    }
+                }
+        );
 
     }
 
