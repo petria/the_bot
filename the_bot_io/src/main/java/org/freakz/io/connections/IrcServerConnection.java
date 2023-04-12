@@ -182,7 +182,9 @@ public class IrcServerConnection extends BotConnection {
                 for (String splitLine : splitted) {
                     channel.get().sendMessage(splitLine);
                     publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
-                    checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
+                    if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
+                        checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
+                    }
                 }
             }
         } else {

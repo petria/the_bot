@@ -35,15 +35,17 @@ public class RuntimeConfigReader {
 
     public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir, String secretPropertiesFile, String profile) throws IOException {
 
-        readSecretsProperties(secretPropertiesFile);
-
+        String secretsFile;
         String cfgFile;
         if (profile != null && profile.length() > 0) {
             log.debug("Prefixing profile to runtime config file: {}", profile);
             cfgFile = runtimeDir + profile + "." + RUNTIME_CONFIG_FILE_NAME;
+            secretsFile = secretPropertiesFile.replaceAll("secret\\.properties", profile + ".secret.properties");
         } else {
             cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
+            secretsFile = secretPropertiesFile;
         }
+        readSecretsProperties(secretsFile);
 
         log.debug("Reading runtime config from: {}", cfgFile);
 
