@@ -70,7 +70,7 @@ public class ForecaWeatherService extends AbstractService {
         String countryMatch = ".*";
 
 
-        File dataFile = configService.getRuntimeDirFile("foreca_data_cache.json");
+        File dataFile = configService.getRuntimeDataFile("foreca_data_cache.json");
 
         if (dataFile.exists()) {
             log.debug("Reading cached data file: {}", dataFile.getAbsoluteFile());

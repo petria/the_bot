@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.json.botconfig.TheBotConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -37,11 +36,17 @@ public class ConfigService {
         return file;
     }
 
+    public File getRuntimeDataFile(String fileName) {
+        File file = new File(botProperties.getDataDir() + fileName);
+        return file;
+    }
+
     public String getRuntimeDirFileName(String fileName) {
         return botProperties.getRuntimeDir() + fileName;
     }
 
-    public void saveJsonToDataDir(String json, String fileName) {
-
+    public String getRuntimeDataFileName(String fileName) {
+        return botProperties.getDataDir() + fileName;
     }
+
 }

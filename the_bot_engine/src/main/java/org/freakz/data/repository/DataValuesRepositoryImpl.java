@@ -1,12 +1,11 @@
 package org.freakz.data.repository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.data.dto.DataValues;
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.config.ConfigService;
 
 import java.io.File;
@@ -37,7 +36,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     }
 
     public void initialize() throws Exception {
-        File dataFile = configService.getRuntimeDirFile(DATA_VALUES_FILE_NAME);
+        File dataFile = configService.getRuntimeDataFile(DATA_VALUES_FILE_NAME);
         if (dataFile.exists()) {
             DataValuesJson dataValuesJson = mapper.readValue(dataFile, DataValuesJson.class);
             this.dataValues.addAll(dataValuesJson.getData_values());
@@ -56,7 +55,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
 
     public void saveDataValues() throws IOException {
         synchronized (this.dataValues) {
-            String dataFileName = configService.getRuntimeDirFileName(DATA_VALUES_FILE_NAME);
+            String dataFileName = configService.getRuntimeDataFileName(DATA_VALUES_FILE_NAME);
             log.debug("synchronized start writing data values: {}", dataFileName);
 
             DataValuesJson jsonPojo = new DataValuesJson();

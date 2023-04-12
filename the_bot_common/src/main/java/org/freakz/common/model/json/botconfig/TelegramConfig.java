@@ -13,6 +13,8 @@ import java.util.List;
 @NoArgsConstructor
 public class TelegramConfig {
 
+    private String telegramName;
+
     private String token;
 
     private List<Channel> channelList;

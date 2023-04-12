@@ -66,7 +66,7 @@ public class TelegramConnection extends BotConnection {
 
         public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig config) {
             super(botToken);
-            this.botName = botName;
+            this.botName = config.getTelegramName();
             this.publisher = eventPublisher;
             this.connection = connection;
             this.config = config;

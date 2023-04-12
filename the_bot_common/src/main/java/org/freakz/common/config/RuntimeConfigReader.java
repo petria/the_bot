@@ -37,10 +37,12 @@ public class RuntimeConfigReader {
 
         readSecretsProperties(secretPropertiesFile);
 
-        String cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
+        String cfgFile;
         if (profile != null && profile.length() > 0) {
-           log.debug("Appending profile to runtime config file: {}", profile);
-            cfgFile += "." + profile;
+            log.debug("Prefixing profile to runtime config file: {}", profile);
+            cfgFile = runtimeDir + profile + "." + RUNTIME_CONFIG_FILE_NAME;
+        } else {
+            cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
         }
 
         log.debug("Reading runtime config from: {}", cfgFile);

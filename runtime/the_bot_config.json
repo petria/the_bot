@@ -19,6 +19,7 @@
     "theBotUserId": 288964147721404416
   },
   "telegramConfig": {
+    "telegramName": "HokanDevBot",
     "token": "${TELEGRAM_SECRET}",
     "channelList": [
       {
