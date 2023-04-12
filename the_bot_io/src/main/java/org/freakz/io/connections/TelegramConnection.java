@@ -32,7 +32,12 @@ public class TelegramConnection extends BotConnection {
     public void sendMessageTo(Message message) {
         log.debug("Send messageTo: {}", message);
         SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getId());
+        if (message.getTarget() != null) {
+            // TODO fix
+            sendMessage.setChatId(message.getTarget());
+        } else {
+            sendMessage.setChatId(message.getId());
+        }
         sendMessage.setText(message.getMessage());
         try {
             bot.execute(sendMessage);
@@ -75,7 +80,7 @@ public class TelegramConnection extends BotConnection {
 
         @Override
         public void onUpdateReceived(Update update) {
-            log.debug("Telegram update: {}", update);
+//            log.debug("Telegram update: {}", update);
             if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
                 publisher.publishEvent(this.connection, update);
