@@ -6,6 +6,7 @@ import net.engio.mbassy.listener.Handler;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.IrcServerConfig;
 import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.json.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
@@ -31,6 +32,7 @@ public class IrcServerConnection extends BotConnection {
 
     @Getter
     private IrcServerConfig config;
+    private String botNick;
 
     public IrcServerConnection(EventPublisher publisher) {
         super(BotConnectionType.IRC_CONNECTION);
@@ -142,6 +144,7 @@ public class IrcServerConnection extends BotConnection {
     public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
         this.connectionManager = connectionManager;
         this.config = config;
+        this.botNick = botNick;
 
         client = Client.builder()
                 .user("hokan")
@@ -169,6 +172,7 @@ public class IrcServerConnection extends BotConnection {
 
     @Override
     public void sendMessageTo(Message message) {
+
         Optional<Channel> channel = client.getChannel(message.getTarget());
         if (channel.isPresent()) {
             Cutter messageCutter = client.getMessageCutter();
@@ -177,6 +181,8 @@ public class IrcServerConnection extends BotConnection {
                 String splitted[] = line.split("\n");
                 for (String splitLine : splitted) {
                     channel.get().sendMessage(splitLine);
+                    publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
+                    checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
                 }
             }
         } else {

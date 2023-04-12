@@ -69,7 +69,8 @@ public class EventPublisherService implements EventPublisher {
 
 
     @Async
-    void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
+    @Override
+    public void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
 //        log.debug("Do log: {}", messageSource);
 
         LocalDateTime ldt = LocalDateTime.now();
