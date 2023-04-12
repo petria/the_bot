@@ -98,8 +98,10 @@ public class TelegramConnection extends BotConnection {
                         for (String echoToAlias : ch.getEchoToAliases()) {
                             log.debug("Echo to: {}", echoToAlias);
                             try {
-                                String msg = String.format("%s%s<%s: %s>", "\u0002", "\u0002", actorName, message);
-                                connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                                if (!message.startsWith("!")) {
+                                    String msg = String.format("%s%s<Telegram@%s: %s>", "\u0002", "\u0002", actorName, message);
+                                    connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                                }
                             } catch (InvalidTargetAliasException e) {
                                 log.error("Can not echo message to: {}", echoToAlias);
                             }
