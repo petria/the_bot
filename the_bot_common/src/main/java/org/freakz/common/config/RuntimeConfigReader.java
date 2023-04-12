@@ -33,11 +33,15 @@ public class RuntimeConfigReader {
     }
 
 
-    public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir, String secretPropertiesFile) throws IOException {
+    public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir, String secretPropertiesFile, String profile) throws IOException {
 
         readSecretsProperties(secretPropertiesFile);
 
         String cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
+        if (profile != null && profile.length() > 0) {
+           log.debug("Appending profile to runtime config file: {}", profile);
+            cfgFile += "." + profile;
+        }
 
         log.debug("Reading runtime config from: {}", cfgFile);
 
@@ -58,7 +62,8 @@ public class RuntimeConfigReader {
 
         String replacedJson = temp[0];
 
-        TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);;
+        TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);
+        ;
         return theConfig;
     }
 

@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.json.botconfig.TheBotConfig;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -17,12 +19,16 @@ public class ConfigService {
     @Autowired
     private TheBotProperties botProperties;
 
+    @Autowired
+    private Environment environment;
+
     private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 
     @PostConstruct
     public TheBotConfig readBotConfig() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile());
+        String activeProfile = environment.getProperty("hokan.runtime.profile");
+        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
     }
 
 
