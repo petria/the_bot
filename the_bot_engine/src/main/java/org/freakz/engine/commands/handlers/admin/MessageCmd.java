@@ -8,6 +8,7 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.SendMessageByTargetResponse;
+import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
@@ -16,8 +17,10 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 
 @HokanCommandHandler
+@HokanAdminCommand
 @Slf4j
 public class MessageCmd extends AbstractCmd {
+
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 

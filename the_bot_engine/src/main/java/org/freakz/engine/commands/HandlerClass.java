@@ -8,6 +8,6 @@ import lombok.Data;
 public class HandlerClass {
 
     Class clazz;
-
+    boolean isAdmin = false;
 
 }

@@ -52,10 +52,10 @@ public class CommandHandlerLoader {
                 throw new InvalidAnnotationException("Annotation class not ending Cmd: " + clazz);
             }
 
-            Annotation[] declaredAnnotations = clazz.getDeclaredAnnotations();
 
             log.debug("init: {}", name);
             HokanCmd hokanCmd = (HokanCmd) o;
+            setAdminCommandFlag(hokanCmd);
 
             for (HandlerAlias handlerAlias : hokanCmd.getAliases()) {
                 this.handlerAliasMap.put(handlerAlias.getAlias(), handlerAlias);
@@ -64,14 +64,26 @@ public class CommandHandlerLoader {
             HandlerClass handlerClass
                     = HandlerClass.builder()
                     .clazz(clazz)
+                    .isAdmin(hokanCmd.isAdminCommand())
                     .build();
 
             this.handlersMap.put(name, handlerClass);
         }
 
-
     }
 
+    private void setAdminCommandFlag(HokanCmd hokanCmd) {
+        Class clazz = hokanCmd.getClass();
+        Annotation[] declaredAnnotations = clazz.getDeclaredAnnotations();
+        for (Annotation annotation : declaredAnnotations) {
+            String annotationName = annotation.toString();
+            if (annotationName.equals("@org.freakz.engine.commands.annotations.HokanAdminCommand()")) {
+                hokanCmd.setIsAdminCommand(true);
+                break;
+            }
+        }
+
+    }
 
     public HokanCmd getMatchingCommandHandlers(CommandHandler commandHandler, String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         for (String key : this.handlersMap.keySet()) {
@@ -81,6 +93,7 @@ public class CommandHandlerLoader {
                 Class<?> aClass = handlerClass.clazz;
                 Object o = aClass.getConstructor().newInstance();
                 HokanCmd hokanCmd = (HokanCmd) o;
+                setAdminCommandFlag(hokanCmd);
                 hokanCmd.setCommandHandler(commandHandler);
                 return (HokanCmd) o;
             }

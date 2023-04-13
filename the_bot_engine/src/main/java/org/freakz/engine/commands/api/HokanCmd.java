@@ -19,4 +19,9 @@ public interface HokanCmd {
     String executeCommand(EngineRequest request, JSAPResult results);
 
     List<HandlerAlias> getAliases();
+
+    boolean isAdminCommand();
+
+    void setIsAdminCommand(boolean isAdminCommand);
+
 }

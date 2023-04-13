@@ -57,8 +57,19 @@ public class HelpCmd extends AbstractCmd {
             sb.append("\n");
 
             for (String cmdName : cmdNames) {
+                HandlerClass handlerClass = handlersMap.get(cmdName);
+
                 sb.append("  ");
                 sb.append(cmdName);
+
+                String flags = "";
+                if (handlerClass.isAdmin()) {
+                    flags += "A";
+                }
+                if (flags.length() > 0) {
+                    sb.append("[").append(flags).append("]");
+                }
+
             }
             sb.append("\n");
             sb.append("Command is triggered using: !<name in lower case>, example: !help triggers command named Help.\nUse !help <commandName> to get detailed help for specific command.\n");

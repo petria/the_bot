@@ -18,6 +18,8 @@ import java.util.List;
 public abstract class AbstractCmd implements HokanCmd {
 
 
+    private boolean adminCommand = false;
+
     @Getter
     private JSAP jsap = new JSAP();
 
@@ -34,6 +36,16 @@ public abstract class AbstractCmd implements HokanCmd {
 
     public void abstractInitCommandOptions() throws NotImplementedException, JSAPException {
         initCommandOptions(this.jsap);
+    }
+
+    @Override
+    public boolean isAdminCommand() {
+        return this.adminCommand;
+    }
+
+    @Override
+    public void setIsAdminCommand(boolean isAdminCommand) {
+        this.adminCommand = isAdminCommand;
     }
 
     @Override
