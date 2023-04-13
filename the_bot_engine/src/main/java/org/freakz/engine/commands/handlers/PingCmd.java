@@ -5,7 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
-import org.freakz.engine.commands.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
 import java.time.LocalDateTime;

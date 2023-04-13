@@ -10,6 +10,7 @@ import org.freakz.clients.MessageSendClient;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.feed.Message;
+import org.freakz.config.ConfigService;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
@@ -19,6 +20,7 @@ import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 @Service
@@ -31,12 +33,16 @@ public class CommandHandler {
     private final CommandHandlerLoader commandHandlerLoader;
     @Getter
     private final HokanServices hokanServices;
+    private final ConfigService configService;
+    private String botName;
 
-    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices) throws InitializeFailedException {
+    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
+        this.configService = configService;
         this.commandHandlerLoader = new CommandHandlerLoader();
+        this.botName = configService.readBotConfig().getBotConfig().getBotName();
     }
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
@@ -134,7 +140,7 @@ public class CommandHandler {
     public void sendReplyMessage(EngineRequest request, String reply) {
         Message message
                 = Message.builder()
-                .sender("BotName")
+                .sender(this.botName)
                 .timestamp(System.currentTimeMillis())
                 .requestTimestamp(request.getTimestamp())
                 .message(reply)

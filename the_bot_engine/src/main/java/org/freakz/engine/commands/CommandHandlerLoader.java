@@ -4,11 +4,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
+import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +38,6 @@ public class CommandHandlerLoader {
     private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
     public void initializeCommandHandlers() throws Exception {
-//        Reflections reflections = new Reflections("org.freakz.engine.commands.handlers");
         Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
@@ -44,11 +45,15 @@ public class CommandHandlerLoader {
             Object o = clazz.getDeclaredConstructor().newInstance();
 
             String name = o.getClass().getSimpleName();
+
             if (name.endsWith("Cmd")) {
                 name = name.replaceAll("Cmd", "");
             } else {
                 throw new InvalidAnnotationException("Annotation class not ending Cmd: " + clazz);
             }
+
+            Annotation[] declaredAnnotations = clazz.getDeclaredAnnotations();
+
             log.debug("init: {}", name);
             HokanCmd hokanCmd = (HokanCmd) o;
 

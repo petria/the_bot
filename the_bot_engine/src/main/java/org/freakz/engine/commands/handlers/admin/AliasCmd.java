@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
-import org.freakz.engine.commands.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
 @HokanCommandHandler

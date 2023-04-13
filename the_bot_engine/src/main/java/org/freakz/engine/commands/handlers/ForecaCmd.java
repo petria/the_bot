@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.foreca.ForecaData;
 import org.freakz.dto.ForecaResponse;
-import org.freakz.engine.commands.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 

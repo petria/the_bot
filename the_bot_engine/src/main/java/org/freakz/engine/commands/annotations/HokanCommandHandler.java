@@ -1,4 +1,4 @@
-package org.freakz.engine.commands;
+package org.freakz.engine.commands.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
