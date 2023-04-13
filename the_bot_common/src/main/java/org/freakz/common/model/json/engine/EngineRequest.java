@@ -21,7 +21,9 @@ public class EngineRequest {
     private boolean isPrivateChannel;
     private Long fromChannelId;
 
+    private String fromSenderId;
     private String fromSender;
+    private boolean isFromAdmin = false;
 
     private String network;
 

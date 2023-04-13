@@ -58,7 +58,9 @@ public class HelpCmd extends AbstractCmd {
 
             for (String cmdName : cmdNames) {
                 HandlerClass handlerClass = handlersMap.get(cmdName);
-
+                if (handlerClass.isAdmin() && !request.isFromAdmin()) {
+                    continue;
+                }
                 sb.append("  ");
                 sb.append(cmdName);
 

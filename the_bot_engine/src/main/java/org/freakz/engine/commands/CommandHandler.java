@@ -88,6 +88,11 @@ public class CommandHandler {
         CommandArgs args = new CommandArgs(message);
         AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
         if (abstractCmd != null) {
+            if (abstractCmd.isAdminCommand() && !user.isAdmin()) {
+                log.debug("User is not admin but command is, access denied!");
+                return null;
+            }
+
 
             abstractCmd.abstractInitCommandOptions();
 
