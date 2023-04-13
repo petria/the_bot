@@ -133,4 +133,9 @@ public class TelegramConnection extends BotConnection {
         }
     }
 
+
+    @Override
+    public String getNetwork() {
+        return "TelegramNetwork";
+    }
 }
