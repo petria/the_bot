@@ -8,9 +8,13 @@ services:
       - ./runtime:/runtime
     ports:
       - "8100:8100"
+    environment:
+      - hokan.runtime.profile=
   bot-io:
     build: ./the_bot_io
     volumes:
       - ./runtime:/runtime
     ports:
       - "8090:8090"
+    environment:
+      - hokan.runtime.profile=
