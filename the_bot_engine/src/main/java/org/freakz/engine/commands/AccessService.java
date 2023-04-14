@@ -17,8 +17,18 @@ public class AccessService {
     }
 
     private boolean checkIsFromAdmin(EngineRequest request) {
-        if (request.getNetwork().equals("IRCNet")) {
+        if (request.getNetwork().equalsIgnoreCase("IRCNet")) {
             return request.getFromSender().equals("_Pete_");
+        }
+        if (request.getNetwork().equalsIgnoreCase("TelegramNetwork")) {
+            if (request.getFromSenderId().equals("138695441")) {
+                return true;
+            }
+        }
+        if (request.getNetwork().equalsIgnoreCase("Discord")) {
+            if (request.getFromSenderId().equals("265828694445129728")) {
+                return true;
+            }
         }
         return false;
     }

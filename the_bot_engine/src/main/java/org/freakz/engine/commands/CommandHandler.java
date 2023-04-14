@@ -131,6 +131,7 @@ public class CommandHandler {
                 return reply;
 
             } else {
+                request.setFromAdmin(user.isAdmin());
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {
                     sendReplyMessage(request, reply);
