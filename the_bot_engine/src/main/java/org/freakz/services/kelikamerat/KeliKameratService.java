@@ -250,8 +250,8 @@ public class KeliKameratService extends AbstractService {
         try {
             log.debug("Get station list");
             updateStations();
-//            log.debug("Update 1st time: {}", stationUrls.size());
-//            doUpdateData();
+            log.debug("Update 1st time: {}", stationUrls.size());
+            doUpdateData();
         } catch (Exception e) {
             e.printStackTrace();
             //response.setStatus("NOK: Initial data update failed: " + e.getMessage());

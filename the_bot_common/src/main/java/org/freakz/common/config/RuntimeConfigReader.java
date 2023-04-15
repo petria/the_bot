@@ -34,7 +34,7 @@ public class RuntimeConfigReader {
 
 
     public TheBotConfig readBotConfig(ObjectMapper mapper, String runtimeDir, String secretPropertiesFile, String profile) throws IOException {
-
+        log.debug("readBotConfig --->>> PROFILE: {}", profile);
         String secretsFile;
         String cfgFile;
         if (profile != null && profile.length() > 0) {
