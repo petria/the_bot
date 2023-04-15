@@ -86,6 +86,9 @@ public class DiscordServerConnection extends BotConnection {
         Channel channel = null;
         Set<Channel> channels = api.getChannels();
         for (Channel ch : channels) {
+            if (ch.asVoiceChannel().isPresent()) {
+                continue; // Skip voice channels;
+            }
             String chId = "" + ch.getId();
             if (chId.equals(message.getId())) {
                 channel = ch;

@@ -104,7 +104,7 @@ public class IrcServerConnection extends BotConnection {
     protected void checkEchoTo(IrcServerConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
         String name = channelName; //event.getChannel().getName();
         config.getChannelList().forEach(ch -> {
-            if (ch.getName().equals(name)) {
+            if (ch.getName().equalsIgnoreCase(name)) {
                 if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
                     for (String echoToAlias : ch.getEchoToAliases()) {
                         log.debug("Echo to: {}", echoToAlias);
