@@ -109,7 +109,7 @@ public class IrcServerConnection extends BotConnection {
                     for (String echoToAlias : ch.getEchoToAliases()) {
                         log.debug("Echo to: {}", echoToAlias);
                         try {
-                            String msg = String.format("<IRC@%s: %s>", actorName, message);
+                            String msg = String.format("%s: %s", actorName, message);
                             connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
                         } catch (InvalidTargetAliasException e) {
                             log.error("Can not echo message to: {}", echoToAlias);
