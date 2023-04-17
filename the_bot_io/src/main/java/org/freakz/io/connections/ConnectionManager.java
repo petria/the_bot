@@ -29,7 +29,32 @@ public class ConnectionManager {
     @Autowired
     private EventPublisher eventPublisher;
 
-    private Map<Integer, BotConnection> connectionMap = new HashMap<>();
+    private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
+
+
+    private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
+
+    public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
+        JoinedChannelContainer container = joinedChannelsMap.get(channel.getTargetAlias());
+        if (container == null) {
+            container = new JoinedChannelContainer();
+            container.botConnectionType = botConnectionType;
+            container.channel = channel;
+            container.connection = connection;
+        }
+        joinedChannelsMap.put(channel.getTargetAlias(), container);
+    }
+
+    public Map<String, JoinedChannelContainer> getJoinedChannelsMap() {
+        return this.joinedChannelsMap;
+    }
+
+    static class JoinedChannelContainer {
+        public BotConnection connection;
+        public BotConnectionChannel channel;
+
+        public BotConnectionType botConnectionType;
+    }
 
 
     public void addConnection(BotConnection connection) {
@@ -143,7 +168,16 @@ public class ConnectionManager {
 
 
     private Dual findChannelByTargetAlias(String targetAlias) {
-        for (BotConnection connection : this.connectionMap.values()) {
+        JoinedChannelContainer container = this.joinedChannelsMap.get(targetAlias);
+        if (container != null) {
+            Dual r = new Dual();
+            r.connection = container.connection;
+            r.channel = container.channel;
+            return r;
+
+        }
+
+/*        for (BotConnection connection : this.connectionMap.values()) {
             for (BotConnectionChannel channel : connection.getChannelMap().values()) {
                 if (channel.getTargetAlias().matches(targetAlias)) {
                     Dual r = new Dual();
@@ -152,7 +186,7 @@ public class ConnectionManager {
                     return r;
                 }
             }
-        }
+        }*/
         return null;
     }
 

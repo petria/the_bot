@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.DiscordConfig;
 import org.freakz.common.model.json.feed.Message;
@@ -41,12 +42,15 @@ public class DiscordServerConnection extends BotConnection {
         this.config = config;
 
         String token = config.getToken();
-        this.api
-                = new DiscordApiBuilder()
+        this.api = new DiscordApiBuilder()
                 .addMessageCreateListener(this::messageListener)
                 .addServerBecomesAvailableListener(event -> {
                     log.debug("loaded: {}", event);
-                    updateChannelMap(event.getApi());
+                    try {
+                        updateChannelMap(event.getApi());
+                    } catch (BotIOException e) {
+                        throw new RuntimeException(e);
+                    }
                 })
                 .setAllIntents()
                 .setToken(token)
@@ -56,7 +60,7 @@ public class DiscordServerConnection extends BotConnection {
 
     }
 
-    private void updateChannelMap(DiscordApi api) {
+    private void updateChannelMap(DiscordApi api) throws BotIOException {
         Set<Server> servers = api.getServers();
         for (Server server : servers) {
             for (Channel channel : server.getChannels()) {
@@ -64,21 +68,38 @@ public class DiscordServerConnection extends BotConnection {
                 int idx1 = channelStr.indexOf("name: ");
                 String name = channelStr.substring(idx1 + 6, channelStr.length() - 1);
 
-                BotConnectionChannel botConnectionChannel = getChannelMap().get(name);
-                if (botConnectionChannel == null) {
+                org.freakz.common.model.json.botconfig.Channel ch = resolveByEchoTo(channel.getId());
+                if (ch == null) {
+                    log.error("No Channel config found with: " + channel);
+                    continue;
+                }
+
+                ConnectionManager.JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(ch.getEchoToAlias());
+                BotConnectionChannel botConnectionChannel;
+                if (container == null) {
                     botConnectionChannel = new BotConnectionChannel();
 
-                    botConnectionChannel.setTargetAlias("DISCORD-" + getChannelMap().size());
-                    getChannelMap().put(name, botConnectionChannel);
-                }
-                botConnectionChannel.setId("" + channel.getId());
-                botConnectionChannel.setName(name);
-                botConnectionChannel.setNetwork(getNetwork());
-                botConnectionChannel.setType(getType().toString());
+                    botConnectionChannel.setId(String.valueOf(channel.getId()));
+                    botConnectionChannel.setType(getType().name());
+                    botConnectionChannel.setNetwork(getNetwork());
 
+                } else {
+                    botConnectionChannel = container.channel;
+                }
+                this.connectionManager.updateJoinedChannelsMap(BotConnectionType.DISCORD_CONNECTION, this, botConnectionChannel);
+                log.debug("Updated channel: {}", botConnectionChannel);
             }
         }
 
+    }
+
+    private org.freakz.common.model.json.botconfig.Channel resolveByEchoTo(long id) {
+        for (org.freakz.common.model.json.botconfig.Channel channel : this.config.getChannelList()) {
+            if (channel.getId().equals("" + id)) {
+                return channel;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -122,7 +143,12 @@ public class DiscordServerConnection extends BotConnection {
     private void messageListener(MessageCreateEvent event) {
         log.debug("Discord msg: {}", event.toString());
         publisher.publishEvent(this, event);
-        updateChannelMap(event.getApi());
+
+        try {
+            updateChannelMap(event.getApi());
+        } catch (BotIOException e) {
+            throw new RuntimeException(e);
+        }
 
         String channelStr = event.getChannel().toString();
         // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"

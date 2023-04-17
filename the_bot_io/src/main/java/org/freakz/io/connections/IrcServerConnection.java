@@ -3,6 +3,7 @@ package org.freakz.io.connections;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
+import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.json.botconfig.IrcServerConfig;
 import org.freakz.common.model.json.feed.Message;
@@ -45,7 +46,7 @@ public class IrcServerConnection extends BotConnection {
     }
 
     @Handler
-    public void onUserJoinChannel(ChannelJoinEvent event) {
+    public void onUserJoinChannel(ChannelJoinEvent event) throws BotIOException {
         updateChannelMap(event.getChannel().getName());
         if (event.getClient().isUser(event.getUser())) { // It's me!
 //            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
@@ -69,14 +70,21 @@ public class IrcServerConnection extends BotConnection {
     }
 
     @Handler
-    public void onChannelUsersUpdatedEvent(ChannelUsersUpdatedEvent event) {
+    public void onChannelUsersUpdatedEvent(ChannelUsersUpdatedEvent event) throws BotIOException {
         String channelName = event.getChannel().getName();
         log.debug("onChannelUsersUpdatedEvent: {}", channelName);
         updateChannelMap(channelName);
         int foo = 0;
     }
 
-    private void updateChannelMap(String channelName) {
+    private void updateChannelMap(String channelName) throws BotIOException {
+
+        org.freakz.common.model.json.botconfig.Channel channel = resolveByEchoTo(channelName);
+        if (channel == null) {
+            throw new BotIOException("No Channel config found with: " + channelName);
+        }
+
+        /*
         BotConnectionChannel botConnectionChannel = getChannelMap().get(channelName);
         if (botConnectionChannel == null) {
             botConnectionChannel = new BotConnectionChannel();
@@ -89,12 +97,36 @@ public class IrcServerConnection extends BotConnection {
         botConnectionChannel.setName(channelName);
         botConnectionChannel.setType(getType().name());
         botConnectionChannel.setNetwork(getNetwork());
+*/
+        ConnectionManager.JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(channel.getEchoToAlias());
+        BotConnectionChannel botConnectionChannel;
+        if (container == null) {
+            botConnectionChannel = new BotConnectionChannel();
+
+            botConnectionChannel.setId(channel.getId());
+            botConnectionChannel.setType(getType().name());
+            botConnectionChannel.setNetwork(getNetwork());
+
+        } else {
+            botConnectionChannel = container.channel;
+        }
+
+        this.connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, this, botConnectionChannel);
 
         log.debug("Updated channel: {}", botConnectionChannel);
     }
 
+    private org.freakz.common.model.json.botconfig.Channel resolveByEchoTo(String channelName) {
+        for (org.freakz.common.model.json.botconfig.Channel channel : this.config.getChannelList()) {
+            if (channel.getName().equalsIgnoreCase(channelName)) {
+                return channel;
+            }
+        }
+        return null;
+    }
+
     @Handler
-    public void onChannelMessageEvent(ChannelMessageEvent event) {
+    public void onChannelMessageEvent(ChannelMessageEvent event) throws BotIOException {
         log.debug("Got msg: {}", event.getMessage());
         publisher.publishEvent(this, event);
         updateChannelMap(event.getChannel().getName());
@@ -124,8 +156,12 @@ public class IrcServerConnection extends BotConnection {
     @Handler
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
         this.connectionManager.ircConnectionEstablished(this);
-        log.debug("Clear channel map to 0!");
-        getChannelMap().clear();
+// TODO        log.debug("Clear channel map to 0!");
+        for (ConnectionManager.JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
+            if (container.botConnectionType == BotConnectionType.IRC_CONNECTION) {
+                this.connectionManager.getJoinedChannelsMap().remove(container.channel.getTargetAlias());
+            }
+        }
     }
 
     @Handler

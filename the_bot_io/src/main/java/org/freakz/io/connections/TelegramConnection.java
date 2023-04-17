@@ -6,10 +6,14 @@ import org.freakz.common.model.json.botconfig.TelegramConfig;
 import org.freakz.common.model.json.feed.Message;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
+
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+
 
 @Slf4j
 public class TelegramConnection extends BotConnection {
@@ -58,6 +62,7 @@ public class TelegramConnection extends BotConnection {
         //botsApi.
         botsApi.registerBot(bot);
 
+
     }
 
     static class HokanTelegram extends TelegramLongPollingBot {
@@ -76,13 +81,55 @@ public class TelegramConnection extends BotConnection {
             this.connection = connection;
             this.config = config;
             this.connectionManager = connectionManager;
+
+
+        }
+
+        private String downloadPhoto(PhotoSize photoSize) {
+            try {
+                GetFile getFile = new GetFile();
+                getFile.setFileId(photoSize.getFileId());
+                org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
+                String fileUrl = file.getFileUrl(config.getToken());
+                log.debug("fileUrl: {}", fileUrl);
+                return fileUrl;
+/*                URL url = new URL(fileUrl);
+                InputStream in = url.openStream();
+                File tempFile = File.createTempFile("photo_", ".jpg");
+                FileOutputStream out = new FileOutputStream(tempFile);
+                byte[] buffer = new byte[4096];
+                int len;
+                while ((len = in.read(buffer)) > 0) {
+                    out.write(buffer, 0, len);
+                }
+                in.close();
+                out.close();*/
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+                return null;
+            }
         }
 
         @Override
         public void onUpdateReceived(Update update) {
 //            log.debug("Telegram update: {}", update);
+            if (update.hasMessage() && update.getMessage().hasPhoto()) {
+                org.telegram.telegrambots.meta.api.objects.Message message = update.getMessage();
+                // Get the photo size with the highest resolution
+                PhotoSize photoSize = message.getPhoto().stream()
+                        .max((ps1, ps2) -> Integer.compare(ps1.getWidth(), ps2.getWidth()))
+                        .orElse(null);
+                if (photoSize != null) {
+                    // Download the photo file
+                    String photoFile = downloadPhoto(photoSize);
+                    // ...
+                }
+            }
+
             if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
+
+
                 publisher.publishEvent(this.connection, update);
                 checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), update.getMessage().getFrom().getUserName(), update.getMessage().getText());
             }
@@ -126,8 +173,8 @@ public class TelegramConnection extends BotConnection {
                 channel.setNetwork(connection.getNetwork());
                 channel.setType(connection.getType().toString());
                 channel.setName(ch.getName());
-                channel.setTargetAlias("TELEGRAM-" + connection.getChannelMap().size());
-                connection.getChannelMap().put(ch.getId(), channel);
+                channel.setTargetAlias(ch.getEchoToAlias());
+                this.connectionManager.updateJoinedChannelsMap(BotConnectionType.TELEGRAM_CONNECTION, this.connection, channel);
             });
 
         }

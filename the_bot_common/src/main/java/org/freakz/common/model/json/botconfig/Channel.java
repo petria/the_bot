@@ -21,6 +21,8 @@ public class Channel {
 
     private String type;
 
+    private String echoToAlias;
+
     private List<String> echoToAliases;
 
     private Boolean joinOnStart = true;
