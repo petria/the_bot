@@ -15,5 +15,4 @@ public interface DataValuesRepository extends DataBaseRepository<DataValues> {
 
     DataValues save(DataValues data) throws DataRepositoryException;
 
-    void checkIsSavingNeeded();
 }

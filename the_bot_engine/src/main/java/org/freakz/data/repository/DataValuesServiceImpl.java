@@ -17,12 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements DataValuesRepository {
+public class DataValuesServiceImpl extends RepositoryBaseImpl implements DataValuesRepository, DataSavingService {
 
     private static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
     private static final String DATA_VALUES_FILE_NAME = "data_values.json";
 
-    public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
+    public DataValuesServiceImpl(ConfigService configService) throws Exception {
         super(configService);
         initialize();
     }

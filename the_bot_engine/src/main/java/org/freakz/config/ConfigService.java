@@ -27,6 +27,10 @@ public class ConfigService {
     @PostConstruct
     public TheBotConfig readBotConfig() throws IOException {
         String activeProfile = environment.getProperty("hokan.runtime.profile");
+        if (activeProfile == null) {
+            activeProfile = "DEV";
+            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
+        }
         ObjectMapper mapper = new ObjectMapper();
         return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
     }

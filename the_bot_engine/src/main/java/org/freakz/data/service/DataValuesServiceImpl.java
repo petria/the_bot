@@ -6,10 +6,9 @@ import org.freakz.common.data.dto.DataValueStatsModel;
 import org.freakz.common.data.dto.DataValues;
 import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
+import org.freakz.data.repository.DataSavingService;
 import org.freakz.data.repository.DataValuesRepository;
-import org.freakz.data.repository.DataValuesRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,7 +21,7 @@ import java.util.stream.IntStream;
 
 @Service
 @Slf4j
-public class DataValuesServiceImpl implements DataValuesService {
+public class DataValuesServiceImpl implements DataValuesService, DataSavingService {
 
     //    @Autowired
     private final DataValuesRepository dataValuesRepository;
@@ -32,7 +31,7 @@ public class DataValuesServiceImpl implements DataValuesService {
     @Autowired
     public DataValuesServiceImpl(ConfigService configService) throws Exception {
         this.configService = configService;
-        this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
+        this.dataValuesRepository = new org.freakz.data.repository.DataValuesServiceImpl(configService);
     }
 
 
@@ -209,9 +208,8 @@ public class DataValuesServiceImpl implements DataValuesService {
     }
 
 
-    @Scheduled(fixedRate = 100)
-    public void repositorySaveTimer() {
-        this.dataValuesRepository.checkIsSavingNeeded();
+    @Override
+    public void checkIsSavingNeeded() {
+        ((DataSavingService) this.dataValuesRepository).checkIsSavingNeeded();
     }
-
 }

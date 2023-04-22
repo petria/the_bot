@@ -120,9 +120,10 @@ public class TopCountService {
 
                     String posText;
                     if (newPos.position == 1) {
-                        posText = String.format("*%s*  \u0002%d. you = %s\u0002 <--> %d. %s = %s",
+                        posText = String.format("*%s*  \u0002%d. %s = %s\u0002 <--> %d. %s = %s",
                                 countEnum.getPrettyName(),
                                 newPos.position,
+                                newPos.own.getNick(),
                                 newPos.own.getValue(),
                                 newPos.position + 1,
                                 newPos.after.getNick(),
