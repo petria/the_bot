@@ -86,6 +86,16 @@ public class DataValuesServiceImpl extends RepositoryBaseImpl implements DataVal
     }
 
     @Override
+    public DataSaverInfo getDataSaverInfo() {
+        DataSaverInfo info
+                = DataSaverInfo.builder()
+                .name("DataValues")
+                .build();
+
+        return info;
+    }
+
+    @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
         for (DataValues values : this.dataValues) {

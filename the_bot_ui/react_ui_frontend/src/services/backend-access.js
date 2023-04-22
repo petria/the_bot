@@ -9,7 +9,7 @@ const check_not_authorized = (status) => {
 
 }
 
-const http_get = (url, ok, error, notify= false) => {
+const http_get = (url, ok, error, notify = false) => {
 
     axios.get(url)
         .then(

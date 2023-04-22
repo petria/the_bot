@@ -28,6 +28,7 @@ public class HokanServices {
     }
 
     private final ApplicationContext applicationContext;
+
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
             ServiceHandler serviceHandler = findServiceMessageHandlers(serviceRequestType);

@@ -1,11 +1,6 @@
 package org.freakz.engine.commands.handlers;
 
-import com.martiansoftware.jsap.FlaggedOption;
-import com.martiansoftware.jsap.JSAP;
-import com.martiansoftware.jsap.JSAPException;
-import com.martiansoftware.jsap.JSAPResult;
-import com.martiansoftware.jsap.Switch;
-import com.martiansoftware.jsap.UnflaggedOption;
+import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.common.model.json.foreca.ForecaData;
@@ -14,11 +9,7 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_FEELS_LIKE;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_SUN_UP_DOWN;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VERBOSE;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
 
 @HokanCommandHandler

@@ -39,7 +39,7 @@ public class ServerConfigController {
             return ResponseEntity.ok(responseBody.get());
 
         } catch (Exception exc) {
-            return  ResponseEntity.internalServerError().body("fffufufufuf");
+            return ResponseEntity.internalServerError().body("fffufufufuf");
 
         }
     }

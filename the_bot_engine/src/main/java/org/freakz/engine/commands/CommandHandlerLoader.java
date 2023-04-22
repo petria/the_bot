@@ -12,11 +12,7 @@ import org.reflections.util.ClasspathHelper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 @Slf4j
 public class CommandHandlerLoader {

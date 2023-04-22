@@ -27,12 +27,12 @@
             <version>${telegrambots.version}</version>
         </dependency>
 
-<!--        <dependency>
-            <groupId>com.github.pengrad</groupId>
-            <artifactId>java-telegram-bot-api</artifactId>
-            <version>${com.github.pengrad.version}</version>
-        </dependency>
--->
+        <!--        <dependency>
+                    <groupId>com.github.pengrad</groupId>
+                    <artifactId>java-telegram-bot-api</artifactId>
+                    <version>${com.github.pengrad.version}</version>
+                </dependency>
+        -->
         <dependency>
             <groupId>org.javacord</groupId>
             <artifactId>javacord</artifactId>

@@ -21,7 +21,7 @@ public class DataControllerService {
 
     private Collection<DataSavingService> getDataSavingServices() {
         Map<String, DataSavingService> beansOfType = context.getBeansOfType(DataSavingService.class);
-        return  beansOfType.values();
+        return beansOfType.values();
     }
 
 

@@ -14,9 +14,8 @@ public class ServerConfig {
     @GetMapping("/")
     List<String> getServerConfigs() {
         List<String> test = Arrays.asList("fufuf1", "ffufuf2", "server3");
-       return test;
+        return test;
     }
-
 
 
 }

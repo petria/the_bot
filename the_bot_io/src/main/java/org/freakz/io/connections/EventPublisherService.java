@@ -122,7 +122,6 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
-
     private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
         long id = event.getChannel().getId();

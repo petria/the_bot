@@ -1,7 +1,7 @@
 version: '2.4'
 services:
-#  db:
-#    image: postgres
+  #  db:
+  #    image: postgres
   bot-engine:
     build: ./the_bot_engine
     volumes:

@@ -26,12 +26,12 @@ public class AccessService {
         }
         if (request.getNetwork().equalsIgnoreCase("TelegramNetwork")) {
             if (request.getFromSenderId().equals("138695441")) {
-                isAdmin =  true;
+                isAdmin = true;
             }
         }
         if (request.getNetwork().equalsIgnoreCase("Discord")) {
             if (request.getFromSenderId().equals("265828694445129728")) {
-                isAdmin =  true;
+                isAdmin = true;
             }
         }
         log.debug("Check admin result: {}", isAdmin);

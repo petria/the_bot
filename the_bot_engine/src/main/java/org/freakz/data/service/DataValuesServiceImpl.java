@@ -1,22 +1,19 @@
 package org.freakz.data.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.data.dto.DataValueStatsModel;
 import org.freakz.common.data.dto.DataValues;
 import org.freakz.common.data.dto.DataValuesModel;
+import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.config.ConfigService;
+import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
 import org.freakz.data.repository.DataValuesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 @Service
@@ -211,5 +208,10 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
     @Override
     public void checkIsSavingNeeded() {
         ((DataSavingService) this.dataValuesRepository).checkIsSavingNeeded();
+    }
+
+    @Override
+    public DataSaverInfo getDataSaverInfo() {
+        return ((DataSavingService) this.dataValuesRepository).getDataSaverInfo();
     }
 }

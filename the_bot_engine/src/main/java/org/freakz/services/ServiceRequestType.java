@@ -3,11 +3,14 @@ package org.freakz.services;
 public enum ServiceRequestType {
 
     ConnectionControlService,
+
+    DataSaverList,
+
     ForecaWeatherService,
 
-    GetTopCountsService,
-
     GetDataValuesService,
+
+    GetTopCountsService,
 
     KelikameratService,
 

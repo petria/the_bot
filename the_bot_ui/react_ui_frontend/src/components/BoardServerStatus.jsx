@@ -25,7 +25,7 @@ const BoardServerStatus = () => {
 //        )
 
 
-        //setData(ServerStatusService.getServerStatus());
+    //setData(ServerStatusService.getServerStatus());
 //    }, []);
 //    console.log('data -->', data);
 

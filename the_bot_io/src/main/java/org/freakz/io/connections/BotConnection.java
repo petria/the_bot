@@ -15,7 +15,7 @@ public class BotConnection {
     @Getter
     private int id;
 
-//    @Getter
+    //    @Getter
     private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
 
     @Getter

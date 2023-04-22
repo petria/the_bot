@@ -2,13 +2,7 @@ package org.freakz.common.data.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
-
-import java.io.Serializable;
+import lombok.*;
 
 /**
  * Orginal Date: 23.1.2012
