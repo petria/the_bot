@@ -9,6 +9,7 @@ import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
 import org.freakz.data.repository.DataValuesRepository;
+import org.freakz.data.repository.DataValuesRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +29,7 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
     @Autowired
     public DataValuesServiceImpl(ConfigService configService) throws Exception {
         this.configService = configService;
-        this.dataValuesRepository = new org.freakz.data.repository.DataValuesServiceImpl(configService);
+        this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
     }
 
 

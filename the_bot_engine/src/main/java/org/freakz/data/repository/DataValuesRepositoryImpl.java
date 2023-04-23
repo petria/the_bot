@@ -4,7 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.data.dto.DataContainerBase;
 import org.freakz.common.data.dto.DataValues;
+import org.freakz.common.data.dto.DataValuesJsonContainer;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.config.ConfigService;
 
@@ -17,28 +19,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class DataValuesServiceImpl extends RepositoryBaseImpl implements DataValuesRepository, DataSavingService {
+public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements DataValuesRepository, DataSavingService {
 
     private static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
     private static final String DATA_VALUES_FILE_NAME = "data_values.json";
 
-    public DataValuesServiceImpl(ConfigService configService) throws Exception {
+    public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
         super(configService);
         initialize();
-    }
-
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    static class DataValuesJson {
-        private List<DataValues> data_values;
     }
 
     public void initialize() throws Exception {
         File dataFile = configService.getRuntimeDataFile(DATA_VALUES_FILE_NAME);
         if (dataFile.exists()) {
-            DataValuesJson dataValuesJson = mapper.readValue(dataFile, DataValuesJson.class);
+            DataValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, DataValuesJsonContainer.class);
             this.dataValues.addAll(dataValuesJson.getData_values());
             long highestId = -1;
             for (DataValues values : this.dataValues) {
@@ -58,9 +52,12 @@ public class DataValuesServiceImpl extends RepositoryBaseImpl implements DataVal
             String dataFileName = configService.getRuntimeDataFileName(DATA_VALUES_FILE_NAME);
             log.debug("synchronized start writing data values: {}", dataFileName);
 
-            DataValuesJson jsonPojo = new DataValuesJson();
-            jsonPojo.setData_values(this.dataValues);
-            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonPojo);
+            DataValuesJsonContainer container
+                    = DataValuesJsonContainer.builder()
+                    .data_values(this.dataValues)
+                    .build();
+
+            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
             Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
 
             log.debug("synchronized block write done: {}", this.dataValues.size());

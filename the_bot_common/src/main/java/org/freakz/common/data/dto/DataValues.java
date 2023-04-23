@@ -18,7 +18,7 @@ import lombok.*;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @ToString
-public class DataValues extends DataBase {
+public class DataValues extends DataNodeBase {
 
     @JsonProperty("id")
     private Long id;

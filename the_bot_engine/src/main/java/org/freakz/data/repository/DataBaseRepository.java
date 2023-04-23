@@ -1,7 +1,7 @@
 package org.freakz.data.repository;
 
-import org.freakz.common.data.dto.DataBase;
+import org.freakz.common.data.dto.DataNodeBase;
 
-public interface DataBaseRepository<T extends DataBase> {
+public interface DataBaseRepository<T extends DataNodeBase> {
 
 }

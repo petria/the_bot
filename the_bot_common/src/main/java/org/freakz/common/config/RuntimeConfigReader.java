@@ -67,14 +67,7 @@ public class RuntimeConfigReader {
         String replacedJson = temp[0];
 
         TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);
-        ;
         return theConfig;
     }
 
-    public void storeStringToRuntimeDirectory(String stringData, String runtimeDir, String jsonFileName) throws IOException {
-        String dataFile = runtimeDir + "/" + jsonFileName;
-        log.debug("Writing '{}' to runtime directory", dataFile);
-        Path path = Path.of(dataFile);
-        Files.writeString(path, stringData, Charset.defaultCharset());
-    }
 }

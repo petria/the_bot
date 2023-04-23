@@ -1,6 +1,7 @@
 package org.freakz.data.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.freakz.common.data.dto.DataValues;
 import org.freakz.config.ConfigService;
 
@@ -19,10 +20,11 @@ public class RepositoryBaseImpl {
 
     protected long highestId;
 
-    protected ObjectMapper mapper = new ObjectMapper();
-
+    protected final ObjectMapper mapper;
 
     public RepositoryBaseImpl(ConfigService configService) {
+        this.mapper = new ObjectMapper();
+        this.mapper.registerModule(new JavaTimeModule());
         this.configService = configService;
     }
 }
