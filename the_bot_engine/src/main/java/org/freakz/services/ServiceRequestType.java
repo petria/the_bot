@@ -16,5 +16,6 @@ public enum ServiceRequestType {
 
     SendMessageByTargetAlias,
 
+    TranslateService,
 
 }

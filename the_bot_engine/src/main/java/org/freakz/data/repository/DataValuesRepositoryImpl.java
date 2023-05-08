@@ -56,6 +56,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
                     = DataValuesJsonContainer.builder()
                     .data_values(this.dataValues)
                     .build();
+            container.setSaveTimes(container.getSaveTimes() + 1);
 
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
             Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
