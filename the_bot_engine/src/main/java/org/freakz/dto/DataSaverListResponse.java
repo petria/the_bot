@@ -5,7 +5,6 @@ import lombok.Data;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.services.ServiceResponse;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Builder

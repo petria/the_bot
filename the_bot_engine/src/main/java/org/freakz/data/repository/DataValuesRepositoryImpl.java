@@ -1,10 +1,6 @@
 package org.freakz.data.repository;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.data.dto.DataContainerBase;
 import org.freakz.common.data.dto.DataValues;
 import org.freakz.common.data.dto.DataValuesJsonContainer;
 import org.freakz.common.exception.DataRepositoryException;
