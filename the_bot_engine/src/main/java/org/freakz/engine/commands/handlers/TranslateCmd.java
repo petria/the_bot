@@ -8,10 +8,12 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.json.engine.EngineRequest;
 import org.freakz.dto.TranslateData;
 import org.freakz.dto.TranslateResponse;
+import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,13 @@ public class TranslateCmd extends AbstractCmd {
                 .setGreedy(false);
         jsap.registerParameter(flg);
 
+    }
+
+    @Override
+    public List<HandlerAlias> getAliases() {
+        List<HandlerAlias> list = new ArrayList<>();
+        list.add(createAlias("!trans", "!translate"));
+        return list;
     }
 
     @Override
