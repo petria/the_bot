@@ -74,7 +74,7 @@ public class DiscordServerConnection extends BotConnection {
                     continue;
                 }
 
-                ConnectionManager.JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(ch.getEchoToAlias());
+                JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(ch.getEchoToAlias());
                 BotConnectionChannel botConnectionChannel;
                 if (container == null) {
                     botConnectionChannel = new BotConnectionChannel();

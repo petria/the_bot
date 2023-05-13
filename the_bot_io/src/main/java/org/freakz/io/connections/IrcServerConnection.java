@@ -94,7 +94,7 @@ public class IrcServerConnection extends BotConnection {
         botConnectionChannel.setType(getType().name());
         botConnectionChannel.setNetwork(getNetwork());
 */
-        ConnectionManager.JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(channel.getEchoToAlias());
+        JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(channel.getEchoToAlias());
         BotConnectionChannel botConnectionChannel;
         if (container == null) {
             botConnectionChannel = new BotConnectionChannel();
@@ -153,7 +153,7 @@ public class IrcServerConnection extends BotConnection {
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
         this.connectionManager.ircConnectionEstablished(this);
 // TODO        log.debug("Clear channel map to 0!");
-        for (ConnectionManager.JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
+        for (JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
             if (container.botConnectionType == BotConnectionType.IRC_CONNECTION) {
                 this.connectionManager.getJoinedChannelsMap().remove(container.channel.getTargetAlias());
             }

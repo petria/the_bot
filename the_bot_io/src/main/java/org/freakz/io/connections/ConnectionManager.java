@@ -49,13 +49,6 @@ public class ConnectionManager {
         return this.joinedChannelsMap;
     }
 
-    static class JoinedChannelContainer {
-        public BotConnection connection;
-        public BotConnectionChannel channel;
-
-        public BotConnectionType botConnectionType;
-    }
-
 
     public void addConnection(BotConnection connection) {
         this.connectionMap.put(connection.getId(), connection);

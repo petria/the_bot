@@ -26,6 +26,16 @@ public abstract class AbstractCmd implements HokanCmd {
     @Getter
     private CommandHandler commandHandler;
 
+    private final StringBuilder sb = new StringBuilder();
+
+    public StringBuilder sb() {
+        return sb;
+    }
+
+    public void format(String format, Object... args) {
+        sb.append(String.format(format, args));
+    }
+
     public String getCommandClassName() {
         return this.getClass().getSimpleName();
     }
