@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.freakz.common.model.json.botconfig.Channel;
 
 @Data
 @NoArgsConstructor
@@ -14,7 +13,7 @@ public class BotConnectionChannel {
 
     private String id;
 
-    private String targetAlias;
+    private String echoToAlias;
 
     private String type;
 
@@ -22,6 +21,5 @@ public class BotConnectionChannel {
 
     private String name;
 
-    private Channel configChannel;
 
 }

@@ -18,5 +18,5 @@ public class BotConnectionChannelResponse {
     private String network;
     private String name;
 
-    private String targetAlias;
+    private String echoToAlias;
 }

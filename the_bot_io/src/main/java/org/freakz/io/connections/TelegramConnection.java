@@ -172,7 +172,7 @@ public class TelegramConnection extends BotConnection {
                 channel.setNetwork(connection.getNetwork());
                 channel.setType(connection.getType().toString());
                 channel.setName(ch.getName());
-                channel.setTargetAlias(ch.getEchoToAlias());
+                channel.setEchoToAlias(ch.getEchoToAlias());
                 this.connectionManager.updateJoinedChannelsMap(BotConnectionType.TELEGRAM_CONNECTION, this.connection, channel);
             });
 

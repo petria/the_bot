@@ -80,28 +80,15 @@ public class IrcServerConnection extends BotConnection {
             throw new BotIOException("No Channel config found with: " + channelName);
         }
 
-        /*
-        BotConnectionChannel botConnectionChannel = getChannelMap().get(channelName);
-        if (botConnectionChannel == null) {
-            botConnectionChannel = new BotConnectionChannel();
-            botConnectionChannel.setId("" + getChannelMap().size());
-
-            botConnectionChannel.setTargetAlias("IRC-" + getChannelMap().size());
-            getChannelMap().put(channelName, botConnectionChannel);
-
-        }
-        botConnectionChannel.setName(channelName);
-        botConnectionChannel.setType(getType().name());
-        botConnectionChannel.setNetwork(getNetwork());
-*/
         JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(channel.getEchoToAlias());
         BotConnectionChannel botConnectionChannel;
         if (container == null) {
             botConnectionChannel = new BotConnectionChannel();
-
+            botConnectionChannel.setName(channel.getName());
             botConnectionChannel.setId(channel.getId());
             botConnectionChannel.setType(getType().name());
             botConnectionChannel.setNetwork(getNetwork());
+            botConnectionChannel.setEchoToAlias(channel.getEchoToAlias());
 
         } else {
             botConnectionChannel = container.channel;
@@ -155,7 +142,7 @@ public class IrcServerConnection extends BotConnection {
 // TODO        log.debug("Clear channel map to 0!");
         for (JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
             if (container.botConnectionType == BotConnectionType.IRC_CONNECTION) {
-                this.connectionManager.getJoinedChannelsMap().remove(container.channel.getTargetAlias());
+                this.connectionManager.getJoinedChannelsMap().remove(container.channel.getEchoToAlias());
             }
         }
     }

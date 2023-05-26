@@ -35,14 +35,17 @@ public class ConnectionManager {
     private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
     public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
-        JoinedChannelContainer container = joinedChannelsMap.get(channel.getTargetAlias());
+        JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
         if (container == null) {
             container = new JoinedChannelContainer();
             container.botConnectionType = botConnectionType;
             container.channel = channel;
             container.connection = connection;
         }
-        joinedChannelsMap.put(channel.getTargetAlias(), container);
+        if (channel.getEchoToAlias() == null) {
+            int foo = 0;
+        }
+        joinedChannelsMap.put(channel.getEchoToAlias(), container);
     }
 
     public Map<String, JoinedChannelContainer> getJoinedChannelsMap() {

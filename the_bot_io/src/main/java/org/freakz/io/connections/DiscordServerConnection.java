@@ -64,9 +64,6 @@ public class DiscordServerConnection extends BotConnection {
         Set<Server> servers = api.getServers();
         for (Server server : servers) {
             for (Channel channel : server.getChannels()) {
-                String channelStr = channel.toString();
-                int idx1 = channelStr.indexOf("name: ");
-                String name = channelStr.substring(idx1 + 6, channelStr.length() - 1);
 
                 org.freakz.common.model.json.botconfig.Channel ch = resolveByEchoTo(channel.getId());
                 if (ch == null) {
@@ -78,10 +75,11 @@ public class DiscordServerConnection extends BotConnection {
                 BotConnectionChannel botConnectionChannel;
                 if (container == null) {
                     botConnectionChannel = new BotConnectionChannel();
-
+                    botConnectionChannel.setName(ch.getName());
                     botConnectionChannel.setId(String.valueOf(channel.getId()));
                     botConnectionChannel.setType(getType().name());
                     botConnectionChannel.setNetwork(getNetwork());
+                    botConnectionChannel.setEchoToAlias(ch.getEchoToAlias());
 
                 } else {
                     botConnectionChannel = container.channel;
