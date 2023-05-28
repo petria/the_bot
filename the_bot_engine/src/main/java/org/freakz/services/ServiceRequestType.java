@@ -12,6 +12,8 @@ public enum ServiceRequestType {
 
     GetTopCountsService,
 
+    IrcOpRequest,
+
     KelikameratService,
 
     SendMessageByTargetAlias,
