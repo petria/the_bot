@@ -15,6 +15,7 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.services.HokanServices;
+import org.freakz.services.conversations.ConversationsService;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.scheduling.annotation.Async;
@@ -34,13 +35,17 @@ public class CommandHandler {
     @Getter
     private final HokanServices hokanServices;
     private final ConfigService configService;
+
+    private final ConversationsService conversationsService;
+
     private String botName;
 
-    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService) throws InitializeFailedException, IOException {
+    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
         this.configService = configService;
+        this.conversationsService = conversationsService;
         this.commandHandlerLoader = new CommandHandlerLoader();
         this.botName = configService.readBotConfig().getBotConfig().getBotName();
     }
@@ -59,6 +64,8 @@ public class CommandHandler {
         if (doWholeLineTriggerCheck) {
             handleWholeLineTriggers(request);
         }
+
+        this.conversationsService.handleConversations(this, request);
 
         if (request.getCommand().startsWith("!")) {
             return parseAndExecute(request);

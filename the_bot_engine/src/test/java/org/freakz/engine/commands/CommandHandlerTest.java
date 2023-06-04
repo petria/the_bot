@@ -8,6 +8,7 @@ import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.services.HokanServices;
+import org.freakz.services.conversations.ConversationsService;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.Mockito;
 
@@ -29,12 +30,13 @@ public class CommandHandlerTest {
 
     private ConfigService configService = Mockito.mock(ConfigService.class);
 
+    private ConversationsService conversationsService = Mockito.mock(ConversationsService.class);
     //    @Test
     public void testWeatherCmd() throws Exception {
         String command = "!weather oulu";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService);
+        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService, conversationsService);
         String reply = commandHandler.handleEngineRequest(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
@@ -49,7 +51,7 @@ public class CommandHandlerTest {
         String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService);
+        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService, conversationsService);
 
 
         NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {

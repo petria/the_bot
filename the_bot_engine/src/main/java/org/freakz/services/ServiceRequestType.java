@@ -16,6 +16,8 @@ public enum ServiceRequestType {
 
     KelikameratService,
 
+    QuizStartRequest,
+
     SendMessageByTargetAlias,
 
     TranslateService,
