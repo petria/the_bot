@@ -22,10 +22,15 @@ public class QuizStartService extends AbstractService {
         ApplicationContext applicationContext = request.getApplicationContext();
         ConversationsService service = applicationContext.getBean(ConversationsService.class);
 
-        Conversation conversation = service.createConversation(request.getEngineRequest(), ConversationType.QUIZ);
 
         QuizStartResponse response = new QuizStartResponse();
-        response.setResponse("Created quiz: " + conversation.toString());
+        Conversation conversation = service.createConversation(request.getEngineRequest(), ConversationType.QUIZ);
+        if (conversation != null) {
+            Quiz quiz = (Quiz) conversation.getContent();
+            response.setResponse("Quiz started: " + quiz.getTopic());
+        } else {
+            response.setResponse("Quiz already in progress.");
+        }
 
         return response;
     }
