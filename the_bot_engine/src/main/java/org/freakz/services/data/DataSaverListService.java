@@ -5,12 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.freakz.data.DataControllerService;
 import org.freakz.data.repository.DataSaverInfo;
+import org.freakz.data.repository.DataSavingService;
 import org.freakz.dto.DataSaverListResponse;
 import org.freakz.services.*;
 import org.springframework.context.ApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 @Slf4j
@@ -27,11 +29,16 @@ public class DataSaverListService extends AbstractService {
 
         ApplicationContext applicationContext = request.getApplicationContext();
         DataControllerService service = applicationContext.getBean(DataControllerService.class);
+
         DataSaverListResponse response = DataSaverListResponse.builder().build();
-        DataSaverInfo info = DataSaverInfo.builder().name("Testinfo").build();
         List<DataSaverInfo> list = new ArrayList<>();
-        list.add(info);
         response.setDataSaverInfoList(list);
+
+        Map<String, DataSavingService> dataSavingServiceMap = service.getDataSavingServiceMap();
+        dataSavingServiceMap.values().forEach(s -> {
+            list.add(s.getDataSaverInfo());
+        });
+
         return response;
     }
 }

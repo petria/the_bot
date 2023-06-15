@@ -32,4 +32,7 @@ public class DataControllerService {
         }
     }
 
+    public Map<String, DataSavingService> getDataSavingServiceMap() {
+        return context.getBeansOfType(DataSavingService.class);
+    }
 }
