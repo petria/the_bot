@@ -3,41 +3,53 @@ package org.freakz.engine.commands;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.data.service.UsersService;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Slf4j
 public class AccessService {
 
 
+    private final UsersService usersService;
+
+    public AccessService(UsersService usersService) {
+        this.usersService = usersService;
+    }
+
     public User getUser(EngineRequest request) {
-        User user
-                = User.builder()
-                .isAdmin(checkIsFromAdmin(request))
-                .build();
-
-        return user;
-    }
-
-    private boolean checkIsFromAdmin(EngineRequest request) {
-        log.debug("Check admin access: {}", request);
-        boolean isAdmin = false;
-        if (request.getNetwork().equalsIgnoreCase("IRCNet")) {
-            isAdmin = request.getFromSender().equals("_Pete_");
-        }
-        if (request.getNetwork().equalsIgnoreCase("TelegramNetwork")) {
-            if (request.getFromSenderId().equals("138695441")) {
-                isAdmin = true;
+        List<User> users = usersService.findAll();
+        User foundUser = null;
+        for (User user : users) {
+            switch (request.getNetwork()) {
+                case "IRCNet":
+                    if (request.getFromSender().equals(user.getIrcNick())) {
+                        foundUser = user;
+                    }
+                    break;
+                case "TelegramNetwork":
+                    if (request.getFromSenderId().equals(user.getTelegramId())) {
+                        foundUser = user;
+                    }
+                    break;
+                case "Discord":
+                    if (request.getFromSenderId().equals(user.getDiscordId())) {
+                        foundUser = user;
+                    }
+                    break;
+            }
+            if (foundUser != null) {
+                break;
             }
         }
-        if (request.getNetwork().equalsIgnoreCase("Discord")) {
-            if (request.getFromSenderId().equals("265828694445129728")) {
-                isAdmin = true;
-            }
-        }
-        log.debug("Check admin result: {}", isAdmin);
-        return isAdmin;
-    }
 
+        if (foundUser == null) {
+            foundUser = usersService.getNotKnownUser();
+        }
+
+        return foundUser;
+    }
 
 }

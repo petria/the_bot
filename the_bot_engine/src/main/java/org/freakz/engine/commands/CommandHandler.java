@@ -84,7 +84,7 @@ public class CommandHandler {
     private String parseAndExecute(EngineRequest request) {
         log.debug("Handle request: {}", request);
         User user = accessService.getUser(request);
-
+        log.debug("User: {}", user);
 
         String message = request.getMessage();
         HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);

@@ -1,11 +1,16 @@
 package org.freakz.data.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
+import org.freakz.data.repository.UsersRepository;
+import org.freakz.data.repository.UsersRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 @Service
@@ -13,11 +18,12 @@ import org.springframework.stereotype.Service;
 public class UsersServiceImpl implements DataSavingService, UsersService {
 
     private final ConfigService configService;
-
+    private final UsersRepository usersRepository;
 
     @Autowired
     public UsersServiceImpl(ConfigService configService) {
         this.configService = configService;
+        this.usersRepository = new UsersRepositoryImpl(configService);
     }
 
     @Override
@@ -33,4 +39,24 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
                 .build();
         return info;
     }
+
+    @Override
+    public List<User> findAll() {
+        return usersRepository.findAll();
+    }
+
+    @Override
+    public User getNotKnownUser() {
+        return
+                User.builder()
+                        .isAdmin(false)
+                        .name("John Doe")
+                        .email("none@invalid")
+                        .ircNick("none")
+                        .telegramId("none")
+                        .discordId("none")
+                        .build();
+
+    }
+
 }
