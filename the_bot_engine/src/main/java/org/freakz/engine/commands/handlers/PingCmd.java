@@ -22,6 +22,6 @@ public class PingCmd extends AbstractCmd {
 
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
-        return "pong: " + LocalDateTime.now();
+        return "pOnG: " + LocalDateTime.now();
     }
 }
