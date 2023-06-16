@@ -1,10 +1,10 @@
 package org.freakz.services.topcounter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.exception.DataRepositoryException;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.dto.DataValuesModel;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.data.service.DataValuesService;
 import org.freakz.engine.commands.CommandHandler;

@@ -1,7 +1,7 @@
 package org.freakz.services;
 
-import org.freakz.common.model.json.foreca.ForecaSunUpDown;
-import org.freakz.common.model.json.foreca.ForecaWeatherData;
+import org.freakz.common.model.foreca.ForecaSunUpDown;
+import org.freakz.common.model.foreca.ForecaWeatherData;
 import org.freakz.services.foreca.ForecaWeatherService;
 import org.junit.jupiter.api.Test;
 

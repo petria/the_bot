@@ -2,7 +2,7 @@ package org.freakz.io.connections;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.feed.Message;
 
 import java.util.HashMap;
 import java.util.Map;

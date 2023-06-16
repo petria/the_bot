@@ -2,8 +2,8 @@ package org.freakz.engine.commands.handlers;
 
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.engine.EngineRequest;
-import org.freakz.common.model.json.foreca.ForecaData;
+import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.dto.ForecaResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;

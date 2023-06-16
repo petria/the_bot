@@ -1,8 +1,8 @@
 package org.freakz.io.mappers;
 
-import org.freakz.common.model.json.connectionmanager.BotConnectionChannelResponse;
-import org.freakz.common.model.json.connectionmanager.BotConnectionResponse;
-import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.BotConnectionChannelResponse;
+import org.freakz.common.model.connectionmanager.BotConnectionResponse;
+import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.BotConnectionChannel;
 

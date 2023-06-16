@@ -1,7 +1,7 @@
 package org.freakz.services.connections;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.ConnectionsResponse;
 import org.freakz.services.*;

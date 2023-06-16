@@ -7,7 +7,7 @@ import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.feed.MessageSource;
+import org.freakz.common.model.feed.MessageSource;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;

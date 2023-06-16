@@ -3,7 +3,7 @@ package org.freakz.springboot.ui.backend.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.feed.Message;
 import org.freakz.common.payload.response.MessageFeedResponse;
 import org.freakz.springboot.ui.backend.clients.BotIOClient;
 import org.freakz.springboot.ui.backend.service.MessageFeederService;

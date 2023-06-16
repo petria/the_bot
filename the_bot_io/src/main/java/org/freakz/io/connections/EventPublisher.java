@@ -1,6 +1,6 @@
 package org.freakz.io.connections;
 
-import org.freakz.common.model.json.feed.MessageSource;
+import org.freakz.common.model.feed.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 
 public interface EventPublisher {

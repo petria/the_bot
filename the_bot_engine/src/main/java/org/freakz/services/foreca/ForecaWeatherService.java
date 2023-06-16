@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.foreca.*;
+import org.freakz.common.model.foreca.*;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.ForecaResponse;
 import org.freakz.services.*;

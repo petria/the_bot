@@ -1,7 +1,7 @@
 package org.freakz.services.timeservice;
 
 
-import org.freakz.common.model.json.TimeDifferenceData;
+import org.freakz.common.model.TimeDifferenceData;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;

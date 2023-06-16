@@ -3,8 +3,8 @@ package org.freakz.io.connections;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.model.json.botconfig.DiscordConfig;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.botconfig.DiscordConfig;
+import org.freakz.common.model.feed.Message;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
@@ -65,7 +65,7 @@ public class DiscordServerConnection extends BotConnection {
         for (Server server : servers) {
             for (Channel channel : server.getChannels()) {
 
-                org.freakz.common.model.json.botconfig.Channel ch = resolveByEchoTo(channel.getId());
+                org.freakz.common.model.botconfig.Channel ch = resolveByEchoTo(channel.getId());
                 if (ch == null) {
                     log.error("No Channel config found with: " + channel);
                     continue;
@@ -91,8 +91,8 @@ public class DiscordServerConnection extends BotConnection {
 
     }
 
-    private org.freakz.common.model.json.botconfig.Channel resolveByEchoTo(long id) {
-        for (org.freakz.common.model.json.botconfig.Channel channel : this.config.getChannelList()) {
+    private org.freakz.common.model.botconfig.Channel resolveByEchoTo(long id) {
+        for (org.freakz.common.model.botconfig.Channel channel : this.config.getChannelList()) {
             if (channel.getId().equals("" + id)) {
                 return channel;
             }

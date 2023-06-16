@@ -1,8 +1,8 @@
 package org.freakz.services.wholelinetricker;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.TimeDifferenceData;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.TimeDifferenceData;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.CommandHandler;

@@ -2,9 +2,9 @@ package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasRequest;
-import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasResponse;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
+import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
+import org.freakz.common.model.feed.Message;
 import org.freakz.io.connections.ConnectionManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

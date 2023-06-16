@@ -2,8 +2,8 @@ package org.freakz.io.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.model.json.botconfig.TelegramConfig;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.botconfig.TelegramConfig;
+import org.freakz.common.model.feed.Message;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.GetFile;

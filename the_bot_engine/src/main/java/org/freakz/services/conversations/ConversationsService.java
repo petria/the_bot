@@ -1,7 +1,7 @@
 package org.freakz.services.conversations;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 import org.springframework.stereotype.Service;
 

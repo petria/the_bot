@@ -5,7 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.exception.NotImplementedException;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.TranslateData;
 import org.freakz.dto.TranslateResponse;
 import org.freakz.engine.commands.HandlerAlias;

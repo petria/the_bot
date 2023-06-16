@@ -5,9 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.model.json.botconfig.IrcServerConfig;
-import org.freakz.common.model.json.feed.Message;
-import org.freakz.common.model.json.feed.MessageSource;
+import org.freakz.common.model.botconfig.IrcServerConfig;
+import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
@@ -75,7 +75,7 @@ public class IrcServerConnection extends BotConnection {
 
     private void updateChannelMap(String channelName) throws BotIOException {
 
-        org.freakz.common.model.json.botconfig.Channel channel = resolveByEchoTo(channelName);
+        org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
         if (channel == null) {
             throw new BotIOException("No Channel config found with: " + channelName);
         }
@@ -99,8 +99,8 @@ public class IrcServerConnection extends BotConnection {
         log.debug("Updated channel: {}", botConnectionChannel);
     }
 
-    private org.freakz.common.model.json.botconfig.Channel resolveByEchoTo(String channelName) {
-        for (org.freakz.common.model.json.botconfig.Channel channel : this.config.getChannelList()) {
+    private org.freakz.common.model.botconfig.Channel resolveByEchoTo(String channelName) {
+        for (org.freakz.common.model.botconfig.Channel channel : this.config.getChannelList()) {
             if (channel.getName().equalsIgnoreCase(channelName)) {
                 return channel;
             }

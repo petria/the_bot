@@ -2,7 +2,7 @@ package org.freakz.engine.commands.handlers;
 
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.engine.commands.HandlerAlias;

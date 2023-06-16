@@ -1,7 +1,7 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.mappers.DataToDTOMapper;

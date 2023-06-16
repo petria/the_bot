@@ -1,6 +1,6 @@
 package org.freakz.common.contoller;
 
-import org.freakz.common.payload.response.PingResponse;
+import org.freakz.common.model.response.PingResponse;
 import org.springframework.http.ResponseEntity;
 
 public abstract class PingControllerBase {

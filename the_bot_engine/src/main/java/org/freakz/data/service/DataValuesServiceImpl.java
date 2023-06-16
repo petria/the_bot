@@ -1,10 +1,10 @@
 package org.freakz.data.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.data.dto.DataValueStatsModel;
-import org.freakz.common.data.dto.DataValues;
-import org.freakz.common.data.dto.DataValuesModel;
 import org.freakz.common.exception.DataRepositoryException;
+import org.freakz.common.model.dto.DataValueStatsModel;
+import org.freakz.common.model.dto.DataValues;
+import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;

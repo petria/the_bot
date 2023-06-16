@@ -2,7 +2,7 @@ package org.freakz.data.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.freakz.common.data.dto.DataValues;
+import org.freakz.common.model.dto.DataValues;
 import org.freakz.config.ConfigService;
 
 import java.util.ArrayList;

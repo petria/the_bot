@@ -2,12 +2,11 @@ package org.freakz.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.botconfig.TheBotConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;

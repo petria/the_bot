@@ -1,6 +1,6 @@
 package org.freakz.springboot.ui.backend.service;
 
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.feed.Message;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

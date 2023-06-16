@@ -2,7 +2,7 @@ package org.freakz.services.conversations;
 
 import lombok.Builder;
 import lombok.Data;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 
 import java.util.HashMap;
 import java.util.Map;

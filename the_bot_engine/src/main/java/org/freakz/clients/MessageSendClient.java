@@ -1,8 +1,8 @@
 package org.freakz.clients;
 
 import feign.Response;
-import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasRequest;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
+import org.freakz.common.model.feed.Message;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,7 +1,7 @@
 package org.freakz.services.topcounter;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.data.dto.DataValuesModel;
+import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.TopCountsResponse;
 import org.freakz.services.*;

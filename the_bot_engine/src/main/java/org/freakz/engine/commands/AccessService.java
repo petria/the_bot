@@ -1,7 +1,8 @@
 package org.freakz.engine.commands;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.users.User;
 import org.springframework.stereotype.Service;
 
 @Service

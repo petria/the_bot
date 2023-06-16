@@ -1,7 +1,7 @@
 package org.freakz.services.connections;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.connectionmanager.SendMessageByTargetAliasResponse;
+import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.SendMessageByTargetResponse;
 import org.freakz.services.*;

@@ -5,7 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.services.ServiceRequest;

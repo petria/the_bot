@@ -1,6 +1,6 @@
 package org.freakz.common.logger;
 
-import org.freakz.common.model.json.feed.MessageSource;
+import org.freakz.common.model.feed.MessageSource;
 
 import java.time.LocalDateTime;
 

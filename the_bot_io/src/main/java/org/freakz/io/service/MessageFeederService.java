@@ -1,7 +1,7 @@
 package org.freakz.io.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.feed.Message;
+import org.freakz.common.model.feed.Message;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;

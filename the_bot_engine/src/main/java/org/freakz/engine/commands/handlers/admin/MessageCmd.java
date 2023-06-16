@@ -6,7 +6,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.SendMessageByTargetResponse;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;

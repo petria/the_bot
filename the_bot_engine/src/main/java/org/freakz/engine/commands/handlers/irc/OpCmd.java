@@ -4,7 +4,7 @@ import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.IrcOPResponse;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;

@@ -1,8 +1,8 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.json.feed.Message;
-import org.freakz.common.payload.response.MessageFeedResponse;
+import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.response.MessageFeedResponse;
 import org.freakz.io.service.MessageFeederService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

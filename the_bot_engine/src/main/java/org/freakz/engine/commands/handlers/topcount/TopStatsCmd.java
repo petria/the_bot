@@ -3,7 +3,7 @@ package org.freakz.engine.commands.handlers.topcount;
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 

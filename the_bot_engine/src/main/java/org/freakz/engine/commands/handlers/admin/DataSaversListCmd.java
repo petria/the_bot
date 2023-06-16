@@ -5,7 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.NotImplementedException;
-import org.freakz.common.model.json.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.dto.DataSaverListResponse;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
