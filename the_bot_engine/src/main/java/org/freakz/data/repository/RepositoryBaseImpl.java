@@ -18,7 +18,7 @@ public class RepositoryBaseImpl {
 
     protected boolean isDirty = false;
 
-    protected long highestId;
+    protected long highestId = 0;
 
     protected final ObjectMapper mapper;
 

@@ -47,16 +47,7 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
 
     @Override
     public User getNotKnownUser() {
-        return
-                User.builder()
-                        .isAdmin(false)
-                        .name("John Doe")
-                        .email("none@invalid")
-                        .ircNick("none")
-                        .telegramId("none")
-                        .discordId("none")
-                        .build();
-
+        return usersRepository.findAll().get(0);
     }
 
 }

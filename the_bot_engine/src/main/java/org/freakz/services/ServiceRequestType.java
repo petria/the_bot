@@ -22,4 +22,6 @@ public enum ServiceRequestType {
 
     TranslateService,
 
+    UsersListService
+
 }
