@@ -13,9 +13,6 @@ import org.freakz.common.model.dto.DataNodeBase;
 @ToString
 public class User extends DataNodeBase {
 
-    @JsonProperty("id")
-    private Long id;
-
     @JsonProperty("isAdmin")
     private boolean isAdmin;
 

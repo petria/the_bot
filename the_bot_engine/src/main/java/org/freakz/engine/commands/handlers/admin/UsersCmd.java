@@ -28,7 +28,7 @@ public class UsersCmd extends AbstractCmd {
         UsersResponse response = doServiceRequest(request, results, ServiceRequestType.UsersListService);
         sb().append("== Users\n");
         response.getUserList().forEach(user -> {
-            format(" %s ", user.toString());
+            format(" [%d] %s ", user.getId(), user.getName());
         });
         return sb().toString();
     }

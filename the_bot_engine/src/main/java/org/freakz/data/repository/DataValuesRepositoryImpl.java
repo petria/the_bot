@@ -166,10 +166,5 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
         return null;
     }
 
-    private Long getNextId() {
-        this.highestId++;
-        log.debug("new highestId: {}", this.highestId);
-        return this.highestId;
-    }
 
 }

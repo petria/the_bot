@@ -20,12 +20,8 @@ import lombok.*;
 @ToString
 public class DataValues extends DataNodeBase {
 
-    @JsonProperty("id")
-    private Long id;
-
     @JsonProperty("nick")
     private String nick;
-
 
     @JsonProperty("network")
     private String network;

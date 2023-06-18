@@ -14,26 +14,26 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
     }
 
     private User getJohnDoeUswr() {
-        return
-                User.builder()
-                        .id(0L)
-                        .isAdmin(false)
-                        .name("John Doe")
-                        .email("none@invalid")
-                        .ircNick("none")
-                        .telegramId("none")
-                        .discordId("none")
-                        .build();
+        User user = User.builder()
+                .isAdmin(false)
+                .name("John Doe")
+                .email("none@invalid")
+                .ircNick("none")
+                .telegramId("none")
+                .discordId("none")
+                .build();
+        user.setId(0L);
+        return user;
 
     }
 
     @Override
     public List<User> findAll() {
+        highestId = 0;
         List<User> all = new ArrayList<>();
         all.add(getJohnDoeUswr());
         User user
                 = User.builder()
-                .id(++highestId)
                 .isAdmin(true)
                 .name("Petri Airio")
                 .email("petri.j.airio@gmail.com")
@@ -41,6 +41,7 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
                 .discordId("265828694445129728")
                 .telegramId("138695441")
                 .build();
+        user.setId(++highestId);
         all.add(user);
         return all;
     }
