@@ -2,6 +2,7 @@ package org.freakz.data.repository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
+import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.DataValues;
 import org.freakz.common.model.dto.DataValuesJsonContainer;
 import org.freakz.config.ConfigService;
@@ -31,7 +32,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
             DataValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, DataValuesJsonContainer.class);
             this.dataValues.addAll(dataValuesJson.getData_values());
             long highestId = -1;
-            for (DataValues values : this.dataValues) {
+            for (DataNodeBase values : this.dataValues) {
                 if (values.getId() > highestId) {
                     highestId = values.getId();
                 }
@@ -92,7 +93,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
-        for (DataValues values : this.dataValues) {
+        for (DataNodeBase node : this.dataValues) {
+            DataValues values = (DataValues) node;
             boolean matchNick = values.getNick().equalsIgnoreCase(nick);
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
             boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
@@ -107,7 +109,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     @Override
     public List<DataValues> findAllByChannelAndNetworkAndKeyNameIsLike(String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
-        for (DataValues values : this.dataValues) {
+        for (DataNodeBase node : this.dataValues) {
+            DataValues values = (DataValues) node;
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
             boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
             boolean matchKey = values.getKeyName().matches(keyLike);
@@ -120,7 +123,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
 
     @Override
     public DataValues findByNickAndChannelAndNetworkAndKeyName(String nick, String channel, String network, String key) {
-        for (DataValues values : this.dataValues) {
+        for (DataNodeBase node : this.dataValues) {
+            DataValues values = (DataValues) node;
             boolean matchNick = values.getNick().equalsIgnoreCase(nick);
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
             boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
@@ -141,7 +145,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
             saved = data;
             this.dataValues.add(saved);
         } else {
-            saved = findById(data.getId());
+            saved = (DataValues) findById(data.getId());
         }
         if (saved == null) {
             throw new DataRepositoryException("Got null DataValues with: " + data);
@@ -157,8 +161,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
         return saved;
     }
 
-    private DataValues findById(long id) {
-        for (DataValues values : this.dataValues) {
+    private DataNodeBase findById(long id) {
+        for (DataNodeBase values : this.dataValues) {
             if (values.getId() == id) {
                 return values;
             }

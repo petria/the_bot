@@ -1,14 +1,18 @@
 package org.freakz.services.users;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 import org.freakz.data.service.UsersService;
 import org.freakz.dto.UsersResponse;
 import org.freakz.services.*;
 import org.springframework.context.ApplicationContext;
 
+import java.util.List;
+
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.UsersListService)
+@SuppressWarnings("unchecked")
 public class UsersListService extends AbstractService {
 
     @Override
@@ -23,7 +27,7 @@ public class UsersListService extends AbstractService {
 
         UsersResponse response
                 = UsersResponse.builder()
-                .userList(bean.findAll())
+                .userList((List<User>) bean.findAll())
                 .build();
 
 

@@ -1,6 +1,7 @@
 package org.freakz.data.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
@@ -28,26 +29,23 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
 
     @Override
     public void checkIsSavingNeeded() {
+        ((DataSavingService) this.usersRepository).checkIsSavingNeeded();
 
     }
 
     @Override
     public DataSaverInfo getDataSaverInfo() {
-        DataSaverInfo info
-                = DataSaverInfo.builder()
-                .name("UsersData")
-                .build();
-        return info;
+        return ((DataSavingService) this.usersRepository).getDataSaverInfo();
     }
 
     @Override
-    public List<User> findAll() {
+    public List<? extends DataNodeBase> findAll() {
         return usersRepository.findAll();
     }
 
     @Override
     public User getNotKnownUser() {
-        return usersRepository.findAll().get(0);
+        return (User) usersRepository.findAll().get(0);
     }
 
 }

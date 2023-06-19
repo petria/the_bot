@@ -14,7 +14,10 @@ import org.freakz.common.model.dto.DataNodeBase;
 public class User extends DataNodeBase {
 
     @JsonProperty("isAdmin")
-    private boolean isAdmin;
+    private boolean isAdmin = false;
+
+    @JsonProperty("canDoIrcOp")
+    private boolean canDoIrcOp = false;
 
     @JsonProperty("username")
     private String username;

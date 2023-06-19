@@ -20,7 +20,7 @@ public class AccessService {
     }
 
     public User getUser(EngineRequest request) {
-        List<User> users = usersService.findAll();
+        List<User> users = (List<User>) usersService.findAll();
         User foundUser = null;
         for (User user : users) {
             switch (request.getNetwork()) {

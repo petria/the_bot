@@ -3,7 +3,7 @@ package org.freakz.data.repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.dto.DataValues;
+import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.config.ConfigService;
 
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ public class RepositoryBaseImpl {
 
     protected final ConfigService configService;
 
-    protected final List<DataValues> dataValues = new ArrayList<>();
+    protected final List<DataNodeBase> dataValues = new ArrayList<>();
 
     protected int saveTrigger = -1;
 
