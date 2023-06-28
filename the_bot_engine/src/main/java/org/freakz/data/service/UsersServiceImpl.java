@@ -22,7 +22,7 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
     private final UsersRepository usersRepository;
 
     @Autowired
-    public UsersServiceImpl(ConfigService configService) {
+    public UsersServiceImpl(ConfigService configService) throws Exception {
         this.configService = configService;
         this.usersRepository = new UsersRepositoryImpl(configService);
     }

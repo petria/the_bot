@@ -2,6 +2,7 @@ package org.freakz.data.repository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
+import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.DataValues;
 import org.freakz.common.model.dto.DataValuesJsonContainer;
@@ -49,8 +50,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
             String dataFileName = configService.getRuntimeDataFileName(DATA_VALUES_FILE_NAME);
             log.debug("synchronized start writing data values: {}", dataFileName);
 
-            DataValuesJsonContainer container
-                    = DataValuesJsonContainer.builder()
+            DataJsonSaveContainer container
+                    = DataJsonSaveContainer.builder()
                     .data_values(this.dataValues)
                     .build();
             container.setSaveTimes(container.getSaveTimes() + 1);

@@ -4,18 +4,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.freakz.common.model.users.User;
 
 import java.util.List;
-
-
 
 
 @Builder
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class DataValuesJsonContainer extends DataContainerBase {
+public class UserValuesJsonContainer extends DataContainerBase {
 
-    private List<DataValues> data_values;
+    private List<User> data_values;
 
 }

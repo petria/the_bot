@@ -1,11 +1,13 @@
 package org.freakz.data.repository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
-import org.freakz.common.model.dto.DataValuesJsonContainer;
+import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -18,9 +20,28 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
 
     private static final String USERS_FILE_NAME = "users.json";
 
-    public UsersRepositoryImpl(ConfigService configService) {
+    public UsersRepositoryImpl(ConfigService configService) throws Exception {
         super(configService);
-        createUsers();
+        initialize();
+//        createUsers();
+    }
+
+    public void initialize() throws Exception {
+        File dataFile = configService.getRuntimeDataFile(USERS_FILE_NAME);
+        if (dataFile.exists()) {
+            UserValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, UserValuesJsonContainer.class);
+            this.dataValues.addAll(dataValuesJson.getData_values());
+            long highestId = -1;
+            for (DataNodeBase values : this.dataValues) {
+                if (values.getId() > highestId) {
+                    highestId = values.getId();
+                }
+            }
+            this.highestId = highestId;
+            log.debug("Read dataValues, size: {} - highestId: {}", this.dataValues.size(), this.highestId);
+        } else {
+            log.debug("No saved dataValues found: {}", dataFile.getName());
+        }
     }
 
     private void createUsers() {
@@ -48,8 +69,8 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
             String dataFileName = configService.getRuntimeDataFileName(USERS_FILE_NAME);
             log.debug("synchronized start writing values: {}", dataFileName);
 
-            DataValuesJsonContainer container
-                    = DataValuesJsonContainer.builder()
+            DataJsonSaveContainer container
+                    = DataJsonSaveContainer.builder()
                     .data_values(this.dataValues)
                     .build();
             container.setSaveTimes(container.getSaveTimes() + 1);
