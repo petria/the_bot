@@ -10,4 +10,6 @@ public class DataSaverInfo {
 
     private String name;
 
+    private int nodeCount;
+
 }

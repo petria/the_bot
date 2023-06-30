@@ -28,7 +28,7 @@ public class DataSaversListCmd extends AbstractCmd {
         DataSaverListResponse response = doServiceRequest(request, results, ServiceRequestType.DataSaverList);
         StringBuilder sb = new StringBuilder("-= DataSaverList:\n");
         for (DataSaverInfo info : response.getDataSaverInfoList()) {
-            sb.append(String.format("  %s\n", info.getName()));
+            sb.append(String.format("  %s: size=%d\n", info.getName(), info.getNodeCount()));
         }
         return sb.toString();
     }

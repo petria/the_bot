@@ -85,6 +85,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     public DataSaverInfo getDataSaverInfo() {
         DataSaverInfo info
                 = DataSaverInfo.builder()
+                .nodeCount(this.dataValues.size())
                 .name("DataValues")
                 .build();
 

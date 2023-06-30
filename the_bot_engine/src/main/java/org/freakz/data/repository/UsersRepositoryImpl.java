@@ -103,6 +103,7 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
     public DataSaverInfo getDataSaverInfo() {
         DataSaverInfo info
                 = DataSaverInfo.builder()
+                .nodeCount(this.dataValues.size())
                 .name("UsersData")
                 .build();
         return info;
