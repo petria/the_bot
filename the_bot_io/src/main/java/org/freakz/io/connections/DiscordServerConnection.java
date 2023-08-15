@@ -179,7 +179,8 @@ public class DiscordServerConnection extends BotConnection {
                         log.debug("Echo to: {}", echoToAlias);
                         try {
                             if (!message.startsWith("!")) {
-                                String msg = String.format("<Dicord@%s: %s>", actorName, message);
+                                //                                    String msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
+                                String msg = String.format("<%s@Dicord>: %s", actorName, message);
                                 connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
                             }
                         } catch (InvalidTargetAliasException e) {

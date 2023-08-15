@@ -18,8 +18,18 @@ import org.freakz.services.ServiceRequestType;
 @Slf4j
 public class DataSaversListCmd extends AbstractCmd {
 
+    class A {
+        private int something;
+    }
+
+    class B {
+        private A something;
+    }
+
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+
+
         jsap.setHelp("Show available Data Saver Services.");
     }
 

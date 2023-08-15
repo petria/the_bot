@@ -25,7 +25,7 @@
         <java.version>12</java.version>
 
         <jsap.version>2.1</jsap.version>
-        <jsoup.version>1.14.3</jsoup.version>
+        <jsoup.version>1.15.3</jsoup.version>
         <logback.version>1.2.6</logback.version>
         <org.kitteh.irc.version>8.0.0</org.kitteh.irc.version>
         <org.reflections.version>0.10.2</org.reflections.version>
