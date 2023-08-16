@@ -2,6 +2,8 @@ package org.freakz.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.services.topcounter.TopCountService;
 import org.springframework.http.ResponseEntity;
@@ -30,9 +32,14 @@ public class EngineController {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
         this.countService.calculateTopCounters(request);
-        this.commandHandler.handleEngineRequest(request, true);
+        User user = this.commandHandler.handleEngineRequest(request, true);
+        EngineResponse response
+                = EngineResponse.builder()
+                .message("ack")
+                .user(user)
+                .build();
 //        log.debug("<<<< handle done");
-        return ResponseEntity.ok("ack");
+        return ResponseEntity.ok(response);
     }
 
 }

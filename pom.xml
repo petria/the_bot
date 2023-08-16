@@ -20,9 +20,9 @@
         <revision>1.1-SNAPSHOT</revision>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>12</maven.compiler.source>
-        <maven.compiler.target>12</maven.compiler.target>
-        <java.version>12</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>17</java.version>
 
         <jsap.version>2.1</jsap.version>
         <jsoup.version>1.15.3</jsoup.version>

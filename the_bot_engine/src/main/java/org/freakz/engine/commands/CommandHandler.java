@@ -53,25 +53,23 @@ public class CommandHandler {
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
-    @Async
-    public String handleEngineRequest(EngineRequest request) {
-        log.debug("Start handle in service >>>");
-        return handleEngineRequest(request, false);
+//    @Async
+public User handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+
+    User user = accessService.getUser(request);
+    log.debug("User: {}", user);
+
+
+    if (doWholeLineTriggerCheck) {
+        handleWholeLineTriggers(request);
     }
 
-    @Async
-    public String handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+    this.conversationsService.handleConversations(this, request);
 
-        if (doWholeLineTriggerCheck) {
-            handleWholeLineTriggers(request);
+    if (request.getCommand().startsWith("!")) {
+        parseAndExecute(request, user);
         }
-
-        this.conversationsService.handleConversations(this, request);
-
-        if (request.getCommand().startsWith("!")) {
-            return parseAndExecute(request);
-        }
-        return null;
+    return user;
     }
 
     @Async
@@ -81,10 +79,8 @@ public class CommandHandler {
 
 
     @SneakyThrows
-    private String parseAndExecute(EngineRequest request) {
+    private String parseAndExecute(EngineRequest request, User user) {
         log.debug("Handle request: {}", request);
-        User user = accessService.getUser(request);
-        log.debug("User: {}", user);
 
         String message = request.getMessage();
         HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);

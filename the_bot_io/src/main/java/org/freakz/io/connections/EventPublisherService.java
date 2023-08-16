@@ -1,12 +1,15 @@
 package org.freakz.io.connections;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.logger.LogService;
 import org.freakz.common.logger.LogServiceImpl;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
+import org.freakz.common.util.FeignUtils;
 import org.freakz.io.clients.EngineClient;
 import org.freakz.io.config.ConfigService;
 import org.freakz.io.config.TheBotProperties;
@@ -21,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -62,6 +66,14 @@ public class EventPublisherService implements EventPublisher {
             Response response = engineClient.handleEngineRequest(request);
             if (response.status() != 200) {
                 log.error("{}: Engine not running: {}", response.status(), response.reason());
+            } else {
+                Optional<EngineResponse> responseBody = FeignUtils.getResponseBody(response, EngineResponse.class, new ObjectMapper());
+                if (responseBody.isPresent()) {
+                    EngineResponse engineResponse = responseBody.get();
+                    log.debug("EngineResponse: {}", engineResponse);
+                } else {
+                    log.error("No EngineResponse!?");
+                }
             }
         } catch (Exception e) {
             log.error("Unable to send to Engine: {}", e.getMessage());
@@ -94,8 +106,8 @@ public class EventPublisherService implements EventPublisher {
                 .target(event.getChannel().getName())
                 .message(event.getMessage())
                 .build();
-        int size = messageFeederService.insertMessage(msg);
-        log.debug("Feed size after insert: {}", size);
+//        int size = messageFeederService.insertMessage(msg);
+//        log.debug("Feed size after insert: {}", size);
         logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
         publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
@@ -139,8 +151,8 @@ public class EventPublisherService implements EventPublisher {
                 .target(channelStr)
                 .message(event.getMessageContent())
                 .build();
-        int size = messageFeederService.insertMessage(msg);
-        log.debug("Feed size after insert: {}", size);
+//        int size = messageFeederService.insertMessage(msg);
+//        log.debug("Feed size after insert: {}", size);
 
         String logMessage;
         if (event.getMessage().getAttachments().size() > 0) {

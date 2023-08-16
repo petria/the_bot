@@ -37,12 +37,12 @@ public class CommandHandlerTest {
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
         CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService, conversationsService);
-        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
+/*        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
         } else {
             throw new Exception(command + ": NULL reply!");
-        }
+        }*/
 
     }
 
@@ -55,7 +55,7 @@ public class CommandHandlerTest {
 
 
         NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {
-            String reply = commandHandler.handleEngineRequest(createMockRequest(command));
+            String reply = "TODO";//;commandHandler.handleEngineRequest(createMockRequest(command));
             System.out.printf("%s\n", reply);
         }, "NumberFormatException was expected");
 

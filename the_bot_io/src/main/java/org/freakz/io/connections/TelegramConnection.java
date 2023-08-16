@@ -130,7 +130,15 @@ public class TelegramConnection extends BotConnection {
 
 
                 publisher.publishEvent(this.connection, update);
-                checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), update.getMessage().getFrom().getUserName(), update.getMessage().getText());
+
+                String from;
+                if (update.getMessage().getFrom().getUserName() != null && update.getMessage().getFrom().getUserName().length() > 0) {
+                    from = update.getMessage().getFrom().getUserName();
+                } else {
+                    from = update.getMessage().getFrom().getFirstName() + update.getMessage().getFrom().getLastName();
+                }
+
+                checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText());
             }
 
         }
