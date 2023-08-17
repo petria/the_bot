@@ -50,7 +50,7 @@ public class EventPublisherService implements EventPublisher {
         logService = new LogServiceImpl(this.theBotProperties.getLogDir());
     }
 
-    private void publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId) {
+    private org.freakz.common.model.users.User publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId) {
         EngineRequest request
                 = EngineRequest.builder()
                 .fromChannelId(channelId)
@@ -71,6 +71,7 @@ public class EventPublisherService implements EventPublisher {
                 if (responseBody.isPresent()) {
                     EngineResponse engineResponse = responseBody.get();
                     log.debug("EngineResponse: {}", engineResponse);
+                    return engineResponse.getUser();
                 } else {
                     log.error("No EngineResponse!?");
                 }
@@ -78,6 +79,7 @@ public class EventPublisherService implements EventPublisher {
         } catch (Exception e) {
             log.error("Unable to send to Engine: {}", e.getMessage());
         }
+        return null;
     }
 
 
@@ -97,7 +99,7 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
-    private void publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
+    private org.freakz.common.model.users.User publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
                 .messageSource(MessageSource.IRC_MESSAGE)
@@ -110,10 +112,11 @@ public class EventPublisherService implements EventPublisher {
 //        log.debug("Feed size after insert: {}", size);
         logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
-        publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
+        return publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
+
     }
 
-    private void publishTelegramEvent(BotConnection connection, Update update) {
+    private org.freakz.common.model.users.User publishTelegramEvent(BotConnection connection, Update update) {
         log.debug("Publish TELEGRAM event: {}", update);
 
         User from = update.getMessage().getFrom();
@@ -126,15 +129,15 @@ public class EventPublisherService implements EventPublisher {
                 .target(update.getMessage().getChat().getId() + "")
                 .message(update.getMessage().getText())
                 .build();
+
         logMessage(MessageSource.TELEGRAM_MESSAGE, "telegram", msg.getTarget(), msg.getSender(), msg.getMessage());
         long userId = update.getMessage().getFrom().getId();
 
-        publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null, String.valueOf(userId));
-
+        return publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null, String.valueOf(userId));
     }
 
 
-    private void publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
+    private org.freakz.common.model.users.User publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
         log.debug("Publish DISCORD event: {}", event);
         long id = event.getChannel().getId();
 
@@ -168,19 +171,24 @@ public class EventPublisherService implements EventPublisher {
         }
         logMessage(MessageSource.DISCORD_MESSAGE, "discord", replyTo, event.getMessageAuthor().getName(), logMessage);
         long userId = event.getMessageAuthor().asUser().get().getId();
-        publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId));
+
 /*
 Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
  */
+        return publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId));
     }
 
     @Override
-    public void publishEvent(BotConnection connection, Object source) {
+    public org.freakz.common.model.users.User publishEvent(BotConnection connection, Object source) {
         switch (connection.getType()) {
-            case IRC_CONNECTION -> publishIrcEvent(connection, (ChannelMessageEvent) source);
-            case DISCORD_CONNECTION -> publishDiscordEvent(connection, (MessageCreateEvent) source);
-            case TELEGRAM_CONNECTION -> publishTelegramEvent(connection, (Update) source);
+            case IRC_CONNECTION:
+                return publishIrcEvent(connection, (ChannelMessageEvent) source);
+            case DISCORD_CONNECTION:
+                return publishDiscordEvent(connection, (MessageCreateEvent) source);
+            case TELEGRAM_CONNECTION:
+                return publishTelegramEvent(connection, (Update) source);
         }
+        return null;
     }
 
 }

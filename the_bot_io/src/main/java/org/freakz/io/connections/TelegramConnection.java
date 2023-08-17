@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.botconfig.TelegramConfig;
 import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.users.User;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -129,7 +130,7 @@ public class TelegramConnection extends BotConnection {
 //                log.debug("telegram update: {}", update);
 
 
-                publisher.publishEvent(this.connection, update);
+                User user = publisher.publishEvent(this.connection, update);
 
                 String from;
                 if (update.getMessage().getFrom().getUserName() != null && update.getMessage().getFrom().getUserName().length() > 0) {
@@ -138,13 +139,21 @@ public class TelegramConnection extends BotConnection {
                     from = update.getMessage().getFrom().getFirstName() + update.getMessage().getFrom().getLastName();
                 }
 
-                checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText());
+                checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText(), user);
             }
 
         }
 
 
-        protected void checkEchoTo(TelegramConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+        protected void checkEchoTo(TelegramConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message, User user) {
+            String msg;
+            if (user != null && user.getId() > 0) {
+                msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", user.getIrcNick(), message);
+            } else {
+                msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
+            }
+
+
             String name = channelName; //event.getChannel().getName();
             config.getChannelList().forEach(ch -> {
                 if (ch.getName().equalsIgnoreCase(name)) {
@@ -153,7 +162,6 @@ public class TelegramConnection extends BotConnection {
                             log.debug("Echo to: {}", echoToAlias);
                             try {
                                 if (!message.startsWith("!")) {
-                                    String msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
                                     connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
                                 }
                             } catch (InvalidTargetAliasException e) {
