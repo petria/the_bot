@@ -14,6 +14,7 @@ import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.event.channel.*;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
+import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.kitteh.irc.client.library.util.Cutter;
 
 import java.util.List;
@@ -160,6 +161,12 @@ public class IrcServerConnection extends BotConnection {
 //        log.debug(">> CLOSED");
 //    }
 
+
+    @Handler
+    public void handleWhoisReply(WhoisEvent event) {
+        log.debug("whois - {}", event);
+    }
+
     public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
         this.connectionManager = connectionManager;
         this.config = config;
@@ -217,6 +224,7 @@ public class IrcServerConnection extends BotConnection {
         client.sendRawLineImmediately(message.getMessage());
         Set<Channel> channels = client.getChannels();
         int foo = 0;
+
     }
 
 }

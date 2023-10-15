@@ -1,6 +1,7 @@
 package org.freakz.clients;
 
 import feign.Response;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
 import org.freakz.common.model.feed.Message;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -17,5 +18,8 @@ public interface MessageSendClient {
 
     @PostMapping("/send_message_by_target_alias")
     Response sendMessageByTargetAlias(@RequestBody SendMessageByTargetAliasRequest request);
+
+    @PostMapping("/send_irc_raw_message_by_target_alias")
+    Response sendIrcRawMessageByTargetAlias(@RequestBody SendIrcRawMessageByTargetAliasRequest request);
 
 }

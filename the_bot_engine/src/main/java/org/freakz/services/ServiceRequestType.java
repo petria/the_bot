@@ -14,6 +14,8 @@ public enum ServiceRequestType {
 
     IrcOpRequest,
 
+    IrcRawMessage,
+
     KelikameratService,
 
     QuizStartRequest,

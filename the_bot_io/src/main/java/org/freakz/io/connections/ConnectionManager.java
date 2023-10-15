@@ -4,6 +4,7 @@ package org.freakz.io.connections;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.TargetAliasNotIrcChannelException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.feed.Message;
@@ -154,6 +155,31 @@ public class ConnectionManager {
             throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
         }
 
+    }
+
+    public void sendIrcRawMessageByTargetAlias(String messageText, String targetAlias) throws InvalidTargetAliasException, TargetAliasNotIrcChannelException {
+        Dual dual = findChannelByTargetAlias(targetAlias);
+        if (dual != null) {
+            BotConnectionChannel channel = dual.channel;
+            BotConnection connection = dual.connection;
+
+            if (!channel.getType().equals(BotConnectionType.IRC_CONNECTION.name())) {
+                throw new TargetAliasNotIrcChannelException("Target channel is not IRC channel type, can not send Raw Irc Message!");
+            }
+
+
+            Message message = Message.builder()
+                    .id(channel.getId())
+                    .message(messageText)
+                    .messageSource(MessageSource.NONE)
+                    .target(channel.getName())
+                    .build();
+
+            connection.sendRawMessage(message);
+
+        } else {
+            throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
+        }
 
     }
 

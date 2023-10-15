@@ -5,7 +5,9 @@ import org.freakz.common.model.foreca.ForecaWeatherData;
 import org.freakz.services.foreca.ForecaWeatherService;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Stack;
 
 public class ForecaWeatherServiceTest {
 
@@ -49,7 +51,14 @@ public class ForecaWeatherServiceTest {
         }
 
 */
+        Stack<String> stack = new Stack<>();
+        int[] arr = {1, 2, 3};
+        Arrays.setAll(arr, this::ffhfhf);
+        int bar = 0;
+    }
 
+    private int ffhfhf(int i) {
+        return i * 10;
     }
 
 

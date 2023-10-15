@@ -5,9 +5,7 @@ import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.clients.ConnectionManagerClient;
 import org.freakz.clients.MessageSendClient;
-import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
+import org.freakz.common.model.connectionmanager.*;
 import org.freakz.common.util.FeignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,7 @@ public class ConnectionManagerService {
     }
 
     public SendMessageByTargetAliasResponse sendMessageByTargetAlias(String message, String targetAlias) {
-        log.debug("Send!");
+//        log.debug("Send!");
         SendMessageByTargetAliasRequest request
                 = SendMessageByTargetAliasRequest.builder()
                 .message(message)
@@ -46,5 +44,15 @@ public class ConnectionManagerService {
         return responseBody.get();
     }
 
+    public SendIrcRawMessageByTargetAliasResponse sendIrcRawMessageByTargetAlias(String message, String targetAlias) {
+        SendIrcRawMessageByTargetAliasRequest request
+                = SendIrcRawMessageByTargetAliasRequest.builder()
+                .message(message)
+                .targetAlias(targetAlias)
+                .build();
+        Response response = messageSendClient.sendIrcRawMessageByTargetAlias(request);
+        Optional<SendIrcRawMessageByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendIrcRawMessageByTargetAliasResponse.class, objectMapper);
+        return responseBody.get();
+    }
 
 }

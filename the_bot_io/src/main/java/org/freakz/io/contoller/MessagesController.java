@@ -2,6 +2,9 @@ package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.TargetAliasNotIrcChannelException;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.common.model.feed.Message;
@@ -54,6 +57,21 @@ public class MessagesController {
             response.setSentTo(request.getTargetAlias());
 
         } catch (InvalidTargetAliasException e) {
+            response.setSentTo("NOK:  " + e.getMessage());
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/send_irc_raw_message_by_target_alias")
+    public ResponseEntity<?> sendIrcRawByTargetAlias(@RequestBody SendIrcRawMessageByTargetAliasRequest request) {
+        log.debug("Request: {}", request);
+        SendIrcRawMessageByTargetAliasResponse response = new SendIrcRawMessageByTargetAliasResponse();
+
+        try {
+
+            connectionManager.sendIrcRawMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
+
+        } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {
             response.setSentTo("NOK:  " + e.getMessage());
         }
         return ResponseEntity.ok(response);
