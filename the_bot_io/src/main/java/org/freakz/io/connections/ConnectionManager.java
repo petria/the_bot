@@ -10,6 +10,7 @@ import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
+import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -157,7 +158,7 @@ public class ConnectionManager {
 
     }
 
-    public void sendIrcRawMessageByTargetAlias(String messageText, String targetAlias) throws InvalidTargetAliasException, TargetAliasNotIrcChannelException {
+    public String sendIrcRawMessageByTargetAlias(String rawCommand, String targetAlias) throws InvalidTargetAliasException, TargetAliasNotIrcChannelException {
         Dual dual = findChannelByTargetAlias(targetAlias);
         if (dual != null) {
             BotConnectionChannel channel = dual.channel;
@@ -168,19 +169,31 @@ public class ConnectionManager {
             }
 
 
-            Message message = Message.builder()
+/*            Message message = Message.builder()
                     .id(channel.getId())
                     .message(messageText)
                     .messageSource(MessageSource.NONE)
                     .target(channel.getName())
-                    .build();
+                    .build();*/
+            try {
+                if (rawCommand.startsWith("WHOIS")) {
+                    IrcServerConnection ircConnection = (IrcServerConnection) connection;
+                    WhoisEvent whoisEvent = ircConnection.sendSyncWhois(rawCommand, 5000L);
+                    log.debug("Got WhoIs reply: {}", whoisEvent);
+                    return whoisEvent.toString();
+                }
 
-            connection.sendRawMessage(message);
+            } catch (InterruptedException e) {
+                log.error("Sync operation failed", e);
+            }
+
+
 
         } else {
             throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
         }
 
+        return null;
     }
 
     class Dual {

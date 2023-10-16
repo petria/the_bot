@@ -19,7 +19,8 @@ import org.kitteh.irc.client.library.util.Cutter;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Slf4j
 public class IrcServerConnection extends BotConnection {
@@ -162,10 +163,6 @@ public class IrcServerConnection extends BotConnection {
 //    }
 
 
-    @Handler
-    public void handleWhoisReply(WhoisEvent event) {
-        log.debug("whois - {}", event);
-    }
 
     public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
         this.connectionManager = connectionManager;
@@ -222,9 +219,28 @@ public class IrcServerConnection extends BotConnection {
     public void sendRawMessage(Message message) {
         log.debug("Send raw message: '{}'", message.getMessage());
         client.sendRawLineImmediately(message.getMessage());
-        Set<Channel> channels = client.getChannels();
-        int foo = 0;
+    }
 
+    private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
+
+    @Handler
+    public void handleWhoisReply(WhoisEvent event) {
+        log.debug("whois - {}", event);
+        synchronized (whoisEventQueue) {
+            whoisEventQueue.add(event);
+            whoisEventQueue.notify();
+        }
+    }
+
+    public WhoisEvent sendSyncWhois(String whois, long maxWaitTimeout) throws InterruptedException {
+        client.sendRawLineImmediately(whois);
+        synchronized (whoisEventQueue) {
+            whoisEventQueue.wait(maxWaitTimeout);
+
+            WhoisEvent whoisEvent = whoisEventQueue.peek();
+            log.debug("Got event from queue: {}", whoisEvent);
+            return whoisEvent;
+        }
     }
 
 }

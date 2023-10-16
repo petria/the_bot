@@ -69,7 +69,9 @@ public class MessagesController {
 
         try {
 
-            connectionManager.sendIrcRawMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
+            String serverResponse = connectionManager.sendIrcRawMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
+
+            response.setServerResponse(serverResponse);
 
         } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {
             response.setSentTo("NOK:  " + e.getMessage());
