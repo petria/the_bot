@@ -157,12 +157,6 @@ public class IrcServerConnection extends BotConnection {
         this.client.shutdown();
     }
 
-//    @Handler
-//    public void handleConnectionClosed(ClientConnectionClosedEvent event) {
-//        log.debug(">> CLOSED");
-//    }
-
-
 
     public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
         this.connectionManager = connectionManager;
@@ -241,6 +235,8 @@ public class IrcServerConnection extends BotConnection {
             log.debug("Got event from queue: {}", whoisEvent);
             return whoisEvent;
         }
+
     }
+
 
 }
