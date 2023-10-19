@@ -8,6 +8,7 @@ public enum ServiceRequestType {
 
     ForecaWeatherService,
 
+    GetChannelUsers,
     GetDataValuesService,
 
     GetTopCountsService,
@@ -15,6 +16,7 @@ public enum ServiceRequestType {
     IrcOpRequest,
 
     IrcRawMessage,
+
 
     KelikameratService,
 
