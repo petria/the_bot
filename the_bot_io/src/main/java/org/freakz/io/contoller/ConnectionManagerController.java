@@ -9,11 +9,9 @@ import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.mappers.DataToDTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,9 +38,9 @@ public class ConnectionManagerController {
     }
 
     @PostMapping("/get_channel_users_by_target_alias")
-    public ResponseEntity<?> getChannelUsersByTargetAlias(ChannelUsersByTargetAliasRequest request) {
+    public ResponseEntity<?> getChannelUsersByTargetAlias(@RequestBody ChannelUsersByTargetAliasRequest request) {
         ChannelUsersByTargetAliasResponse response = new ChannelUsersByTargetAliasResponse();
-
+        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
         return ResponseEntity.ok(response);
     }
 

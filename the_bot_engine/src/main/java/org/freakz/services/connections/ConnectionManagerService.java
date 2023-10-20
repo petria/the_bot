@@ -55,4 +55,13 @@ public class ConnectionManagerService {
         return responseBody.get();
     }
 
+    public ChannelUsersByTargetAliasResponse getChannelUsersByTargetAlias(String targetAlias) {
+        ChannelUsersByTargetAliasRequest request
+                = ChannelUsersByTargetAliasRequest.builder()
+                .targetAlias(targetAlias)
+                .build();
+        Response response = client.getChannelUsersByTargetAlias(request);
+        Optional<ChannelUsersByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, ChannelUsersByTargetAliasResponse.class, objectMapper);
+        return responseBody.get();
+    }
 }
