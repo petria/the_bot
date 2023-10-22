@@ -18,6 +18,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -196,6 +197,14 @@ public class ConnectionManager {
         return null;
     }
 
+    public List<String> getChannelUsersByTargetAlias(String targetAlias) {
+        Dual dual = findChannelByTargetAlias(targetAlias);
+
+        List<String> users = dual.connection.getChannelUsersByTargetAlias(targetAlias, dual.channel);
+
+        return users;
+    }
+
     class Dual {
         public BotConnection connection;
         public BotConnectionChannel channel;
@@ -211,17 +220,6 @@ public class ConnectionManager {
             return r;
 
         }
-
-/*        for (BotConnection connection : this.connectionMap.values()) {
-            for (BotConnectionChannel channel : connection.getChannelMap().values()) {
-                if (channel.getTargetAlias().matches(targetAlias)) {
-                    Dual r = new Dual();
-                    r.connection = connection;
-                    r.channel = channel;
-                    return r;
-                }
-            }
-        }*/
         return null;
     }
 

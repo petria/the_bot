@@ -17,6 +17,7 @@ import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishe
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.kitteh.irc.client.library.util.Cutter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
@@ -213,6 +214,20 @@ public class IrcServerConnection extends BotConnection {
     public void sendRawMessage(Message message) {
         log.debug("Send raw message: '{}'", message.getMessage());
         client.sendRawLineImmediately(message.getMessage());
+    }
+
+    @Override
+    public List<String> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
+        List<String> userList = new ArrayList<>();
+        Optional<Channel> optional = client.getChannel(channel.getName());
+        if (optional.isPresent()) {
+            Channel ircChannel = optional.get();
+            List<User> ircUsers = ircChannel.getUsers();
+            for (User user : ircUsers) {
+                userList.add(user.getNick() + " : " + user.getName());
+            }
+        }
+        return userList;
     }
 
     private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();

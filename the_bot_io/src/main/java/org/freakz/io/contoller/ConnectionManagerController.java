@@ -40,7 +40,10 @@ public class ConnectionManagerController {
     @PostMapping("/get_channel_users_by_target_alias")
     public ResponseEntity<?> getChannelUsersByTargetAlias(@RequestBody ChannelUsersByTargetAliasRequest request) {
         ChannelUsersByTargetAliasResponse response = new ChannelUsersByTargetAliasResponse();
-        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
+
+        List<String> users = connectionManager.getChannelUsersByTargetAlias(request.getTargetAlias());
+        response.setChannelUsers(users);
+//        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
         return ResponseEntity.ok(response);
     }
 
