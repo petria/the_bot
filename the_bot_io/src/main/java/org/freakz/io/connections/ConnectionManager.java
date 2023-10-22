@@ -199,7 +199,9 @@ public class ConnectionManager {
 
     public List<String> getChannelUsersByTargetAlias(String targetAlias) {
         Dual dual = findChannelByTargetAlias(targetAlias);
-
+        if (dual == null) {
+            return List.of("No users found with: " + targetAlias);
+        }
         List<String> users = dual.connection.getChannelUsersByTargetAlias(targetAlias, dual.channel);
 
         return users;

@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.feed.Message;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +46,9 @@ public class BotConnection {
     }
 
     public List<String> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-        log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
-        return new ArrayList<>();
+        List<String> list = List.of("sendRawMessage(Message message) not implemented: " + this.getClass());
+        log.error(list.get(0));
+        return list;
     }
 
 }
