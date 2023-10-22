@@ -46,7 +46,7 @@ public class BotConnection {
     }
 
     public List<String> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-        List<String> list = List.of("sendRawMessage(Message message) not implemented: " + this.getClass());
+        List<String> list = List.of("getChannelUsersByTargetAlias(String targetAlias) not implemented: " + this.getClass());
         log.error(list.get(0));
         return list;
     }
