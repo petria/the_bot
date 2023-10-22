@@ -212,7 +212,7 @@ public class ConnectionManager {
 
 
     private Dual findChannelByTargetAlias(String targetAlias) {
-        JoinedChannelContainer container = this.joinedChannelsMap.get(targetAlias);
+        JoinedChannelContainer container = this.joinedChannelsMap.get(targetAlias.toUpperCase());
         if (container != null) {
             Dual r = new Dual();
             r.connection = container.connection;
