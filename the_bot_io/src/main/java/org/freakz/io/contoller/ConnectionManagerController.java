@@ -1,6 +1,8 @@
 package org.freakz.io.contoller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
@@ -38,10 +40,10 @@ public class ConnectionManagerController {
     }
 
     @PostMapping("/get_channel_users_by_target_alias")
-    public ResponseEntity<?> getChannelUsersByTargetAlias(@RequestBody ChannelUsersByTargetAliasRequest request) {
+    public ResponseEntity<?> getChannelUsersByTargetAlias(@RequestBody ChannelUsersByTargetAliasRequest request) throws InvalidTargetAliasException {
         ChannelUsersByTargetAliasResponse response = new ChannelUsersByTargetAliasResponse();
 
-        List<String> users = connectionManager.getChannelUsersByTargetAlias(request.getTargetAlias());
+        List<ChannelUser> users = connectionManager.getChannelUsersByTargetAlias(request.getTargetAlias());
         response.setChannelUsers(users);
 //        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
         return ResponseEntity.ok(response);

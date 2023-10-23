@@ -13,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 public class ChannelUsersByTargetAliasResponse {
 
-    private List<String> channelUsers;
+
+    private List<ChannelUser> channelUsers;
 
 }

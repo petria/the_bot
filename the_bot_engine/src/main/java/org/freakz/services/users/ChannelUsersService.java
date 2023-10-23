@@ -35,7 +35,7 @@ public class ChannelUsersService extends AbstractService {
 
         final StringBuilder users = new StringBuilder(String.format("%s users: ", targetAlias));
         ioResponse.getChannelUsers().forEach(user -> {
-            users.append(user);
+            users.append(user.getNick());
             users.append(" ");
         });
 

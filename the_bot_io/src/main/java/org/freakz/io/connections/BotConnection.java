@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 
 import java.util.HashMap;
@@ -45,10 +46,10 @@ public class BotConnection {
         return "ConnectionNetwork";
     }
 
-    public List<String> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-        List<String> list = List.of("getChannelUsersByTargetAlias(String targetAlias) not implemented: " + this.getClass());
-        log.error(list.get(0));
-        return list;
+    public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
+//        List<String> list = List.of("getChannelUsersByTargetAlias(String targetAlias) not implemented: " + this.getClass());
+//        log.error(list.get(0));
+        return null;
     }
 
 }

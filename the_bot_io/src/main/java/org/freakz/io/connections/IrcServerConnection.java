@@ -6,6 +6,7 @@ import net.engio.mbassy.listener.Handler;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
@@ -217,17 +218,32 @@ public class IrcServerConnection extends BotConnection {
     }
 
     @Override
-    public List<String> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-        List<String> userList = new ArrayList<>();
+    public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
+//        List<String> userList = new ArrayList<>();
+        List<ChannelUser> channelUsers = new ArrayList<>();
         Optional<Channel> optional = client.getChannel(channel.getName());
         if (optional.isPresent()) {
             Channel ircChannel = optional.get();
             List<User> ircUsers = ircChannel.getUsers();
             for (User user : ircUsers) {
-                userList.add(user.getNick() + " : " + user.getName());
+                ChannelUser channelUser
+                        = ChannelUser.builder()
+                        .account(user.getAccount().orElse(""))
+                        .awayMessage(user.getAwayMessage().orElse(""))
+                        .host(user.getHost())
+                        .nick(user.getNick())
+                        .operatorInformation(user.getOperatorInformation().orElse(""))
+                        .realName(user.getRealName().orElse(""))
+                        .server(user.getServer().orElse(""))
+                        .userString(user.getUserString())
+                        .isAway(user.isAway())
+                        .build();
+                channelUsers.add(channelUser);
+
+//                userList.add(user.getNick() + " : " + user.getName());
             }
         }
-        return userList;
+        return channelUsers;
     }
 
     private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();

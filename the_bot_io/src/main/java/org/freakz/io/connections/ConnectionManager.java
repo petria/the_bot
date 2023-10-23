@@ -7,6 +7,7 @@ import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.exception.TargetAliasNotIrcChannelException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
@@ -197,12 +198,12 @@ public class ConnectionManager {
         return null;
     }
 
-    public List<String> getChannelUsersByTargetAlias(String targetAlias) {
+    public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias) throws InvalidTargetAliasException {
         Dual dual = findChannelByTargetAlias(targetAlias);
         if (dual == null) {
-            return List.of("No users found with: " + targetAlias);
+            throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
         }
-        List<String> users = dual.connection.getChannelUsersByTargetAlias(targetAlias, dual.channel);
+        List<ChannelUser> users = dual.connection.getChannelUsersByTargetAlias(targetAlias, dual.channel);
 
         return users;
     }
