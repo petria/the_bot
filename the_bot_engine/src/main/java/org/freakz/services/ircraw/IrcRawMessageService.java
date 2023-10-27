@@ -29,7 +29,14 @@ public class IrcRawMessageService extends AbstractService {
         String message = request.getResults().getString(ARG_MESSAGE);
 
         SendIrcRawMessageByTargetAliasResponse serviceResponse = cms.sendIrcRawMessageByTargetAlias(message, targetAlias);
-        String serverResponse = serviceResponse.getServerResponse();
+        String serverResponse;
+        if (serviceResponse.getSentTo().startsWith("NOK")) {
+            serverResponse = serviceResponse.getSentTo();
+        } else {
+            serverResponse = serviceResponse.getServerResponse();
+        }
+
+
 
         IrcRawMessageResponse response
                 = IrcRawMessageResponse.builder()

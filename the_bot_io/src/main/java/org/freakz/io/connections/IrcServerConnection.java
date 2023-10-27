@@ -74,6 +74,10 @@ public class IrcServerConnection extends BotConnection {
         String channelName = event.getChannel().getName();
         log.debug("onChannelUsersUpdatedEvent: {}", channelName);
         updateChannelMap(channelName);
+        List<User> users = event.getChannel().getUsers();
+        for (User user : users) {
+            log.debug("{} -> user -> {}", channelName, user.toString());
+        }
         int foo = 0;
     }
 
@@ -255,9 +259,11 @@ public class IrcServerConnection extends BotConnection {
             whoisEventQueue.add(event);
             whoisEventQueue.notify();
         }
+        int foo = 0;
     }
 
     public WhoisEvent sendSyncWhois(String whois, long maxWaitTimeout) throws InterruptedException {
+        client.commands().whois();
         client.sendRawLineImmediately(whois);
         synchronized (whoisEventQueue) {
             whoisEventQueue.wait(maxWaitTimeout);
