@@ -53,23 +53,23 @@ public class CommandHandler {
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
-//    @Async
-public User handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+    //    @Async
+    public User handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
 
-    User user = accessService.getUser(request);
-    log.debug("User: {}", user);
+        User user = accessService.getUser(request);
+        log.debug("User: {}", user);
 
 
-    if (doWholeLineTriggerCheck) {
-        handleWholeLineTriggers(request);
-    }
-
-    this.conversationsService.handleConversations(this, request);
-
-    if (request.getCommand().startsWith("!")) {
-        parseAndExecute(request, user);
+        if (doWholeLineTriggerCheck) {
+            handleWholeLineTriggers(request);
         }
-    return user;
+
+        this.conversationsService.handleConversations(this, request);
+
+        if (request.getCommand().startsWith("!")) {
+            parseAndExecute(request, user);
+        }
+        return user;
     }
 
     @Async

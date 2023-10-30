@@ -257,18 +257,25 @@ public class IrcServerConnection extends BotConnection {
         log.debug("whois - {}", event);
         synchronized (whoisEventQueue) {
             whoisEventQueue.add(event);
+            log.debug(">>> whoisEventQueue.size() = {}", whoisEventQueue.size());
             whoisEventQueue.notify();
         }
         int foo = 0;
     }
 
     public WhoisEvent sendSyncWhois(String whois, long maxWaitTimeout) throws InterruptedException {
-        client.commands().whois();
-        client.sendRawLineImmediately(whois);
-        synchronized (whoisEventQueue) {
-            whoisEventQueue.wait(maxWaitTimeout);
 
-            WhoisEvent whoisEvent = whoisEventQueue.peek();
+        whoisEventQueue.clear();
+        log.debug("send raw");
+        client.sendRawLine(whois);
+        log.debug("send raw done");
+//        client.sendRawLineImmediately(whois);
+        synchronized (whoisEventQueue) {
+            log.debug("start wait");
+            whoisEventQueue.wait();
+            log.debug("wait done");
+
+            WhoisEvent whoisEvent = whoisEventQueue.remove();
             log.debug("Got event from queue: {}", whoisEvent);
             return whoisEvent;
         }

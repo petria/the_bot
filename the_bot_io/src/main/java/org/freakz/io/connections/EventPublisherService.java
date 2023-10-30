@@ -112,7 +112,17 @@ public class EventPublisherService implements EventPublisher {
 //        log.debug("Feed size after insert: {}", size);
         logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
-        return publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                log.debug("send async");
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
+                log.debug("send DONE");
+            }
+        });
+        t.start();
+
+        return new org.freakz.common.model.users.User();
 
     }
 
@@ -175,8 +185,19 @@ public class EventPublisherService implements EventPublisher {
 /*
 Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
  */
-        return publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId));
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                log.debug("send async");
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId));
+                log.debug("send DONE");
+            }
+        });
+        t.start();
+        return new org.freakz.common.model.users.User();
     }
+
 
     @Override
     public org.freakz.common.model.users.User publishEvent(BotConnection connection, Object source) {

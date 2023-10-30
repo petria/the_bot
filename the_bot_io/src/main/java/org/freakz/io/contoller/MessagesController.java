@@ -70,7 +70,7 @@ public class MessagesController {
         try {
 
             String serverResponse = connectionManager.sendIrcRawMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
-
+            response.setSentTo("OK: " + request.getTargetAlias());
             response.setServerResponse(serverResponse);
 
         } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {

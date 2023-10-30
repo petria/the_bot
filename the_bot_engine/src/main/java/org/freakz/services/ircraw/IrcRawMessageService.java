@@ -28,7 +28,10 @@ public class IrcRawMessageService extends AbstractService {
         String targetAlias = request.getResults().getString(ARG_TARGET_ALIAS);
         String message = request.getResults().getString(ARG_MESSAGE);
 
+        log.debug(">> raw message send");
         SendIrcRawMessageByTargetAliasResponse serviceResponse = cms.sendIrcRawMessageByTargetAlias(message, targetAlias);
+        log.debug("<< got reply: {}", serviceResponse);
+
         String serverResponse;
         if (serviceResponse.getSentTo().startsWith("NOK")) {
             serverResponse = serviceResponse.getSentTo();
