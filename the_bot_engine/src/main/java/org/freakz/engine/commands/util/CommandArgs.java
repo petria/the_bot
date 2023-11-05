@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class CommandArgs implements Serializable {
 
-    private final String command;
+    private String command;
     private final String[] args;
 
     public CommandArgs(String line) {
@@ -36,6 +36,10 @@ public class CommandArgs implements Serializable {
 
     public String getCommand() {
         return this.command;
+    }
+
+    public void setCommand(String command) {
+        this.command = command;
     }
 
     public boolean hasArgs() {

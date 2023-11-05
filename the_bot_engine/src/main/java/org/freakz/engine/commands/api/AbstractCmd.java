@@ -69,9 +69,12 @@ public abstract class AbstractCmd implements HokanCmd {
     }
 
     public HandlerAlias createAlias(String alias, String target) {
-        return HandlerAlias.builder().alias(alias).target(target).build();
+        return HandlerAlias.builder().alias(alias).target(target).withArgs(false).build();
     }
 
+    public HandlerAlias createWithArgsAlias(String alias, String target) {
+        return HandlerAlias.builder().alias(alias).target(target).withArgs(true).build();
+    }
 
     @Override
     public void setCommandHandler(CommandHandler commandHandler) {

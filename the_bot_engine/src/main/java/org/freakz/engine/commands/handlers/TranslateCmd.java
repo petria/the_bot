@@ -38,7 +38,7 @@ public class TranslateCmd extends AbstractCmd {
     @Override
     public List<HandlerAlias> getAliases() {
         List<HandlerAlias> list = new ArrayList<>();
-        list.add(createAlias("!trans", "!translate"));
+        list.add(createWithArgsAlias("!trans", "!translate"));
         return list;
     }
 

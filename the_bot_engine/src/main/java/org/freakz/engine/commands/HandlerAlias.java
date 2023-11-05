@@ -6,8 +6,11 @@ import lombok.Data;
 @Builder
 @Data
 public class HandlerAlias {
+
     String alias;
     String target;
+
+    boolean withArgs;
 
     Class clazz;
 }
