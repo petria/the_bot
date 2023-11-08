@@ -5,13 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratWeatherData;
-import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
@@ -41,13 +37,6 @@ public class KeliCmd extends AbstractCmd {
 
     }
 
-    @Override
-    public List<HandlerAlias> getAliases() {
-        List<HandlerAlias> list = new ArrayList<>();
-        list.add(createAlias("!saa", "!keli"));
-        list.add(createAlias("!sää", "!keli"));
-        return list;
-    }
 
     private String formatWeather(KelikameratWeatherData d, boolean verbose) {
         String template = "%s: %2.1f°C";

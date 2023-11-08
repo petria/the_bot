@@ -5,9 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.dto.ForecaResponse;
+import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
@@ -51,6 +55,14 @@ public class ForecaCmd extends AbstractCmd {
 
         jsap.registerParameter(opt);
 
+    }
+
+    @Override
+    public List<HandlerAlias> getAliases() {
+        List<HandlerAlias> list = new ArrayList<>();
+        list.add(createWithArgsAlias("!saa", "!foreca"));
+        list.add(createWithArgsAlias("!sää", "!foreca"));
+        return list;
     }
 
     private String formatWeather(ForecaData d, boolean verbose, boolean sunUpDown, boolean feelsLike) {
