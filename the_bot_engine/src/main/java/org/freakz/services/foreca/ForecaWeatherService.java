@@ -20,10 +20,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.File;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
@@ -180,7 +177,7 @@ public class ForecaWeatherService extends AbstractService {
                 String[] hrefSplit = href1.split("/");
                 data.city2 = hrefSplit[hrefSplit.length - 1];
                 data.cityUrl = String.format("%s/%s", baseLink, city);
-                toCollectLinks.put(city, data);
+                toCollectLinks.put(region+"/"+country+"/"+city, data);
             }
         }
         return toCollectLinks;
@@ -328,6 +325,9 @@ public class ForecaWeatherService extends AbstractService {
             for (String cityKey : toCollectLinks.keySet()) {
                 CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
                 if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
+                    matching.add(countryCityLink);
+                }
+                else if(countryCityLink.cityUrl.toLowerCase().matches("/"+place)){
                     matching.add(countryCityLink);
                 }
             }

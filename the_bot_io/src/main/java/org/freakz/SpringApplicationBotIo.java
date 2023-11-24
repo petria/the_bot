@@ -16,6 +16,7 @@ public class SpringApplicationBotIo {
             org.springframework.boot.SpringApplication.run(SpringApplicationBotIo.class, args);
 
         } catch (Exception e) {
+            e.printStackTrace();
             int foo = 0;
         }
     }
