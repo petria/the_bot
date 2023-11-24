@@ -180,7 +180,7 @@ public class ForecaWeatherService extends AbstractService {
                 String[] hrefSplit = href1.split("/");
                 data.city2 = hrefSplit[hrefSplit.length - 1];
                 data.cityUrl = String.format("%s/%s", baseLink, city);
-                toCollectLinks.put(city, data);
+                toCollectLinks.put(region + country + city, data);
             }
         }
         return toCollectLinks;
