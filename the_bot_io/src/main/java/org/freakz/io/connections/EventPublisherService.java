@@ -77,7 +77,7 @@ public class EventPublisherService implements EventPublisher {
                 }
             }
         } catch (Exception e) {
-            log.error("Unable to send to Engine: {}", e.getMessage());
+            log.error("Unable to send to Engine", e);
         }
         return null;
     }

@@ -1,0 +1,26 @@
+{
+  "lastSaved": [
+    2023,
+    6,
+    19,
+    15,
+    6,
+    17,
+    12632000
+  ],
+  "saveTimes": 1,
+  "data_values": [
+    {
+      "id": 0,
+      "isAdmin": false,
+      "canDoIrcOp": false,
+      "username": null,
+      "password": null,
+      "name": "John Doe",
+      "email": "none@invalid",
+      "ircNick": "none",
+      "telegramId": "none",
+      "discordId": "none"
+    }
+  ]
+}
