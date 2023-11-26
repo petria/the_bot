@@ -1,5 +1,8 @@
 package org.freakz.common.model.foreca;
 
+import lombok.Data;
+
+@Data
 public class CountryCityLink {
 
     public String region;

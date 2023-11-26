@@ -1,9 +1,6 @@
 package org.freakz.services.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.foreca.*;
 import org.freakz.config.ConfigService;
@@ -33,15 +30,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 public class ForecaWeatherService extends AbstractService {
 
 
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    static class CachedLinks {
-        private Map<String, CountryCityLink> toCollectLinks;
-    }
-
-
-    private static Map<String, CountryCityLink> toCollectLinks = null;
+    private Map<String, CountryCityLink> toCollectLinks = null;
     private ObjectMapper mapper = new ObjectMapper();
 
     String urlBase = "https://www.foreca.fi";
@@ -57,6 +46,10 @@ public class ForecaWeatherService extends AbstractService {
             "https://www.foreca.fi/North_America/haku",
             "https://www.foreca.fi/North_America/United_States/haku"
     };
+
+    public void initWithToCollectLinks(CachedLinks links) {
+        toCollectLinks = links.getToCollectLinks();
+    }
 
     public void initializeService(ConfigService configService) throws Exception {
         String countryMatch = ".*";
@@ -313,6 +306,18 @@ public class ForecaWeatherService extends AbstractService {
         return Double.valueOf(str);
     }
 
+    public List<CountryCityLink> getMatchingCountryCityLinks(String place) {
+        log.debug("Matching cities with: {}", place);
+        List<CountryCityLink> matching = new ArrayList<>();
+        for (String cityKey : toCollectLinks.keySet()) {
+            CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
+            if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
+                matching.add(countryCityLink);
+            }
+        }
+        log.debug("{} matching {} cities", place, matching.size());
+        return matching;
+    }
 
     @Override
     public <T extends ServiceResponse> ForecaResponse handleServiceRequest(ServiceRequest request) {
@@ -324,14 +329,9 @@ public class ForecaWeatherService extends AbstractService {
             response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", 0, -1));
         } else {
             String place = request.getResults().getString(ARG_PLACE).toLowerCase();
-            List<CountryCityLink> matching = new ArrayList<>();
-            for (String cityKey : toCollectLinks.keySet()) {
-                CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
-                if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
-                    matching.add(countryCityLink);
-                }
-            }
-            log.debug("{} matching {} cities", place, matching.size());
+
+            List<CountryCityLink> matching = getMatchingCountryCityLinks(place);
+
             List<ForecaData> forecaDataList = new ArrayList<>();
             response.setForecaDataList(forecaDataList);
             for (CountryCityLink match : matching) {

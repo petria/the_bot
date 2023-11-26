@@ -1,0 +1,18 @@
+{
+  "toCollectLinks": {
+    "North_AmericaUnited_StatesRotterdam": {
+      "region": "North_America",
+      "country": "United_States",
+      "city": "Rotterdam",
+      "city2": "Rotterdam",
+      "cityUrl": "/United_States/Rotterdam"
+    },
+    "EuropeNetherlandsRotterdam": {
+      "region": "Europe",
+      "country": "Netherlands",
+      "city": "Rotterdam",
+      "city2": "Rotterdam",
+      "cityUrl": "/Netherlands/Rotterdam"
+    }
+  }
+}

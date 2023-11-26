@@ -1,64 +1,75 @@
 package org.freakz.services;
 
-import org.freakz.common.model.foreca.ForecaSunUpDown;
-import org.freakz.common.model.foreca.ForecaWeatherData;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.freakz.common.model.foreca.CountryCityLink;
+import org.freakz.services.foreca.CachedLinks;
 import org.freakz.services.foreca.ForecaWeatherService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Stack;
 
 public class ForecaWeatherServiceTest {
 
 
     @Test
     public void test_initialize_service() throws Exception {
+
         ForecaWeatherService sut = new ForecaWeatherService();
+        sut.initWithToCollectLinks(loadTestData("foreca_test_data_same_name_cities.json"));
 
-//        sut.initializeService();
-
-
-//        Map<String, CountryCityLink> toCollectLinks = new HashMap<>();
-//https://www.foreca.fi/
-//        CountryScanLinksByLetter byLetterLinks = sut.scanCountry("Yhdysvallat", "/North_America/United_States/haku");
-//        String byLetterLink = byLetterLinks.byLetterLinks.get(11);
-//        toCollectLinks = sut.scanCities("/" + byLetterLinks.countryEng, byLetterLink, toCollectLinks);
-
-        ForecaSunUpDown sunUpDown = ForecaSunUpDown.builder().build();
-        List<ForecaWeatherData> forecaData = sut.fetchCityWeather("Mostar", "/Bosnia_and_Herzegovina/Mostar", sunUpDown);
-
-        int foo = 0;
+        // Test with city name only, should get both Europe/USA rotterdam
+        List<CountryCityLink> matching = sut.getMatchingCountryCityLinks("rotterdam");
+        Assertions.assertEquals(2, matching.size());
 
 
-/*        Map<String, List<String>> stringListMap = sut.collectCountryCitiLinks();
+        // Test with region/city
+        matching = sut.getMatchingCountryCityLinks("europe/rotterdam");
+        Assertions.assertEquals(1, matching.size());
+        Assertions.assertEquals("Netherlands", matching.get(0).getCountry());
 
-        List<String> letterLinksByCountry = stringListMap.get("Suomi");
+        // Test with partial region/city
+        matching = sut.getMatchingCountryCityLinks("rope/rotterdam");
+        Assertions.assertEquals(1, matching.size());
+        Assertions.assertEquals("Netherlands", matching.get(0).getCountry());
 
-        for (String byLetterLink : letterLinksByCountry) {
-            String countryPart = "/" + byLetterLink.split("/")[2];
-            Map<String, String> toCollectLinks = new HashMap<>();
-            toCollectLinks = sut.scanCities(countryPart, byLetterLink, toCollectLinks);
+        // Test with country/city
+        matching = sut.getMatchingCountryCityLinks("Netherlands/rotterdam");
+        Assertions.assertEquals(1, matching.size());
+        Assertions.assertEquals("Netherlands", matching.get(0).getCountry());
 
-            Map<String, List<ForecaData>> countryAllData = new HashMap<>();
-            for (String cityName : toCollectLinks.keySet()) {
-                String cityUrl = toCollectLinks.get(cityName);
-                if (!countryAllData.containsKey(cityName)) {
-                    List<ForecaData> forecaData = sut.fetchCityWeather(cityName, cityUrl);
-                    countryAllData.put(cityName, forecaData);
-                }
-            }
-        }
-
-*/
-        Stack<String> stack = new Stack<>();
-        int[] arr = {1, 2, 3};
-        Arrays.setAll(arr, this::ffhfhf);
-        int bar = 0;
+        // Test with partial country/city
+        matching = sut.getMatchingCountryCityLinks("states/rotterdam");
+        Assertions.assertEquals(1, matching.size());
+        Assertions.assertEquals("United_States", matching.get(0).getCountry());
     }
 
-    private int ffhfhf(int i) {
-        return i * 10;
+    private CachedLinks loadTestData(String jsonFile) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonData = readJsonFromResource(jsonFile);
+        CachedLinks cachedLinks = mapper.readValue(jsonData, CachedLinks.class);
+
+        return cachedLinks;
+    }
+
+    private String readJsonFromResource(String resourcePath) throws IOException {
+        // Use the class loader to load the resource as an InputStream
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+
+        // Check if the resource was found
+        if (inputStream == null) {
+            throw new IOException("Resource not found: " + resourcePath);
+        }
+
+        // Read the content of the InputStream into a String
+        String content = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+
+        // Close the InputStream
+        inputStream.close();
+        return content;
     }
 
 
