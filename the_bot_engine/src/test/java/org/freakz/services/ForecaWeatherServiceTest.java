@@ -16,7 +16,7 @@ public class ForecaWeatherServiceTest {
 
 
     @Test
-    public void test_initialize_service() throws Exception {
+    public void test_match_with_country_or_region_specifier_works_correctly() throws Exception {
 
         ForecaWeatherService sut = new ForecaWeatherService();
         sut.initWithToCollectLinks(loadTestData("foreca_test_data_same_name_cities.json"));
