@@ -18,7 +18,6 @@ import javax.script.ScriptException;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
