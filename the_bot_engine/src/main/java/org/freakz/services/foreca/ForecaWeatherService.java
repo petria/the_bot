@@ -17,10 +17,8 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.File;
 import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
@@ -30,11 +28,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 public class ForecaWeatherService extends AbstractService {
 
 
-    private Map<String, CountryCityLink> toCollectLinks = null;
-    private ObjectMapper mapper = new ObjectMapper();
-
-    String urlBase = "https://www.foreca.fi";
-
+    private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
     public String[] REGION_URLS
             = {
             "https://www.foreca.fi/Asia/haku",
@@ -46,6 +40,9 @@ public class ForecaWeatherService extends AbstractService {
             "https://www.foreca.fi/North_America/haku",
             "https://www.foreca.fi/North_America/United_States/haku"
     };
+    String urlBase = "https://www.foreca.fi";
+    private Map<String, CountryCityLink> toCollectLinks = null;
+    private ObjectMapper mapper = new ObjectMapper();
 
     public void initWithToCollectLinks(CachedLinks links) {
         toCollectLinks = links.getToCollectLinks();
@@ -95,7 +92,6 @@ public class ForecaWeatherService extends AbstractService {
 
     }
 
-
     public Map<String, CountryScanLinksByLetter> collectCountryCityLinks(String regionUrl) throws Exception {
 //        String url = "https://www.foreca.fi/Europe/haku";
 
@@ -115,7 +111,6 @@ public class ForecaWeatherService extends AbstractService {
         }
         return byCountryLinks;
     }
-
 
     public CountryScanLinksByLetter scanCountry(String country, String href) throws Exception {
         log.debug("Scan for country: {} -> {}", country, href);
@@ -143,7 +138,6 @@ public class ForecaWeatherService extends AbstractService {
         }
         return data;
     }
-
 
     public Map<String, CountryCityLink> scanCities(String baseLink, String byLetterLink, Map<String, CountryCityLink> toCollectLinks) throws Exception {
         String url = urlBase + byLetterLink;
@@ -238,8 +232,6 @@ public class ForecaWeatherService extends AbstractService {
         return null;
     }
 
-    private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
-
     private String extractPart(String from, String start, String end) {
         String part = null;
         int idx1 = from.indexOf(start);
@@ -313,6 +305,15 @@ public class ForecaWeatherService extends AbstractService {
             CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
             if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
                 matching.add(countryCityLink);
+            }
+            else{
+                String[] pieces = place.split("/");
+                String region = countryCityLink.region.toLowerCase();
+                String country = countryCityLink.country.toLowerCase();
+                String city = countryCityLink.city.toLowerCase();
+                if((region.contains(pieces[0].toLowerCase())||country.contains(pieces[0].toLowerCase()))&&city.matches(pieces[1].toLowerCase())){
+                    matching.add(countryCityLink);
+                }
             }
         }
         log.debug("{} matching {} cities", place, matching.size());
