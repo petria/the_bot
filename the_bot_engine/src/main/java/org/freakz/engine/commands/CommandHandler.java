@@ -152,7 +152,7 @@ public class CommandHandler {
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {
                     if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
-                        log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
+                        //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
                     } else {
                         sendReplyMessage(request, reply);
                     }
