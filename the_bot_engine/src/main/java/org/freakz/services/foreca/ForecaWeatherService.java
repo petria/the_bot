@@ -305,12 +305,11 @@ public class ForecaWeatherService extends AbstractService {
             CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
             if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
                 matching.add(countryCityLink);
-            }
-            else{
+            } else {
                 String region = countryCityLink.region.toLowerCase();
                 String country = countryCityLink.country.toLowerCase();
                 String city = countryCityLink.city.toLowerCase();
-                if((region.contains(pieces[0])||country.contains(pieces[0]))&&city.matches(pieces[1])){
+                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && city.matches(pieces[1])) {
                     matching.add(countryCityLink);
                 }
             }
