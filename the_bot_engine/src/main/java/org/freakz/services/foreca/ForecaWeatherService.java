@@ -17,7 +17,10 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.File;
 import java.net.MalformedURLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
@@ -40,7 +43,7 @@ public class ForecaWeatherService extends AbstractService {
             "https://www.foreca.fi/North_America/United_States/haku"
     };
     String urlBase = "https://www.foreca.fi";
-    private Map<String, CountryCityLink> toCollectLinks = null;
+    private static Map<String, CountryCityLink> toCollectLinks = null;
     private ObjectMapper mapper = new ObjectMapper();
 
     public void initWithToCollectLinks(CachedLinks links) {
