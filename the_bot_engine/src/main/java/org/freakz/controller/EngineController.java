@@ -3,8 +3,8 @@ package org.freakz.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
-import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.services.topcounter.TopCountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,11 +32,11 @@ public class EngineController {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
         this.countService.calculateTopCounters(request);
-        User user = this.commandHandler.handleEngineRequest(request, true);
+        UserAndReply reply = this.commandHandler.handleEngineRequest(request, true);
         EngineResponse response
                 = EngineResponse.builder()
-                .message("ack")
-                .user(user)
+                .message(reply.getReplyMessage())
+                .user(reply.getUser())
                 .build();
 //        log.debug("<<<< handle done");
         return ResponseEntity.ok(response);

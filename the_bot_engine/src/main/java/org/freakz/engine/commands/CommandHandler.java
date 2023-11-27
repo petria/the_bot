@@ -15,6 +15,7 @@ import org.freakz.config.ConfigService;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
+import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.services.HokanServices;
 import org.freakz.services.conversations.ConversationsService;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
@@ -56,7 +57,7 @@ public class CommandHandler {
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
     //    @Async
-    public User handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+    public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
 
         User user = accessService.getUser(request);
         log.debug("User: {}", user);
@@ -67,11 +68,13 @@ public class CommandHandler {
         }
 
         this.conversationsService.handleConversations(this, request);
-
+        String replyMessage = null;
         if (request.getCommand().startsWith("!")) {
-            parseAndExecute(request, user);
+            replyMessage = parseAndExecute(request, user);
         }
-        return user;
+        return UserAndReply.builder().user(user).replyMessage(replyMessage).build();
+
+
     }
 
     @Async
@@ -148,7 +151,11 @@ public class CommandHandler {
                 request.setFromAdmin(user.isAdmin());
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {
-                    sendReplyMessage(request, reply);
+                    if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
+                        log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
+                    } else {
+                        sendReplyMessage(request, reply);
+                    }
                     return reply;
                 }
             }
