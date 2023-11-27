@@ -1,4 +1,4 @@
-package org.freakz.engine.commands.handlers;
+package org.freakz.engine.commands.handlers.weather;
 
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
