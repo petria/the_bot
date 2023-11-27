@@ -300,17 +300,17 @@ public class ForecaWeatherService extends AbstractService {
     public List<CountryCityLink> getMatchingCountryCityLinks(String place) {
         log.debug("Matching cities with: {}", place);
         List<CountryCityLink> matching = new ArrayList<>();
+        String[] pieces = place.toLowerCase().split("/");
         for (String cityKey : toCollectLinks.keySet()) {
             CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
             if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
                 matching.add(countryCityLink);
             }
             else{
-                String[] pieces = place.split("/");
                 String region = countryCityLink.region.toLowerCase();
                 String country = countryCityLink.country.toLowerCase();
                 String city = countryCityLink.city.toLowerCase();
-                if((region.contains(pieces[0].toLowerCase())||country.contains(pieces[0].toLowerCase()))&&city.matches(pieces[1].toLowerCase())){
+                if((region.contains(pieces[0])||country.contains(pieces[0]))&&city.matches(pieces[1])){
                     matching.add(countryCityLink);
                 }
             }
