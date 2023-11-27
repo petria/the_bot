@@ -45,11 +45,27 @@ public class CliService implements CommandLineRunner {
                     last = message;
                     pressed = true;
                     if (doMainLoop) {
-                        sender.sendToServer(message, botUser);
                         if (message.equals("quit")) {
                             doMainLoop = false;
                         } else {
+                            String reply = sender.sendToServer(message, botUser);
+
                             sleep(150L);
+
+                            if (reply != null) {
+                                if (!pressed) {
+                                    System.out.println();
+                                }
+
+                                print(reply + "\n", true);
+                                prompt(null);
+
+                            } else {
+//                                log.error("Null response");
+                                prompt(null);
+                            }
+
+
                         }
                     }
                 }
