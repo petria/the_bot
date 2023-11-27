@@ -35,9 +35,9 @@
 
     <modules>
         <module>the_bot_common</module>
+        <module>the_bot_cli</module>
         <module>the_bot_io</module>
         <module>the_bot_engine</module>
-        <module>the_bot_cli</module>
     </modules>
 
 </project>
