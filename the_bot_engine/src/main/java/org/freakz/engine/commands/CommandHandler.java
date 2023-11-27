@@ -39,7 +39,7 @@ public class CommandHandler {
 
     private final ConversationsService conversationsService;
 
-    private String botName;
+    private String botName = "HokanTheBot";
 
     public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService) throws InitializeFailedException, IOException {
         this.accessService = accessService;
@@ -48,7 +48,9 @@ public class CommandHandler {
         this.configService = configService;
         this.conversationsService = conversationsService;
         this.commandHandlerLoader = new CommandHandlerLoader();
-        this.botName = configService.readBotConfig().getBotConfig().getBotName();
+        if (configService != null) {
+            this.botName = configService.readBotConfig().getBotConfig().getBotName();
+        }
     }
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);

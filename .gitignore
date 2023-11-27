@@ -1,7 +1,8 @@
 /.idea/
 .DS_Store**
-the_bot_engine/target
+/the_bot_engine/target
 /the_bot_io/target/
 /the_bot_common/target/
+/the_bot_cli/target/
 secret.properties
 /runtime/
