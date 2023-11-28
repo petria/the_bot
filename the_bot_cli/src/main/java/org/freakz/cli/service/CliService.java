@@ -131,7 +131,7 @@ public class CliService implements CommandLineRunner {
         } else {
             log.info("SENDING LINE: {}", args[0]);
             String reply = sender.sendToServer(args[0], user);
-            print(reply + "\n", true);
+            print("BOT REPLY: " + reply + "\n", true);
 
         }
 
