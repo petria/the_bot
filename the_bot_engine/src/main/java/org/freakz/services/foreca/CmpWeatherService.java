@@ -328,28 +328,31 @@ public class CmpWeatherService extends AbstractService {
         if (toCollectLinks == null) {
             response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", 0, -1));
         } else {
-            String place = request.getResults().getString(ARG_PLACE).toLowerCase();
-
-            List<CountryCityLink> matching = getMatchingCountryCityLinks(place);
+            String[] places = request.getResults().getStringArray(ARG_PLACE);
 
             List<ForecaData> forecaDataList = new ArrayList<>();
             response.setForecaDataList(forecaDataList);
-            for (CountryCityLink match : matching) {
-                try {
-                    ForecaSunUpDown sunUpDown = ForecaSunUpDown.builder().build();
-                    List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl, sunUpDown);
-                    if (forecaWeatherData != null && forecaWeatherData.size() > 0) {
-                        ForecaData forecaData
-                                = ForecaData.builder()
-                                .cityLink(match)
-                                .weatherData(forecaWeatherData.get(0))
-                                .sunUpDown(sunUpDown)
-                                .build();
-                        forecaDataList.add(forecaData);
+
+            for (String place : places) {
+                place = place.toLowerCase();
+                List<CountryCityLink> matching = getMatchingCountryCityLinks(place);
+                for (CountryCityLink match : matching) {
+                    try {
+                        ForecaSunUpDown sunUpDown = ForecaSunUpDown.builder().build();
+                        List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl, sunUpDown);
+                        if (forecaWeatherData != null && forecaWeatherData.size() > 0) {
+                            ForecaData forecaData
+                                    = ForecaData.builder()
+                                    .cityLink(match)
+                                    .weatherData(forecaWeatherData.get(0))
+                                    .sunUpDown(sunUpDown)
+                                    .build();
+                            forecaDataList.add(forecaData);
+                        }
+                    } catch (Exception e) {
+                        response.setStatus("NOK: Foreca data fetch error: " + e.getMessage());
+                        break;
                     }
-                } catch (Exception e) {
-                    response.setStatus("NOK: Foreca data fetch error: " + e.getMessage());
-                    break;
                 }
             }
 

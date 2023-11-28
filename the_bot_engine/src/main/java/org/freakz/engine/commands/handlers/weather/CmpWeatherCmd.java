@@ -49,9 +49,10 @@ public class CmpWeatherCmd extends AbstractCmd {
 
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
-                .setDefault("Oulu")
+                .setList(true)
+                .setDefault(new String[]{"Oulu", "Jaipur"})
                 .setRequired(true)
-                .setGreedy(false);
+                .setGreedy(true);
 
         jsap.registerParameter(opt);
 
@@ -90,22 +91,29 @@ public class CmpWeatherCmd extends AbstractCmd {
         boolean sunUpDown = results.getBoolean(ARG_SUN_UP_DOWN);
         boolean feelsLike = results.getBoolean(ARG_FEELS_LIKE);
 
-        String place = results.getString(ARG_PLACE);
+        String p = results.getString(ARG_PLACE);
 
-        log.debug("Place: {}", place);
+        String[] places = results.getStringArray(ARG_PLACE);
+
+//        log.debug("place: {}",p);
+        for (String place : places) {
+            log.debug("place: {}", place);
+        }
         CmpWeatherResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.CmpWeatherService);
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
 
             if (data.getForecaDataList().size() == 0) {
                 sb.append("Check spelling, no Foreca data found with: ");
-                sb.append(place);
+                for (String place : places) {
+                    sb.append(place).append(" ");
+                }
             } else {
                 int xx = 0;
                 for (ForecaData forecaData : data.getForecaDataList()) {
                     String formatted = formatWeather(forecaData, verbose, sunUpDown, feelsLike);
                     if (xx != 0) {
-                        sb.append(", ");
+                        sb.append("\n");
                     }
                     sb.append(formatted);
                     xx++;
