@@ -1,5 +1,6 @@
 package org.freakz.cli.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.Scanner;
 
 @Service
+@Slf4j
 public class CliService implements CommandLineRunner {
 
     private static final Scanner scanner = new Scanner(System.in);
@@ -18,17 +20,15 @@ public class CliService implements CommandLineRunner {
     private MessageSender sender;
 
     private void mainLoop(String botUser) {
-        System.out.print("\033[H\033[2J");
-        System.out.print("\n\n\n");
-
+//        System.out.print("\033[H\033[2J");
+        System.out.print("\n\n");
         System.out.print(">>> -------------    W E L C O M E  to  The Bot     ------------- <<<\n\n");
-//        System.out.print(">>>                                                               <<<\n\n");
-//        System.out.print(">>> --------------------                  ----------------------- <<<\n\n");
+        System.out.print("\n\n");
 
         String prev = "";
         String last = "";
 
-        prompt(null);
+        prompt();
 
         while (doMainLoop) {
             String message = scanner.nextLine();
@@ -56,11 +56,11 @@ public class CliService implements CommandLineRunner {
                     }
                 }
             } else {
-                prompt(null);
+                prompt();
             }
 
         }
-//        doKill();
+
         System.out.println(">> Exit Client main loop, bye!");
         System.exit(0);
     }
@@ -74,11 +74,11 @@ public class CliService implements CommandLineRunner {
             }
 
             print(reply + "\n", true);
-            prompt(null);
+            prompt();
 
         } else {
-//                                log.error("Null response");
-            prompt(null);
+
+            prompt();
         }
 
     }
@@ -93,6 +93,10 @@ public class CliService implements CommandLineRunner {
 
     boolean pressed = false;
 
+
+    private void prompt() {
+        prompt(null);
+    }
     private void prompt(String prompt) {
         if (doMainLoop) {
             pressed = false;
@@ -117,9 +121,20 @@ public class CliService implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-//        mainLoop(user);
-        Thread t = new Thread(() -> mainLoop(user));
-        t.setName("The Bot client: " + user);
-        t.start();
+
+        if (args.length == 0) {
+            log.info("ENTERING INTERACTIVE MODE");
+            Thread t = new Thread(() -> mainLoop(user));
+            t.setName("The Bot client: " + user);
+            t.start();
+
+        } else {
+            log.info("SENDING LINE: {}", args[0]);
+            String reply = sender.sendToServer(args[0], user);
+            print(reply + "\n", true);
+
+        }
+
     }
+
 }
