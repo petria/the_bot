@@ -7,6 +7,7 @@ public enum ServiceRequestType {
     DataSaverList,
 
     ForecaWeatherService,
+    CmpWeatherService,
 
     GetChannelUsers,
     GetDataValuesService,
