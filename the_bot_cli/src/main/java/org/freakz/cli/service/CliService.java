@@ -35,11 +35,13 @@ public class CliService implements CommandLineRunner {
             if (!message.isEmpty()) {
                 if (message.equals("!!")) {
                     pressed = true;
-                    sender.sendToServer(prev, botUser);
+                    String reply = sender.sendToServer(prev, botUser);
+                    printReplyAndPrompt(reply);
+
                 } else if (message.equals("!")) {
                     pressed = true;
-                    sender.sendToServer(last, botUser);
-                    sleep(150L);
+                    String reply = sender.sendToServer(last, botUser);
+                    printReplyAndPrompt(reply);
                 } else {
                     prev = last;
                     last = message;
@@ -49,23 +51,7 @@ public class CliService implements CommandLineRunner {
                             doMainLoop = false;
                         } else {
                             String reply = sender.sendToServer(message, botUser);
-
-                            sleep(150L);
-
-                            if (reply != null) {
-                                if (!pressed) {
-                                    System.out.println();
-                                }
-
-                                print(reply + "\n", true);
-                                prompt(null);
-
-                            } else {
-//                                log.error("Null response");
-                                prompt(null);
-                            }
-
-
+                            printReplyAndPrompt(reply);
                         }
                     }
                 }
@@ -77,6 +63,24 @@ public class CliService implements CommandLineRunner {
 //        doKill();
         System.out.println(">> Exit Client main loop, bye!");
         System.exit(0);
+    }
+
+    private void printReplyAndPrompt(String reply) {
+        sleep(150L);
+
+        if (reply != null) {
+            if (!pressed) {
+                System.out.println();
+            }
+
+            print(reply + "\n", true);
+            prompt(null);
+
+        } else {
+//                                log.error("Null response");
+            prompt(null);
+        }
+
     }
 
     private void sleep(long time) {
