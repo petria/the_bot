@@ -24,8 +24,8 @@ public class GetChannelUsersCmd extends AbstractCmd {
 
         jsap.setHelp("Get channel users by channel target alias.");
 
-
         UnflaggedOption opt = new UnflaggedOption(ARG_TARGET_ALIAS)
+                .setDefault("IRC-HOKANDEV")
                 .setRequired(true)
                 .setGreedy(false);
         jsap.registerParameter(opt);
