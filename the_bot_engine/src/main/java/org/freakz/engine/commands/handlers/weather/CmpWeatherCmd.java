@@ -1,6 +1,9 @@
 package org.freakz.engine.commands.handlers.weather;
 
-import com.martiansoftware.jsap.*;
+import com.martiansoftware.jsap.JSAP;
+import com.martiansoftware.jsap.JSAPException;
+import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
@@ -12,8 +15,7 @@ import org.freakz.services.ServiceRequestType;
 import java.util.Comparator;
 import java.util.List;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @HokanCommandHandler
 @Slf4j
@@ -21,7 +23,7 @@ public class CmpWeatherCmd extends AbstractCmd {
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Get Foreca weather data for city. See https://www.foreca.fi/haku for city names!");
+        jsap.setHelp("Compares weather between cities.");
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setList(true)
@@ -36,22 +38,17 @@ public class CmpWeatherCmd extends AbstractCmd {
     private String formatWeather(ForecaData d, String diff) {
 
         String template = "%-15s %-10s %-8s %6.1f°C - %s";
-        ;
-
         return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), diff);
     }
 
     @Override
     public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
 
-//        String p = results.getString(ARG_PLACE);
-
         String[] places = results.getStringArray(ARG_PLACE);
 
-//        log.debug("place: {}",p);
-        for (String place : places) {
+/*        for (String place : places) {
             log.debug("place: {}", place);
-        }
+        }*/
 
         if (places.length < 2) {
             return "It needs atleast two arguments to compare the weather";
@@ -61,7 +58,7 @@ public class CmpWeatherCmd extends AbstractCmd {
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
 
-            if (data.getForecaDataList().size() == 0) {
+            if (data.getForecaDataList().isEmpty()) {
                 sb.append("Check spelling, no Foreca data found with: ");
                 for (String place : places) {
                     sb.append(place).append(" ");
@@ -89,6 +86,6 @@ public class CmpWeatherCmd extends AbstractCmd {
         } else {
             return this.getClass().getSimpleName() + " error :: " + data.getStatus();
         }
-
     }
+
 }
