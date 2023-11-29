@@ -23,13 +23,6 @@ public class CmpWeatherCmd extends AbstractCmd {
 
         jsap.setHelp("Get Foreca weather data for city. See https://www.foreca.fi/haku for city names!");
 
-        FlaggedOption flg = new FlaggedOption(ARG_COUNT)
-                .setStringParser(JSAP.INTEGER_PARSER)
-                .setDefault("5")
-                .setLongFlag("count")
-                .setShortFlag('c');
-        jsap.registerParameter(flg);
-
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setList(true)
                 .setDefault(new String[]{"Oulu", "Jaipur"})
@@ -42,7 +35,8 @@ public class CmpWeatherCmd extends AbstractCmd {
 
     private String formatWeather(ForecaData d, String diff) {
 
-        String template = "%s: %s %s %2.1f°C %s";
+        String template = "%-15s %-10s %-8s %6.1f°C - %s";
+        ;
 
         return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), diff);
     }
@@ -76,21 +70,19 @@ public class CmpWeatherCmd extends AbstractCmd {
                 int xx = 0;
                 List<ForecaData> forecaDataList = data.getForecaDataList();
                 forecaDataList.sort(Comparator.comparing(l -> ((ForecaData) (l)).getWeatherData().getTemp()).reversed());
-                Double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
+                double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
                 for (ForecaData forecaData : forecaDataList) {
                     String formatted;
                     if (xx != 0) {
                         double diff = highestTemp - forecaData.getWeatherData().getTemp();
-                        formatted = formatWeather(forecaData, diff + "");
+                        String differenceStr = String.format("%.2f°C", diff);
+                        formatted = formatWeather(forecaData, differenceStr);
                         sb.append("\n");
                     } else {
                         formatted = formatWeather(forecaData, "difference");
                     }
                     sb.append(formatted);
                     xx++;
-                    if (xx >= results.getInt(ARG_COUNT)) {
-                        break;
-                    }
                 }
             }
             return sb.toString();
