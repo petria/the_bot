@@ -55,7 +55,10 @@ public class HokanServices {
             this.executor.execute(() -> {
                 try {
                     log.debug("Init services: " + service.getClass().getSimpleName());
+
+                    Thread.currentThread().setName(Thread.currentThread().getName() + "-" + service.getClass().getSimpleName());
                     service.initializeService(configService);
+
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
