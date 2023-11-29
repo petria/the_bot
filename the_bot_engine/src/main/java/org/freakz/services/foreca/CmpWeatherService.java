@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.foreca.*;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.CmpWeatherResponse;
-import org.freakz.dto.ForecaResponse;
 import org.freakz.services.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -310,7 +309,8 @@ public class CmpWeatherService extends AbstractService {
                 String region = countryCityLink.region.toLowerCase();
                 String country = countryCityLink.country.toLowerCase();
                 String city = countryCityLink.city.toLowerCase();
-                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && city.matches(pieces[1])) {
+                String city2 = countryCityLink.city2.toLowerCase();
+                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && (city.matches(pieces[1]) || city2.matches(pieces[1]))) {
                     matching.add(countryCityLink);
                 }
             }
