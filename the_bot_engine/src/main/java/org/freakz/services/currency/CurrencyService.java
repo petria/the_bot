@@ -34,7 +34,7 @@ public class CurrencyService extends AbstractService {
             response.setTo(currencies[1]);
             response.setFrom(currencies[0]);
             response.setAmount(Double.parseDouble(amount));
-            response.setStatus("OK: Results Found");
+            response.setStatus("OK: Results Found.");
         } catch (Exception e) {
             response.setStatus("NOK: " + e.getMessage());
         }
