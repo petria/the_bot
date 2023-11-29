@@ -312,7 +312,8 @@ public class ForecaWeatherService extends AbstractService {
                 String region = countryCityLink.region.toLowerCase();
                 String country = countryCityLink.country.toLowerCase();
                 String city = countryCityLink.city.toLowerCase();
-                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && city.matches(pieces[1])) {
+                String city2 = countryCityLink.city2.toLowerCase();
+                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && (city.matches(pieces[1]) || city2.matches(pieces[1]))) {
                     matching.add(countryCityLink);
                 }
             }
