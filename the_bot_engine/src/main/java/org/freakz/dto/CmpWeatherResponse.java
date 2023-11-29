@@ -12,6 +12,5 @@ import java.util.List;
 public class CmpWeatherResponse extends ServiceResponse {
 
     private List<ForecaData> forecaDataList;
-    private Double temperatureDifference;
 
 }

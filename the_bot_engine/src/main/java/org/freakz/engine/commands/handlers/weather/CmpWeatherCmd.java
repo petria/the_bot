@@ -5,13 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.dto.CmpWeatherResponse;
-import org.freakz.dto.ForecaResponse;
-import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.ServiceRequestType;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
@@ -32,22 +30,6 @@ public class CmpWeatherCmd extends AbstractCmd {
                 .setShortFlag('c');
         jsap.registerParameter(flg);
 
-        Switch feelsLike = new Switch(ARG_FEELS_LIKE)
-                .setLongFlag("feelsLike")
-                .setShortFlag('f');
-        jsap.registerParameter(feelsLike);
-
-        Switch sunUpDown = new Switch(ARG_SUN_UP_DOWN)
-                .setLongFlag("sunUpDown")
-                .setShortFlag('s');
-        jsap.registerParameter(sunUpDown);
-
-        Switch verbose = new Switch(ARG_VERBOSE)
-                .setLongFlag("verbose")
-                .setShortFlag('v');
-        jsap.registerParameter(verbose);
-
-
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setList(true)
                 .setDefault(new String[]{"Oulu", "Jaipur"})
@@ -58,40 +40,17 @@ public class CmpWeatherCmd extends AbstractCmd {
 
     }
 
-    private String formatWeather(ForecaData d, boolean verbose, boolean sunUpDown, boolean feelsLike) {
+    private String formatWeather(ForecaData d) {
 
-        String v = "";
-        if (verbose) {
-            v = d.getCityLink().region + "/" + d.getCityLink().country + "/";
-        }
-        String upDown = "";
-        if (sunUpDown) {
-            upDown
-                    = String.format(" - Sun up/down: %s - %s (%dh %dm)",
-                    d.getSunUpDown().getSunUpTime(),
-                    d.getSunUpDown().getSunDownTime(),
-                    d.getSunUpDown().getDayLengthHours(),
-                    d.getSunUpDown().getDayLengthMinutes()
-            );
-        }
-        String feels = "";
-        if (feelsLike) {
-            feels = String.format(" (feels like: %2.1f°C)", d.getWeatherData().getFeelsLike());
-        }
-        String template = "%s%s: %s %s %2.1f°C%s%s";
+        String template = "%s: %s %s %2.1f°C";
 
-        return String.format(template, v, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), feels, upDown);
+        return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp());
     }
 
     @Override
     public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
 
-
-        boolean verbose = results.getBoolean(ARG_VERBOSE);
-        boolean sunUpDown = results.getBoolean(ARG_SUN_UP_DOWN);
-        boolean feelsLike = results.getBoolean(ARG_FEELS_LIKE);
-
-        String p = results.getString(ARG_PLACE);
+//        String p = results.getString(ARG_PLACE);
 
         String[] places = results.getStringArray(ARG_PLACE);
 
@@ -99,6 +58,11 @@ public class CmpWeatherCmd extends AbstractCmd {
         for (String place : places) {
             log.debug("place: {}", place);
         }
+
+        if (places.length < 2) {
+            return "It needs atleast two arguments to compare the weather";
+        }
+
         CmpWeatherResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.CmpWeatherService);
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
@@ -110,12 +74,18 @@ public class CmpWeatherCmd extends AbstractCmd {
                 }
             } else {
                 int xx = 0;
-                for (ForecaData forecaData : data.getForecaDataList()) {
-                    String formatted = formatWeather(forecaData, verbose, sunUpDown, feelsLike);
-                    if (xx != 0) {
-                        sb.append("\n");
-                    }
+                List<ForecaData> forecaDataList = data.getForecaDataList();
+                forecaDataList.sort(Comparator.comparing(l -> ((ForecaData) (l)).getWeatherData().getTemp()).reversed());
+                double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
+                for (ForecaData forecaData : forecaDataList) {
+                    String formatted = formatWeather(forecaData);
                     sb.append(formatted);
+                    if (xx != 0) {
+                        double difference = highestTemp - forecaData.getWeatherData().getTemp();
+                        sb.append("\t").append(difference).append("\n");
+                    } else {
+                        sb.append("\tdifference\n");
+                    }
                     xx++;
                     if (xx >= results.getInt(ARG_COUNT)) {
                         break;
