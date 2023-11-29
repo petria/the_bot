@@ -40,11 +40,11 @@ public class CmpWeatherCmd extends AbstractCmd {
 
     }
 
-    private String formatWeather(ForecaData d) {
+    private String formatWeather(ForecaData d, String diff) {
 
-        String template = "%s: %s %s %2.1f°C";
+        String template = "%s: %s %s %2.1f°C %s";
 
-        return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp());
+        return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), diff);
     }
 
     @Override
@@ -76,16 +76,17 @@ public class CmpWeatherCmd extends AbstractCmd {
                 int xx = 0;
                 List<ForecaData> forecaDataList = data.getForecaDataList();
                 forecaDataList.sort(Comparator.comparing(l -> ((ForecaData) (l)).getWeatherData().getTemp()).reversed());
-                double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
+                Double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
                 for (ForecaData forecaData : forecaDataList) {
-                    String formatted = formatWeather(forecaData);
-                    sb.append(formatted);
+                    String formatted;
                     if (xx != 0) {
-                        double difference = highestTemp - forecaData.getWeatherData().getTemp();
-                        sb.append("\t").append(difference).append("\n");
+                        double diff = highestTemp - forecaData.getWeatherData().getTemp();
+                        formatted = formatWeather(forecaData, diff + "");
+                        sb.append("\n");
                     } else {
-                        sb.append("\tdifference\n");
+                        formatted = formatWeather(forecaData, "difference");
                     }
+                    sb.append(formatted);
                     xx++;
                     if (xx >= results.getInt(ARG_COUNT)) {
                         break;
