@@ -27,7 +27,6 @@ public class CmpWeatherCmd extends AbstractCmd {
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
                 .setList(true)
-                .setDefault(new String[]{"Oulu", "Jaipur"})
                 .setRequired(true)
                 .setGreedy(true);
 
@@ -35,10 +34,20 @@ public class CmpWeatherCmd extends AbstractCmd {
 
     }
 
-    private String formatWeather(ForecaData d, String diff) {
+    private String formatWeather(ForecaData d, String diff, int longestCityName) {
 
-        String template = "%-15s %-10s %-8s %6.1f°C - %s";
+        String template = "%-" + longestCityName + "s %s %s%6.1f°C - %s";
         return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), diff);
+    }
+
+    private int findLongestCityNameLength(List<ForecaData> forecaDataList) {
+        int longest = Integer.MIN_VALUE;
+        for (ForecaData data : forecaDataList) {
+            if (data.getCityLink().getCity2().length() > longest) {
+                longest = data.getCityLink().getCity2().length();
+            }
+        }
+        return longest;
     }
 
     @Override
@@ -48,7 +57,7 @@ public class CmpWeatherCmd extends AbstractCmd {
 
 
         if (places.length < 2) {
-            return "It needs atleast two arguments to compare the weather";
+            return "It needs at least two arguments to compare the weather";
         }
 
         CmpWeatherResponse data = doServiceRequestMethods(engineRequest, results, ServiceRequestType.CmpWeatherService);
@@ -62,19 +71,24 @@ public class CmpWeatherCmd extends AbstractCmd {
                     sb.append(place).append(" ");
                 }
             } else {
+
                 int xx = 0;
                 List<ForecaData> forecaDataList = data.getForecaDataList();
+
+                int longestCityName = findLongestCityNameLength(forecaDataList);
+
                 forecaDataList.sort(Comparator.comparing(l -> ((ForecaData) (l)).getWeatherData().getTemp()).reversed());
                 double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
+
                 for (ForecaData forecaData : forecaDataList) {
                     String formatted;
                     if (xx != 0) {
                         double diff = highestTemp - forecaData.getWeatherData().getTemp();
                         String differenceStr = String.format("%.2f°C", diff);
-                        formatted = formatWeather(forecaData, differenceStr);
+                        formatted = formatWeather(forecaData, differenceStr, longestCityName);
                         sb.append("\n");
                     } else {
-                        formatted = formatWeather(forecaData, "difference");
+                        formatted = formatWeather(forecaData, "difference", longestCityName);
                     }
                     sb.append(formatted);
                     xx++;
