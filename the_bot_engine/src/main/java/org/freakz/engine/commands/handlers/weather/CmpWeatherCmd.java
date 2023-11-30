@@ -46,15 +46,13 @@ public class CmpWeatherCmd extends AbstractCmd {
 
         String[] places = results.getStringArray(ARG_PLACE);
 
-/*        for (String place : places) {
-            log.debug("place: {}", place);
-        }*/
 
         if (places.length < 2) {
             return "It needs atleast two arguments to compare the weather";
         }
 
-        CmpWeatherResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.CmpWeatherService);
+        CmpWeatherResponse data = doServiceRequestMethods(engineRequest, results, ServiceRequestType.CmpWeatherService);
+
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
 

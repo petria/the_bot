@@ -2,10 +2,11 @@ package org.freakz.services.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.foreca.*;
+import org.freakz.common.model.foreca.CountryCityLink;
+import org.freakz.common.model.foreca.CountryScanLinksByLetter;
+import org.freakz.common.model.foreca.ForecaSunUpDown;
+import org.freakz.common.model.foreca.ForecaWeatherData;
 import org.freakz.config.ConfigService;
-import org.freakz.dto.CmpWeatherResponse;
-import org.freakz.services.api.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -22,11 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
-
 @Slf4j
-@ServiceMessageHandler(ServiceRequestType = ServiceRequestType.CmpWeatherService)
-public class CmpWeatherService extends AbstractService {
+public class ForecaDataFetcher {
+
     private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
     public String[] REGION_URLS
             = {
@@ -43,9 +42,15 @@ public class CmpWeatherService extends AbstractService {
     private static Map<String, CountryCityLink> toCollectLinks = null;
     private ObjectMapper mapper = new ObjectMapper();
 
-    public void initWithToCollectLinks(CachedLinks links) {
+
+    public Map<String, CountryCityLink> getToCollectLinks() {
+        return toCollectLinks;
+    }
+
+    public void setCachedLink(CachedLinks links) {
         toCollectLinks = links.getToCollectLinks();
     }
+
 
     public void initializeService(ConfigService configService) throws Exception {
         String countryMatch = ".*";
@@ -295,72 +300,6 @@ public class CmpWeatherService extends AbstractService {
         }
         String str = "" + temp;
         return Double.valueOf(str);
-    }
-
-    public List<CountryCityLink> getMatchingCountryCityLinks(String place) {
-        log.debug("Matching cities with: {}", place);
-        List<CountryCityLink> matching = new ArrayList<>();
-        String[] pieces = place.toLowerCase().split("/");
-        for (String cityKey : toCollectLinks.keySet()) {
-            CountryCityLink countryCityLink = toCollectLinks.get(cityKey);
-            if (countryCityLink.city.toLowerCase().matches(place) || countryCityLink.city2.toLowerCase().matches(place)) {
-                matching.add(countryCityLink);
-            } else {
-                String region = countryCityLink.region.toLowerCase();
-                String country = countryCityLink.country.toLowerCase();
-                String city = countryCityLink.city.toLowerCase();
-                String city2 = countryCityLink.city2.toLowerCase();
-                if ((region.contains(pieces[0]) || country.contains(pieces[0])) && (city.matches(pieces[1]) || city2.matches(pieces[1]))) {
-                    matching.add(countryCityLink);
-                }
-            }
-        }
-        log.debug("{} matching {} cities", place, matching.size());
-        return matching;
-    }
-
-    @Override
-    public <T extends ServiceResponse> CmpWeatherResponse handleServiceRequest(ServiceRequest request) {
-        CmpWeatherResponse response
-                = CmpWeatherResponse.builder()
-                .build();
-
-        if (toCollectLinks == null) {
-            response.setStatus(String.format("NOK: Initial data fetch still in progress: %d / %d", 0, -1));
-        } else {
-            String[] places = request.getResults().getStringArray(ARG_PLACE);
-
-            List<ForecaData> forecaDataList = new ArrayList<>();
-            response.setForecaDataList(forecaDataList);
-
-            for (String place : places) {
-                place = place.toLowerCase();
-                List<CountryCityLink> matching = getMatchingCountryCityLinks(place);
-                for (CountryCityLink match : matching) {
-                    try {
-                        ForecaSunUpDown sunUpDown = ForecaSunUpDown.builder().build();
-                        List<ForecaWeatherData> forecaWeatherData = fetchCityWeather(match.city, match.cityUrl, sunUpDown);
-                        if (forecaWeatherData != null && forecaWeatherData.size() > 0) {
-                            ForecaData forecaData
-                                    = ForecaData.builder()
-                                    .cityLink(match)
-                                    .weatherData(forecaWeatherData.get(0))
-                                    .sunUpDown(sunUpDown)
-                                    .build();
-                            forecaDataList.add(forecaData);
-                        }
-                    } catch (Exception e) {
-                        response.setStatus("NOK: Foreca data fetch error: " + e.getMessage());
-                        break;
-                    }
-                }
-            }
-
-            response.setStatus("OK: data size " + forecaDataList.size());
-
-        }
-
-        return response;
     }
 
 }

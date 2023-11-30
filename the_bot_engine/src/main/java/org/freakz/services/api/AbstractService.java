@@ -2,9 +2,9 @@ package org.freakz.services.api;
 
 public abstract class AbstractService implements ServiceHandler {
 
-
-/*    @Override
+    @Override
     public <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request) {
-        return null;
-    }*/
+        throw new RuntimeException("AbstractService :: handleServiceRequest(ServiceRequest request) not correctly implemented!!");
+    }
+
 }

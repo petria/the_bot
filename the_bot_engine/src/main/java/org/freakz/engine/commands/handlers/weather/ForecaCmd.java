@@ -101,11 +101,13 @@ public class ForecaCmd extends AbstractCmd {
         String place = results.getString(ARG_PLACE);
 
         log.debug("Place: {}", place);
-        ForecaResponse data = doServiceRequest(engineRequest, results, ServiceRequestType.ForecaWeatherService);
+
+        ForecaResponse data = doServiceRequestMethods(engineRequest, results, ServiceRequestType.ForecaWeatherService);
+
         if (data.getStatus().startsWith("OK")) {
             StringBuilder sb = new StringBuilder();
 
-            if (data.getForecaDataList().size() == 0) {
+            if (data.getForecaDataList().isEmpty()) {
                 sb.append("Check spelling, no Foreca data found with: ");
                 sb.append(place);
             } else {

@@ -20,6 +20,7 @@ import static org.reflections.scanners.Scanners.TypesAnnotated;
 
 @Service
 @Slf4j
+@SuppressWarnings("unchecked")
 public class HokanServices {
 
     private final Executor executor;
@@ -38,9 +39,19 @@ public class HokanServices {
     @PostConstruct
     public void runInitializeService() throws Exception {
         log.debug("Finding ServiceMessageHandlers...");
-        Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
-        log.debug("... found ServiceMessageHandler: {}", typesAnnotatedWith.size());
-        for (Class<?> aClass : typesAnnotatedWith) {
+        Set<Class<?>> serviceMessageHandlers = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);
+        log.debug("... found ServiceMessageHandler: {}", serviceMessageHandlers.size());
+
+        log.debug("Finding ServiceMethodHandlers...");
+        Set<Class<?>> serviceMethodHandlers = reflections.getTypesAnnotatedWith(ServiceMethodHandler.class);
+        log.debug("... found ServiceMethodHandler: {}", serviceMessageHandlers.size());
+
+        List<Class<?>> allHandlers = new ArrayList<>(serviceMessageHandlers);
+        allHandlers.addAll(serviceMethodHandlers);
+
+        log.debug("Starting initialize all Services, count: {}", allHandlers.size());
+
+        for (Class<?> aClass : allHandlers) {
             AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
             this.executor.execute(() -> {
                 try {
@@ -60,7 +71,7 @@ public class HokanServices {
     public <T extends ServiceResponse> T doServiceRequestMethods(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
             Map<Class<?>, List<Method>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
-            for (Class aClass : methodsMap.keySet()) {
+            for (Class<?> aClass : methodsMap.keySet()) {
                 AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
                 List<Method> methods = methodsMap.get(aClass);
                 for (Method method : methods) {
@@ -95,7 +106,7 @@ public class HokanServices {
     }
 
 
-    private Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
+    private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
     private Map<Class<?>, List<Method>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
 
@@ -128,8 +139,7 @@ public class HokanServices {
             ServiceMessageHandler annotation = aClass.getAnnotation(ServiceMessageHandler.class);
             ServiceRequestType annotatedType = annotation.ServiceRequestType();
             if (serviceRequestType.equals(annotatedType)) {
-                AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
-                return service;
+                return (AbstractService) aClass.getConstructor().newInstance();
             }
         }
         return null;

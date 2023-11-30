@@ -198,8 +198,8 @@ public class KeliKameratService extends AbstractService {
 
     @Override
     public void initializeService(ConfigService configService) throws Exception {
-        isFirstUpdateStarted.set(true);
-        firstUpdate();
+//        isFirstUpdateStarted.set(true);
+//        firstUpdate();
     }
 
     @Override
