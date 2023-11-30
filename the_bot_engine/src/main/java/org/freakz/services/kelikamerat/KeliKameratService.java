@@ -6,7 +6,7 @@ import org.freakz.config.ConfigService;
 import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratUrl;
 import org.freakz.dto.KelikameratWeatherData;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;

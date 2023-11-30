@@ -11,7 +11,7 @@ import org.freakz.dto.UsersResponse;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 @HokanCommandHandler
 @HokanAdminCommand

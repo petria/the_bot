@@ -1,4 +1,4 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 public abstract class AbstractService implements ServiceHandler {
 

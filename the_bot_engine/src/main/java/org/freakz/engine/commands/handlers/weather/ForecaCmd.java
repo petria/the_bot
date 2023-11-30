@@ -8,7 +8,7 @@ import org.freakz.dto.ForecaResponse;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import java.util.ArrayList;
 import java.util.List;

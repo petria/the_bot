@@ -10,7 +10,7 @@ import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.dto.CmpWeatherResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import java.util.Comparator;
 import java.util.List;

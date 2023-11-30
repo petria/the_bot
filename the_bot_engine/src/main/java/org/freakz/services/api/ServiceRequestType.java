@@ -1,4 +1,4 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 public enum ServiceRequestType {
 
@@ -27,6 +27,12 @@ public enum ServiceRequestType {
 
     TranslateService,
 
-    UsersListService
+    UsersListService,
+
+    TestService1,
+
+    TestService2,
+
+    TestService3,
 
 }

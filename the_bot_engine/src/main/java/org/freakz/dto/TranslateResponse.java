@@ -1,6 +1,6 @@
 package org.freakz.dto;
 
-import org.freakz.services.ServiceResponse;
+import org.freakz.services.api.ServiceResponse;
 
 import java.io.Serializable;
 import java.util.HashMap;

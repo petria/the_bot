@@ -4,7 +4,7 @@ package org.freakz.services.conversations;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.QuizStartResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.springframework.context.ApplicationContext;
 
 @Slf4j

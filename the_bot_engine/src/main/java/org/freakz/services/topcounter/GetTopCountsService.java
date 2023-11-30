@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.TopCountsResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.springframework.context.ApplicationContext;
 
 import java.util.List;

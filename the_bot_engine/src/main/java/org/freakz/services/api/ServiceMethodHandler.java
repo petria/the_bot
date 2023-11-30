@@ -1,4 +1,4 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -11,8 +11,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface ServiceMessageHandler {
+public @interface ServiceMethodHandler {
 
-    ServiceRequestType ServiceRequestType();
 
 }

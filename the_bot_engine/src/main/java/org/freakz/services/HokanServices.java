@@ -2,6 +2,7 @@ package org.freakz.services;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
+import org.freakz.services.api.*;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -10,8 +11,12 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Set;
+import java.lang.reflect.Method;
+import java.util.*;
 import java.util.concurrent.Executor;
+
+import static org.reflections.scanners.Scanners.SubTypes;
+import static org.reflections.scanners.Scanners.TypesAnnotated;
 
 @Service
 @Slf4j
@@ -29,21 +34,6 @@ public class HokanServices {
 
     private final ApplicationContext applicationContext;
 
-    public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
-        try {
-            ServiceHandler serviceHandler = findServiceMessageHandlers(serviceRequestType);
-            if (serviceHandler != null) {
-                request.setApplicationContext(applicationContext);
-                return (T) serviceHandler.handleServiceRequest(request);
-            } else {
-                log.error("Service handler not found for: {}", serviceRequestType);
-                return null;
-            }
-        } catch (Exception e) {
-            log.error("Service handler failure", e);
-        }
-        return null;
-    }
 
     @PostConstruct
     public void runInitializeService() throws Exception {
@@ -67,7 +57,70 @@ public class HokanServices {
 
     }
 
+    public <T extends ServiceResponse> T doServiceRequestMethods(ServiceRequest request, ServiceRequestType serviceRequestType) {
+        try {
+            Map<Class<?>, List<Method>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
+            for (Class aClass : methodsMap.keySet()) {
+                AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
+                List<Method> methods = methodsMap.get(aClass);
+                for (Method method : methods) {
+                    Object obj = method.invoke(service, request);
+                    return (T) obj;
+                }
+
+            }
+        } catch (Exception e) {
+            log.error("Service handler failure", e);
+        }
+        return null;
+    }
+
+    public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
+        try {
+
+            ServiceHandler serviceHandler = findServiceMessageHandlers(serviceRequestType);
+
+
+            if (serviceHandler != null) {
+                request.setApplicationContext(applicationContext);
+                return (T) serviceHandler.handleServiceRequest(request);
+            } else {
+                log.error("Service handler not found for: {}", serviceRequestType);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("Service handler failure", e);
+        }
+        return null;
+    }
+
+
     private Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
+
+    private Map<Class<?>, List<Method>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
+
+
+        Map<Class<?>, List<Method>> methodsMap = new HashMap<>();
+
+        Set<Class<?>> annotated =
+                reflections.get(SubTypes.of(TypesAnnotated.with(ServiceMethodHandler.class)).asClass());
+
+        for (Class<?> aClass : annotated) {
+            Method[] methods = aClass.getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.isAnnotationPresent(ServiceMessageHandlerMethod.class)) {
+                    ServiceMessageHandlerMethod annotation = method.getAnnotation(ServiceMessageHandlerMethod.class);
+                    ServiceRequestType annotatedType = annotation.ServiceRequestType();
+                    if (serviceRequestType.equals(annotatedType)) {
+                        List<Method> list = methodsMap.computeIfAbsent(aClass, k -> new ArrayList<>());
+                        list.add(method);
+                    }
+                }
+            }
+
+        }
+        return methodsMap;
+    }
 
     private ServiceHandler findServiceMessageHandlers(ServiceRequestType serviceRequestType) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(ServiceMessageHandler.class);

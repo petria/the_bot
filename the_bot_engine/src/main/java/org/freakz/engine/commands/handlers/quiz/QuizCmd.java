@@ -8,7 +8,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.QuizStartResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 
 @HokanCommandHandler

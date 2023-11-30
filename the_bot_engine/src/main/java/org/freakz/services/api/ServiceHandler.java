@@ -1,4 +1,4 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 import org.freakz.config.ConfigService;
 

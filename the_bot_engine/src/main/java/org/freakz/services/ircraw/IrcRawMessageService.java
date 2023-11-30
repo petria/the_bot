@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.IrcRawMessageResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.freakz.services.connections.ConnectionManagerService;
 import org.springframework.context.ApplicationContext;
 

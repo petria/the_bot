@@ -8,9 +8,9 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.engine.commands.HandlerAlias;
-import org.freakz.services.ServiceRequest;
-import org.freakz.services.ServiceRequestType;
-import org.freakz.services.ServiceResponse;
+import org.freakz.services.api.ServiceRequest;
+import org.freakz.services.api.ServiceRequestType;
+import org.freakz.services.api.ServiceResponse;
 
 import java.util.Collections;
 import java.util.List;
@@ -89,4 +89,11 @@ public abstract class AbstractCmd implements HokanCmd {
         return commandHandler.getHokanServices().doServiceRequest(request, serviceRequestType);
     }
 
+    public <T extends ServiceResponse> T doServiceRequestMethods(EngineRequest engineRequest, JSAPResult results, ServiceRequestType serviceRequestType) {
+        ServiceRequest request = ServiceRequest.builder()
+                .engineRequest(engineRequest)
+                .results(results)
+                .build();
+        return commandHandler.getHokanServices().doServiceRequestMethods(request, serviceRequestType);
+    }
 }

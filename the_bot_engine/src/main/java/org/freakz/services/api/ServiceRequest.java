@@ -1,4 +1,4 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 import com.martiansoftware.jsap.JSAPResult;
 import lombok.Builder;

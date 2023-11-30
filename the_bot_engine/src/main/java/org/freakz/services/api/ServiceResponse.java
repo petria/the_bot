@@ -1,7 +1,8 @@
-package org.freakz.services;
+package org.freakz.services.api;
 
 
 import lombok.Data;
+
 
 @Data
 public class ServiceResponse {

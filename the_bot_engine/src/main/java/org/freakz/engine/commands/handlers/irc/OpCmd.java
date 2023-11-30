@@ -7,7 +7,7 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.IrcOPResponse;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import java.time.LocalDateTime;
 

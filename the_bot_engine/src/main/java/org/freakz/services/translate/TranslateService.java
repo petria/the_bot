@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.TranslateData;
 import org.freakz.dto.TranslateResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;

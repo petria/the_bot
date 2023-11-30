@@ -5,10 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.ChannelUsersResponse;
-import org.freakz.services.AbstractService;
-import org.freakz.services.ServiceMessageHandler;
-import org.freakz.services.ServiceRequest;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.AbstractService;
+import org.freakz.services.api.ServiceMessageHandler;
+import org.freakz.services.api.ServiceRequest;
+import org.freakz.services.api.ServiceRequestType;
 import org.freakz.services.connections.ConnectionManagerService;
 import org.springframework.context.ApplicationContext;
 

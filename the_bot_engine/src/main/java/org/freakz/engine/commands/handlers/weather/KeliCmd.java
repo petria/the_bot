@@ -7,7 +7,7 @@ import org.freakz.dto.KelikameratResponse;
 import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;

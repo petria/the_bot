@@ -11,7 +11,7 @@ import org.freakz.dto.SendMessageByTargetResponse;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;

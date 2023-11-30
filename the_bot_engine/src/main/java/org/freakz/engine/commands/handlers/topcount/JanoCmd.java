@@ -10,7 +10,7 @@ import org.freakz.data.service.DataValuesService;
 import org.freakz.dto.GetDataValuesServiceResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 @HokanCommandHandler
 @Slf4j

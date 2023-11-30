@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.ConnectionsResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.springframework.context.ApplicationContext;
 
 

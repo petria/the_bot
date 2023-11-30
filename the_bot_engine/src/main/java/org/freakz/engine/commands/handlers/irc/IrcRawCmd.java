@@ -8,7 +8,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.IrcRawMessageResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
