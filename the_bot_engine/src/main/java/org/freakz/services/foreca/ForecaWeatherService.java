@@ -20,7 +20,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 @ServiceMethodHandler
 public class ForecaWeatherService extends AbstractService {
 
-    private static ForecaDataFetcher forecaDataFetcher = new ForecaDataFetcher();
+    private final static ForecaDataFetcher forecaDataFetcher = new ForecaDataFetcher();
 
     @Override
     public void initializeService(ConfigService configService) throws Exception {
