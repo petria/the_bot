@@ -14,4 +14,7 @@ public interface EnvValuesRepository extends DataBaseRepository<SysEnvValue> {
     SysEnvValue setEnvValue(String key, String value, User user);
 
     SysEnvValue findOneByKey(String key);
+
+    SysEnvValue unSetEnvValue(String key, User user);
+
 }

@@ -11,4 +11,6 @@ public interface EnvValuesService {
     List<? extends DataNodeBase> findAll();
 
     SysEnvValue setEnvValue(String key, String value, User user);
+
+    SysEnvValue unSetEnvValue(String key, User user);
 }

@@ -50,5 +50,8 @@ public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService
 
     }
 
-
+    @Override
+    public SysEnvValue unSetEnvValue(String key, User user) {
+        return repository.unSetEnvValue(key, user);
+    }
 }
