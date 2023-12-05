@@ -12,7 +12,7 @@ import java.util.Scanner;
 public class CliService implements CommandLineRunner {
 
     private static final Scanner scanner = new Scanner(System.in);
-    private String user = "TestUser";
+    private String user = "_Pete_";
 
     private boolean doMainLoop = true;
 

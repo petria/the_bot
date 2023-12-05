@@ -35,4 +35,10 @@ public enum ServiceRequestType {
 
     TestService3,
 
+    SetEnv,
+
+    UnSetEnv,
+
+    ListEnv,
+
 }
