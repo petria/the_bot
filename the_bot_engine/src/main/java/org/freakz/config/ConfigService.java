@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 
@@ -22,17 +21,28 @@ public class ConfigService {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 
-    @PostConstruct
+    private TheBotConfig theBotConfig = null;
+
     public TheBotConfig readBotConfig() throws IOException {
+        if (theBotConfig == null) {
+            reloadConfig();
+        }
+        return theBotConfig;
+    }
+
+
+    public void reloadConfig() throws IOException {
         String activeProfile = environment.getProperty("hokan.runtime.profile");
         if (activeProfile == null) {
             activeProfile = "DEV";
-            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
+//            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
         }
-        ObjectMapper mapper = new ObjectMapper();
-        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
+        theBotConfig = configReader.readBotConfig(objectMapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
     }
 
     public File getRuntimeDirFile(String fileName) {

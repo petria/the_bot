@@ -23,6 +23,8 @@ public enum ServiceRequestType {
 
     QuizStartRequest,
 
+    ReloadConfig,
+
     SendMessageByTargetAlias,
 
     TranslateService,

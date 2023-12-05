@@ -1,6 +1,7 @@
 package org.freakz.common.model.engine;
 
 import lombok.*;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.users.User;
 
 @AllArgsConstructor
@@ -25,6 +26,7 @@ public class EngineRequest {
     private String network;
 
     private User user;
+    private TheBotConfig botConfig;
 
     public String getMessage() {
         return command;
@@ -33,4 +35,6 @@ public class EngineRequest {
     public boolean isPrivateChannel() {
         return false;
     }
+
+
 }

@@ -58,7 +58,7 @@ public class CommandHandler {
 
     //    @Async
     public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
-
+//        configService.readBotConfig().getBotConfig()
         User user = accessService.getUser(request);
         log.debug("User: {}", user);
 
@@ -132,7 +132,7 @@ public class CommandHandler {
             boolean parseRes;
             JSAPResult results = null;
             IDMap map = abstractCmd.getJsap().getIDMap();
-            Iterator iterator = map.idIterator();
+            Iterator<?> iterator = map.idIterator();
 
             String argsLine = args.joinArgs(0);
             if (iterator.hasNext()) {
@@ -150,6 +150,8 @@ public class CommandHandler {
             } else {
                 request.setFromAdmin(user.isAdmin());
                 request.setUser(user);
+                request.setBotConfig(configService.readBotConfig());
+
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {
                     if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
