@@ -3,6 +3,7 @@ package org.freakz.data.service;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.env.SysEnvValue;
+import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
@@ -44,8 +45,8 @@ public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService
     }
 
     @Override
-    public SysEnvValue setEnvValue(String key, String value) {
-        return repository.setEnvValue(key, value);
+    public SysEnvValue setEnvValue(String key, String value, User user) {
+        return repository.setEnvValue(key, value, user);
 
     }
 

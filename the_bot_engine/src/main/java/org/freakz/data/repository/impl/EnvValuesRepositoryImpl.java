@@ -5,6 +5,7 @@ import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.EnvValuesJsonContainer;
 import org.freakz.common.model.env.SysEnvValue;
+import org.freakz.common.model.users.User;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
@@ -99,7 +100,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
     }
 
     @Override
-    public SysEnvValue setEnvValue(String key, String value) {
+    public SysEnvValue setEnvValue(String key, String value, User user) {
         SysEnvValue sysEnvValue = findOneByKey(key);
         if (sysEnvValue == null) {
             sysEnvValue = SysEnvValue.builder().keyName(key).value(value).build();
@@ -108,6 +109,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
         } else {
             sysEnvValue.setValue(value);
         }
+        sysEnvValue.setModifiedBy(user.getName());
         this.isDirty = true;
         this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
 

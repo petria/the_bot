@@ -149,6 +149,7 @@ public class CommandHandler {
 
             } else {
                 request.setFromAdmin(user.isAdmin());
+                request.setUser(user);
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {
                     if (request.getNetwork().equals("BOT_CLI_CLIENT")) {

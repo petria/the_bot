@@ -1,6 +1,7 @@
 package org.freakz.common.model.engine;
 
 import lombok.*;
+import org.freakz.common.model.users.User;
 
 @AllArgsConstructor
 @Builder
@@ -23,6 +24,7 @@ public class EngineRequest {
 
     private String network;
 
+    private User user;
 
     public String getMessage() {
         return command;

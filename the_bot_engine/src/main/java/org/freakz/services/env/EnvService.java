@@ -45,9 +45,9 @@ public class EnvService extends AbstractService {
 
         ApplicationContext applicationContext = request.getApplicationContext();
         EnvValuesService bean = applicationContext.getBean(EnvValuesService.class);
-        SysEnvValue sysEnvValue = bean.setEnvValue(key, value);
+        SysEnvValue sysEnvValue = bean.setEnvValue(key, value, request.getEngineRequest().getUser());
         EnvResponse response = new EnvResponse();
-        response.setEnvValue(SysEnvValue.builder().keyName(key).value(value).build());
+        response.setEnvValue(sysEnvValue);
         response.setStatus("OK: set env variable");
         return response;
     }
