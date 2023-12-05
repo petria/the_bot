@@ -71,6 +71,7 @@ public class HokanServices {
     public <T extends ServiceResponse> T doServiceRequestMethods(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
             Map<Class<?>, List<Method>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
+            request.setApplicationContext(applicationContext);
             for (Class<?> aClass : methodsMap.keySet()) {
                 AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
                 List<Method> methods = methodsMap.get(aClass);

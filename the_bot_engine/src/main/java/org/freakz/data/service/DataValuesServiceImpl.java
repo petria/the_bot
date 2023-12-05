@@ -8,8 +8,8 @@ import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.config.ConfigService;
 import org.freakz.data.repository.DataSaverInfo;
 import org.freakz.data.repository.DataSavingService;
-import org.freakz.data.repository.DataValuesRepository;
-import org.freakz.data.repository.DataValuesRepositoryImpl;
+import org.freakz.data.repository.impl.DataValuesRepository;
+import org.freakz.data.repository.impl.DataValuesRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

@@ -1,20 +1,20 @@
-package org.freakz.dto.env;
+package org.freakz.common.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.freakz.common.model.env.SysEnvValue;
-import org.freakz.services.api.ServiceResponse;
 
 import java.util.List;
+
 
 @Builder
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ListEnvResponse extends ServiceResponse {
+public class EnvValuesJsonContainer extends DataContainerBase {
 
-    private List<SysEnvValue> envValues;
+    private List<SysEnvValue> data_values;
 
 }

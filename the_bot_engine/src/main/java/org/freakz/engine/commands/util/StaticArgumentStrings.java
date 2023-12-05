@@ -30,6 +30,7 @@ public class StaticArgumentStrings {
     public static final String ARG_ID = "ID";
     public static final String ARG_ID_OR_SEARCH = "ID/SEARCH";
     public static final String ARG_JOIN_MSG = "JoinMsg";
+    public static final String ARG_KEY = "Key";
     public static final String ARG_LUNCH_PLACE = "LunchPlace";
     public static final String ARG_LOG_PATTERN = "LogPattern";
     public static final String ARG_MASK = "Mask";
@@ -64,6 +65,7 @@ public class StaticArgumentStrings {
     public static final String ARG_UPDATER_NAME = "UpdaterName";
     public static final String ARG_URL = "Url";
     public static final String ARG_URL_PATTERN = "UrlPattern";
+    public static final String ARG_VALUE = "Value";
     public static final String ARG_VERBOSE = "Verbose";
     public static final String ARG_WORD = "Word";
 

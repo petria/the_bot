@@ -12,6 +12,8 @@ import java.util.List;
 @Slf4j
 public class RepositoryBaseImpl {
 
+    public static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
+
     protected final ConfigService configService;
 
     protected final List<DataNodeBase> dataValues = new ArrayList<>();

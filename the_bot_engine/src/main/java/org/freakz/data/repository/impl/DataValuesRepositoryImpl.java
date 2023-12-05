@@ -1,4 +1,4 @@
-package org.freakz.data.repository;
+package org.freakz.data.repository.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
@@ -7,6 +7,9 @@ import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.DataValues;
 import org.freakz.common.model.dto.DataValuesJsonContainer;
 import org.freakz.config.ConfigService;
+import org.freakz.data.repository.DataSaverInfo;
+import org.freakz.data.repository.DataSavingService;
+import org.freakz.data.repository.RepositoryBaseImpl;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +22,6 @@ import java.util.List;
 @Slf4j
 public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements DataValuesRepository, DataSavingService {
 
-    private static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
     private static final String DATA_VALUES_FILE_NAME = "data_values.json";
 
     public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
