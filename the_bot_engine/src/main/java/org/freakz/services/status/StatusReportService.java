@@ -21,11 +21,13 @@ public class StatusReportService {
                 .timestamp(System.currentTimeMillis())
                 .name("BOT_ENGINE")
                 .build();
-        requestMap.put(request.getName(), request);
+        String key = String.format("%s-%s-%d", request.getName(), request.getHostname(), request.getUptimeStart());
+        requestMap.put(key, request);
     }
 
     public StatusReportResponse handleStatusReport(StatusReportRequest request) {
-        requestMap.put(request.getName(), request);
+        String key = String.format("%s-%s-%d", request.getName(), request.getHostname(), request.getUptimeStart());
+        requestMap.put(key, request);
         return StatusReportResponse.builder().message("OK: status added!").build();
     }
 

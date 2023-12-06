@@ -47,7 +47,7 @@ public class AliveReportService {
                 int foo = 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             //
         }
     }

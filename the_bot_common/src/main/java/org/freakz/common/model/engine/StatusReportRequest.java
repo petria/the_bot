@@ -12,5 +12,6 @@ public class StatusReportRequest {
     private long timestamp;
     private long uptimeStart;
     private String name;
+    private String hostname;
 
 }
