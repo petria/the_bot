@@ -1,6 +1,8 @@
 package org.freakz.services.config;
 
+import feign.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.clients.ServerConfigClient;
 import org.freakz.config.ConfigService;
 import org.freakz.services.api.*;
 
@@ -18,12 +20,20 @@ public class ReloadConfigService extends AbstractService {
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ReloadConfig)
     public <T extends ServiceResponse> ServiceResponse reloadConfigHandler(ServiceRequest request) {
 
-        ConfigService bean = request.getApplicationContext().getBean(ConfigService.class);
+        ConfigService configService = request.getApplicationContext().getBean(ConfigService.class);
         ServiceResponse response = new ServiceResponse();
 
         try {
-            bean.reloadConfig();
+            configService.reloadConfig();
             response.setStatus("OK: config reloaded!");
+            ServerConfigClient serverConfigClient = request.getApplicationContext().getBean(ServerConfigClient.class);
+            try {
+                Response reloaded = serverConfigClient.reloadConfig();
+                log.debug("Sent reload to bot-io: {}", reloaded.toString());
+            } catch (Exception e) {
+                log.error("Reload io config failed: {}", e.getMessage());
+            }
+
         } catch (IOException e) {
             response.setStatus("NOK: " + e.getMessage());
         }
