@@ -27,6 +27,8 @@ public enum ServiceRequestType {
 
     SendMessageByTargetAlias,
 
+    SystemStatus,
+
     TranslateService,
 
     UsersListService,

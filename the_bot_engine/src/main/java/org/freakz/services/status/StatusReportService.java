@@ -14,8 +14,22 @@ public class StatusReportService {
 
     private Map<String, StatusReportRequest> requestMap = new HashMap<>();
 
+    public StatusReportService() {
+        StatusReportRequest request
+                = StatusReportRequest.builder()
+                .uptimeStart(System.currentTimeMillis())
+                .timestamp(System.currentTimeMillis())
+                .name("BOT_ENGINE")
+                .build();
+        requestMap.put(request.getName(), request);
+    }
+
     public StatusReportResponse handleStatusReport(StatusReportRequest request) {
         requestMap.put(request.getName(), request);
         return StatusReportResponse.builder().message("OK: status added!").build();
+    }
+
+    public Map<String, StatusReportRequest> getRequestMap() {
+        return requestMap;
     }
 }
