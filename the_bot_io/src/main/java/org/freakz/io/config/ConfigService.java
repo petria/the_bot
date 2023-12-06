@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import java.io.File;
 import java.io.IOException;
 
 @Service
@@ -21,18 +21,46 @@ public class ConfigService {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 
-    @PostConstruct
+    private TheBotConfig theBotConfig = null;
+
     public TheBotConfig readBotConfig() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
+        if (theBotConfig == null) {
+            reloadConfig();
+        }
+        return theBotConfig;
+    }
+
+
+    public void reloadConfig() throws IOException {
         String activeProfile = environment.getProperty("hokan.runtime.profile");
         if (activeProfile == null) {
             activeProfile = "DEV";
-            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
+//            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
         }
-        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
+        theBotConfig = configReader.readBotConfig(objectMapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
     }
 
+    public File getRuntimeDirFile(String fileName) {
+        File file = new File(botProperties.getRuntimeDir() + fileName);
+        return file;
+    }
+
+    public File getRuntimeDataFile(String fileName) {
+        File file = new File(botProperties.getDataDir() + fileName);
+        return file;
+    }
+
+    public String getRuntimeDirFileName(String fileName) {
+        return botProperties.getRuntimeDir() + fileName;
+    }
+
+    public String getRuntimeDataFileName(String fileName) {
+        return botProperties.getDataDir() + fileName;
+    }
 
 }
