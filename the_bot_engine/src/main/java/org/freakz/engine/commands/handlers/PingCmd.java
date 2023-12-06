@@ -5,7 +5,6 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.common.util.TimeAdjuster;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
@@ -23,7 +22,7 @@ public class PingCmd extends AbstractCmd {
 
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
-        LocalDateTime adjustedLocalDateTime = TimeAdjuster.getAdjustedLocalDateTime(request.getBotConfig().getBotConfig().getTimeAdjust());
+        LocalDateTime adjustedLocalDateTime = LocalDateTime.now();
         return "pOnG: " + adjustedLocalDateTime;
     }
 }

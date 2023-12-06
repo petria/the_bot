@@ -20,7 +20,6 @@ import org.freakz.services.HokanServices;
 import org.freakz.services.conversations.ConversationsService;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -56,15 +55,17 @@ public class CommandHandler {
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
 
-    //    @Async
+    @SneakyThrows
     public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
-//        configService.readBotConfig().getBotConfig()
+
+        request.setBotConfig(configService.readBotConfig());
+
         User user = accessService.getUser(request);
         log.debug("User: {}", user);
 
-
+        String wholeLine = null;
         if (doWholeLineTriggerCheck) {
-            handleWholeLineTriggers(request);
+            wholeLine = handleWholeLineTriggers(request);
         }
 
         this.conversationsService.handleConversations(this, request);
@@ -72,14 +73,17 @@ public class CommandHandler {
         if (request.getCommand().startsWith("!")) {
             replyMessage = parseAndExecute(request, user);
         }
+        if (wholeLine != null) {
+            replyMessage += " WL: " + wholeLine;
+        }
         return UserAndReply.builder().user(user).replyMessage(replyMessage).build();
 
 
     }
 
-    @Async
-    public void handleWholeLineTriggers(EngineRequest request) {
-        wholeLineTriggers.checkWholeLineTrigger(request);
+
+    public String handleWholeLineTriggers(EngineRequest request) {
+        return wholeLineTriggers.checkWholeLineTrigger(request);
     }
 
 
@@ -150,7 +154,6 @@ public class CommandHandler {
             } else {
                 request.setFromAdmin(user.isAdmin());
                 request.setUser(user);
-                request.setBotConfig(configService.readBotConfig());
 
                 String reply = abstractCmd.executeCommand(request, results);
                 if (reply != null) {

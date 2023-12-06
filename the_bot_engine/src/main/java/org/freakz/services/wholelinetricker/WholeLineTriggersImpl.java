@@ -14,6 +14,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
+
 /**
  * User: petria
  * Date: 21-Jan-2009
@@ -169,7 +170,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
         return now.isAfter(start) && now.isBefore(end);
     }
 
-    public void checkJoulu(EngineRequest eRequest) {
+    public String checkJoulu(EngineRequest eRequest) {
 
         String line = eRequest.getMessage();
 
@@ -179,7 +180,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
             if (isVäliPäivä()) {
                 processReply(eRequest, _olpo + "Tän vuaren joulu meni jo!");
-                return;
+                return line;
             }
 
             LocalDateTime now = LocalDateTime.now();
@@ -225,14 +226,19 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
                 andPart = "";
             }
 
-            String ret = String.format("%s%s%s%02d:%02d:%02d jouluun!", monthPart, dayPart, andPart, ut[2], ut[1], ut[0]);
+            jouluRandomBase = 100;
 
-            processReply(eRequest, _olpo + ret);
-            jouluRandomBase = 320;
+            String ret = String.format("%s%s%s%02d:%02d:%02d jouluun!", monthPart, dayPart, andPart, ut[2], ut[1], ut[0]);
+            if (eRequest.getNetwork().equals("BOT_CLI_CLIENT")) {
+                return _olpo + ret;
+            } else {
+                processReply(eRequest, _olpo + ret);
+            }
 
         } else {
             jouluRandomBase--;
         }
+        return "";
     }
 
     private int juhannusRandomBase = 65;
@@ -443,15 +449,15 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     private static long _lastReply = 0;
 
     @Override
-    public void checkWholeLineTrigger(EngineRequest eRequest) {
+    public String checkWholeLineTrigger(EngineRequest eRequest) {
         long now = new Date().getTime();
         long diff = now - _lastReply;
-
+        StringBuilder sb = new StringBuilder();
 //        checkJospa(eRequest);
 //        checkDrugs(eRequest);
         checkPilalla(eRequest);
 //        checkPerkeleVittu(eRequest);
-        checkJoulu(eRequest);
+        sb.append(checkJoulu(eRequest));
 //        checkJuhannus(eRequest);
         checkPitasko(eRequest);
 //        checkSpede(eRequest);
@@ -468,6 +474,10 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
             checkHuomenta(eRequest);
             _lastReply = now;
         }
+        if (!sb.isEmpty()) {
+            return sb.toString();
+        }
+        return null;
     }
 
 

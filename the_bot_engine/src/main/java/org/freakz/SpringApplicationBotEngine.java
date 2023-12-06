@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +14,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.TimeZone;
 import java.util.concurrent.Executor;
 
 @SpringBootApplication
@@ -53,8 +55,11 @@ public class SpringApplicationBotEngine {
     }
 
     public static void main(String[] args) {
-        //System.out.println("Hello world!");
-        org.springframework.boot.SpringApplication.run(SpringApplicationBotEngine.class, args);
+        String timezone = System.getProperty("TZ", "Europe/Helsinki");
+        System.out.printf("Setting default timezone: %s", timezone);
+        TimeZone.setDefault(TimeZone.getTimeZone(timezone));
+
+        SpringApplication.run(SpringApplicationBotEngine.class, args);
     }
 
 }

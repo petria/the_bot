@@ -12,6 +12,7 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.api.ServiceRequestType;
 
+
 @HokanCommandHandler
 @Slf4j
 public class JanoCmd extends AbstractCmd {
@@ -34,7 +35,7 @@ public class JanoCmd extends AbstractCmd {
         String value = dataValuesService.getValue(nick, channel, network, key);
         if (value != null) {
             Uptime uptime = new Uptime(Long.parseLong(value));
-            long future = System.currentTimeMillis(); // + 143434344343L;
+            long future = System.currentTimeMillis();
             Integer[] td = uptime.getTimeDiff(future);
             String days = getValue(td[3], 0, "day");
             String hours = getValue(td[2], 0, "hour");

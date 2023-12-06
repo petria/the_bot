@@ -9,8 +9,6 @@ import org.freakz.dto.IrcOPResponse;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.services.api.ServiceRequestType;
 
-import java.time.LocalDateTime;
-
 
 //@HokanCommandHandler
 public class OpCmd extends AbstractCmd {
@@ -26,6 +24,6 @@ public class OpCmd extends AbstractCmd {
 
         IrcOPResponse response = doServiceRequest(request, results, ServiceRequestType.IrcOpRequest);
 
-        return "pong: " + LocalDateTime.now();
+        return "op: ";
     }
 }

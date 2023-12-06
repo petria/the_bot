@@ -1,0 +1,24 @@
+version: '2.4'
+services:
+  #  Hokan the Bot engine container
+  bot-engine:
+    build: ./the_bot_engine
+    volumes:
+      - /Users/petria/code/github/the_bot/runtime:/runtime
+    ports:
+      - "8100:8100"
+    environment:
+      - TZ="Europe/Helsinki"
+      - hokan.runtime.profile=PROD
+    container_name: bot-engine
+  #  Hokan the Bot io container
+  bot-io:
+    build: ./the_bot_io
+    volumes:
+      - /Users/petria/code/github/the_bot/runtime:/runtime
+    ports:
+      - "8090:8090"
+    environment:
+      - TZ="Europe/Helsinki"
+      - hokan.runtime.profile=PROD
+    container_name: bot-io

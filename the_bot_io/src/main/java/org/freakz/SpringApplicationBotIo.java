@@ -1,8 +1,11 @@
 package org.freakz;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableAsync;
+
+import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableAsync
@@ -11,12 +14,11 @@ public class SpringApplicationBotIo {
 
 
     public static void main(String[] args) {
-        //System.out.println("Hello world!");
-        try {
-            org.springframework.boot.SpringApplication.run(SpringApplicationBotIo.class, args);
 
-        } catch (Exception e) {
-            int foo = 0;
-        }
+        String timezone = System.getProperty("TZ", "Europe/Helsinki");
+        System.out.printf("Setting default timezone: %s", timezone);
+        TimeZone.setDefault(TimeZone.getTimeZone(timezone));
+
+        SpringApplication.run(SpringApplicationBotIo.class, args);
     }
 }
