@@ -3,8 +3,11 @@ package org.freakz.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.StatusReportRequest;
+import org.freakz.common.model.engine.StatusReportResponse;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.engine.commands.util.UserAndReply;
+import org.freakz.services.status.StatusReportService;
 import org.freakz.services.topcounter.TopCountService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,11 +23,12 @@ public class EngineController {
     private final CommandHandler commandHandler;
     private final TopCountService countService;
 
+    private final StatusReportService statusReportService;
 
-    public EngineController(CommandHandler commandHandler, TopCountService countService) {
+    public EngineController(CommandHandler commandHandler, TopCountService countService, StatusReportService statusReportService) {
         this.commandHandler = commandHandler;
         this.countService = countService;
-
+        this.statusReportService = statusReportService;
     }
 
     @PostMapping("/handle_request")
@@ -39,6 +43,12 @@ public class EngineController {
                 .user(reply.getUser())
                 .build();
 //        log.debug("<<<< handle done");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/handle_status_report")
+    public ResponseEntity<?> handleStatusReport(@RequestBody StatusReportRequest request) {
+        StatusReportResponse response = statusReportService.handleStatusReport(request);
         return ResponseEntity.ok(response);
     }
 
