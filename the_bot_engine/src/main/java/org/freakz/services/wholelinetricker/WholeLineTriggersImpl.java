@@ -226,7 +226,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
                 andPart = "";
             }
 
-            jouluRandomBase = 100;
+            jouluRandomBase = 200;
 
             String ret = String.format("%s%s%s%02d:%02d:%02d jouluun!", monthPart, dayPart, andPart, ut[2], ut[1], ut[0]);
             if (eRequest.getNetwork().equals("BOT_CLI_CLIENT")) {
