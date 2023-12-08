@@ -4,7 +4,6 @@ import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.cli.clients.EngineClient;
 import org.freakz.common.model.engine.StatusReportRequest;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
@@ -23,15 +22,15 @@ public class AliveReportService {
 
     private String hostname = null;
 
-    @Scheduled(fixedRate = 2000L)
-    public void timer() {
+
+    public void sendReport(String user) {
         if (hostname == null) {
             try {
                 InetAddress id = InetAddress.getLocalHost();
-                System.out.println(id.getHostName());
                 this.hostname = id.getHostName();
+                log.debug("Got hostname: {}", this.hostname);
             } catch (Exception e) {
-                //
+                this.hostname = "<resolve failed>";
             }
         }
 
@@ -39,16 +38,17 @@ public class AliveReportService {
                 = StatusReportRequest.builder()
                 .uptimeStart(startup)
                 .timestamp(System.currentTimeMillis())
-                .name("BOT_CLI: " + hostname)
+                .name("BOT_CLI")
+                .hostname(hostname)
+                .user(user)
                 .build();
         try {
             Response response = engineClient.handleStatusReport(request);
             if (response.status() != 200) {
-                int foo = 0;
+                log.error("Update status failed: {}", response);
             }
         } catch (Exception e) {
-//            e.printStackTrace();
-            //
+            log.error("Update status failed", e);
         }
     }
 

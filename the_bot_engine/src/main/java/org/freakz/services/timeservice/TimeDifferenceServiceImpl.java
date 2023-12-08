@@ -3,11 +3,14 @@ package org.freakz.services.timeservice;
 
 import org.freakz.common.model.TimeDifferenceData;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 
 public class TimeDifferenceServiceImpl implements TimeDifferenceService {
+
 
     @Override
     public TimeDifferenceData getTimeDifference(LocalDateTime fromDateTime, LocalDateTime toDateTime) {
@@ -39,4 +42,16 @@ public class TimeDifferenceServiceImpl implements TimeDifferenceService {
         return differenceData;
     }
 
+
+    private LocalDateTime convertMillisToLocalDateTime(long timestamp) {
+
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
+    }
+
+    @Override
+    public TimeDifferenceData getTimeDifference(long fromTimestamp, long toTimestamp) {
+        LocalDateTime fromDateTime = convertMillisToLocalDateTime(fromTimestamp);
+        LocalDateTime toDateTime = convertMillisToLocalDateTime(toTimestamp);
+        return getTimeDifference(fromDateTime, toDateTime);
+    }
 }

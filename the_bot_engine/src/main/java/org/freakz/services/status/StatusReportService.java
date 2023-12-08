@@ -20,6 +20,7 @@ public class StatusReportService {
                 .uptimeStart(System.currentTimeMillis())
                 .timestamp(System.currentTimeMillis())
                 .name("BOT_ENGINE")
+                .user("<the_bot>")
                 .build();
         String key = String.format("%s-%s-%d", request.getName(), request.getHostname(), request.getUptimeStart());
         requestMap.put(key, request);

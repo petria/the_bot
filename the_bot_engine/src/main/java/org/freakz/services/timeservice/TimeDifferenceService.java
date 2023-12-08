@@ -9,4 +9,5 @@ public interface TimeDifferenceService {
 
     TimeDifferenceData getTimeDifference(LocalDateTime fromDateTime, LocalDateTime toDateTime);
 
+    TimeDifferenceData getTimeDifference(long fromTimestamp, long toTimestamp);
 }

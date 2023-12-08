@@ -7,6 +7,8 @@ import org.freakz.io.clients.EngineClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.net.InetAddress;
+
 @Service
 @Slf4j
 public class AliveReportService {
@@ -19,22 +21,36 @@ public class AliveReportService {
         this.engineClient = engineClient;
     }
 
+    private String hostname = null;
+
     @Scheduled(fixedRate = 2000L)
-    public void timer() {
+    public void sendReport() {
+        String user = "<the_bot>";
+        if (hostname == null) {
+            try {
+                InetAddress id = InetAddress.getLocalHost();
+                this.hostname = id.getHostName();
+                log.debug("Got hostname: {}", this.hostname);
+            } catch (Exception e) {
+                this.hostname = "<resolve failed>";
+            }
+        }
+
         StatusReportRequest request
                 = StatusReportRequest.builder()
                 .uptimeStart(startup)
                 .timestamp(System.currentTimeMillis())
                 .name("BOT_IO")
+                .hostname(hostname)
+                .user(user)
                 .build();
         try {
             Response response = engineClient.handleStatusReport(request);
             if (response.status() != 200) {
-                int foo = 0;
+                log.error("Update status failed: {}", response);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            //
+            log.error("Update status failed", e);
         }
     }
 

@@ -3,6 +3,7 @@ package org.freakz.cli.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Scanner;
@@ -18,6 +19,9 @@ public class CliService implements CommandLineRunner {
 
     @Autowired
     private MessageSender sender;
+
+    @Autowired
+    private AliveReportService reportService;
 
     private void mainLoop(String botUser) {
 //        System.out.print("\033[H\033[2J");
@@ -137,4 +141,9 @@ public class CliService implements CommandLineRunner {
 
     }
 
+
+    @Scheduled(fixedRate = 2000L)
+    public void healthCheckReport() {
+        reportService.sendReport(user);
+    }
 }

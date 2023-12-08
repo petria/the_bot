@@ -13,5 +13,6 @@ public class StatusReportRequest {
     private long uptimeStart;
     private String name;
     private String hostname;
+    private String user;
 
 }
