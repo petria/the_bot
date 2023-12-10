@@ -22,6 +22,11 @@
 
     <dependencies>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- CalculatorCmd -->
         <dependency>
             <groupId>net.objecthunter</groupId>

@@ -27,12 +27,14 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         long current = System.currentTimeMillis();
         List<String> formattedValuesList = new ArrayList<>();
 
+        int[] callCounts = {0, 0};
+
         for (StatusReportRequest value : values) {
             if (value.getName().equals("BOT_ENGINE") || current - value.getTimestamp() < 2000) {
-                formattedValuesList.add(formatStatusReportRequest(value, timeDiffService));
+                formattedValuesList.add(formatStatusReportRequest(value, timeDiffService, callCounts));
             }
         }
-        String title = "------- user - module       - uptime";
+        String title = "------- user - module       - uptime   - call counts";
         formattedValuesList.add(0, title);
         String combinedValue = String.join("\n", formattedValuesList);
 
@@ -42,7 +44,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
 
     }
 
-    private String formatStatusReportRequest(StatusReportRequest statusReportRequest, TimeDifferenceService timeDiffService) {
+    private String formatStatusReportRequest(StatusReportRequest statusReportRequest, TimeDifferenceService timeDiffService, int[] callCounts) {
         long[] diffs = timeDiffService.getTimeDifference(statusReportRequest.getUptimeStart(), System.currentTimeMillis()).getDiffs();
         String who;
         if (statusReportRequest.getUser() != null) {
@@ -50,7 +52,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         } else {
             who = "";
         }
-        return String.format("%12s - %-12s - %02d:%02d:%02d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0]);
+        return String.format("%12s - %-12s - %02d:%02d:%02d - in: %4d out: %4d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1]);
     }
 
 
