@@ -18,6 +18,7 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.services.HokanServices;
 import org.freakz.services.conversations.ConversationsService;
+import org.freakz.services.status.CallCountInterceptor;
 import org.freakz.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
@@ -39,14 +40,17 @@ public class CommandHandler {
 
     private final ConversationsService conversationsService;
 
+    private final CallCountInterceptor countInterceptor;
+
     private String botName = "HokanTheBot";
 
-    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService) throws InitializeFailedException, IOException {
+    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
         this.configService = configService;
         this.conversationsService = conversationsService;
+        this.countInterceptor = countInterceptor;
         this.commandHandlerLoader = new CommandHandlerLoader();
         if (configService != null) {
             this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -103,17 +107,16 @@ public class CommandHandler {
             handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(args.getCommand());
             if (handlerAlias != null) {
                 args.setCommand(handlerAlias.getTarget());
-
             }
         }
 
         AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
         if (abstractCmd != null) {
+
             if (abstractCmd.isAdminCommand() && !user.isAdmin()) {
                 log.debug("User is not admin but command is, access denied!");
                 return null;
             }
-
 
             abstractCmd.abstractInitCommandOptions();
 
@@ -146,24 +149,22 @@ public class CommandHandler {
                 parseRes = true;
             }
 
+            String reply;
             if (!parseRes) {
-                String reply = String.format("Invalid arguments, usage: %s %s", abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
-                sendReplyMessage(request, reply);
-                return reply;
-
+                reply = String.format("Invalid arguments, usage: %s %s", abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
             } else {
                 request.setFromAdmin(user.isAdmin());
                 request.setUser(user);
-
-                String reply = abstractCmd.executeCommand(request, results);
-                if (reply != null) {
-                    if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
-                        //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
-                    } else {
-                        sendReplyMessage(request, reply);
-                    }
-                    return reply;
+                reply = abstractCmd.executeCommand(request, results);
+            }
+            if (reply != null) {
+                if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
+                    //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
+                    countInterceptor.computeCount("OUT: commandHandler");
+                } else {
+                    sendReplyMessage(request, reply);
                 }
+                return reply;
             }
         }
 
