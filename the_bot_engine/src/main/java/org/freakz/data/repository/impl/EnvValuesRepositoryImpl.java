@@ -118,12 +118,33 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
 
     @Override
     public SysEnvValue unSetEnvValue(String key, User user) {
-        SysEnvValue oneByKey = findOneByKey(key);
-        if (oneByKey != null) {
-            this.dataValues.remove(oneByKey);
+        SysEnvValue toRemove = null;
+        if (key.startsWith("id=")) {
+            try {
+                long byId = Long.parseLong(key.replaceAll("id=", ""));
+                toRemove = findOneById(byId);
+            } catch (Exception e) {
+                //
+            }
+        } else {
+            toRemove = findOneByKey(key);
+        }
+        if (toRemove != null) {
+            this.dataValues.remove(toRemove);
             this.isDirty = true;
             this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
-            return oneByKey;
+            return toRemove;
+        }
+        return null;
+    }
+
+    @Override
+    public SysEnvValue findOneById(long id) {
+        for (DataNodeBase node : this.dataValues) {
+            SysEnvValue sysEnvValue = (SysEnvValue) node;
+            if (sysEnvValue.getId() == id) {
+                return sysEnvValue;
+            }
         }
         return null;
     }

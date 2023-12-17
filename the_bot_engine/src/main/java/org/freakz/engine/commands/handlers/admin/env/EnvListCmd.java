@@ -30,7 +30,7 @@ public class EnvListCmd extends AbstractCmd {
         ListEnvResponse response = doServiceRequestMethods(request, results, ServiceRequestType.ListEnv);
         if (response != null && !response.getEnvValues().isEmpty()) {
             for (SysEnvValue env : response.getEnvValues()) {
-                sb.append(String.format("%s = %s\n", env.getKeyName(), env.getValue()));
+                sb.append(String.format("%d: %s = %s\n", env.getId(), env.getKeyName(), env.getValue()));
             }
         } else {
             sb.append("<none set yet>");

@@ -22,7 +22,7 @@ public class EnvUnSetCmd extends AbstractCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("UnSet system variable.");
+        jsap.setHelp("UnSet system variable. Unset can be done using key word or id=<xxx> by env id.");
 
         UnflaggedOption unflaggedOption = new UnflaggedOption(ARG_KEY)
                 .setRequired(true)
@@ -39,7 +39,7 @@ public class EnvUnSetCmd extends AbstractCmd {
         if (response.getEnvValue() != null) {
             sb.append(String.format("UNSET: %s = %s", response.getEnvValue().getKeyName(), response.getEnvValue().getValue()));
         } else {
-            sb.append("Nothing to unset with key: " + results.getString(ARG_KEY));
+            sb.append("Nothing to unset with: " + results.getString(ARG_KEY));
         }
         return sb.toString();
     }
