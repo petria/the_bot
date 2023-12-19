@@ -2,6 +2,7 @@ package org.freakz.services;
 
 public enum ServiceRequestType {
 
+    AiService,
     ConnectionControlService,
 
     DataSaverList,
