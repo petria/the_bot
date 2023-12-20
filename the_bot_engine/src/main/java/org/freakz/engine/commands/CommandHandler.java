@@ -51,10 +51,10 @@ public class CommandHandler {
         this.configService = configService;
         this.conversationsService = conversationsService;
         this.countInterceptor = countInterceptor;
-        this.commandHandlerLoader = new CommandHandlerLoader();
         if (configService != null) {
             this.botName = configService.readBotConfig().getBotConfig().getBotName();
         }
+        this.commandHandlerLoader = new CommandHandlerLoader(configService.getActiveProfile());
     }
 
     private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);

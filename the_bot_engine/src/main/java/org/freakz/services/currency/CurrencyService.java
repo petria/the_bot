@@ -3,7 +3,7 @@ package org.freakz.services.currency;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.CurrencyResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 

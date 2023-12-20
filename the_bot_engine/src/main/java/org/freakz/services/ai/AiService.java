@@ -4,13 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.config.ConfigService;
 import org.freakz.dto.AiResponse;
-import org.freakz.services.*;
+import org.freakz.services.api.*;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
-
-import java.io.IOException;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
@@ -19,19 +17,14 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.AiService)
 public class AiService extends AbstractService {
 
-    ConfigService configService = new ConfigService();
-    private String key;
-
-    {
-        try {
-            key = configService.readBotConfig().getBotConfig().getApiKey();
-        } catch (IOException e) {
-            log.debug(e.getMessage());
-        }
-    }
+    private static ConfigService configService; // TODO FIX!
 
     private String url = "https://api.openai.com/v1/chat/completions";
 
+    @Override
+    public void initializeService(ConfigService configService) throws Exception {
+        AiService.configService = configService;
+    }
 
     private String createJSONRequest(String input) {
         String modelName = "text-davinci-003";
@@ -41,10 +34,6 @@ public class AiService extends AbstractService {
         );
     }
 
-    @Override
-    public void initializeService(ConfigService configService) throws Exception {
-
-    }
 
     @Override
     public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
@@ -52,6 +41,7 @@ public class AiService extends AbstractService {
         AiResponse aiResponse = AiResponse.builder().build();
         ObjectMapper mapper = new ObjectMapper();
 
+        String key = configService.readBotConfig().getBotConfig().getApiKey();
 
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -78,7 +68,7 @@ public class AiService extends AbstractService {
             aiResponse.setResult(result);
             aiResponse.setStatus("OK: Found the result");
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             aiResponse.setStatus("NOK: " + e.getMessage());
         }
         return aiResponse;

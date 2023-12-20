@@ -9,18 +9,21 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.dto.CurrencyResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.ServiceRequestType;
+import org.freakz.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
+@HokanDEVCommand
 @HokanCommandHandler
 @Slf4j
 public class CurrencyCmd extends AbstractCmd {
+
     @Override
     public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
 
-        jsap.setHelp("Currency Convertor");
+        jsap.setHelp("Currency Converter");
 
         UnflaggedOption opt = new UnflaggedOption(ARG_AMOUNT)
                 .setRequired(true)

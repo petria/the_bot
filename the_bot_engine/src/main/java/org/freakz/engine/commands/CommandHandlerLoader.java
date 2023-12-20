@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
@@ -18,9 +19,9 @@ import java.util.*;
 public class CommandHandlerLoader {
 
 
-    public CommandHandlerLoader() throws InitializeFailedException {
+    public CommandHandlerLoader(String activeProfile) throws InitializeFailedException {
         try {
-            initializeCommandHandlers();
+            initializeCommandHandlers(activeProfile);
 
         } catch (Exception e) {
             throw new InitializeFailedException("Could not initialize command handlers correctly!");
@@ -33,13 +34,21 @@ public class CommandHandlerLoader {
     @Getter
     private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
-    public void initializeCommandHandlers() throws Exception {
+    public void initializeCommandHandlers(String activeProfile) throws Exception {
         Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
         for (Class<?> clazz : typesAnnotatedWith) {
-            Object o = clazz.getDeclaredConstructor().newInstance();
 
+            HokanDEVCommand devCommand = clazz.getAnnotation(HokanDEVCommand.class);
+            if (devCommand != null) {
+                if (!activeProfile.equals("DEV")) {
+                    log.debug("Skipping initialize of DEV clazz: {}", clazz);
+                    continue;
+                }
+            }
+
+            Object o = clazz.getDeclaredConstructor().newInstance();
             String name = o.getClass().getSimpleName();
 
             if (name.endsWith("Cmd")) {

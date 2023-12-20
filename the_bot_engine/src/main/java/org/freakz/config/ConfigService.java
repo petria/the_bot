@@ -28,20 +28,29 @@ public class ConfigService {
 
     private TheBotConfig theBotConfig = null;
 
-    public TheBotConfig readBotConfig() throws IOException {
+    public TheBotConfig readBotConfig() {
         if (theBotConfig == null) {
-            reloadConfig();
+            try {
+                reloadConfig();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         return theBotConfig;
     }
 
-
-    public void reloadConfig() throws IOException {
+    public String getActiveProfile() {
         String activeProfile = environment.getProperty("hokan.runtime.profile");
         if (activeProfile == null) {
             activeProfile = "DEV";
 //            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
         }
+        return activeProfile;
+    }
+
+
+    public void reloadConfig() throws IOException {
+        String activeProfile = getActiveProfile();
         theBotConfig = configReader.readBotConfig(objectMapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
     }
 
