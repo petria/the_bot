@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class BotConfig {
 
     private String botName;
-    private int timeAdjust;
+    private String apiKey;
+
 }
