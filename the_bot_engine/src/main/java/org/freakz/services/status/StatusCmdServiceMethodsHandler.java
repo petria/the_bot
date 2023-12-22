@@ -35,7 +35,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
                 formattedValuesList.add(formatStatusReportRequest(value, timeDiffService, callCounts));
             }
         }
-        String title = "------- user - module       - uptime   - call counts";
+        String title = "------- user - module       - uptime   - http requests in/out";
         formattedValuesList.add(0, title);
         String combinedValue = String.join("\n", formattedValuesList);
 

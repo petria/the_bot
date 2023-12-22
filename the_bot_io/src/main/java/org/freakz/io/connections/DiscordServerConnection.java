@@ -120,17 +120,17 @@ public class DiscordServerConnection extends BotConnection {
             }
         }
         if (channel != null) {
-
+            String boxed = String.format("```%s```", message.getMessage());
             Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
             if (serverTextChannel.isPresent()) {
                 this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
-                serverTextChannel.get().sendMessage(message.getMessage());
+                serverTextChannel.get().sendMessage(boxed);
                 return;
             }
             Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
             if (privateChannel.isPresent()) {
                 this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
-                privateChannel.get().sendMessage(message.getMessage());
+                privateChannel.get().sendMessage(boxed);
                 return;
             }
             log.error("Could not send reply: {}", message);
