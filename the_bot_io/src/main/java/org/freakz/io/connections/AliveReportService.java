@@ -17,8 +17,11 @@ public class AliveReportService {
 
     private final EngineClient engineClient;
 
-    public AliveReportService(EngineClient engineClient) {
+    private final ConnectionManager connectionManager;
+
+    public AliveReportService(EngineClient engineClient, ConnectionManager connectionManager) {
         this.engineClient = engineClient;
+        this.connectionManager = connectionManager;
     }
 
     private String hostname = null;
@@ -36,6 +39,8 @@ public class AliveReportService {
             }
         }
 
+        CallCountInterceptor callCountInterceptor = connectionManager.getCallCountInterceptor();
+
         StatusReportRequest request
                 = StatusReportRequest.builder()
                 .uptimeStart(startup)
@@ -43,6 +48,8 @@ public class AliveReportService {
                 .name("BOT_IO")
                 .hostname(hostname)
                 .user(user)
+                .httpMethodCallMap(callCountInterceptor.getCallCounts())
+                .channelMessageCountersMap(connectionManager.getCountersMap())
                 .build();
         try {
             Response response = engineClient.handleStatusReport(request);

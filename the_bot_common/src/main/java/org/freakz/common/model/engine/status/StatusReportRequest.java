@@ -3,6 +3,7 @@ package org.freakz.common.model.engine.status;
 import lombok.*;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 @AllArgsConstructor
 @Builder
@@ -17,6 +18,7 @@ public class StatusReportRequest {
     private String hostname;
     private String user;
 
-    private Map<String, ChannelMessageCounters> countersMap;
+    private ConcurrentMap<String, Integer> httpMethodCallMap;
+    private Map<String, ChannelMessageCounters> channelMessageCountersMap;
 
 }

@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.exception.InvalidTargetAliasException;
@@ -34,9 +35,15 @@ public class ConnectionManager {
     @Autowired
     private EventPublisher eventPublisher;
 
+    @Autowired
+    @Getter
+    private CallCountInterceptor callCountInterceptor;
+
     private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
 
     private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
+
+    @Getter
     private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
 
 
