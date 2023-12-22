@@ -1,8 +1,8 @@
 package org.freakz.services.status;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.engine.StatusReportRequest;
-import org.freakz.common.model.engine.StatusReportResponse;
+import org.freakz.common.model.engine.status.StatusReportRequest;
+import org.freakz.common.model.engine.status.StatusReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

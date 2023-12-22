@@ -1,4 +1,4 @@
-package org.freakz.common.model.engine;
+package org.freakz.common.model.engine.status;
 
 import lombok.*;
 

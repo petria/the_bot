@@ -19,6 +19,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class TelegramConnection extends BotConnection {
 
     private final EventPublisher publisher;
+    private ConnectionManager connectionManager;
 
 //    private TelegramBot telegramBot;
 
@@ -44,6 +45,9 @@ public class TelegramConnection extends BotConnection {
         }
         sendMessage.setText(message.getMessage());
         try {
+            if (this.connectionManager != null) {
+                this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
+            }
             bot.execute(sendMessage);
         } catch (TelegramApiException e) {
             e.printStackTrace();
@@ -57,6 +61,7 @@ public class TelegramConnection extends BotConnection {
     public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
+        this.connectionManager = connectionManager;
         bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         //botsApi.
@@ -129,6 +134,7 @@ public class TelegramConnection extends BotConnection {
             if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
 
+                this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
 
                 User user = publisher.publishEvent(this.connection, update);
 

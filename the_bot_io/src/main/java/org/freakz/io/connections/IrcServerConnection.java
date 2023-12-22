@@ -118,6 +118,7 @@ public class IrcServerConnection extends BotConnection {
 
     @Handler
     public void onChannelMessageEvent(ChannelMessageEvent event) throws BotIOException {
+        this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
         log.debug("Got msg: {}", event.getMessage());
         publisher.publishEvent(this, event);
         updateChannelMap(event.getChannel().getName());
@@ -203,6 +204,7 @@ public class IrcServerConnection extends BotConnection {
             for (String line : split) {
                 String splitted[] = line.split("\n");
                 for (String splitLine : splitted) {
+                    this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
                     channel.get().sendMessage(splitLine);
                     publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
                     if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
@@ -218,6 +220,7 @@ public class IrcServerConnection extends BotConnection {
     @Override
     public void sendRawMessage(Message message) {
         log.debug("Send raw message: '{}'", message.getMessage());
+        this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
         client.sendRawLineImmediately(message.getMessage());
     }
 

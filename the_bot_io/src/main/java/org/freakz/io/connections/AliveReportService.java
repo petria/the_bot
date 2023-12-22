@@ -2,7 +2,7 @@ package org.freakz.io.connections;
 
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.engine.StatusReportRequest;
+import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.io.clients.EngineClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;

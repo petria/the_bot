@@ -1,7 +1,7 @@
 package org.freakz.services.status;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.engine.StatusReportRequest;
+import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.config.ConfigService;
 import org.freakz.services.api.*;
 import org.freakz.services.timeservice.TimeDifferenceService;

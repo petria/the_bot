@@ -1,6 +1,8 @@
-package org.freakz.common.model.engine;
+package org.freakz.common.model.engine.status;
 
 import lombok.*;
+
+import java.util.Map;
 
 @AllArgsConstructor
 @Builder
@@ -14,5 +16,7 @@ public class StatusReportRequest {
     private String name;
     private String hostname;
     private String user;
+
+    private Map<String, ChannelMessageCounters> countersMap;
 
 }

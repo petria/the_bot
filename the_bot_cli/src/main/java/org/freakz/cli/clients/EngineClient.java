@@ -2,7 +2,7 @@ package org.freakz.cli.clients;
 
 import feign.Response;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.common.model.engine.StatusReportRequest;
+import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

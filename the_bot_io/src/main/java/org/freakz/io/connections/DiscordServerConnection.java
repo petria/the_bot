@@ -123,11 +123,13 @@ public class DiscordServerConnection extends BotConnection {
 
             Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
             if (serverTextChannel.isPresent()) {
+                this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
                 serverTextChannel.get().sendMessage(message.getMessage());
                 return;
             }
             Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
             if (privateChannel.isPresent()) {
+                this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
                 privateChannel.get().sendMessage(message.getMessage());
                 return;
             }
@@ -143,6 +145,7 @@ public class DiscordServerConnection extends BotConnection {
         publisher.publishEvent(this, event);
 
         try {
+            this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
             updateChannelMap(event.getApi());
         } catch (BotIOException e) {
             throw new RuntimeException(e);
@@ -158,7 +161,7 @@ public class DiscordServerConnection extends BotConnection {
         if (messageAuthor.asUser().isPresent()) {
             if (messageAuthor.asUser().get().getId() != this.config.getTheBotUserId()) { // dont echo back own messages
                 StringBuilder messageTxt = new StringBuilder(event.getMessage().getContent());
-                if (event.getMessage().getAttachments().size() > 0) {
+                if (!event.getMessage().getAttachments().isEmpty()) {
                     for (MessageAttachment attachment : event.getMessageAttachments()) {
                         messageTxt.append(" [");
                         messageTxt.append(attachment.getUrl().toString());

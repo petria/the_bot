@@ -8,6 +8,7 @@ import org.freakz.common.exception.TargetAliasNotIrcChannelException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.engine.status.ChannelMessageCounters;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
@@ -35,8 +36,15 @@ public class ConnectionManager {
 
     private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
 
-
     private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
+    private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
+
+
+    public void addMessageInOut(String connectionType, int in, int out) {
+        ChannelMessageCounters counters = countersMap.computeIfAbsent(connectionType, k -> new ChannelMessageCounters());
+        counters.in += in;
+        counters.out += out;
+    }
 
     public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
         JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
@@ -188,7 +196,6 @@ public class ConnectionManager {
             } catch (InterruptedException e) {
                 log.error("Sync operation failed", e);
             }
-
 
 
         } else {

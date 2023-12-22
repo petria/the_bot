@@ -3,7 +3,7 @@ package org.freakz.cli.service;
 import feign.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.cli.clients.EngineClient;
-import org.freakz.common.model.engine.StatusReportRequest;
+import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
