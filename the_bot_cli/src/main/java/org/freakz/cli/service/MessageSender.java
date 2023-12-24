@@ -43,7 +43,6 @@ public class MessageSender {
                     EngineResponse engineResponse = responseBody.get();
                     log.debug("EngineResponse: {}", engineResponse);
                     return engineResponse.getMessage();
-//                    return engineResponse.getUser();
                 } else {
                     log.error("No EngineResponse!?");
                 }

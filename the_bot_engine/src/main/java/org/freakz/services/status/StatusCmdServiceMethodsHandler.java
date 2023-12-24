@@ -30,8 +30,14 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
 
 
         for (StatusReportRequest value : values) {
-            int[] callCounts = getModuleCallCounts(value, statusReportService.getCallCounts());
+
             if (value.getName().equals("BOT_ENGINE") || current - value.getTimestamp() < 2000) {
+                int[] callCounts;
+                if (value.getName().equals("BOT_ENGINE")) {
+                    callCounts = getModuleCallCounts(value, statusReportService.getCallCounts());
+                } else {
+                    callCounts = getModuleCallCounts(value, value.getHttpMethodCallMap());
+                }
                 formattedValuesList.add(formatStatusReportRequest(value, timeDiffService, callCounts));
             }
         }
@@ -49,20 +55,25 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         int in = 0;
         int inStatus = 0;
         int out = 0;
-        if (value.getName().equals("BOT_ENGINE")) {
+        int outStatus = 0;
+        if (callCounts != null) {
             for (String key : callCounts.keySet()) {
                 if (key.startsWith("IN:")) {
-                    if (key.equals("IN: handleStatusReport")) {
+                    if (key.contains("handleStatusReport")) {
                         inStatus += callCounts.get(key);
                     } else {
                         in += callCounts.get(key);
                     }
                 } else {
-                    out += callCounts.get(key);
+                    if (key.contains("handleStatusReport")) {
+                        outStatus += callCounts.get(key);
+                    } else {
+                        out += callCounts.get(key);
+                    }
                 }
             }
         }
-        return new int[]{in, out, inStatus};
+        return new int[]{in, out, inStatus, outStatus};
     }
 
     private String formatStatusReportRequest(StatusReportRequest statusReportRequest, TimeDifferenceService timeDiffService, int[] callCounts) {

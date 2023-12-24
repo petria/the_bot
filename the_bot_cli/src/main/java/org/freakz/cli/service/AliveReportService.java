@@ -16,8 +16,11 @@ public class AliveReportService {
 
     private final EngineClient engineClient;
 
-    public AliveReportService(EngineClient engineClient) {
+    private final CallCountInterceptor callCountInterceptor;
+
+    public AliveReportService(EngineClient engineClient, CallCountInterceptor callCountInterceptor) {
         this.engineClient = engineClient;
+        this.callCountInterceptor = callCountInterceptor;
     }
 
     private String hostname = null;
@@ -40,6 +43,7 @@ public class AliveReportService {
                 .timestamp(System.currentTimeMillis())
                 .name("BOT_CLI")
                 .hostname(hostname)
+                .httpMethodCallMap(callCountInterceptor.getCallCounts())
                 .user(user)
                 .build();
         try {
