@@ -84,7 +84,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         } else {
             who = "";
         }
-        return String.format("%12s - %-12s - %02d:%02d:%02d - in: %4d out: %4d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1]);
+        return String.format("%12s - %-12s - %02d:%02d:%02d - in: %6d out: %6d -- i: %6d o: %6d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1], callCounts[2], callCounts[3]);
     }
 
 
