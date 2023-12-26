@@ -90,6 +90,6 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
 
     @Override
     public void initializeService(ConfigService configService) throws Exception {
-
+        log.debug(">>> INIT!");
     }
 }

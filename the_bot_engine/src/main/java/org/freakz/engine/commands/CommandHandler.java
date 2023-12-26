@@ -93,7 +93,7 @@ public class CommandHandler {
 
     @SneakyThrows
     private String parseAndExecute(EngineRequest request, User user) {
-        log.debug("Handle request: {}", request);
+        log.debug("Handle request: {}", request.getCommand());
 
         String message = request.getMessage();
         CommandArgs args = new CommandArgs(message);
