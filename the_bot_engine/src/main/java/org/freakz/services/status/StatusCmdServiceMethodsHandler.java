@@ -30,7 +30,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
 
 
         for (StatusReportRequest value : values) {
-
+            log.debug("StatusReportRequest: {}", value);
             if (value.getName().equals("BOT_ENGINE") || current - value.getTimestamp() < 2000) {
                 int[] callCounts;
                 if (value.getName().equals("BOT_ENGINE")) {
