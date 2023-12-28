@@ -12,6 +12,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VERBOSE;
+
 @ServiceMethodHandler
 @Slf4j
 public class StatusCmdServiceMethodsHandler extends AbstractService {
@@ -20,6 +22,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.SystemStatus)
     public <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request) {
 
+        boolean verbose = request.getResults().getBoolean(ARG_VERBOSE);
 
         StatusReportService statusReportService = request.getApplicationContext().getBean(StatusReportService.class);
         TimeDifferenceService timeDiffService = new TimeDifferenceServiceImpl();
@@ -38,7 +41,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
                 } else {
                     callCounts = getModuleCallCounts(value, value.getHttpMethodCallMap());
                 }
-                formattedValuesList.add(formatStatusReportRequest(value, timeDiffService, callCounts));
+                formattedValuesList.add(formatStatusReportRequest(value, timeDiffService, callCounts, verbose));
             }
         }
         String title = "------- user - module       - uptime   - http requests in/out";
@@ -76,7 +79,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         return new int[]{in, out, inStatus, outStatus};
     }
 
-    private String formatStatusReportRequest(StatusReportRequest statusReportRequest, TimeDifferenceService timeDiffService, int[] callCounts) {
+    private String formatStatusReportRequest(StatusReportRequest statusReportRequest, TimeDifferenceService timeDiffService, int[] callCounts, boolean verbose) {
         long[] diffs = timeDiffService.getTimeDifference(statusReportRequest.getUptimeStart(), System.currentTimeMillis()).getDiffs();
         String who;
         if (statusReportRequest.getUser() != null) {
@@ -84,7 +87,10 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         } else {
             who = "";
         }
-        return String.format("%12s - %-12s - %02d:%02d:%02d - in: %6d out: %6d -- i: %6d o: %6d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1], callCounts[2], callCounts[3]);
+        if (verbose) {
+            return String.format("%12s - %-12s - %02d:%02d:%02d - in: %6d out: %6d -- i: %6d o: %6d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1], callCounts[2], callCounts[3]);
+        }
+        return String.format("%12s - %-12s - %02d:%02d:%02d - in: %6d out: %6d", who, statusReportRequest.getName(), diffs[2], diffs[1], diffs[0], callCounts[0], callCounts[1]);
     }
 
 
