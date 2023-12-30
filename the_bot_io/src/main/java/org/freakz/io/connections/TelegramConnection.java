@@ -43,7 +43,13 @@ public class TelegramConnection extends BotConnection {
         } else {
             sendMessage.setChatId(message.getTarget());
         }
-        sendMessage.setText(message.getMessage());
+//        String boxed = String.format("```%s```", message.getMessage());
+        String txt = message.getMessage().replaceAll("<", "").replaceAll(">", "").replaceAll("&", "");
+        String boxed = String.format("<pre>%s</pre>", txt);
+        sendMessage.enableMarkdown(true);
+        sendMessage.enableHtml(true);
+//        sendMessage.enableMarkdownV2(true);
+        sendMessage.setText(boxed);
         try {
             if (this.connectionManager != null) {
                 this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
