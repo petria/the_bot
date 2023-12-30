@@ -31,7 +31,7 @@ public class AliveReportService {
             try {
                 InetAddress id = InetAddress.getLocalHost();
                 this.hostname = id.getHostName();
-                log.debug("Got hostname: {}", this.hostname);
+//                log.debug("Got hostname: {}", this.hostname);
             } catch (Exception e) {
                 this.hostname = "<resolve failed>";
             }

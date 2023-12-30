@@ -21,7 +21,7 @@ public class EngineRequest {
 
     private String fromSenderId;
     private String fromSender;
-    private boolean isFromAdmin = false;
+    private boolean isFromAdmin;
 
     private String network;
 

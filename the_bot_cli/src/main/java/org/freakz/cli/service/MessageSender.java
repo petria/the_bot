@@ -41,7 +41,7 @@ public class MessageSender {
                 Optional<EngineResponse> responseBody = FeignUtils.getResponseBody(response, EngineResponse.class, new ObjectMapper());
                 if (responseBody.isPresent()) {
                     EngineResponse engineResponse = responseBody.get();
-                    log.debug("EngineResponse: {}", engineResponse);
+//                    log.debug("EngineResponse: {}", engineResponse);
                     return engineResponse.getMessage();
                 } else {
                     log.error("No EngineResponse!?");

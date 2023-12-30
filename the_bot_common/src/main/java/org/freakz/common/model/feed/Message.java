@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @ToString
 public class Message {
 
-    private String id = "0";
+    private String id;
     private MessageSource messageSource;
     private long timestamp;
     private long requestTimestamp;

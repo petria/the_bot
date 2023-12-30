@@ -148,11 +148,15 @@ public class IrcServerConnection extends BotConnection {
     @Handler
     public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
         this.connectionManager.ircConnectionEstablished(this);
-// TODO        log.debug("Clear channel map to 0!");
+        String toRemove = null;
         for (JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
             if (container.botConnectionType == BotConnectionType.IRC_CONNECTION) {
-                this.connectionManager.getJoinedChannelsMap().remove(container.channel.getEchoToAlias());
+                toRemove = container.channel.getEchoToAlias();
+                break;
             }
+        }
+        if (toRemove != null) {
+            this.connectionManager.getJoinedChannelsMap().remove(toRemove);
         }
     }
 
@@ -183,7 +187,7 @@ public class IrcServerConnection extends BotConnection {
         client.getEventManager().registerEventListener(this);
 
         config.getChannelList().forEach(ch -> {
-                    if (ch.getJoinOnStart()) {
+            if (ch.isJoinOnStart()) {
                         log.debug("Join channel: {}", ch.getName());
                         client.addChannel(ch.getName());
                     } else {

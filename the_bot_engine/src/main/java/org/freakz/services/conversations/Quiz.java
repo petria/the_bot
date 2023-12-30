@@ -2,6 +2,7 @@ package org.freakz.services.conversations;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.freakz.common.model.engine.EngineRequest;
 
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.Map;
 
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class Quiz extends ConversationContent {
 
     private String topic;

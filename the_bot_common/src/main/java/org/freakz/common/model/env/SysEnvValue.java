@@ -7,6 +7,7 @@ import org.freakz.common.model.dto.DataNodeBase;
 
 @Builder
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)

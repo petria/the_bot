@@ -3,19 +3,21 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-<parent>
-        <artifactId>the_bot</artifactId>
-        <groupId>org.freakz</groupId>
-        <version>${revision}</version>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
-
-    <version>${revision}</version>
     <modelVersion>4.0.0</modelVersion>
+    <version>2.0-SNAPSHOT</version>
 
+    <groupId>org.freakz</groupId>
     <artifactId>the_bot_common</artifactId>
+    <name>the_bot_common</name>
 
     <properties>
-        <spring-cloud.version>2021.0.3</spring-cloud.version>
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
     </properties>
 
     <dependencyManagement>

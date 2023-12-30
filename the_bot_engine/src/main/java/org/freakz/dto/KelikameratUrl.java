@@ -2,6 +2,7 @@ package org.freakz.dto;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
@@ -10,6 +11,7 @@ import java.io.Serializable;
  */
 @Data
 @Builder
+@EqualsAndHashCode(callSuper = false)
 public class KelikameratUrl implements Serializable {
 
     public KelikameratUrl(String areaUrl, String stationUrl) {

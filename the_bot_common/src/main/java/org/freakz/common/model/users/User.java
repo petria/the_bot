@@ -7,6 +7,7 @@ import org.freakz.common.model.dto.DataNodeBase;
 
 @Builder
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -14,10 +15,10 @@ import org.freakz.common.model.dto.DataNodeBase;
 public class User extends DataNodeBase {
 
     @JsonProperty("isAdmin")
-    private boolean isAdmin = false;
+    private boolean isAdmin;
 
     @JsonProperty("canDoIrcOp")
-    private boolean canDoIrcOp = false;
+    private boolean canDoIrcOp;
 
     @JsonProperty("username")
     private String username;

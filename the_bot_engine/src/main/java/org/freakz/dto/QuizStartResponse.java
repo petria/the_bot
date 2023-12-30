@@ -1,15 +1,13 @@
 package org.freakz.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.freakz.services.api.ServiceResponse;
 
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class QuizStartResponse extends ServiceResponse {
 
     private String response;

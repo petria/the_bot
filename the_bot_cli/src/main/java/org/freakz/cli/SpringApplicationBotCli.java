@@ -1,7 +1,6 @@
 package org.freakz.cli;
 
 import ch.qos.logback.classic.Level;
-import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
@@ -37,7 +36,7 @@ public class SpringApplicationBotCli {
             root.setLevel(Level.OFF);
 
             SpringApplication app = new SpringApplication(SpringApplicationBotCli.class);
-            app.setBannerMode(Banner.Mode.OFF);
+//            app.setBannerMode(Banner.Mode.OFF);
             app.run(args);
 
         } catch (Exception e) {

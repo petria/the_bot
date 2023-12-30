@@ -1,9 +1,6 @@
 package org.freakz.dto.env;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.services.api.ServiceResponse;
 
@@ -12,6 +9,7 @@ import org.freakz.services.api.ServiceResponse;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class EnvResponse extends ServiceResponse {
 
     private SysEnvValue envValue;
