@@ -10,6 +10,7 @@ import java.util.List;
 
 @Service
 @Slf4j
+@SuppressWarnings("unchecked")
 public class AccessService {
 
 
