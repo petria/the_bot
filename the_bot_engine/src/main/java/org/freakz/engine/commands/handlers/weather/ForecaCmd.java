@@ -4,11 +4,11 @@ import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
-import org.freakz.dto.ForecaResponse;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.ForecaResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.ArrayList;
 import java.util.List;

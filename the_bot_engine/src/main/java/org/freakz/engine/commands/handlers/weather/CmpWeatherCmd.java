@@ -7,10 +7,10 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
-import org.freakz.dto.CmpWeatherResponse;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.CmpWeatherResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.Comparator;
 import java.util.List;

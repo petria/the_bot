@@ -6,11 +6,11 @@ import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.dto.ChannelUsersResponse;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.ChannelUsersResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 

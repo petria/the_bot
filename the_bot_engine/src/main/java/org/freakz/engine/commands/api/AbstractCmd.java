@@ -8,9 +8,9 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.CommandHandler;
 import org.freakz.engine.commands.HandlerAlias;
-import org.freakz.services.api.ServiceRequest;
-import org.freakz.services.api.ServiceRequestType;
-import org.freakz.services.api.ServiceResponse;
+import org.freakz.engine.services.api.ServiceRequest;
+import org.freakz.engine.services.api.ServiceRequestType;
+import org.freakz.engine.services.api.ServiceResponse;
 
 import java.util.Collections;
 import java.util.List;

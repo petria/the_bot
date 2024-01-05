@@ -6,12 +6,12 @@ import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.dto.TranslateData;
-import org.freakz.dto.TranslateResponse;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.TranslateData;
+import org.freakz.engine.dto.TranslateResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.ArrayList;
 import java.util.List;

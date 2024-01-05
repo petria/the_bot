@@ -3,10 +3,10 @@ package org.freakz.engine.commands.handlers.weather;
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.dto.KelikameratResponse;
-import org.freakz.dto.KelikameratWeatherData;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.KelikameratResponse;
+import org.freakz.engine.dto.KelikameratWeatherData;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COUNT;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;

@@ -3,7 +3,7 @@ package org.freakz.engine.commands;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
-import org.freakz.data.service.UsersService;
+import org.freakz.engine.data.service.UsersService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

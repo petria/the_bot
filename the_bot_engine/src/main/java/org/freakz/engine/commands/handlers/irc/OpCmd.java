@@ -5,9 +5,9 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.dto.IrcOPResponse;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
+import org.freakz.engine.dto.IrcOPResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 
 //@HokanCommandHandler

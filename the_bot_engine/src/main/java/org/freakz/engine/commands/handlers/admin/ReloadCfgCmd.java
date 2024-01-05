@@ -10,8 +10,8 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.services.api.ServiceRequestType;
-import org.freakz.services.api.ServiceResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
+import org.freakz.engine.services.api.ServiceResponse;
 
 @HokanCommandHandler
 @HokanAdminCommand

@@ -2,8 +2,8 @@ package org.freakz.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.foreca.CountryCityLink;
-import org.freakz.services.foreca.CachedLinks;
-import org.freakz.services.foreca.ForecaWeatherService;
+import org.freakz.engine.services.foreca.CachedLinks;
+import org.freakz.engine.services.foreca.ForecaWeatherService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
