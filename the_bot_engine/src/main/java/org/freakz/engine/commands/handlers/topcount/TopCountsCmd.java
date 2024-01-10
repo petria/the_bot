@@ -47,6 +47,7 @@ public class TopCountsCmd extends AbstractCmd {
         list.add(createAlias("!topgl", "!topcounts GLUGGA_COUNT"));
         list.add(createAlias("!topkor", "!topcounts KORINA_COUNT"));
         list.add(createAlias("!topryyst", "!topcounts RYYST_COUNT"));
+        list.add(createAlias("!toppuuh", "!topcounts PUUH_COUNT"));
         return list;
     }
 
