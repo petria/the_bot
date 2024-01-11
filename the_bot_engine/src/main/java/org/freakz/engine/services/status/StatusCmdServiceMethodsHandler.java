@@ -6,7 +6,6 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
-import org.springframework.boot.info.BuildProperties;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,8 +25,6 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         boolean verbose = request.getResults().getBoolean(ARG_VERBOSE);
 
         StatusReportService statusReportService = request.getApplicationContext().getBean(StatusReportService.class);
-        BuildProperties buildProperties = statusReportService.getBuildProperties();
-        log.debug("buildProperties: {}", buildProperties);
 
         TimeDifferenceService timeDiffService = new TimeDifferenceServiceImpl();
 

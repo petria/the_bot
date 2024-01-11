@@ -70,21 +70,27 @@ public class HokanServices {
 
     public <T extends ServiceResponse> T doServiceRequestMethods(ServiceRequest request, ServiceRequestType serviceRequestType) {
         try {
-            Map<Class<?>, List<Method>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
+            Map<Class<?>, List<MethodAndType>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
             request.setApplicationContext(applicationContext);
             for (Class<?> aClass : methodsMap.keySet()) {
                 AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
-                List<Method> methods = methodsMap.get(aClass);
-                for (Method method : methods) {
-                    Object obj = method.invoke(service, request);
-                    return (T) obj;
+                List<MethodAndType> methods = methodsMap.get(aClass);
+                for (MethodAndType method : methods) {
+                    if (method.isSpring) {
+                        Object bean = applicationContext.getBean(aClass);
+                        Object obj = method.method.invoke(bean, request);
+                        return (T) obj;
+                    } else {
+                        Object obj = method.method.invoke(service, request);
+                        return (T) obj;
+                    }
                 }
 
             }
         } catch (Exception e) {
             log.error("Service handler failure", e);
         }
-        return null;
+        return (T) new ServiceResponse();
     }
 
     public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
@@ -109,13 +115,19 @@ public class HokanServices {
 
     private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
-    private Map<Class<?>, List<Method>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
+    class MethodAndType {
+        Method method;
+        boolean isSpring;
+    }
+
+    private Map<Class<?>, List<MethodAndType>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
 
 
-        Map<Class<?>, List<Method>> methodsMap = new HashMap<>();
+        Map<Class<?>, List<MethodAndType>> methodsMap2 = new HashMap<>();
 
         Set<Class<?>> annotated =
                 reflections.get(SubTypes.of(TypesAnnotated.with(ServiceMethodHandler.class)).asClass());
+
 
         for (Class<?> aClass : annotated) {
             Method[] methods = aClass.getDeclaredMethods();
@@ -124,14 +136,36 @@ public class HokanServices {
                     ServiceMessageHandlerMethod annotation = method.getAnnotation(ServiceMessageHandlerMethod.class);
                     ServiceRequestType annotatedType = annotation.ServiceRequestType();
                     if (serviceRequestType.equals(annotatedType)) {
-                        List<Method> list = methodsMap.computeIfAbsent(aClass, k -> new ArrayList<>());
-                        list.add(method);
+                        List<MethodAndType> list2 = methodsMap2.computeIfAbsent(aClass, k -> new ArrayList<>());
+                        MethodAndType methodAndType = new MethodAndType();
+                        methodAndType.method = method;
+                        methodAndType.isSpring = false;
+                        list2.add(methodAndType);
                     }
                 }
             }
-
         }
-        return methodsMap;
+
+        Set<Class<?>> annotatedSpring =
+                reflections.get(SubTypes.of(TypesAnnotated.with(SpringServiceMethodHandler.class)).asClass());
+        for (Class<?> aClass : annotatedSpring) {
+            Method[] methods = aClass.getDeclaredMethods();
+            for (Method method : methods) {
+                if (method.isAnnotationPresent(ServiceMessageHandlerMethod.class)) {
+                    ServiceMessageHandlerMethod annotation = method.getAnnotation(ServiceMessageHandlerMethod.class);
+                    ServiceRequestType annotatedType = annotation.ServiceRequestType();
+                    if (serviceRequestType.equals(annotatedType)) {
+                        List<MethodAndType> list2 = methodsMap2.computeIfAbsent(aClass, k -> new ArrayList<>());
+                        MethodAndType methodAndType = new MethodAndType();
+                        methodAndType.method = method;
+                        methodAndType.isSpring = true;
+                        list2.add(methodAndType);
+                    }
+                }
+            }
+        }
+
+        return methodsMap2;
     }
 
     private ServiceHandler findServiceMessageHandlers(ServiceRequestType serviceRequestType) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
