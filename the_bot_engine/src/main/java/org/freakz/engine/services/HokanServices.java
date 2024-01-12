@@ -73,7 +73,7 @@ public class HokanServices {
             Map<Class<?>, List<MethodAndType>> methodsMap = findServiceMessageHandlerMethods(serviceRequestType);
             request.setApplicationContext(applicationContext);
             for (Class<?> aClass : methodsMap.keySet()) {
-                AbstractService service = (AbstractService) aClass.getConstructor().newInstance();
+                AbstractService service = null; //(AbstractService) aClass.getConstructor().newInstance();
                 List<MethodAndType> methods = methodsMap.get(aClass);
                 for (MethodAndType method : methods) {
                     if (method.isSpring) {
@@ -81,6 +81,7 @@ public class HokanServices {
                         Object obj = method.method.invoke(bean, request);
                         return (T) obj;
                     } else {
+                        service = (AbstractService) aClass.getConstructor().newInstance();
                         Object obj = method.method.invoke(service, request);
                         return (T) obj;
                     }

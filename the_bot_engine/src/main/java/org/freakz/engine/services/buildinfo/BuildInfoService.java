@@ -1,7 +1,5 @@
 package org.freakz.engine.services.buildinfo;
 
-
-import lombok.ToString;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,28 +11,24 @@ import org.springframework.stereotype.Service;
 public class BuildInfoService extends AbstractService {
 
     @Autowired
-    private BuildProperties buildProperties;
+    private BuildProperties bp;
 
     @Override
     public void initializeService(ConfigService configService) throws Exception {
 
     }
 
-    @ToString
-    class ToStringWrapper {
-        BuildProperties buildProperties;
-    }
-
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.BuildInfoQuery)
     public <T extends ServiceResponse> ServiceResponse handleBuildInfoQuery(ServiceRequest request) {
-        ToStringWrapper wrapper = new ToStringWrapper();
-        wrapper.buildProperties = this.buildProperties;
 
+        String buildInfo = String.format("BuildInfo: %s %s %s",
+                bp.getGroup(),
+                bp.getArtifact(),
+                bp.getVersion()
+        );
         ServiceResponse response = new ServiceResponse();
-        response.setStatus(wrapper.toString());
+        response.setStatus(buildInfo);
         return response;
-
     }
-
 
 }
