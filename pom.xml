@@ -15,6 +15,7 @@
         <module>the_bot_cli</module>
         <module>the_bot_io</module>
         <module>the_bot_engine</module>
+        <module>the_bot_ui_back</module>
     </modules>
 
 </project>
