@@ -45,7 +45,7 @@ public class TestController {
   @GetMapping("/admin")
   @PreAuthorize("hasRole('ADMIN')")
   public String adminAccess() {
-    String test = sendToServer("!status", "_Pete_");
+    String test = sendToServer("!cmpweather jaipur oulu helsinki", "_Pete_");
     return "Admin Board\n\n" + test;
   }
 

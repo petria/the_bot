@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, {Component} from "react";
 
 import UserService from "../services/user.service";
 import EventBus from "../common/EventBus";
@@ -40,7 +40,9 @@ export default class BoardAdmin extends Component {
     return (
       <div className="container">
         <header className="jumbotron">
-          <h3>{this.state.content}</h3>
+          <pre>
+            {this.state.content}
+          </pre>
         </header>
       </div>
     );
