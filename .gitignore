@@ -6,3 +6,4 @@
 /the_bot_cli/target/
 secret.properties
 /runtime/
+/the_bot_ui_back/target/
