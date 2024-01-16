@@ -7,8 +7,10 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.util.FeignUtils;
 import org.freakz.ui.back.clients.EngineClient;
+import org.freakz.ui.back.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,7 +47,8 @@ public class TestController {
   @GetMapping("/admin")
   @PreAuthorize("hasRole('ADMIN')")
   public String adminAccess() {
-    String test = sendToServer("!cmpweather jaipur oulu helsinki", "_Pete_");
+    UserDetailsImpl details = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    String test = sendToServer("!cmpweather jaipur oulu helsinki", details.getUsername());
     return "Admin Board\n\n" + test;
   }
 
@@ -62,7 +65,7 @@ public class TestController {
             .fromConnectionId(-1)
             .fromSender(botUser)
             .fromSenderId("NO_SENDER_ID")
-            .network("BOT_CLI_CLIENT")
+            .network("BOT_WEB_CLIENT")
             .build();
     try {
       Response response = engineClient.handleEngineRequest(request);
