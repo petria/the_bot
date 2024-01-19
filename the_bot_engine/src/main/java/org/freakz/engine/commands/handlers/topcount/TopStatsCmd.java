@@ -6,6 +6,8 @@ import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
+import org.freakz.engine.dto.TopStatsResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
@@ -30,6 +32,18 @@ public class TopStatsCmd extends AbstractCmd {
                 .setRequired(false)
                 .setGreedy(false);
         jsap.registerParameter(opt);
+
+        opt = new UnflaggedOption(ARG_CHANNEL)
+                .setDefault("current")
+                .setRequired(false)
+                .setGreedy(false);
+        jsap.registerParameter(opt);
+
+        opt = new UnflaggedOption(ARG_NETWORK)
+                .setDefault("current")
+                .setRequired(false)
+                .setGreedy(false);
+        jsap.registerParameter(opt);
     }
 
     private String mustBeError() {
@@ -47,7 +61,6 @@ public class TopStatsCmd extends AbstractCmd {
             return mustBeError();
         }
 
-
         String channel = engineRequest.getReplyTo().toLowerCase();
         String network = engineRequest.getNetwork().toLowerCase();
 
@@ -58,7 +71,13 @@ public class TopStatsCmd extends AbstractCmd {
         } else {
             nick = results.getString(ARG_NICK).toLowerCase();
         }
+
+        TopStatsResponse response = doServiceRequestMethods(engineRequest, results, ServiceRequestType.GetTopStatsRequest);
+        double statDays = response.getStatDays();
+        double totalDays = response.getTotalDays();
+        double percent = statDays / totalDays * 100D;
         // TODO
-        return "N/A";
+        String stats = String.format("%s stats %d/%d: %f %%", topKey, response.getStatDays(), response.getTotalDays(), percent);
+        return stats;
     }
 }

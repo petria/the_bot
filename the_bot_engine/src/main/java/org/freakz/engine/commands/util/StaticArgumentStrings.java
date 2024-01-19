@@ -35,7 +35,7 @@ public class StaticArgumentStrings {
     public static final String ARG_LOG_PATTERN = "LogPattern";
     public static final String ARG_MASK = "Mask";
     public static final String ARG_MESSAGE = "Message";
-    public static final String ARG_NAME = "Name";
+    public static final String ARG_NETWORK = "Network";
     public static final String ARG_NIMI_OR_PVM = "Nimi/Pvm";
     public static final String ARG_NEW_PASSWORD1 = "NewPassword1";
     public static final String ARG_NEW_PASSWORD2 = "NewPassword2";

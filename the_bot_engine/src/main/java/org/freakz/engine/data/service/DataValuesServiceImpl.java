@@ -53,6 +53,11 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
     }
 
     @Override
+    public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
+        return dataValuesRepository.findAllByNickAndChannelAndNetworkAndKeyNameIsLike(nick, channel, network, keyLike);
+    }
+
+    @Override
 //    @Transactional(readOnly = true)
     public DataValueStatsModel getValueStats(String nick, String channel, String network, String key) {
         DataValueStatsModel stats = new DataValueStatsModel();
@@ -134,7 +139,7 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
     @Override
 //    @Transactional(readOnly = true)
     public List<DataValuesModel> getDataValues(String channel, String network, String key) {
-        String keyLike = key + "%";
+        String keyLike = key + ".*";
         List<DataValues> modelsList = dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, keyLike);
 
         final Map<String, DataValuesModel> combinedMap = combineCounters(modelsList, key);

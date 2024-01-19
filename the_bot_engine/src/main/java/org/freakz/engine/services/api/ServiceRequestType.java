@@ -17,6 +17,7 @@ public enum ServiceRequestType {
     GetDataValuesService,
 
     GetTopCountsService,
+    GetTopStatsRequest,
 
     IrcOpRequest,
 
