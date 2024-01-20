@@ -61,8 +61,6 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
         String key = request.getResults().getString(ARG_TOP_KEY);
         List<DataValues> allGlugga = dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, "GLUGGA_COUNT_.*");
         Set<String> names = getUniqueNicks(allGlugga);
-        List<DataValues> values = dataValuesRepository.findAllByNickAndChannelAndNetworkAndKeyNameIsLike(nick, channel, network, "GLUGGA_COUNT_.*");
-
 
         response.setNodeMap(mapValues(allGlugga, response, names));
 
