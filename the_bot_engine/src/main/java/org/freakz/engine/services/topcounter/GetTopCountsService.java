@@ -3,7 +3,7 @@ package org.freakz.engine.services.topcounter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.dto.TopCountsResponse;
+import org.freakz.engine.dto.stats.TopCountsResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.context.ApplicationContext;
 

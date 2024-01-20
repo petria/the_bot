@@ -1,4 +1,4 @@
-package org.freakz.engine.dto;
+package org.freakz.engine.dto.stats;
 
 import lombok.Builder;
 import lombok.Data;

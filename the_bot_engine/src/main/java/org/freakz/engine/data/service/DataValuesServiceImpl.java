@@ -52,10 +52,10 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
         return combinedMap;
     }
 
-    @Override
-    public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
-        return dataValuesRepository.findAllByNickAndChannelAndNetworkAndKeyNameIsLike(nick, channel, network, keyLike);
-    }
+//    @Override
+//    public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
+//        return dataValuesRepository.findAllByNickAndChannelAndNetworkAndKeyNameIsLike(nick, channel, network, keyLike);
+//    }
 
     @Override
 //    @Transactional(readOnly = true)

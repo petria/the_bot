@@ -6,7 +6,8 @@ import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.dto.TopStatsResponse;
+import org.freakz.engine.dto.stats.StatsNode;
+import org.freakz.engine.dto.stats.TopStatsResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
@@ -73,11 +74,19 @@ public class TopStatsCmd extends AbstractCmd {
         }
 
         TopStatsResponse response = doServiceRequestMethods(engineRequest, results, ServiceRequestType.GetTopStatsRequest);
-        double statDays = response.getStatDays();
-        double totalDays = response.getTotalDays();
-        double percent = statDays / totalDays * 100D;
-        // TODO
-        String stats = String.format("%s stats %d/%d: %f %%", topKey, response.getStatDays(), response.getTotalDays(), percent);
-        return stats;
+        StatsNode statsNode = response.getNodeMap().get(nick.toLowerCase());
+        //        List<StatsNode> collect = nodeMap.values().stream().sorted(Comparator.comparing(o -> o.statDaysPercent, Comparator.reverseOrder())).toList();
+        if (statsNode != null) {
+            double statDays = statsNode.statsDays;
+            double totalDays = statsNode.totalDays;
+            double percent = statDays / totalDays * 100D;
+            // TODO
+            String stats = String.format("%s :: %s stats %d/%d: %f %% - longest %s spree: %d - longest NO %s spree: %d days", statsNode.nick, topKey, statsNode.statsDays, statsNode.totalDays, percent, topKey, statsNode.plusStreakDays, topKey, statsNode.minusStreakDays);
+            return stats;
+
+        } else {
+            return String.format("No stats found with: %s", nick);
+        }
+
     }
 }
