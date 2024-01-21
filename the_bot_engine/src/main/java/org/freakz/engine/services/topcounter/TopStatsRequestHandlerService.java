@@ -1,6 +1,7 @@
 package org.freakz.engine.services.topcounter;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.dto.DataValues;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.impl.DataValuesRepository;
@@ -58,13 +59,18 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
         }
         TopStatsResponse response = TopStatsResponse.builder().build();
 
-        String key = request.getResults().getString(ARG_TOP_KEY);
-        List<DataValues> allGlugga = dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, "GLUGGA_COUNT_.*");
+
+        String topKey = request.getResults().getString(ARG_TOP_KEY);
+
+        TopCountsEnum countsEnum = TopCountsEnum.getByPrettyName(topKey);
+        String keyName = countsEnum.getKeyName();
+
+        List<DataValues> allGlugga = dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, keyName + "_.*");
         Set<String> names = getUniqueNicks(allGlugga);
 
         response.setNodeMap(mapValues(allGlugga, response, names));
 
-        String res = String.format("%s %s %s %s", key, nick, channel, network);
+        String res = String.format("%s %s %s %s", topKey, nick, channel, network);
         response.setStatus("handleTopStatsRequest: " + res);
         return response;
     }
