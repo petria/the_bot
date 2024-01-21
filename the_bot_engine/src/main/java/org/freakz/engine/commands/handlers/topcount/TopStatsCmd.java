@@ -23,16 +23,18 @@ public class TopStatsCmd extends AbstractCmd {
         jsap.setHelp("Stats about counted thing, TopKey parameter need to one of: " + String.join(", ", TopCountsEnum.getPrettyNames()));
 
         FlaggedOption flg = new FlaggedOption(ARG_COUNT);
-        UnflaggedOption uflg = new UnflaggedOption(ARG_TOP_KEY)
-                .setRequired(false)
-                .setGreedy(false);
-        jsap.registerParameter(uflg);
 
         UnflaggedOption opt = new UnflaggedOption(ARG_NICK)
                 .setDefault("me")
                 .setRequired(false)
                 .setGreedy(false);
         jsap.registerParameter(opt);
+
+        UnflaggedOption uflg = new UnflaggedOption(ARG_TOP_KEY)
+                .setDefault("glugga")
+                .setRequired(false)
+                .setGreedy(false);
+        jsap.registerParameter(uflg);
 
         opt = new UnflaggedOption(ARG_CHANNEL)
                 .setDefault("current")
@@ -62,8 +64,6 @@ public class TopStatsCmd extends AbstractCmd {
             return mustBeError();
         }
 
-        String channel = engineRequest.getReplyTo().toLowerCase();
-        String network = engineRequest.getNetwork().toLowerCase();
 
 
         String nick;
