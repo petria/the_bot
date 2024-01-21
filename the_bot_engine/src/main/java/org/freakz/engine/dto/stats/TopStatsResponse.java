@@ -13,7 +13,9 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = false)
 public class TopStatsResponse extends ServiceResponse {
 
-    private LocalDate firstDay;
+    private LocalDate firstStatDay;
+    private LocalDate lastStatDay;
+
     private int totalDays;
     private int statDays;
 

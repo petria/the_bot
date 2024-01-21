@@ -86,10 +86,6 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
         Map<String, StatsNode> nodeMap = new HashMap<>();
         for (String name : names) {
 
-            if (name.equalsIgnoreCase("pyksy")) {
-                int foo = 0;
-            }
-
             Map<LocalDate, DataValues> mapped1 = new HashMap<>();
             List<LocalDate> dateList = new ArrayList<>();
             for (DataValues model : dataValues) {
@@ -104,6 +100,7 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
                     mapped1.put(date, model);
                 }
             }
+
             Collections.sort(dateList);
 
             int days = 0;
@@ -126,6 +123,9 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
 
             int idx = 0;
             if (dateList.size() > 1) {
+                response.setFirstStatDay(dateList.getFirst());
+                response.setLastStatDay(dateList.getLast());
+
                 LocalDate loopDate = dateList.getFirst();
                 LocalDate today = LocalDate.now();
                 boolean done = false;
@@ -219,7 +219,7 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
             double percent = drinkDays / days * 100.0D;
             return percent;
         }
-        return 0.0D;
+        return Double.NaN;
     }
 
 }
