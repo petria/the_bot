@@ -100,7 +100,15 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
                     mapped1.put(date, model);
                 }
             }
-
+            if (dateList.size() == 0) {
+                int foo = 0;
+            } else if (dataValues.size() == 1) {
+                int foo = 0;
+            } else if (dataValues.size() == 2) {
+                int foo = 0;
+            } else {
+                int goo = 0;
+            }
             Collections.sort(dateList);
 
             int days = 0;
@@ -123,8 +131,6 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
 
             int idx = 0;
             if (dateList.size() > 1) {
-                response.setFirstStatDay(dateList.getFirst());
-                response.setLastStatDay(dateList.getLast());
 
                 LocalDate loopDate = dateList.getFirst();
                 LocalDate today = LocalDate.now();
@@ -209,6 +215,15 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
                 node.minusStreakDays = inMinusHighestDays;
 
                 nodeMap.put(name, node);
+
+                node.setFirstStatDay(dateList.getFirst());
+                node.setLastStatDay(dateList.getLast());
+
+
+                if (name.equals("unh")) {
+                    int foo = 0;
+                }
+
             }
         }
         return nodeMap;

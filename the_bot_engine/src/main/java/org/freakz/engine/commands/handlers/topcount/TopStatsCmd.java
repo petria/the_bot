@@ -74,6 +74,8 @@ public class TopStatsCmd extends AbstractCmd {
         }
 
         TopStatsResponse response = doServiceRequestMethods(engineRequest, results, ServiceRequestType.GetTopStatsRequest);
+
+
         StatsNode statsNode = response.getNodeMap().get(nick.toLowerCase());
         //        List<StatsNode> collect = nodeMap.values().stream().sorted(Comparator.comparing(o -> o.statDaysPercent, Comparator.reverseOrder())).toList();
         if (statsNode != null) {
