@@ -82,8 +82,10 @@ public class TopStatsCmd extends AbstractCmd {
             double statDays = statsNode.statsDays;
             double totalDays = statsNode.totalDays;
             double percent = statDays / totalDays * 100D;
-            // TODO
-            String stats = String.format("%s :: %s stats days used/not used %d/%d ratio: %f %% - longest %s spree: %d - longest NO %s spree: %d days", statsNode.nick, topKey, statsNode.statsDays, statsNode.totalDays, percent, topKey, statsNode.plusStreakDays, topKey, statsNode.minusStreakDays);
+
+            String startDate = String.format("%02d.%02d.%4d", statsNode.firstStatDay.getDayOfMonth(), statsNode.firstStatDay.getMonthValue(), statsNode.firstStatDay.getYear());
+
+            String stats = String.format("%s :: %s stats starting from %s days used/not used %d/%d ratio: %f %% - longest %s spree: %d - longest NO %s spree: %d days", statsNode.nick, topKey, startDate, statsNode.statsDays, statsNode.totalDays, percent, topKey, statsNode.plusStreakDays, topKey, statsNode.minusStreakDays);
             return stats;
 
         } else {
