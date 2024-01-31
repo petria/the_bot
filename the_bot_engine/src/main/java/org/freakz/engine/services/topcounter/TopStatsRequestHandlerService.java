@@ -199,6 +199,8 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
                         done = true;
                     }
                 }
+
+
                 StatsNode node = new StatsNode();
                 node.nick = name;
                 node.totalDays = days;
