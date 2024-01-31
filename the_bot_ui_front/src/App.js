@@ -15,6 +15,7 @@ import BoardAdmin from "./components/board-admin.component";
 
 // import AuthVerify from "./common/auth-verify";
 import EventBus from "./common/EventBus";
+import CommandSendComponent from "./components/command-send.component";
 
 class App extends Component {
   constructor(props) {
@@ -106,6 +107,11 @@ class App extends Component {
                 </Link>
               </li>
               <li className="nav-item">
+                <Link to={"/cli-client"} className="nav-link">
+                  Cli Client
+                </Link>
+              </li>
+              <li className="nav-item">
                 <a href="/login" className="nav-link" onClick={this.logOut}>
                   LogOut
                 </a>
@@ -124,12 +130,16 @@ class App extends Component {
                   Sign Up
                 </Link>
               </li>
+
+             
             </div>
           )}
         </nav>
 
+
         <div className="container mt-3">
           <Routes>
+            <Route path="/cli-client" element={<CommandSendComponent />} />
             <Route path="/" element={<Home />} />
             <Route path="/home" element={<Home />} />
             <Route path="/login" element={<Login />} />
