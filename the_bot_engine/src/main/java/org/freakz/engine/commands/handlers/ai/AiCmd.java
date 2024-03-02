@@ -7,14 +7,13 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
-import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
-@HokanDEVCommand
+//@HokanDEVCommand
 @HokanCommandHandler
 @Slf4j
 public class AiCmd extends AbstractCmd {
