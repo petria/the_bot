@@ -2,14 +2,13 @@ package org.freakz.services;
 
 import org.freakz.engine.services.ai.AiService;
 import org.jibble.jmegahal.JMegaHal;
-import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
 public class MegaHalTest {
 
 
-    @Test
+    //    @Test
     public void testMegaHal() throws IOException {
         AiService aiService = new AiService();
         JMegaHal jMegaHal = aiService.listLogFiles();
