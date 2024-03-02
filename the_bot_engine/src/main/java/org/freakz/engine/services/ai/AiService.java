@@ -27,6 +27,7 @@ public class AiService extends AbstractService {
     private static ConfigService configService; // TODO FIX!
 
     private static JMegaHal jMegaHal = null;
+    private static String update = null;
 
     @Override
     public void initializeService(ConfigService configService) throws Exception {
@@ -120,7 +121,8 @@ public class AiService extends AbstractService {
             Path p = Path.of(logFile);
             i++;
             if (i % 300 == 0) {
-                log.debug("Feed MegaHAL: {} / {}", i, allLogFiles.size());
+                update = String.format("Feed MegaHAL: %d / %d", i, allLogFiles.size());
+                log.debug(update);
             }
             List<String> logLines = processLogFile(p);
             for (String logLine : logLines) {
@@ -140,8 +142,12 @@ public class AiService extends AbstractService {
 
         AiResponse aiResponse = AiResponse.builder().build();
         if (jMegaHal == null) {
+            if (update != null) {
+                aiResponse.setStatus("NOK: " + update);
+            } else {
+                aiResponse.setStatus("NOK: feeding still in process?");
+            }
 
-            aiResponse.setStatus("NOK: feeding still in process?");
         } else {
             String prompt = String.join(" ", request.getResults().getStringArray(ARG_PROMPT));
             String hal = jMegaHal.getSentence(prompt);

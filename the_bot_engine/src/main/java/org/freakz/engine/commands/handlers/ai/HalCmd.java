@@ -16,12 +16,12 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 //@HokanDEVCommand
 @HokanCommandHandler
 @Slf4j
-public class AiCmd extends AbstractCmd {
+public class HalCmd extends AbstractCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Query MegaHAL AI.");
+        jsap.setHelp("Query MegaHAL 'AI'.");
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PROMPT)
                 .setList(true)
@@ -32,6 +32,13 @@ public class AiCmd extends AbstractCmd {
 
     }
 
+    /*    @Override
+        public List<HandlerAlias> getAliases() {
+            List<HandlerAlias> list = new ArrayList<>();
+            list.add(createWithArgsAlias("!hal", "!translate"));
+            return list;
+        }
+    */
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
         AiResponse aiResponse = doServiceRequest(request, results, ServiceRequestType.AiService);
