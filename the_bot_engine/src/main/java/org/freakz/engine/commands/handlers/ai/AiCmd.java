@@ -22,13 +22,12 @@ public class AiCmd extends AbstractCmd {
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Compares weather between cities.");
+        jsap.setHelp("Query MegaHAL AI.");
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PROMPT)
                 .setList(true)
-                .setDefault("Hi! What are you?")
                 .setRequired(true)
-                .setGreedy(true);
+                .setGreedy(false);
 
         jsap.registerParameter(opt);
 
@@ -38,7 +37,7 @@ public class AiCmd extends AbstractCmd {
     public String executeCommand(EngineRequest request, JSAPResult results) {
         AiResponse aiResponse = doServiceRequest(request, results, ServiceRequestType.AiService);
         if (aiResponse.getStatus().startsWith("NOK")) {
-            return "Something Went Wrong.: " + aiResponse.getStatus();
+            return "Something Went Wrong: " + aiResponse.getStatus();
         }
         return aiResponse.getResult();
     }

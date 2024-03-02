@@ -72,4 +72,8 @@ public class ConfigService {
         return botProperties.getDataDir() + fileName;
     }
 
+    public String getBotLogDir() {
+        return botProperties.getLogDir();
+    }
+
 }
