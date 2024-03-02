@@ -16,6 +16,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
+
 
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.AiService)
@@ -141,7 +143,8 @@ public class AiService extends AbstractService {
 
             aiResponse.setStatus("NOK: feeding still in process?");
         } else {
-            String hal = jMegaHal.getSentence(request.getEngineRequest().getMessage());
+            String prompt = String.join(" ", request.getResults().getStringArray(ARG_PROMPT));
+            String hal = jMegaHal.getSentence(prompt);
             aiResponse.setStatus("OK");
             aiResponse.setResult(hal);
         }

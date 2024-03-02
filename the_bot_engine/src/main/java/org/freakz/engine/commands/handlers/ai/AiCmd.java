@@ -26,7 +26,7 @@ public class AiCmd extends AbstractCmd {
         UnflaggedOption opt = new UnflaggedOption(ARG_PROMPT)
                 .setList(true)
                 .setRequired(true)
-                .setGreedy(false);
+                .setGreedy(true);
 
         jsap.registerParameter(opt);
 
