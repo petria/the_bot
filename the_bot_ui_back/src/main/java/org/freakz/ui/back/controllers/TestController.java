@@ -11,10 +11,7 @@ import org.freakz.ui.back.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -52,6 +49,13 @@ public class TestController {
     return "Admin Board\n\n" + test;
   }
 
+  @GetMapping("/cmd/{command}")
+  @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
+  public String handleCommand(@PathVariable String command){
+    UserDetailsImpl details = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    String test = sendToServer(command, details.getUsername());
+    return test;
+  }
 
   public String sendToServer(String message, String botUser) {
 
