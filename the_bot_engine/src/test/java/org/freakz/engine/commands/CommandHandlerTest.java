@@ -38,7 +38,7 @@ public class CommandHandlerTest {
         String command = "!weather oulu";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
+        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
 /*        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
@@ -53,7 +53,7 @@ public class CommandHandlerTest {
         String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        CommandHandler commandHandler = new CommandHandler(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
+        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
 
 
         NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {

@@ -5,14 +5,14 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.HandlerAlias;
 
 import java.util.List;
 
 public interface HokanCmd {
 
-    void setCommandHandler(CommandHandler commandHandler);
+    void setBotEngine(BotEngine botEngine);
 
     void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException;
 

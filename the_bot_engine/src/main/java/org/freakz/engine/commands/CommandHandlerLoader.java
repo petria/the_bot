@@ -90,7 +90,7 @@ public class CommandHandlerLoader {
 
     }
 
-    public HokanCmd getMatchingCommandHandlers(CommandHandler commandHandler, String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public HokanCmd getMatchingCommandHandlers(BotEngine botEngine, String trigger) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         for (String key : this.handlersMap.keySet()) {
             String match = String.format("!%s", key.toLowerCase());
             if (match.equalsIgnoreCase(trigger)) {
@@ -99,7 +99,7 @@ public class CommandHandlerLoader {
                 Object o = aClass.getConstructor().newInstance();
                 HokanCmd hokanCmd = (HokanCmd) o;
                 setAdminCommandFlag(hokanCmd);
-                hokanCmd.setCommandHandler(commandHandler);
+                hokanCmd.setBotEngine(botEngine);
                 return (HokanCmd) o;
             }
         }

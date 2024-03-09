@@ -48,7 +48,7 @@ public class HelpCmd extends AbstractCmd {
 
 
         if (command == null) {
-            Map<String, HandlerClass> handlersMap = getCommandHandler().getCommandHandlerLoader().getHandlersMap();
+            Map<String, HandlerClass> handlersMap = getBotEngine().getCommandHandlerLoader().getHandlersMap();
             String[] strings = new String[handlersMap.keySet().size()];
             String[] cmdNames = handlersMap.keySet().toArray(strings);
             Arrays.sort(cmdNames);
@@ -68,7 +68,7 @@ public class HelpCmd extends AbstractCmd {
                 if (handlerClass.isAdmin()) {
                     flags += "A";
                 }
-                if (flags.length() > 0) {
+                if (!flags.isEmpty()) {
                     sb.append("[").append(flags).append("]");
                 }
 
@@ -78,7 +78,7 @@ public class HelpCmd extends AbstractCmd {
 
 
         } else {
-            List<AbstractCmd> list = getCommandHandler().getCommandHandlerLoader().getMatchingCommandInstances(command);
+            List<AbstractCmd> list = getBotEngine().getCommandHandlerLoader().getMatchingCommandInstances(command);
             if (list == null) {
                 sb.append(String.format("Help: with '%s' did not match any command. ", command));
             } else {

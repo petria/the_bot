@@ -2,7 +2,7 @@ package org.freakz.engine.services.conversations;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.BotEngine;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -23,18 +23,18 @@ public class ConversationsService {
         return nextId;
     }
 
-    public void handleConversations(CommandHandler commandHandler, EngineRequest request) {
+    public void handleConversations(BotEngine botEngine, EngineRequest request) {
         String fromSender = request.getFromSender();
         Conversation conversation = conversationMap.get(fromSender);
         if (conversation != null) {
             log.debug("fromSender: {}", fromSender);
-            processConversation(commandHandler, request, conversation);
+            processConversation(botEngine, request, conversation);
         }
     }
 
-    private void processConversation(CommandHandler commandHandler, EngineRequest request, Conversation conversation) {
+    private void processConversation(BotEngine botEngine, EngineRequest request, Conversation conversation) {
         if (request.getMessage().matches(conversation.getTrigger())) {
-            commandHandler.sendReplyMessage(request, conversation.handleConversation(request));
+            botEngine.sendReplyMessage(request, conversation.handleConversation(request));
             conversation.nextState();
         }
     }

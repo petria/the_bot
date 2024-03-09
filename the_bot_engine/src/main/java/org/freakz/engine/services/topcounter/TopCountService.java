@@ -6,7 +6,7 @@ import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
-import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.data.service.DataValuesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,19 +21,19 @@ import java.util.Map;
 @Slf4j
 public class TopCountService {
 
-    private final CommandHandler commandHandler;
+    private final BotEngine botEngine;
 
     private final DataValuesService dataValuesService;
 
     @Autowired
-    public TopCountService(CommandHandler commandHandler, DataValuesService dataValuesService) {
-        this.commandHandler = commandHandler;
+    public TopCountService(BotEngine botEngine, DataValuesService dataValuesService) {
+        this.botEngine = botEngine;
         this.dataValuesService = dataValuesService;
     }
 
 
     private void processReply(EngineRequest eRequest, String reply) {
-        commandHandler.sendReplyMessage(eRequest, reply);
+        botEngine.sendReplyMessage(eRequest, reply);
     }
 
     public void calculateTopCounters(EngineRequest request) {

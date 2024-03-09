@@ -25,8 +25,8 @@ public class AliasCmd extends AbstractCmd {
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
         StringBuilder sb = new StringBuilder("Alias list:\n");
-        for (String alias : getCommandHandler().getCommandHandlerLoader().getHandlerAliasMap().keySet()) {
-            HandlerAlias ha = getCommandHandler().getCommandHandlerLoader().getHandlerAliasMap().get(alias);
+        for (String alias : getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().keySet()) {
+            HandlerAlias ha = getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().get(alias);
             sb.append(String.format("%s = %s\n", ha.getAlias(), ha.getTarget()));
         }
         return sb.toString();

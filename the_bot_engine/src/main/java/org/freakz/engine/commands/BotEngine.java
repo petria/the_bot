@@ -28,7 +28,7 @@ import java.util.Iterator;
 
 @Service
 @Slf4j
-public class CommandHandler {
+public class BotEngine {
 
     private final AccessService accessService;
     private final MessageSendClient messageSendClient;
@@ -44,7 +44,7 @@ public class CommandHandler {
 
     private String botName = "HokanTheBot";
 
-    public CommandHandler(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor) throws InitializeFailedException, IOException {
+    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;

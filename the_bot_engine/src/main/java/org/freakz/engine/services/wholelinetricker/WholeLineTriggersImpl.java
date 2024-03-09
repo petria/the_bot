@@ -5,7 +5,7 @@ import org.freakz.common.model.TimeDifferenceData;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.common.util.Uptime;
-import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
 
@@ -24,11 +24,11 @@ import java.util.GregorianCalendar;
 public class WholeLineTriggersImpl implements WholeLineTriggers {
 
     private final TimeDifferenceService timeDifferenceService;
-    private final CommandHandler commandHandler;
+    private final BotEngine botEngine;
 
-    public WholeLineTriggersImpl(CommandHandler commandHandler) {
+    public WholeLineTriggersImpl(BotEngine botEngine) {
         this.timeDifferenceService = new TimeDifferenceServiceImpl();
-        this.commandHandler = commandHandler;
+        this.botEngine = botEngine;
     }
 
     private String _olpo = "";
@@ -443,7 +443,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     }
 
     private void processReply(EngineRequest eRequest, String reply) {
-        commandHandler.sendReplyMessage(eRequest, reply);
+        botEngine.sendReplyMessage(eRequest, reply);
     }
 
     private static long _lastReply = 0;

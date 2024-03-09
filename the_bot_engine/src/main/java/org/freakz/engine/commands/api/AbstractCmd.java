@@ -6,7 +6,7 @@ import com.martiansoftware.jsap.JSAPResult;
 import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.engine.commands.CommandHandler;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.api.ServiceRequestType;
@@ -24,7 +24,7 @@ public abstract class AbstractCmd implements HokanCmd {
     private JSAP jsap = new JSAP();
 
     @Getter
-    private CommandHandler commandHandler;
+    private BotEngine botEngine;
 
     private final StringBuilder sb = new StringBuilder();
 
@@ -76,9 +76,8 @@ public abstract class AbstractCmd implements HokanCmd {
         return HandlerAlias.builder().alias(alias).target(target).withArgs(true).build();
     }
 
-    @Override
-    public void setCommandHandler(CommandHandler commandHandler) {
-        this.commandHandler = commandHandler;
+    public void setBotEngine(BotEngine botEngine) {
+        this.botEngine = botEngine;
     }
 
     public <T extends ServiceResponse> T doServiceRequest(EngineRequest engineRequest, JSAPResult results, ServiceRequestType serviceRequestType) {
@@ -86,7 +85,7 @@ public abstract class AbstractCmd implements HokanCmd {
                 .engineRequest(engineRequest)
                 .results(results)
                 .build();
-        return commandHandler.getHokanServices().doServiceRequest(request, serviceRequestType);
+        return botEngine.getHokanServices().doServiceRequest(request, serviceRequestType);
     }
 
     public <T extends ServiceResponse> T doServiceRequestMethods(EngineRequest engineRequest, JSAPResult results, ServiceRequestType serviceRequestType) {
@@ -94,6 +93,6 @@ public abstract class AbstractCmd implements HokanCmd {
                 .engineRequest(engineRequest)
                 .results(results)
                 .build();
-        return commandHandler.getHokanServices().doServiceRequestMethods(request, serviceRequestType);
+        return botEngine.getHokanServices().doServiceRequestMethods(request, serviceRequestType);
     }
 }
