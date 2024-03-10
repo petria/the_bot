@@ -9,6 +9,6 @@ public interface EventPublisher {
     @Async
     void logMessage(MessageSource messageSource, String network, String channel, String sender, String message);
 
-    User publishEvent(BotConnection connection, Object source);
+    User publishEvent(BotConnection connection, Object source, String echoToAlias);
 
 }

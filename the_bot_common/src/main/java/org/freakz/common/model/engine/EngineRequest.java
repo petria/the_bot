@@ -25,6 +25,8 @@ public class EngineRequest {
 
     private String network;
 
+    private String echoToAlias;
+
     private User user;
     private TheBotConfig botConfig;
 

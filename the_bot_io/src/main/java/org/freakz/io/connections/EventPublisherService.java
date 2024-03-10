@@ -50,7 +50,7 @@ public class EventPublisherService implements EventPublisher {
         logService = new LogServiceImpl(this.theBotProperties.getLogDir());
     }
 
-    private org.freakz.common.model.users.User publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId) {
+    private org.freakz.common.model.users.User publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId, String echoToAlias) {
         EngineRequest request
                 = EngineRequest.builder()
                 .fromChannelId(channelId)
@@ -61,6 +61,7 @@ public class EventPublisherService implements EventPublisher {
                 .fromSender(sender)
                 .fromSenderId(senderId)
                 .network(connection.getNetwork())
+                .echoToAlias(echoToAlias)
                 .build();
         try {
             Response response = engineClient.handleEngineRequest(request);
@@ -99,7 +100,7 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
-    private org.freakz.common.model.users.User publishIrcEvent(BotConnection connection, ChannelMessageEvent event) {
+    private org.freakz.common.model.users.User publishIrcEvent(BotConnection connection, ChannelMessageEvent event, String echoToAlias) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
                 .messageSource(MessageSource.IRC_MESSAGE)
@@ -116,7 +117,7 @@ public class EventPublisherService implements EventPublisher {
             @Override
             public void run() {
                 log.debug("send async");
-                publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender());
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender(), echoToAlias);
                 log.debug("send DONE");
             }
         });
@@ -126,7 +127,7 @@ public class EventPublisherService implements EventPublisher {
 
     }
 
-    private org.freakz.common.model.users.User publishTelegramEvent(BotConnection connection, Update update) {
+    private org.freakz.common.model.users.User publishTelegramEvent(BotConnection connection, Update update, String echoToAlias) {
         log.debug("Publish TELEGRAM event: {}", update);
 
         User from = update.getMessage().getFrom();
@@ -143,11 +144,11 @@ public class EventPublisherService implements EventPublisher {
         logMessage(MessageSource.TELEGRAM_MESSAGE, "telegram", msg.getTarget(), msg.getSender(), msg.getMessage());
         long userId = update.getMessage().getFrom().getId();
 
-        return publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null, String.valueOf(userId));
+        return publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null, String.valueOf(userId), echoToAlias);
     }
 
 
-    private org.freakz.common.model.users.User publishDiscordEvent(BotConnection connection, MessageCreateEvent event) {
+    private org.freakz.common.model.users.User publishDiscordEvent(BotConnection connection, MessageCreateEvent event, String echoToAlias) {
         log.debug("Publish DISCORD event: {}", event);
         long id = event.getChannel().getId();
 
@@ -190,7 +191,7 @@ Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/10
             @Override
             public void run() {
                 log.debug("send async");
-                publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId));
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), replyTo, id, String.valueOf(userId), echoToAlias);
                 log.debug("send DONE");
             }
         });
@@ -200,14 +201,14 @@ Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/10
 
 
     @Override
-    public org.freakz.common.model.users.User publishEvent(BotConnection connection, Object source) {
+    public org.freakz.common.model.users.User publishEvent(BotConnection connection, Object source, String echoToAlias) {
         switch (connection.getType()) {
             case IRC_CONNECTION:
-                return publishIrcEvent(connection, (ChannelMessageEvent) source);
+                return publishIrcEvent(connection, (ChannelMessageEvent) source, echoToAlias);
             case DISCORD_CONNECTION:
-                return publishDiscordEvent(connection, (MessageCreateEvent) source);
+                return publishDiscordEvent(connection, (MessageCreateEvent) source, echoToAlias);
             case TELEGRAM_CONNECTION:
-                return publishTelegramEvent(connection, (Update) source);
+                return publishTelegramEvent(connection, (Update) source, echoToAlias);
         }
         return null;
     }

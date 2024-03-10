@@ -120,7 +120,12 @@ public class IrcServerConnection extends BotConnection {
     public void onChannelMessageEvent(ChannelMessageEvent event) throws BotIOException {
         this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
         log.debug("Got msg: {}", event.getMessage());
-        publisher.publishEvent(this, event);
+        org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
+        String echoToAlias = null;
+        if (channel != null) {
+            echoToAlias = channel.getEchoToAlias();
+        }
+        publisher.publishEvent(this, event, echoToAlias);
         updateChannelMap(event.getChannel().getName());
         checkEchoTo(this.config, this.connectionManager, event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
     }

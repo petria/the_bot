@@ -10,7 +10,11 @@ public interface EnvValuesService {
 
     List<? extends DataNodeBase> findAll();
 
+    List<? extends DataNodeBase> findAllByMatchingKey(String key);
+
     SysEnvValue setEnvValue(String key, String value, User user);
 
     SysEnvValue unSetEnvValue(String key, User user);
+
+    SysEnvValue findFirstByKey(String key);
 }

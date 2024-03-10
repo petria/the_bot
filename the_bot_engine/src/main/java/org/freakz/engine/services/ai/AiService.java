@@ -33,8 +33,8 @@ public class AiService extends AbstractService {
     public void initializeService(ConfigService configService) throws Exception {
         AiService.configService = configService;
         String logDir = configService.getBotLogDir() + "oldlogs/ircnet/";
-        log.debug("scanning logs from: {}", logDir);
-        listLogFiles(logDir);
+//        log.debug("scanning logs from: {}", logDir);
+//        listLogFiles(logDir);
     }
 
 

@@ -141,8 +141,11 @@ public class DiscordServerConnection extends BotConnection {
     }
 
     private void messageListener(MessageCreateEvent event) {
+
         log.debug("Discord msg: {}", event.toString());
-        publisher.publishEvent(this, event);
+        String echoToAlias = null;
+        //resolveByEchoTo()
+        publisher.publishEvent(this, event, echoToAlias);
 
         try {
             this.connectionManager.addMessageInOut(getType().toString(), 1, 0);

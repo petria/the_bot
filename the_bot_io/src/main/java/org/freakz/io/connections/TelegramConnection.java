@@ -141,8 +141,10 @@ public class TelegramConnection extends BotConnection {
 //                log.debug("telegram update: {}", update);
 
                 this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
+                String echoToAlias = null;
 
-                User user = publisher.publishEvent(this.connection, update);
+
+                User user = publisher.publishEvent(this.connection, update, echoToAlias); // TODO
 
                 String from;
                 if (update.getMessage().getFrom().getUserName() != null && update.getMessage().getFrom().getUserName().length() > 0) {

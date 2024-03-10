@@ -10,6 +10,7 @@ import org.freakz.engine.dto.KelikameratWeatherData;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
+import org.freakz.engine.services.urls.UrlMetadataService;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.Mockito;
 
@@ -33,12 +34,13 @@ public class CommandHandlerTest {
 
     private ConversationsService conversationsService = Mockito.mock(ConversationsService.class);
     private CallCountInterceptor countInterceptor = Mockito.mock(CallCountInterceptor.class);
+    private UrlMetadataService urlMetadataService = Mockito.mock(UrlMetadataService.class);
     //    @Test
     public void testWeatherCmd() throws Exception {
         String command = "!weather oulu";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
+        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor, urlMetadataService);
 /*        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
         if (reply != null) {
             System.out.printf("%s: %s\n", command, reply);
@@ -53,7 +55,7 @@ public class CommandHandlerTest {
         String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 
-        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor);
+        BotEngine botEngine = new BotEngine(accessService, messageSendClient, hokanServices, configService, conversationsService, countInterceptor, urlMetadataService);
 
 
         NotImplementedException thrown = Assertions.assertThrows(NotImplementedException.class, () -> {

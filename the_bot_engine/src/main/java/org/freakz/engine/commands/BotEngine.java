@@ -19,6 +19,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
+import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
@@ -42,15 +43,18 @@ public class BotEngine {
 
     private final CallCountInterceptor countInterceptor;
 
+    private final UrlMetadataService urlMetadataService;
+
     private String botName = "HokanTheBot";
 
-    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor) throws InitializeFailedException, IOException {
+    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor, UrlMetadataService urlMetadataService) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
         this.configService = configService;
         this.conversationsService = conversationsService;
         this.countInterceptor = countInterceptor;
+        this.urlMetadataService = urlMetadataService;
         if (configService != null) {
             this.botName = configService.readBotConfig().getBotConfig().getBotName();
         }
@@ -71,8 +75,9 @@ public class BotEngine {
         if (doWholeLineTriggerCheck) {
             wholeLine = handleWholeLineTriggers(request);
         }
-
+        this.urlMetadataService.handleEngineRequest(request, this);
         this.conversationsService.handleConversations(this, request);
+
         String replyMessage = null;
         if (request.getCommand().startsWith("!")) {
             replyMessage = parseAndExecute(request, user);

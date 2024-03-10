@@ -12,6 +12,7 @@ import org.freakz.engine.data.repository.impl.EnvValuesRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -45,6 +46,20 @@ public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService
     }
 
     @Override
+    public List<SysEnvValue> findAllByMatchingKey(String key) {
+
+        List<SysEnvValue> list = new ArrayList<>();
+        for (DataNodeBase node : findAll()) {
+            SysEnvValue envValue = (SysEnvValue) node;
+            if (envValue.getKeyName().matches(key)) {
+                list.add(envValue);
+            }
+        }
+
+        return list;
+    }
+
+    @Override
     public SysEnvValue setEnvValue(String key, String value, User user) {
         return repository.setEnvValue(key, value, user);
 
@@ -53,5 +68,16 @@ public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService
     @Override
     public SysEnvValue unSetEnvValue(String key, User user) {
         return repository.unSetEnvValue(key, user);
+    }
+
+    @Override
+    public SysEnvValue findFirstByKey(String key) {
+        for (DataNodeBase node : findAll()) {
+            SysEnvValue envValue = (SysEnvValue) node;
+            if (envValue.getKeyName().equals(key)) {
+                return envValue;
+            }
+        }
+        return null;
     }
 }
