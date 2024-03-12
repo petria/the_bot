@@ -60,7 +60,7 @@ public class UrlMetadataService {
             String titleText = getUrlTitle(url);
             if (titleText != null) {
                 log.debug("{} -> {}", url, titleText);
-                String reply = String.format("[ %s ]", titleText);
+                String reply = String.format("[ %s%s%s ]", "\u0002", titleText, "\u0002");
                 engine.sendReplyMessage(request, reply);
             } else {
                 log.debug("No title found!");
