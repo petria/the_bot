@@ -75,6 +75,7 @@ public class BotEngine {
         if (doWholeLineTriggerCheck) {
             wholeLine = handleWholeLineTriggers(request);
         }
+
         this.urlMetadataService.handleEngineRequest(request, this);
         this.conversationsService.handleConversations(this, request);
 
@@ -162,38 +163,41 @@ public class BotEngine {
                 request.setUser(user);
                 reply = abstractCmd.executeCommand(request, results);
             }
+
             if (reply != null) {
-                if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
-                    //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
-                    countInterceptor.computeCount("OUT: commandHandler");
-                } else {
-                    sendReplyMessage(request, reply);
-                }
-                return reply;
+                return sendReplyMessage(request, reply);
             }
         }
-
         return null;
     }
 
-    public void sendReplyMessage(EngineRequest request, String reply) {
-        Message message
-                = Message.builder()
-                .sender(this.botName)
-                .timestamp(System.currentTimeMillis())
-                .requestTimestamp(request.getTimestamp())
-                .message(reply)
-                .target(request.getReplyTo())
-                .id("" + request.getFromChannelId())
-                .build();
+    public String sendReplyMessage(EngineRequest request, String reply) {
 
-        try {
-            Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
-            int status = response.status();
-            log.debug("reply send status: {}", status);
-        } catch (Exception ex) {
-            log.error("Sending reply failed: {}", ex.getMessage());
+        if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
+            //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
+            countInterceptor.computeCount("OUT: commandHandler");
+            return null;
+        } else {
+            Message message
+                    = Message.builder()
+                    .sender(this.botName)
+                    .timestamp(System.currentTimeMillis())
+                    .requestTimestamp(request.getTimestamp())
+                    .message(reply)
+                    .target(request.getReplyTo())
+                    .id("" + request.getFromChannelId())
+                    .build();
+            try {
+                Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
+                int status = response.status();
+                log.debug("reply send status: {}", status);
+            } catch (Exception ex) {
+                log.error("Sending reply failed: {}", ex.getMessage());
+            }
+            return reply;
+
         }
+
     }
 
 

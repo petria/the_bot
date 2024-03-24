@@ -8,6 +8,7 @@ import org.freakz.engine.data.service.EnvValuesService;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -38,37 +39,45 @@ public class UrlMetadataService {
             String url = m.group();
             urlStrings.add(url);
         }
-
+        StringBuilder sb = new StringBuilder();
         if (!urlStrings.isEmpty()) {
             SysEnvValue envValue = envValuesService.findFirstByKey("channel.do.url.topic");
             if (envValue != null) {
                 String[] split = envValue.getValue().split(",");
                 for (String alias : split) {
                     if (alias.equals(request.getEchoToAlias())) {
-                        doGetUrlTitles(request, alias, urlStrings, engine);
+                        String title = doGetUrlTitles(request, alias, urlStrings, engine);
+                        if (title != null) {
+                            sb.append(title);
+                        }
                     }
                     //request.getFromChannelId();
                 }
             }
         }
+        log.debug(">>>>> fufuf: {}", sb);
+        //return sb.toString();
     }
 
-    private void doGetUrlTitles(EngineRequest request, String alias, List<String> urlStrings, BotEngine engine) {
+    private String doGetUrlTitles(EngineRequest request, String alias, List<String> urlStrings, BotEngine engine) {
         log.debug("get url metadata!");
         for (String url : urlStrings) {
             log.debug("resolve url title: {}", url);
-            String titleText = getUrlTitle(url);
+            UrlMetadata titleText = getUrlMetadata(url);
             if (titleText != null) {
                 log.debug("{} -> {}", url, titleText);
                 String reply = String.format("[ %s%s%s ]", "\u0002", titleText, "\u0002");
                 engine.sendReplyMessage(request, reply);
+                return reply;
             } else {
                 log.debug("No title found!");
             }
         }
+        return null;
     }
 
-    private String getUrlTitle(String url) {
+
+    public UrlMetadata getUrlMetadata(String url) {
         try {
             Connection.Response execute
                     = Jsoup.connect(url)
@@ -77,19 +86,32 @@ public class UrlMetadataService {
                     .execute();
 
             Document document = execute.parse();
-
-            Elements head = document.getElementsByTag("head");
+            Element head = document.head();
+            List<MetaAttribute> metaAttributes = new ArrayList<>();
             if (head != null) {
-                Elements title = head.select("title");
-                if (title != null) {
-                    String titleText = title.text();
-                    return titleText;
+                Elements metaElements = head.getElementsByTag("meta");
+                for (Element metaElement : metaElements) {
+                    List<MetaAttribute> attributes = MetaAttribute.fromJsoupElements(metaElement);
+                    metaAttributes.addAll(attributes);
                 }
             }
 
+            Elements title = head.select("title");
+            UrlMetadata metadata = enrichMetadata(UrlMetadata.builder().url(url).title(title.text()).metaAttributes(metaAttributes).build());
+
+            return metadata;
+
         } catch (Exception e) {
-            int err = 0;
+            log.error("url title fetch failed", e);
         }
         return null;
+    }
+
+    private UrlMetadata enrichMetadata(UrlMetadata meta) {
+        log.debug("Enrich: {}", meta.getUrl());
+        for (MetaAttribute attr : meta.getMetaAttributes()) {
+            log.debug("{} -> {}", attr.getName(), attr.getValue());
+        }
+        return meta;
     }
 }

@@ -32,6 +32,7 @@ public class MessageSender {
                 .fromSender(botUser)
                 .fromSenderId("NO_SENDER_ID")
                 .network("BOT_CLI_CLIENT")
+                .echoToAlias("THE_BOT_CLI")
                 .build();
         try {
             Response response = engineClient.handleEngineRequest(request);
