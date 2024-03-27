@@ -191,6 +191,7 @@ public class BotEngine {
                 Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
                 int status = response.status();
                 log.debug("reply send status: {}", status);
+                log.debug("Response: {}", response);
             } catch (Exception ex) {
                 log.error("Sending reply failed: {}", ex.getMessage());
             }
