@@ -62,12 +62,11 @@ public class UrlMetadataService {
         log.debug("get url metadata!");
         for (String url : urlStrings) {
             log.debug("resolve url title: {}", url);
-            UrlMetadata titleText = getUrlMetadata(url);
-            if (titleText != null) {
-                log.debug("{} -> {}", url, titleText.getTitle());
-                String reply = String.format("[ %s%s%s ]", "\u0002", titleText.getTitle(), "\u0002");
-                engine.sendReplyMessage(request, reply);
-                return reply;
+            UrlMetadata metadata = getUrlMetadata(url);
+            if (metadata != null) {
+                log.debug("{} -> {}", url, metadata.getTitle());
+                engine.sendReplyMessage(request, metadata.getTitle());
+                return "reply";
             } else {
                 log.debug("No title found!");
             }
@@ -118,11 +117,14 @@ public class UrlMetadataService {
     private UrlMetadata checkSpecialTitles(UrlMetadata metadata) {
         if (isTypeOf(metadata, "IMDb")) {
             String value = metadata.getMetaAttributeValue("og:title");
-            String newTitle = String.format("[IMDB] %s", value);
+            String newTitle = String.format("%s[IMDB]%s %s", "\u0002", "\u0002", value);
             metadata.setTitle(newTitle);
         } else if (isTypeOf(metadata, "YouTube")) {
             String value = metadata.getMetaAttributeValue("og:title");
-            String newTitle = String.format("[YouTube] %s", value);
+            String newTitle = String.format("%s[YouTube]%s %s", "\u0002", "\u0002", value);
+            metadata.setTitle(newTitle);
+        } else {
+            String newTitle = String.format("[ %s%s%s ]", "\u0002", metadata.getTitle(), "\u0002");
             metadata.setTitle(newTitle);
         }
         return metadata;
