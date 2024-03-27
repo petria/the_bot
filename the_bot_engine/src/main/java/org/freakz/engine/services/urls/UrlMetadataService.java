@@ -97,21 +97,36 @@ public class UrlMetadataService {
             }
 
             Elements title = head.select("title");
-            UrlMetadata metadata = enrichMetadata(UrlMetadata.builder().url(url).title(title.text()).metaAttributes(metaAttributes).build());
-
+            UrlMetadata metadata = UrlMetadata.builder().url(url).title(title.text()).metaAttributes(metaAttributes).build().ok();
+            metadata = checkSpecialTitles(metadata);
             return metadata;
 
         } catch (Exception e) {
-            log.error("url title fetch failed", e);
+            log.error("url title fetch failed: {}", url, e);
+            UrlMetadata error = UrlMetadata.builder().build().error("NOK: " + e.getMessage());
+            return error;
         }
-        return null;
     }
 
-    private UrlMetadata enrichMetadata(UrlMetadata meta) {
-        log.debug("Enrich: {}", meta.getUrl());
-        for (MetaAttribute attr : meta.getMetaAttributes()) {
-            log.debug("{} -> {}", attr.getName(), attr.getValue());
+    private boolean isTypeOf(UrlMetadata metadata, String type) {
+        String value = metadata.getMetaAttributeValue("og:site_name");
+        if (value != null && value.equals(type)) {
+            return true;
         }
-        return meta;
+        return false;
     }
+
+    private UrlMetadata checkSpecialTitles(UrlMetadata metadata) {
+        if (isTypeOf(metadata, "IMDb")) {
+            String value = metadata.getMetaAttributeValue("og:title");
+            String newTitle = String.format("[IMDB] %s", value);
+            metadata.setTitle(newTitle);
+        } else if (isTypeOf(metadata, "YouTube")) {
+            String value = metadata.getMetaAttributeValue("og:title");
+            String newTitle = String.format("[YouTube] %s", value);
+            metadata.setTitle(newTitle);
+        }
+        return metadata;
+    }
+
 }
