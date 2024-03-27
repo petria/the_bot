@@ -103,7 +103,7 @@ public class UrlMetadataService {
 
         } catch (Exception e) {
             log.error("url title fetch failed: {}", url, e);
-            UrlMetadata error = UrlMetadata.builder().build().error("NOK: " + e.getMessage());
+            UrlMetadata error = UrlMetadata.builder().url(url).build().error(e.getMessage());
             return error;
         }
     }

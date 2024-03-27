@@ -32,7 +32,7 @@ public class UrlMetadata {
     }
 
     public UrlMetadata error(String msg) {
-        this.status = "MOK: " + msg;
+        this.status = "NOK: " + msg;
         return this;
 
     }

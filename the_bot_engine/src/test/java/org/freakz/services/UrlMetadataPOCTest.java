@@ -27,7 +27,7 @@ public class UrlMetadataPOCTest {
     @Test
     public void testUrlMetadataService() {
         int count = 0;
-        int doMax = 2;
+        int doMax = 7;
         List<UrlMetadata> results = new ArrayList<>();
         String[] urls = {
                 "https://www.youtube.com/watch?v=cvtWHnDUTnc",
@@ -54,7 +54,11 @@ public class UrlMetadataPOCTest {
         }
         Assertions.assertEquals(doMax, results.size());
         for (UrlMetadata metadata : results) {
-            System.out.printf("%s -> %s\n", metadata.getUrl(), metadata.getTitle());
+            if (metadata.getStatus().startsWith("OK")) {
+                System.out.printf("%s -> %s\n", metadata.getUrl(), metadata.getTitle());
+            } else {
+                System.out.printf("%s -> %s\n", metadata.getUrl(), metadata.getStatus());
+            }
         }
         int foo = 0;
     }
