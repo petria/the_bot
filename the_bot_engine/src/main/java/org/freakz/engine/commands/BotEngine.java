@@ -194,12 +194,12 @@ public class BotEngine {
                 Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
                 int status = response.status();
                 log.debug("reply send status: {}", status);
-                log.debug("Response: {}", response);
+                if (status != 200) {
+                    String bodyJson = new BufferedReader(new InputStreamReader(response.body().asInputStream()))
+                            .lines().parallel().collect(Collectors.joining("\n"));
 
-                String bodyJson = new BufferedReader(new InputStreamReader(response.body().asInputStream()))
-                        .lines().parallel().collect(Collectors.joining("\n"));
-
-                log.debug("bodyJson: {}", bodyJson);
+                    log.debug("bodyJson: {}", bodyJson);
+                }
 
             } catch (Exception ex) {
                 log.error("Sending reply failed: {}", ex.getMessage());
