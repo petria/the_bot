@@ -1,5 +1,6 @@
 package org.freakz.engine.commands;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
 import feign.Response;
@@ -10,6 +11,7 @@ import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.users.User;
+import org.freakz.common.util.FeignUtils;
 import org.freakz.engine.clients.MessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -192,6 +195,9 @@ public class BotEngine {
                 int status = response.status();
                 log.debug("reply send status: {}", status);
                 log.debug("Response: {}", response);
+                Optional<String> responseBody = FeignUtils.getResponseBody(response, String.class, new ObjectMapper());
+                responseBody.ifPresent(s -> log.debug("responseBody: {}", s));
+
             } catch (Exception ex) {
                 log.error("Sending reply failed: {}", ex.getMessage());
             }

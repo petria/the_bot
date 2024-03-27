@@ -55,7 +55,6 @@ public class UrlMetadataService {
                 }
             }
         }
-        log.debug(">>>>> fufuf: {}", sb);
         //return sb.toString();
     }
 
