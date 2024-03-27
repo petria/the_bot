@@ -1,6 +1,5 @@
 package org.freakz.engine.commands;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
 import feign.Response;
@@ -11,7 +10,6 @@ import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.users.User;
-import org.freakz.common.util.FeignUtils;
 import org.freakz.engine.clients.MessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
@@ -26,9 +24,11 @@ import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -195,8 +195,11 @@ public class BotEngine {
                 int status = response.status();
                 log.debug("reply send status: {}", status);
                 log.debug("Response: {}", response);
-                Optional<String> responseBody = FeignUtils.getResponseBody(response, String.class, new ObjectMapper());
-                responseBody.ifPresent(s -> log.debug("responseBody: {}", s));
+
+                String bodyJson = new BufferedReader(new InputStreamReader(response.body().asInputStream()))
+                        .lines().parallel().collect(Collectors.joining("\n"));
+
+                log.debug("bodyJson: {}", bodyJson);
 
             } catch (Exception ex) {
                 log.error("Sending reply failed: {}", ex.getMessage());
