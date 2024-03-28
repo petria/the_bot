@@ -44,12 +44,12 @@ public class TelegramConnection extends BotConnection {
             sendMessage.setChatId(message.getTarget());
         }
 //        String boxed = String.format("```%s```", message.getMessage());
-        String txt = message.getMessage().replaceAll("<", "").replaceAll(">", "").replaceAll("&", "");
-        String boxed = String.format("<pre>%s</pre>", txt);
-        sendMessage.enableMarkdown(true);
-        sendMessage.enableHtml(true);
+//        String txt = message.getMessage().replaceAll("<", "").replaceAll(">", "").replaceAll("&", "");
+//        String boxed = String.format("%s", txt);
+//        sendMessage.enableMarkdown(true);
+//        sendMessage.enableHtml(true);
 //        sendMessage.enableMarkdownV2(true);
-        sendMessage.setText(boxed);
+        sendMessage.setText(message.getMessage());
         try {
             if (this.connectionManager != null) {
                 this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
