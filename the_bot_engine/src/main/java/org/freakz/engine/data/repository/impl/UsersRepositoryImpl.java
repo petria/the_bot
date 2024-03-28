@@ -33,15 +33,16 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
         File dataFile = configService.getRuntimeDataFile(USERS_FILE_NAME);
         if (dataFile.exists()) {
             UserValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, UserValuesJsonContainer.class);
-            this.dataValues.addAll(dataValuesJson.getData_values());
+            getDataValues().addAll(dataValuesJson.getData_values());
             long highestId = -1;
-            for (DataNodeBase values : this.dataValues) {
+            for (DataNodeBase values : getDataValues()) {
                 if (values.getId() > highestId) {
                     highestId = values.getId();
                 }
             }
-            this.highestId = highestId;
-            log.debug("Read dataValues, size: {} - highestId: {}", this.dataValues.size(), this.highestId);
+            setHighestId(highestId);
+
+            log.debug("Read dataValues, size: {} - highestId: {}", getDataValues().size(), getHighestId());
         } else {
             log.debug("No saved dataValues found: {}", dataFile.getName());
         }
@@ -49,7 +50,9 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
 
     private void createUsers() {
 
-        this.dataValues.add(getJohnDoeUser());
+        getDataValues().add(getJohnDoeUser());
+        long id = getHighestId();
+        id++;
 
         User user
                 = User.builder()
@@ -60,41 +63,42 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
                 .discordId("265828694445129728")
                 .telegramId("138695441")
                 .build();
-        user.setId(++highestId);
-        this.dataValues.add(user);
+        user.setId(id);
+        setHighestId(id);
+        getDataValues().add(user);
 
-        isDirty = true;
+        setDirty(true);
 
     }
 
     public void saveDataValues() throws IOException {
-        synchronized (this.dataValues) {
+        synchronized (getDataValues()) {
             String dataFileName = configService.getRuntimeDataFileName(USERS_FILE_NAME);
             log.debug("synchronized start writing values: {}", dataFileName);
 
             DataJsonSaveContainer container
                     = DataJsonSaveContainer.builder()
-                    .data_values(this.dataValues)
+                    .data_values(getDataValues())
                     .build();
             container.setSaveTimes(container.getSaveTimes() + 1);
 
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
             Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
 
-            log.debug("synchronized block write done: {}", this.dataValues.size());
+            log.debug("synchronized block write done: {}", getDataValues().size());
         }
     }
 
     @Override
     public void checkIsSavingNeeded() {
-        if (this.saveTrigger >= 0) {
-            this.saveTrigger = this.saveTrigger - 100;
+        if (getSaveTrigger() >= 0) {
+            setSaveTrigger(-100);
         }
-        if (isDirty) {
-            if (saveTrigger <= 0) {
+        if (isDirty()) {
+            if (getSaveTrigger() <= 0) {
                 try {
                     saveDataValues();
-                    isDirty = false;
+                    setDirty(false);
                 } catch (IOException e) {
                     log.error("Saving data values failed", e);
                 }
@@ -106,7 +110,7 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
     public DataSaverInfo getDataSaverInfo() {
         DataSaverInfo info
                 = DataSaverInfo.builder()
-                .nodeCount(this.dataValues.size())
+                .nodeCount(getDataValues().size())
                 .name("UsersData")
                 .build();
         return info;
@@ -128,7 +132,7 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl implements UsersRepo
 
     @Override
     public List<? extends DataNodeBase> findAll() {
-        return this.dataValues;
+        return getDataValues();
     }
 
 

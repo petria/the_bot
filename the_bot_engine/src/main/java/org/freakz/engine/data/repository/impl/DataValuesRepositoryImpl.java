@@ -30,52 +30,59 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     }
 
     public void initialize() throws Exception {
+        if (getHighestId() != -1) {
+//        if (highestId != -1) {
+            log.debug("Initial load already done, highestId: {}", getHighestId());
+            return;
+        }
         File dataFile = configService.getRuntimeDataFile(DATA_VALUES_FILE_NAME);
         if (dataFile.exists()) {
             DataValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, DataValuesJsonContainer.class);
-            this.dataValues.addAll(dataValuesJson.getData_values());
+            getDataValues().addAll(dataValuesJson.getData_values());
             long highestId = -1;
-            for (DataNodeBase values : this.dataValues) {
+            for (DataNodeBase values : getDataValues()) {
                 if (values.getId() > highestId) {
                     highestId = values.getId();
                 }
             }
-            this.highestId = highestId;
-            log.debug("Read dataValues, size: {} - highestId: {}", this.dataValues.size(), this.highestId);
+            setHighestId(highestId);
+//            this.highestId = highestId;
+            log.debug("Read dataValues, size: {} - highestId: {}", getDataValues().size(), getHighestId());
         } else {
             log.debug("No saved dataValues found: {}", dataFile.getName());
         }
     }
 
     public void saveDataValues() throws IOException {
-        synchronized (this.dataValues) {
+        synchronized (getDataValues()) {
             String dataFileName = configService.getRuntimeDataFileName(DATA_VALUES_FILE_NAME);
             log.debug("synchronized start writing data values: {}", dataFileName);
 
             DataJsonSaveContainer container
                     = DataJsonSaveContainer.builder()
-                    .data_values(this.dataValues)
+                    .data_values(getDataValues())
                     .build();
             container.setSaveTimes(container.getSaveTimes() + 1);
 
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
             Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
 
-            log.debug("synchronized block write done: {}", this.dataValues.size());
+            log.debug("synchronized block write done: {}", getDataValues().size());
         }
     }
 
 
     @Override
     public void checkIsSavingNeeded() {
-        if (this.saveTrigger >= 0) {
-            this.saveTrigger = this.saveTrigger - 100;
+        if (getSaveTrigger() >= 0) {
+
+            setSaveTrigger(-100);
         }
-        if (isDirty) {
-            if (saveTrigger <= 0) {
+        if (isDirty()) {
+            if (getSaveTrigger() <= 0) {
                 try {
                     saveDataValues();
-                    isDirty = false;
+                    setDirty(false);
                 } catch (IOException e) {
                     log.error("Saving data values failed", e);
                 }
@@ -87,7 +94,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     public DataSaverInfo getDataSaverInfo() {
         DataSaverInfo info
                 = DataSaverInfo.builder()
-                .nodeCount(this.dataValues.size())
+                .nodeCount(getDataValues().size())
                 .name("DataValues")
                 .build();
 
@@ -97,7 +104,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     @Override
     public List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
-        for (DataNodeBase node : this.dataValues) {
+        for (DataNodeBase node : getDataValues()) {
             DataValues values = (DataValues) node;
             boolean matchNick = values.getNick().equalsIgnoreCase(nick);
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
@@ -113,7 +120,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
     @Override
     public List<DataValues> findAllByChannelAndNetworkAndKeyNameIsLike(String channel, String network, String keyLike) {
         List<DataValues> matching = new ArrayList<>();
-        for (DataNodeBase node : this.dataValues) {
+        for (DataNodeBase node : getDataValues()) {
             DataValues values = (DataValues) node;
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
             boolean matchNetwork = values.getNetwork().equalsIgnoreCase(network);
@@ -127,7 +134,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
 
     @Override
     public DataValues findByNickAndChannelAndNetworkAndKeyName(String nick, String channel, String network, String key) {
-        for (DataNodeBase node : this.dataValues) {
+        for (DataNodeBase node : getDataValues()) {
             DataValues values = (DataValues) node;
             boolean matchNick = values.getNick().equalsIgnoreCase(nick);
             boolean matchChannel = values.getChannel().equalsIgnoreCase(channel);
@@ -147,7 +154,7 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
         if (data.getId() == null) {
             data.setId(getNextId());
             saved = data;
-            this.dataValues.add(saved);
+            getDataValues().add(saved);
         } else {
             saved = (DataValues) findById(data.getId());
         }
@@ -159,20 +166,18 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl implements Data
         saved.setNetwork(data.getNetwork());
         saved.setChannel(data.getChannel());
         log.debug("Saved: {}", saved);
-        this.isDirty = true;
-        this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
-
+        setDirty(true);
+        setSaveTriggerTo(SAVE_TRIGGER_WAIT_TIME_MILLISECONDS);
         return saved;
     }
 
     private DataNodeBase findById(long id) {
-        for (DataNodeBase values : this.dataValues) {
+        for (DataNodeBase values : getDataValues()) {
             if (values.getId() == id) {
                 return values;
             }
         }
         return null;
     }
-
 
 }

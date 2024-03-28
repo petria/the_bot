@@ -33,15 +33,15 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
         File dataFile = configService.getRuntimeDataFile(ENV_VALUES_FILE_NAME);
         if (dataFile.exists()) {
             EnvValuesJsonContainer dataValuesJson = mapper.readValue(dataFile, EnvValuesJsonContainer.class);
-            this.dataValues.addAll(dataValuesJson.getData_values());
+            getDataValues().addAll(dataValuesJson.getData_values());
             long highestId = -1;
-            for (DataNodeBase values : this.dataValues) {
+            for (DataNodeBase values : getDataValues()) {
                 if (values.getId() > highestId) {
                     highestId = values.getId();
                 }
             }
-            this.highestId = highestId;
-            log.debug("Read dataValues, size: {} - highestId: {}", this.dataValues.size(), this.highestId);
+            setHighestId(highestId);
+            log.debug("Read dataValues, size: {} - highestId: {}", getDataValues().size(), getHighestId());
         } else {
             log.debug("No saved dataValues found: {}", dataFile.getName());
         }
@@ -49,33 +49,33 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
 
 
     public void saveDataValues() throws IOException {
-        synchronized (this.dataValues) {
+        synchronized (getDataValues()) {
             String dataFileName = configService.getRuntimeDataFileName(ENV_VALUES_FILE_NAME);
             log.debug("synchronized start writing values: {}", dataFileName);
 
             DataJsonSaveContainer container
                     = DataJsonSaveContainer.builder()
-                    .data_values(this.dataValues)
+                    .data_values(getDataValues())
                     .build();
             container.setSaveTimes(container.getSaveTimes() + 1);
 
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
             Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
 
-            log.debug("synchronized block write done: {}", this.dataValues.size());
+            log.debug("synchronized block write done: {}", getDataValues().size());
         }
     }
 
     @Override
     public void checkIsSavingNeeded() {
-        if (this.saveTrigger >= 0) {
-            this.saveTrigger = this.saveTrigger - 100;
+        if (getSaveTrigger() >= 0) {
+            setSaveTrigger(-100);
         }
-        if (isDirty) {
-            if (saveTrigger <= 0) {
+        if (isDirty()) {
+            if (getSaveTrigger() <= 0) {
                 try {
                     saveDataValues();
-                    isDirty = false;
+                    setDirty(false);
                 } catch (IOException e) {
                     log.error("Saving data values failed", e);
                 }
@@ -88,7 +88,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
     public DataSaverInfo getDataSaverInfo() {
         DataSaverInfo info
                 = DataSaverInfo.builder()
-                .nodeCount(this.dataValues.size())
+                .nodeCount(getDataValues().size())
                 .name("EnvValuesData")
                 .build();
         return info;
@@ -96,7 +96,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
 
     @Override
     public List<? extends DataNodeBase> findAll() {
-        return this.dataValues;
+        return getDataValues();
     }
 
     @Override
@@ -105,13 +105,13 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
         if (sysEnvValue == null) {
             sysEnvValue = SysEnvValue.builder().keyName(key).value(value).build();
             sysEnvValue.setId(getNextId());
-            this.dataValues.add(sysEnvValue);
+            getDataValues().add(sysEnvValue);
         } else {
             sysEnvValue.setValue(value);
         }
         sysEnvValue.setModifiedBy(user.getName());
-        this.isDirty = true;
-        this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
+        setDirty(true);
+        setSaveTriggerTo(SAVE_TRIGGER_WAIT_TIME_MILLISECONDS);
 
         return sysEnvValue;
     }
@@ -130,9 +130,9 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
             toRemove = findOneByKey(key);
         }
         if (toRemove != null) {
-            this.dataValues.remove(toRemove);
-            this.isDirty = true;
-            this.saveTrigger = SAVE_TRIGGER_WAIT_TIME_MILLISECONDS;
+            getDataValues().remove(toRemove);
+            setDirty(true);
+            setSaveTriggerTo(SAVE_TRIGGER_WAIT_TIME_MILLISECONDS);
             return toRemove;
         }
         return null;
@@ -140,7 +140,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
 
     @Override
     public SysEnvValue findOneById(long id) {
-        for (DataNodeBase node : this.dataValues) {
+        for (DataNodeBase node : getDataValues()) {
             SysEnvValue sysEnvValue = (SysEnvValue) node;
             if (sysEnvValue.getId() == id) {
                 return sysEnvValue;
@@ -151,7 +151,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl implements EnvVa
 
     @Override
     public SysEnvValue findOneByKey(String key) {
-        for (DataNodeBase node : this.dataValues) {
+        for (DataNodeBase node : getDataValues()) {
             SysEnvValue sysEnvValue = (SysEnvValue) node;
             if (sysEnvValue.getKeyName().equalsIgnoreCase(key)) {
                 return sysEnvValue;
