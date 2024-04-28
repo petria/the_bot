@@ -6,6 +6,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.OpenAiService;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
 
@@ -25,10 +26,12 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
     private final TimeDifferenceService timeDifferenceService;
     private final BotEngine botEngine;
+    private final OpenAiService openAiService;
 
-    public WholeLineTriggersImpl(BotEngine botEngine) {
+    public WholeLineTriggersImpl(BotEngine botEngine, OpenAiService openAiService) {
         this.timeDifferenceService = new TimeDifferenceServiceImpl();
         this.botEngine = botEngine;
+        this.openAiService = openAiService;
     }
 
     private String _olpo = "";
@@ -282,8 +285,21 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
         }
         return null;
     }
-
     private void checkPitasko(EngineRequest eRequest) {
+        String msg = eRequest.getMessage();
+        if (StringStuff.match(eRequest.getMessage(), "pit.i?sk..*", true)) {
+            String s = msg.replaceFirst("^\\S+", "Pitäisikö");
+            if (!s.endsWith("?")) {
+                s = s + "?";
+            }
+            String aiReply = openAiService.queryAi(s);
+            String reply = String.format("%s: %s", eRequest.getFromSender(), aiReply);
+            processReply(eRequest, _olpo + reply);
+        }
+
+    }
+
+    private void checkPitaskoOld(EngineRequest eRequest) {
         String msg = eRequest.getMessage();
         if (StringStuff.match(eRequest.getMessage(), "pit.i?sk..*", true)) {
             StringBuilder sb = new StringBuilder();

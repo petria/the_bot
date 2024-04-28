@@ -17,6 +17,7 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.ai.OpenAiService;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
 import org.freakz.engine.services.urls.UrlMetadataService;
@@ -48,9 +49,11 @@ public class BotEngine {
 
     private final UrlMetadataService urlMetadataService;
 
+    private final OpenAiService openAiService;
+
     private String botName = "HokanTheBot";
 
-    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor, UrlMetadataService urlMetadataService) throws InitializeFailedException, IOException {
+    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor, UrlMetadataService urlMetadataService, OpenAiService openAiService) throws InitializeFailedException, IOException {
         this.accessService = accessService;
         this.messageSendClient = messageSendClient;
         this.hokanServices = hokanServices;
@@ -58,13 +61,15 @@ public class BotEngine {
         this.conversationsService = conversationsService;
         this.countInterceptor = countInterceptor;
         this.urlMetadataService = urlMetadataService;
+        this.openAiService = openAiService;
         if (configService != null) {
             this.botName = configService.readBotConfig().getBotConfig().getBotName();
         }
         this.commandHandlerLoader = new CommandHandlerLoader(configService.getActiveProfile());
+        this.wholeLineTriggers = new WholeLineTriggersImpl(this, openAiService);
     }
 
-    private WholeLineTriggers wholeLineTriggers = new WholeLineTriggersImpl(this);
+    private final WholeLineTriggers wholeLineTriggers;
 
     @SneakyThrows
     public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {

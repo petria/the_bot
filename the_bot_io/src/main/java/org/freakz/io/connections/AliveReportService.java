@@ -57,6 +57,7 @@ public class AliveReportService {
                 log.error("Update status failed: {}", response);
             }
         } catch (Exception e) {
+            int foo = 0;
             //log.error("Update status failed", e);
         }
     }

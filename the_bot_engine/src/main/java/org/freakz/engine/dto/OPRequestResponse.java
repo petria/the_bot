@@ -8,7 +8,7 @@ import org.freakz.engine.services.api.ServiceResponse;
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class IrcOPResponse extends ServiceResponse {
+public class OPRequestResponse extends ServiceResponse {
 
     private String response;
 

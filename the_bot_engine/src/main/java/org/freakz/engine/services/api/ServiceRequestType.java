@@ -19,7 +19,7 @@ public enum ServiceRequestType {
     GetTopCountsService,
     GetTopStatsRequest,
 
-    IrcOpRequest,
+    ChannelOpRequest,
 
     IrcRawMessage,
 
