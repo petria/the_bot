@@ -22,7 +22,7 @@ public class OpenAiServiceTest {
 
         when(configService.readBotConfig()).thenReturn(theBotConfig);
         when(theBotConfig.getBotConfig()).thenReturn(botConfig);
-
+//tsek
         OpenAiService service = new OpenAiService(configService);
         String s = service.queryAi("Pitäskö kaivaa kaljat kaapista?");
         int foo = 0;
