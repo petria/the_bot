@@ -18,7 +18,7 @@ public interface HokanCmd {
 
     String executeCommand(EngineRequest request, JSAPResult results);
 
-    List<HandlerAlias> getAliases();
+    List<HandlerAlias> getAliases(String botName);
 
     boolean isAdminCommand();
 

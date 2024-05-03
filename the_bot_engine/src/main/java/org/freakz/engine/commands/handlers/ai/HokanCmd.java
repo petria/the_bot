@@ -6,22 +6,26 @@ import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
 //@HokanDEVCommand
 @HokanCommandHandler
 @Slf4j
-public class HalCmd extends AbstractCmd {
+public class HokanCmd extends AbstractCmd {
 
     @Override
     public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Query MegaHAL 'AI'.");
+        jsap.setHelp("Ask something from Hokan 'AI'.");
 
         UnflaggedOption opt = new UnflaggedOption(ARG_PROMPT)
                 .setList(true)
@@ -32,16 +36,16 @@ public class HalCmd extends AbstractCmd {
 
     }
 
-    /*    @Override
-        public List<HandlerAlias> getAliases() {
-            List<HandlerAlias> list = new ArrayList<>();
-            list.add(createWithArgsAlias("!hal", "!translate"));
-            return list;
-        }
-    */
+    @Override
+    public List<HandlerAlias> getAliases(String botName) {
+        List<HandlerAlias> list = new ArrayList<>();
+        list.add(createToBotAliasWithArgs(botName, "!hokan"));
+        return list;
+    }
+
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
-        AiResponse aiResponse = doServiceRequest(request, results, ServiceRequestType.AiService);
+        AiResponse aiResponse = doServiceRequestMethods(request, results, ServiceRequestType.AiService);
         if (aiResponse.getStatus().startsWith("NOK")) {
             return "Something Went Wrong: " + aiResponse.getStatus();
         }

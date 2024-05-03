@@ -34,7 +34,7 @@ public class CalculatorCmd extends AbstractCmd {
     }
 
     @Override
-    public List<HandlerAlias> getAliases() {
+    public List<HandlerAlias> getAliases(String botName) {
         List<HandlerAlias> list = new ArrayList<>();
         list.add(createWithArgsAlias("!calc", "!calculator"));
         return list;

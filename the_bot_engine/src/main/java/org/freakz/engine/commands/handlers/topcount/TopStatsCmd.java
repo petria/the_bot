@@ -57,7 +57,7 @@ public class TopStatsCmd extends AbstractCmd {
     }
 
     @Override
-    public List<HandlerAlias> getAliases() {
+    public List<HandlerAlias> getAliases(String botName) {
         List<HandlerAlias> list = new ArrayList<>();
         list.add(createAlias("!myglugga", "!topstats me glugga"));
         return list;

@@ -3,7 +3,9 @@ package org.freakz.engine.services.ai;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
-import org.freakz.engine.services.api.*;
+import org.freakz.engine.services.api.AbstractService;
+import org.freakz.engine.services.api.ServiceRequest;
+import org.freakz.engine.services.api.ServiceResponse;
 import org.jibble.jmegahal.JMegaHal;
 
 import java.io.File;
@@ -20,7 +22,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
 
 @Slf4j
-@ServiceMessageHandler(ServiceRequestType = ServiceRequestType.AiService)
+//@ServiceMessageHandler(ServiceRequestType = ServiceRequestType.AiService)
 public class AiService extends AbstractService {
 
 

@@ -19,9 +19,9 @@ import java.util.*;
 public class CommandHandlerLoader {
 
 
-    public CommandHandlerLoader(String activeProfile) throws InitializeFailedException {
+    public CommandHandlerLoader(String activeProfile, String botName) throws InitializeFailedException {
         try {
-            initializeCommandHandlers(activeProfile);
+            initializeCommandHandlers(activeProfile, botName);
 
         } catch (Exception e) {
             throw new InitializeFailedException("Could not initialize command handlers correctly!");
@@ -34,7 +34,7 @@ public class CommandHandlerLoader {
     @Getter
     private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
-    public void initializeCommandHandlers(String activeProfile) throws Exception {
+    public void initializeCommandHandlers(String activeProfile, String botName) throws Exception {
         Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
         Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
@@ -62,7 +62,7 @@ public class CommandHandlerLoader {
             HokanCmd hokanCmd = (HokanCmd) o;
             setAdminCommandFlag(hokanCmd);
 
-            for (HandlerAlias handlerAlias : hokanCmd.getAliases()) {
+            for (HandlerAlias handlerAlias : hokanCmd.getAliases(botName)) {
                 this.handlerAliasMap.put(handlerAlias.getAlias(), handlerAlias);
             }
 

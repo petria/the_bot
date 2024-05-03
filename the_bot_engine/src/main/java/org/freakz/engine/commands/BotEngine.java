@@ -65,7 +65,7 @@ public class BotEngine {
         if (configService != null) {
             this.botName = configService.readBotConfig().getBotConfig().getBotName();
         }
-        this.commandHandlerLoader = new CommandHandlerLoader(configService.getActiveProfile());
+        this.commandHandlerLoader = new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
         this.wholeLineTriggers = new WholeLineTriggersImpl(this, openAiService);
     }
 
@@ -88,7 +88,7 @@ public class BotEngine {
         this.conversationsService.handleConversations(this, request);
 
         String replyMessage = null;
-        if (request.getCommand().startsWith("!")) {
+        if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
             replyMessage = parseAndExecute(request, user);
         }
         if (wholeLine != null) {

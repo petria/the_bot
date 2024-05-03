@@ -64,7 +64,7 @@ public abstract class AbstractCmd implements HokanCmd {
     }
 
     @Override
-    public List<HandlerAlias> getAliases() {
+    public List<HandlerAlias> getAliases(String botName) {
         return Collections.emptyList();
     }
 
@@ -75,6 +75,11 @@ public abstract class AbstractCmd implements HokanCmd {
     public HandlerAlias createWithArgsAlias(String alias, String target) {
         return HandlerAlias.builder().alias(alias).target(target).withArgs(true).build();
     }
+
+    public HandlerAlias createToBotAliasWithArgs(String botName, String target) {
+        return HandlerAlias.builder().alias(botName + ":").target(target).withArgs(true).build();
+    }
+
 
     public void setBotEngine(BotEngine botEngine) {
         this.botEngine = botEngine;
