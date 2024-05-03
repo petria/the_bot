@@ -22,7 +22,6 @@ public class OpenAiServiceTest {
 
         when(configService.readBotConfig()).thenReturn(theBotConfig);
         when(theBotConfig.getBotConfig()).thenReturn(botConfig);
-//
 
         OpenAiService service = new OpenAiService(configService);
         String s = service.queryAi("Pitäskö kaivaa kaljat kaapista?");
