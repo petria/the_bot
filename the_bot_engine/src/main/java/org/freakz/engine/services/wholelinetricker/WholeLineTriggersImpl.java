@@ -6,7 +6,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.services.ai.OpenAiService;
+import org.freakz.engine.functions.OpenAiService;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
 

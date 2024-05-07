@@ -1,15 +1,20 @@
-package org.freakz.engine.services.ai;
+package org.freakz.engine.functions;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
+import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.Generation;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.function.FunctionCallbackWrapper;
 import org.springframework.ai.openai.OpenAiChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -25,9 +30,10 @@ public class OpenAiService {
 
         var openAiApi = new OpenAiApi(openApiKey);
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .withModel("gpt-3.5-turbo")
+//                .withFunctions(Set.of("WeatherInfo"))
+                .withModel("gpt-4")
                 .withTemperature(0.4f)
-                .withMaxTokens(200)
+                .withMaxTokens(150)
                 .build();
 
         this.chatClient = new OpenAiChatClient(openAiApi, options);
@@ -55,6 +61,31 @@ public class OpenAiService {
         Generation generation = this.chatClient.call(prompt).getResult();
         log.debug("Query ai done, generation: {}", generation.toString());
         return generation.getOutput().getContent();
+    }
+
+    public String queryAiCityHelper(String message) {
+//        SystemMessage systemMessage = new SystemMessage("You are a helpful AI Assistant answering questions about cities around the world. You also provide answers to general questions.");
+        UserMessage userMessage = new UserMessage(message);
+
+        FunctionCallbackWrapper<WeatherService.Request, WeatherService.Response> weatherCallBack = FunctionCallbackWrapper.builder(new WeatherService())
+                .withName("WeatherInfo")
+                .withDescription("Get the weather in location")
+                .withResponseConverter((response) -> "" + response.current().temp_f())
+                .build();
+
+
+        FunctionCallbackWrapper<TimeService.Request, TimeService.Response> timeCallBack = FunctionCallbackWrapper.builder(new TimeService())
+                .withName("TimeInfo")
+                .withDescription("Get the time in location")
+                .withResponseConverter((response) -> response.time().timeNow())
+                .build();
+
+        var promptOptions = OpenAiChatOptions.builder()
+                .withFunctionCallbacks(List.of(weatherCallBack, timeCallBack)) // function code
+                .build();
+
+        ChatResponse response = chatClient.call(new Prompt(List.of(userMessage), promptOptions));
+        return response.getResult().getOutput().getContent();
     }
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)

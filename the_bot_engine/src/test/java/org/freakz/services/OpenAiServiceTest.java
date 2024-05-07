@@ -3,7 +3,7 @@ package org.freakz.services;
 import org.freakz.common.model.botconfig.BotConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.services.ai.OpenAiService;
+import org.freakz.engine.functions.OpenAiService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
