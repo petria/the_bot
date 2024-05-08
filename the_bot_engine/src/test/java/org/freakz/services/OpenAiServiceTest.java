@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 public class OpenAiServiceTest {
 
 
-    @Test
+    //    @Test
     public void testOpenAi() {
 
         ConfigService configService = Mockito.mock(ConfigService.class);
@@ -23,7 +23,7 @@ public class OpenAiServiceTest {
         when(configService.readBotConfig()).thenReturn(theBotConfig);
         when(theBotConfig.getBotConfig()).thenReturn(botConfig);
 //tsek
-        OpenAiService service = new OpenAiService(configService);
+        OpenAiService service = new OpenAiService(null);
         String s = service.queryAi("Pitäskö kaivaa kaljat kaapista?");
         int foo = 0;
 

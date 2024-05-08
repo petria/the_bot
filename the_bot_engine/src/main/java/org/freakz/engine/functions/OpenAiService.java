@@ -1,20 +1,19 @@
 package org.freakz.engine.functions;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.Generation;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.function.FunctionCallbackWrapper;
 import org.springframework.ai.openai.OpenAiChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -23,9 +22,9 @@ public class OpenAiService {
 
     private final OpenAiChatClient chatClient;
 
-    public OpenAiService(ConfigService configService) {
-
-        var openApiKey = configService.readBotConfig().getBotConfig().getOpenAiApiKey();
+    public OpenAiService(OpenAiChatClient chatClient) {
+        this.chatClient = chatClient;
+/*        var openApiKey = configService.readBotConfig().getBotConfig().getOpenAiApiKey();
         log.debug("Init OpenAI client: {}", openApiKey);
 
         var openAiApi = new OpenAiApi(openApiKey);
@@ -38,7 +37,7 @@ public class OpenAiService {
 
         this.chatClient = new OpenAiChatClient(openAiApi, options);
 
-        log.debug("Init OpenAI client done: {}", this.chatClient.toString());
+        log.debug("Init OpenAI client done: {}", this.chatClient.toString());*/
 
     }
 
@@ -56,11 +55,16 @@ public class OpenAiService {
 
 
     public String queryAi(String message) {
-        Prompt prompt = new Prompt(message);
+        SystemMessage systemMessage = new SystemMessage("You are helpful AI IRC bot which answers questions coming from IRC chat channels.");
         log.debug("Query ai: {}", message);
-        Generation generation = this.chatClient.call(prompt).getResult();
-        log.debug("Query ai done, generation: {}", generation.toString());
-        return generation.getOutput().getContent();
+        OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
+                .withFunctions(Set.of("currentWeatherFunction", "currentTimeFunction", "myCurrentLocationFunction"))
+                .build();
+        UserMessage userMessage = new UserMessage(message);
+        ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, userMessage), chatOptions));
+//        Generation generation = this.chatClient.call(prompt, chatOptions).getResult();
+//        log.debug("Query ai done, generation: {}", generation.toString());
+        return response.getResult().getOutput().getContent();
     }
 
     public String queryAiCityHelper(String message) {

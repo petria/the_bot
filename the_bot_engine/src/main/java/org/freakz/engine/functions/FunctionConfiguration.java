@@ -1,34 +1,38 @@
 package org.freakz.engine.functions;
 
-import org.springframework.ai.model.function.FunctionCallback;
-import org.springframework.ai.model.function.FunctionCallbackWrapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Description;
+
+import java.util.function.Function;
 
 @Configuration
+@Slf4j
 public class FunctionConfiguration {
 
 //    private final WeatherConfigProperties props;
 
     public FunctionConfiguration() {
-//        this.props = props;
+
     }
 
-/*    @Bean
+    @Bean
     @Description("Get the current weather conditions for the given city.")
     public Function<WeatherService.Request,WeatherService.Response> currentWeatherFunction() {
         return new WeatherService();
-    }*/
-
-    @Bean
-    public FunctionCallback weatherFunctionInfo() {
-
-        return FunctionCallbackWrapper.builder(new WeatherService())
-                .withName("WeatherInfo")
-                .withDescription("Get the weather in location")
-                .withResponseConverter((response) -> "" + response.current().temp_f())
-                .build();
     }
 
+    @Bean
+    @Description("Get the current local time and date.")
+    public Function<TimeService.Request, TimeService.Response> currentTimeFunction() {
+        return new TimeService();
+    }
+
+    @Bean
+    @Description("Get the current physical location of the AI bot.")
+    public Function<MyLocationService.Request, MyLocationService.Response> myCurrentLocationFunction() {
+        return new MyLocationService();
+    }
 
 }

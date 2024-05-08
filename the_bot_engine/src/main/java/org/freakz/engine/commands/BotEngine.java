@@ -210,9 +210,7 @@ public class BotEngine {
                 log.error("Sending reply failed: {}", ex.getMessage());
             }
             return reply;
-
         }
-
     }
 
 
