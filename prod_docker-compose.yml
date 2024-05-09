@@ -5,6 +5,7 @@ services:
     build: ./the_bot_engine
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
+      - /home/hokan/the_bot/config:/config
     ports:
       - "8100:8100"
     environment:
@@ -16,6 +17,7 @@ services:
     build: ./the_bot_io
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
+      - /home/hokan/the_bot/config:/config
     ports:
       - "8090:8090"
     environment:
