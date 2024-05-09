@@ -1,6 +1,7 @@
 package org.freakz.engine.functions;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.engine.services.foreca.ForecaWeatherService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
@@ -12,15 +13,16 @@ import java.util.function.Function;
 public class FunctionConfiguration {
 
 //    private final WeatherConfigProperties props;
+private final ForecaWeatherService forecaWeatherService;
 
-    public FunctionConfiguration() {
-
+    public FunctionConfiguration(ForecaWeatherService forecaWeatherService) {
+        this.forecaWeatherService = forecaWeatherService;
     }
 
     @Bean
     @Description("Get the current weather conditions for the given city.")
     public Function<WeatherService.Request,WeatherService.Response> currentWeatherFunction() {
-        return new WeatherService();
+        return new WeatherService(this.forecaWeatherService);
     }
 
     @Bean

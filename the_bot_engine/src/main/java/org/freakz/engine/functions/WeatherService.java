@@ -1,8 +1,11 @@
 package org.freakz.engine.functions;
 
+import com.martiansoftware.jsap.JSAPResult;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.engine.dto.ForecaResponse;
+import org.freakz.engine.services.api.ServiceRequest;
+import org.freakz.engine.services.foreca.ForecaWeatherService;
 
-import java.time.LocalDateTime;
 import java.util.function.Function;
 
 /*
@@ -12,29 +15,36 @@ import java.util.function.Function;
 @Slf4j
 public class WeatherService implements Function<WeatherService.Request, WeatherService.Response> {
 
-//    private final RestClient restClient;
-//    private final WeatherConfigProperties weatherProps;
+    private final ForecaWeatherService forecaWeatherService;
 
-    public WeatherService() {
-//        this.weatherProps = props;
-//        log.debug("Weather API URL: {}", weatherProps.apiUrl());
-//        log.debug("Weather API Key: {}", weatherProps.apiKey());
-//        this.restClient = RestClient.create(weatherProps.apiUrl());
+    public WeatherService(ForecaWeatherService forecaWeatherService) {
         log.debug("Init!");
+        this.forecaWeatherService = forecaWeatherService;
+    }
+
+    static class FakeJSAPResults extends JSAPResult {
+        private final String result;
+
+        public FakeJSAPResults(String result) {
+            this.result = result;
+        }
+
+        @Override
+        public String getString(String s) {
+            return result;
+        }
     }
 
     @Override
     public Response apply(Request weatherRequest) {
         log.info("Weather Request: {}", weatherRequest);
-/*        Response response = restClient.get()
-                .uri("/current.json?key={key}&q={q}", weatherProps.apiKey(), weatherRequest.city())
-                .retrieve()
-                .body(Response.class);*/
-        Long lat = 10L;
-        Long lon = 20L;
-        Location location = new Location("Oulu", "Pohjois-Pohjanmaa", "Nevada", lat, lon);
-        Current current = new Current("42.3°C", new Condition("Tuulee"), "5m/s", "90%");
-        Response response = new Response(location, current, new Time(LocalDateTime.now().toString()));
+
+        ServiceRequest request = ServiceRequest.builder().build();
+        JSAPResult results = new FakeJSAPResults(weatherRequest.city());
+        request.setResults(results);
+
+        ForecaResponse forecaResponse = forecaWeatherService.handleForecaCmdServiceRequest(request);
+        Response response = new Response(forecaResponse);
         log.info("Weather API Response: {}", response);
         return response;
     }
@@ -43,8 +53,9 @@ public class WeatherService implements Function<WeatherService.Request, WeatherS
     public record Request(String city) {
     }
 
-    public record Response(Location location, Current current, Time time) {
+    public record Response(ForecaResponse response) {
     }
+//    public record Response(Location location, Current current, Time time) {}
 
     public record Time(String timeNow) {
     }

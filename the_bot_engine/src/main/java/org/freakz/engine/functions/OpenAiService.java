@@ -7,7 +7,6 @@ import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.function.FunctionCallbackWrapper;
 import org.springframework.ai.openai.OpenAiChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
@@ -67,30 +66,6 @@ public class OpenAiService {
         return response.getResult().getOutput().getContent();
     }
 
-    public String queryAiCityHelper(String message) {
-//        SystemMessage systemMessage = new SystemMessage("You are a helpful AI Assistant answering questions about cities around the world. You also provide answers to general questions.");
-        UserMessage userMessage = new UserMessage(message);
-
-        FunctionCallbackWrapper<WeatherService.Request, WeatherService.Response> weatherCallBack = FunctionCallbackWrapper.builder(new WeatherService())
-                .withName("WeatherInfo")
-                .withDescription("Get the weather in location")
-                .withResponseConverter((response) -> "" + response.current().temp_f())
-                .build();
-
-
-        FunctionCallbackWrapper<TimeService.Request, TimeService.Response> timeCallBack = FunctionCallbackWrapper.builder(new TimeService())
-                .withName("TimeInfo")
-                .withDescription("Get the time in location")
-                .withResponseConverter((response) -> response.time().timeNow())
-                .build();
-
-        var promptOptions = OpenAiChatOptions.builder()
-                .withFunctionCallbacks(List.of(weatherCallBack, timeCallBack)) // function code
-                .build();
-
-        ChatResponse response = chatClient.call(new Prompt(List.of(userMessage), promptOptions));
-        return response.getResult().getOutput().getContent();
-    }
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
     public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
