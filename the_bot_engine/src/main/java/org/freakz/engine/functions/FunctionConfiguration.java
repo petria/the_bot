@@ -37,4 +37,10 @@ private final ForecaWeatherService forecaWeatherService;
         return new MyLocationService();
     }
 
+    @Bean
+    @Description("Get information about live IRC chat network connection where AI bot is connected to.")
+    public Function<IrcInfoService.Request, IrcInfoService.Response> ircChatInfoFunction() {
+        return new IrcInfoService();
+    }
+
 }

@@ -1,6 +1,8 @@
 package org.freakz.engine.functions;
 
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.engine.commands.util.CommandArgs;
+import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.ai.chat.ChatResponse;
@@ -20,24 +22,11 @@ import java.util.Set;
 public class OpenAiService {
 
     private final OpenAiChatClient chatClient;
+    private final ConfigService configService;
 
-    public OpenAiService(OpenAiChatClient chatClient) {
+    public OpenAiService(OpenAiChatClient chatClient, ConfigService configService) {
         this.chatClient = chatClient;
-/*        var openApiKey = configService.readBotConfig().getBotConfig().getOpenAiApiKey();
-        log.debug("Init OpenAI client: {}", openApiKey);
-
-        var openAiApi = new OpenAiApi(openApiKey);
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-//                .withFunctions(Set.of("WeatherInfo"))
-                .withModel("gpt-4")
-                .withTemperature(0.4f)
-                .withMaxTokens(150)
-                .build();
-
-        this.chatClient = new OpenAiChatClient(openAiApi, options);
-
-        log.debug("Init OpenAI client done: {}", this.chatClient.toString());*/
-
+        this.configService = configService;
     }
 
     public void testImageGeneration() {
@@ -54,10 +43,10 @@ public class OpenAiService {
 
 
     public String queryAi(String message) {
-        SystemMessage systemMessage = new SystemMessage("You are helpful AI IRC bot which answers questions coming from IRC chat channels.");
+        SystemMessage systemMessage = new SystemMessage("You are helpful AI chat bot which answers questions coming from chat text channels. You are connected to IRC, Discord and Telegram networks. Your name in the chat is " + configService.readBotConfig().getBotConfig().getBotName());
         log.debug("Query ai: {}", message);
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .withFunctions(Set.of("currentWeatherFunction", "currentTimeFunction", "myCurrentLocationFunction"))
+                .withFunctions(Set.of("currentWeatherFunction", "currentTimeFunction", "myCurrentLocationFunction", "ircChatInfoFunction"))
                 .build();
         UserMessage userMessage = new UserMessage(message);
         ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, userMessage), chatOptions));
@@ -71,7 +60,11 @@ public class OpenAiService {
     public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
         AiResponse aiResponse = AiResponse.builder().build();
         aiResponse.setStatus("OK: AI!");
-        aiResponse.setResult(queryAi(request.getEngineRequest().getMessage()));
+
+        String message = request.getEngineRequest().getMessage();
+        CommandArgs args = new CommandArgs(message);
+        String queryMessage = args.joinArgs(0);
+        aiResponse.setResult(queryAi(queryMessage));
         return aiResponse;
     }
 
