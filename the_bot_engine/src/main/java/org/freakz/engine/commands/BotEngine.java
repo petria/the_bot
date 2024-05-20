@@ -184,7 +184,7 @@ public class BotEngine {
         if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
             //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
             countInterceptor.computeCount("OUT: commandHandler");
-            return null;
+            return reply;
         } else {
             Message message
                     = Message.builder()

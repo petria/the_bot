@@ -15,7 +15,7 @@ public class MyLocationService implements Function<MyLocationService.Request, My
     public Response apply(Request locationRequest) {
         log.info("Location Request: {}", locationRequest);
         Response response = new Response(new MyLocation("Hetzner datacenter"));
-        log.info("Time API Response: {}", response);
+        log.info("Location API Response: {}", response);
         return response;
     }
 
