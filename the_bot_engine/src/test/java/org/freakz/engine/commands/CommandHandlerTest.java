@@ -13,10 +13,13 @@ import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -53,8 +56,14 @@ public class CommandHandlerTest {
 
     }
 
-    //    @Test
+    @Test
     public void test_if_init_parameters_not_implemented_exception_is_thrown() throws Exception {
+        Date date = new Date(1704468825172L);
+        //                   1716742800172L
+        Date date2 = new Date(1716728400172L);
+        LocalDateTime localDateTime = LocalDateTime.of(2024, 5, 26, 13, 0);
+        long epoc = localDateTime.toEpochSecond(ZoneOffset.of("Z"));
+
         String command = "!TestNoInitParams";
         when(hokanServices.doServiceRequest(any(), any())).thenReturn(getMockServiceAnswer());
 

@@ -8,6 +8,7 @@ import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRespon
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
+import org.freakz.io.connections.JoinedChannelContainer;
 import org.freakz.io.mappers.DataToDTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -34,9 +35,15 @@ public class ConnectionManagerController {
     public ResponseEntity<?> getConnectionMap() {
         Map<Integer, BotConnection> connectionMap = connectionManager.getConnectionMap();
         GetConnectionMapResponse response = mapper.toGetConnectionMapResponse(connectionMap);
-        //new GetConnectionMapResponse();
-//        response.setConnectionMap(connectionMap);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/get_joined_channels_map")
+    public ResponseEntity<?> getJoinedChannelsMap() {
+//        Map<Integer, BotConnection> connectionMap = connectionManager.getConnectionMap();
+        Map<String, JoinedChannelContainer> joinedChannelsMap = connectionManager.getJoinedChannelsMap();
+//        GetConnectionMapResponse response = mapper.toGetConnectionMapResponse(connectionMap);
+        return ResponseEntity.ok(joinedChannelsMap);
     }
 
     @PostMapping("/get_channel_users_by_target_alias")

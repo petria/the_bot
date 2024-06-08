@@ -3,6 +3,7 @@ package org.freakz.io.connections;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.botconfig.TelegramConfig;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.users.User;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -13,6 +14,9 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 @Slf4j
@@ -26,6 +30,25 @@ public class TelegramConnection extends BotConnection {
     public TelegramConnection(EventPublisher eventPublisher) {
         super();
         this.publisher = eventPublisher;
+    }
+
+    @Override
+    public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
+        log.debug("Get user for: {}", targetAlias);
+        List<ChannelUser> channelUsers = new ArrayList<>();
+        return channelUsers;
+        /*
+                    try {
+//                getMe();
+                BotApiMethod<? extends Serializable> method= new GetChat("-907862942");
+
+                Serializable serializable = sendApiMethod(method);
+                int foo = 0;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+         */
     }
 
     @Override
@@ -54,7 +77,7 @@ public class TelegramConnection extends BotConnection {
             if (this.connectionManager != null) {
                 this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
             }
-            bot.execute(sendMessage);
+            this.bot.execute(sendMessage);
         } catch (TelegramApiException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -68,11 +91,10 @@ public class TelegramConnection extends BotConnection {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
         this.connectionManager = connectionManager;
-        bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
+        this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         //botsApi.
         botsApi.registerBot(bot);
-
 
     }
 
@@ -97,6 +119,7 @@ public class TelegramConnection extends BotConnection {
         }
 
         private String downloadPhoto(PhotoSize photoSize) {
+
             try {
                 GetFile getFile = new GetFile();
                 getFile.setFileId(photoSize.getFileId());

@@ -6,6 +6,8 @@ the chat networks.
 
 If unsure simply state that you don't know the answer.
 
+Your answer must not be longer that {answerMaxLengthCharacters} characters long.
+
 QUESTION:
 {input}
 

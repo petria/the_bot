@@ -5,6 +5,7 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
+import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -38,9 +39,12 @@ public class OpenAiService {
     private final OpenAiChatClient chatClient;
     private final ConfigService configService;
 
-    public OpenAiService(OpenAiChatClient chatClient, ConfigService configService) {
+    private final ConnectionManagerService connectionManagerService;
+
+    public OpenAiService(OpenAiChatClient chatClient, ConfigService configService, ConnectionManagerService connectionManagerService) {
         this.chatClient = chatClient;
         this.configService = configService;
+        this.connectionManagerService = connectionManagerService;
     }
 
     public void testImageGeneration() {
@@ -68,7 +72,8 @@ public class OpenAiService {
         return response.getResult().getOutput().getContent();
     }
 
-    public String queryAiWithTemplate(String message, String network, String channel, String sentByNick, String sentByRealName) {
+    public String queryAiWithTemplate(String message, String network, String channel, String sentByNick, String sentByRealName, ServiceRequest request) {
+
 
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(hokanSystemTemplate);
         Map<String, Object> systemPromptParameters = new HashMap<>();
@@ -81,12 +86,23 @@ public class OpenAiService {
 
         PromptTemplate promptTemplate = new PromptTemplate(hokanPromptTemplate);
         Map<String, Object> promptParameters = new HashMap<>();
+
+        switch (request.getEngineRequest().getNetwork()) {
+            case "IRCNet":
+                if (request.getEngineRequest().isPrivateChannel()) {
+                    promptParameters.put("answerMaxLengthCharacters", 2500);
+                } else {
+                    promptParameters.put("answerMaxLengthCharacters", 450);
+                }
+                break;
+        }
+
         promptParameters.put("input", message);
         promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
         Message promptMessage = promptTemplate.createMessage(promptParameters);
 
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .withMaxTokens(150)
+
                 .withFunctions(Set.of("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")) // "currentTimeFunction",
                 .build();
 
@@ -97,6 +113,9 @@ public class OpenAiService {
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
     public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
+
+//        GetConnectionMapResponse connectionsMap = connectionManagerService.getConnectionsMap();
+
         AiResponse aiResponse = AiResponse.builder().build();
         aiResponse.setStatus("OK: AI!");
 
@@ -112,7 +131,7 @@ public class OpenAiService {
 //        String channel = request.getEngineRequest().get
 
 
-        String queryResponse = queryAiWithTemplate(queryMessage, network, channel, sentByNick, sentByRealName);
+        String queryResponse = queryAiWithTemplate(queryMessage, network, channel, sentByNick, sentByRealName, request);
         aiResponse.setResult(queryResponse);
         return aiResponse;
     }

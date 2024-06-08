@@ -1,6 +1,6 @@
 package org.freakz.io.connections;
 
-class JoinedChannelContainer {
+public class JoinedChannelContainer {
     public BotConnection connection;
     public BotConnectionChannel channel;
 

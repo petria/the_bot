@@ -35,7 +35,7 @@ public class EngineRequest {
     }
 
     public boolean isPrivateChannel() {
-        return false;
+        return isPrivateChannel;
     }
 
 

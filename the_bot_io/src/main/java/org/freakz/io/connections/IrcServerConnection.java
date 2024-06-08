@@ -15,6 +15,7 @@ import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.event.channel.*;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
+import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.kitteh.irc.client.library.util.Cutter;
 
@@ -117,9 +118,16 @@ public class IrcServerConnection extends BotConnection {
     }
 
     @Handler
+    public void onPrivateMessageEvent(PrivateMessageEvent event) {
+        log.debug("Got private msg: {}", event.getMessage());
+        String echoToAlias = "PRIVATE-" + event.getActor().getNick();
+        publisher.publishEvent(this, event, echoToAlias);
+    }
+
+    @Handler
     public void onChannelMessageEvent(ChannelMessageEvent event) throws BotIOException {
         this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
-        log.debug("Got msg: {}", event.getMessage());
+        log.debug("Got channel msg: {}", event.getMessage());
         org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
         String echoToAlias = null;
         if (channel != null) {
@@ -205,19 +213,28 @@ public class IrcServerConnection extends BotConnection {
 
     @Override
     public void sendMessageTo(Message message) {
+        String nick = null;
+        if (message.getTarget().startsWith("PRIVATE-")) {
+            nick = message.getTarget().replaceFirst("PRIVATE-", "");
+        }
 
         Optional<Channel> channel = client.getChannel(message.getTarget());
-        if (channel.isPresent()) {
+        if (channel.isPresent() || nick != null) {
             Cutter messageCutter = client.getMessageCutter();
             List<String> split = messageCutter.split(message.getMessage(), 400);
             for (String line : split) {
-                String splitted[] = line.split("\n");
+                String[] splitted = line.split("\n");
                 for (String splitLine : splitted) {
-                    this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
-                    channel.get().sendMessage(splitLine);
-                    publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
-                    if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
-                        checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
+                    if (nick != null) {
+                        client.sendMessage(nick, splitLine);
+                    } else {
+                        this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
+                        channel.get().sendMessage(splitLine);
+                        publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
+                        if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
+                            checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
+                        }
+
                     }
                 }
             }

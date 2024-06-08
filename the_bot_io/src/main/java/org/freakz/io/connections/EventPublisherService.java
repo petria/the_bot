@@ -17,6 +17,7 @@ import org.freakz.io.service.MessageFeederService;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
+import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -57,6 +58,7 @@ public class EventPublisherService implements EventPublisher {
                 .timestamp(System.currentTimeMillis())
                 .command(message)
                 .replyTo(replyTo)
+                .isPrivateChannel(echoToAlias.startsWith("PRIVATE-"))
                 .fromConnectionId(connection.getId())
                 .fromSender(sender)
                 .fromSenderId(senderId)
@@ -100,6 +102,30 @@ public class EventPublisherService implements EventPublisher {
     }
 
 
+    private org.freakz.common.model.users.User publishIrcPrivateEvent(BotConnection connection, PrivateMessageEvent event, String echoToAlias) {
+        log.debug("Publish IRC private event: {}", event);
+        Message msg = Message.builder()
+                .messageSource(MessageSource.IRC_PRIVATE_MESSAGE)
+                .time(LocalDateTime.now())
+                .sender(event.getActor().getNick())
+                .target(echoToAlias)
+                .message(event.getMessage())
+                .build();
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                log.debug("send async");
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), null, msg.getSender(), echoToAlias);
+                log.debug("send DONE");
+            }
+        });
+        t.start();
+
+        return new org.freakz.common.model.users.User();
+
+    }
+
     private org.freakz.common.model.users.User publishIrcEvent(BotConnection connection, ChannelMessageEvent event, String echoToAlias) {
         log.debug("Publish IRC event: {}", event);
         Message msg = Message.builder()
@@ -109,8 +135,7 @@ public class EventPublisherService implements EventPublisher {
                 .target(event.getChannel().getName())
                 .message(event.getMessage())
                 .build();
-//        int size = messageFeederService.insertMessage(msg);
-//        log.debug("Feed size after insert: {}", size);
+
         logMessage(MessageSource.IRC_MESSAGE, connection.getNetwork(), event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
 
         Thread t = new Thread(new Runnable() {
@@ -204,7 +229,11 @@ Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/10
     public org.freakz.common.model.users.User publishEvent(BotConnection connection, Object source, String echoToAlias) {
         switch (connection.getType()) {
             case IRC_CONNECTION:
-                return publishIrcEvent(connection, (ChannelMessageEvent) source, echoToAlias);
+                if (source instanceof PrivateMessageEvent) {
+                    return publishIrcPrivateEvent(connection, (PrivateMessageEvent) source, echoToAlias);
+                } else {
+                    return publishIrcEvent(connection, (ChannelMessageEvent) source, echoToAlias);
+                }
             case DISCORD_CONNECTION:
                 return publishDiscordEvent(connection, (MessageCreateEvent) source, echoToAlias);
             case TELEGRAM_CONNECTION:
