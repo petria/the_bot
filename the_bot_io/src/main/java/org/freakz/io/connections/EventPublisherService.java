@@ -52,13 +52,17 @@ public class EventPublisherService implements EventPublisher {
     }
 
     private org.freakz.common.model.users.User publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId, String echoToAlias) {
+        boolean isPrivateChannel = false;
+        if (echoToAlias != null && echoToAlias.startsWith("PRIVATE-")) {
+            isPrivateChannel = true;
+        }
         EngineRequest request
                 = EngineRequest.builder()
                 .fromChannelId(channelId)
                 .timestamp(System.currentTimeMillis())
                 .command(message)
                 .replyTo(replyTo)
-                .isPrivateChannel(echoToAlias.startsWith("PRIVATE-"))
+                .isPrivateChannel(isPrivateChannel)
                 .fromConnectionId(connection.getId())
                 .fromSender(sender)
                 .fromSenderId(senderId)

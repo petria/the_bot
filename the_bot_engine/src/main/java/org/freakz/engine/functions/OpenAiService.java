@@ -95,6 +95,8 @@ public class OpenAiService {
                     promptParameters.put("answerMaxLengthCharacters", 450);
                 }
                 break;
+            default:
+                promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
         }
 
         promptParameters.put("input", message);
