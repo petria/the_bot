@@ -92,7 +92,7 @@ public class OpenAiService {
                 if (request.getEngineRequest().isPrivateChannel()) {
                     promptParameters.put("answerMaxLengthCharacters", 2500);
                 } else {
-                    promptParameters.put("answerMaxLengthCharacters", 450);
+                    promptParameters.put("answerMaxLengthCharacters", 400);
                 }
                 break;
             default:

@@ -475,7 +475,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 //        checkPerkeleVittu(eRequest);
         sb.append(checkJoulu(eRequest));
 //        checkJuhannus(eRequest);
-        checkPitasko(eRequest);
+//        checkPitasko(eRequest);
 //        checkSpede(eRequest);
 //        checkSilli(eRequest);
 //        checkOlisko(eRequest);
