@@ -6,14 +6,10 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
-import org.springframework.ai.chat.ChatResponse;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
-import org.springframework.ai.openai.OpenAiChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -21,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,41 +31,20 @@ public class OpenAiService {
     @Value("classpath:/prompts/hokan-system-template.st")
     private Resource hokanSystemTemplate;
 
-    private final OpenAiChatClient chatClient;
+    //    private final OpenAiChatClient chatClient;
+    private final ChatClient chatClient;
     private final ConfigService configService;
 
     private final ConnectionManagerService connectionManagerService;
 
-    public OpenAiService(OpenAiChatClient chatClient, ConfigService configService, ConnectionManagerService connectionManagerService) {
-        this.chatClient = chatClient;
+    public OpenAiService(ChatClient.Builder builder, ConfigService configService, ConnectionManagerService connectionManagerService) {
+        ChatClient chatClient1;
+        chatClient1 = chatClient1 = builder.build();
+        this.chatClient = chatClient1;
         this.configService = configService;
         this.connectionManagerService = connectionManagerService;
     }
 
-    public void testImageGeneration() {
-/*        ImageResponse response = openaiImageClient.call(
-                new ImagePrompt("A light cream colored mini golden doodle",
-                        OpenAiImageOptions.builder()
-                                .withQuality("hd")
-                                .withN(4)
-                                .withHeight(1024)
-                                .withWidth(1024).build())
-
-        );*/
-    }
-
-
-    public String queryAi(String message) {
-        SystemMessage systemMessage = new SystemMessage("You are helpful AI chat bot which answers questions coming from chat text channels. You are connected to IRC, Discord and Telegram networks. Your name in the chat is " + configService.readBotConfig().getBotConfig().getBotName());
-        log.debug("Query ai: {}", message);
-        OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .withFunctions(Set.of("currentWeatherFunction", "currentTimeFunction", "myCurrentLocationFunction", "ircChatInfoFunction"))
-                .build();
-        UserMessage userMessage = new UserMessage(message);
-        ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, userMessage), chatOptions));
-
-        return response.getResult().getOutput().getContent();
-    }
 
     public String queryAiWithTemplate(String message, String network, String channel, String sentByNick, String sentByRealName, ServiceRequest request) {
 
@@ -108,9 +82,13 @@ public class OpenAiService {
                 .withFunctions(Set.of("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")) // "currentTimeFunction",
                 .build();
 
-        ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, promptMessage), chatOptions));
+        ChatClient.ChatClientRequest.CallResponseSpec call1 = chatClient.prompt().options(chatOptions).system(systemMessage.getContent()).user(promptMessage.getContent()).call();
+//        ChatClient.ChatClientPromptRequest prompt = chatClient.prompt(new Prompt(List.of(systemMessage, promptMessage)));
 
-        return response.getResult().getOutput().getContent();
+//        ChatClient.ChatClientRequest.CallPromptResponseSpec call = chatClient.prompt(new Prompt(List.of(systemMessage, promptMessage))).call();
+//        ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, promptMessage), chatOptions));
+
+        return call1.content();
     }
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)

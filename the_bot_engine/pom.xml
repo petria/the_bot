@@ -22,7 +22,7 @@
         <maven.compiler.target>21</maven.compiler.target>
 
         <spring-cloud.version>2023.0.0</spring-cloud.version>
-        <spring-ai.version>0.8.1</spring-ai.version>
+        <spring-ai.version>1.0.0-M1</spring-ai.version>
 
         <org.kitteh.irc.version>8.0.0</org.kitteh.irc.version>
         <org.javacord.version>3.8.0</org.javacord.version>

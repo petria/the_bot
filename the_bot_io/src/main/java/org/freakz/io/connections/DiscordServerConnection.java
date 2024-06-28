@@ -10,6 +10,7 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
@@ -153,6 +154,8 @@ public class DiscordServerConnection extends BotConnection {
         } catch (BotIOException e) {
             throw new RuntimeException(e);
         }
+
+        TextChannel discordChannel = event.getChannel();
 
         String channelStr = event.getChannel().toString();
         // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
