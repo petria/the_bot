@@ -68,7 +68,7 @@ public class DiscordServerConnection extends BotConnection {
 
                 org.freakz.common.model.botconfig.Channel ch = resolveByEchoTo(channel.getId());
                 if (ch == null) {
-                    log.error("No Channel config found with: " + channel);
+//                    log.error("No Channel config found with: " + channel);
                     continue;
                 }
 
@@ -106,9 +106,10 @@ public class DiscordServerConnection extends BotConnection {
         Channel channel = null;
         Set<Channel> channels = api.getChannels();
         for (Channel ch : channels) {
-            if (ch.asVoiceChannel().isPresent()) {
-                continue; // Skip voice channels;
+/*            if (ch.asVoiceChannel().isPresent()) {
+                continue;
             }
+            */
             String chId = "" + ch.getId();
             if (chId.equals(message.getId())) {
                 channel = ch;

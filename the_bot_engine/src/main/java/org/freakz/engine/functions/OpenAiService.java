@@ -7,10 +7,11 @@ import org.freakz.engine.dto.AiResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
-import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 @Slf4j
@@ -31,16 +31,16 @@ public class OpenAiService {
     @Value("classpath:/prompts/hokan-system-template.st")
     private Resource hokanSystemTemplate;
 
-    //    private final OpenAiChatClient chatClient;
     private final ChatClient chatClient;
     private final ConfigService configService;
 
     private final ConnectionManagerService connectionManagerService;
 
     public OpenAiService(ChatClient.Builder builder, ConfigService configService, ConnectionManagerService connectionManagerService) {
-        ChatClient chatClient1;
-        chatClient1 = chatClient1 = builder.build();
-        this.chatClient = chatClient1;
+        this.chatClient = builder
+                .defaultAdvisors(new MessageChatMemoryAdvisor(new InMemoryChatMemory()))
+                .defaultFunctions("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")
+                .build();
         this.configService = configService;
         this.connectionManagerService = connectionManagerService;
     }
@@ -76,17 +76,7 @@ public class OpenAiService {
         promptParameters.put("input", message);
         promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
         Message promptMessage = promptTemplate.createMessage(promptParameters);
-
-        OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-
-                .withFunctions(Set.of("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")) // "currentTimeFunction",
-                .build();
-
-        ChatClient.ChatClientRequest.CallResponseSpec call1 = chatClient.prompt().options(chatOptions).system(systemMessage.getContent()).user(promptMessage.getContent()).call();
-//        ChatClient.ChatClientPromptRequest prompt = chatClient.prompt(new Prompt(List.of(systemMessage, promptMessage)));
-
-//        ChatClient.ChatClientRequest.CallPromptResponseSpec call = chatClient.prompt(new Prompt(List.of(systemMessage, promptMessage))).call();
-//        ChatResponse response = chatClient.call(new Prompt(List.of(systemMessage, promptMessage), chatOptions));
+        ChatClient.ChatClientRequest.CallResponseSpec call1 = chatClient.prompt().system(systemMessage.getContent()).user(promptMessage.getContent()).call();
 
         return call1.content();
     }
@@ -94,7 +84,7 @@ public class OpenAiService {
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
     public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
 
-//        GetConnectionMapResponse connectionsMap = connectionManagerService.getConnectionsMap();
+//        GetConnectionMapResponse connectionsMap = connectionManagerService.getConnectionsMap(); TODO
 
         AiResponse aiResponse = AiResponse.builder().build();
         aiResponse.setStatus("OK: AI!");
@@ -107,9 +97,6 @@ public class OpenAiService {
         String channel = request.getEngineRequest().getNetwork();
         String sentByNick = request.getEngineRequest().getFromSender();
         String sentByRealName = request.getEngineRequest().getUser().getName();
-
-//        String channel = request.getEngineRequest().get
-
 
         String queryResponse = queryAiWithTemplate(queryMessage, network, channel, sentByNick, sentByRealName, request);
         aiResponse.setResult(queryResponse);
