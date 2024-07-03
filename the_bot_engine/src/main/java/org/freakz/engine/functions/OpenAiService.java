@@ -79,7 +79,7 @@ public class OpenAiService {
                 promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
         }
         String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
-
+        log.debug("Using AI chatId: {}", chatId);
         promptParameters.put("input", message);
         promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
         Message promptMessage = promptTemplate.createMessage(promptParameters);
@@ -109,7 +109,7 @@ public class OpenAiService {
         String queryMessage = args.joinArgs(0);
 
         String network = request.getEngineRequest().getNetwork();
-        String channel = request.getEngineRequest().getNetwork();
+        String channel = request.getEngineRequest().getReplyTo();
         String sentByNick = request.getEngineRequest().getFromSender();
         String sentByRealName = request.getEngineRequest().getUser().getName();
 
