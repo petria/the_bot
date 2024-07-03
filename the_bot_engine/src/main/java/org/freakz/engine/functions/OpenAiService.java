@@ -20,10 +20,14 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
+import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
+
 @Service
 @Slf4j
 @SpringServiceMethodHandler
 public class OpenAiService {
+
 
     @Value("classpath:/prompts/hokan-prompt-template.st")
     private Resource hokanPromptTemplate;
@@ -31,14 +35,17 @@ public class OpenAiService {
     @Value("classpath:/prompts/hokan-system-template.st")
     private Resource hokanSystemTemplate;
 
+    private final InMemoryChatMemory inMemoryChatMemory;
+
     private final ChatClient chatClient;
     private final ConfigService configService;
 
     private final ConnectionManagerService connectionManagerService;
 
     public OpenAiService(ChatClient.Builder builder, ConfigService configService, ConnectionManagerService connectionManagerService) {
+        this.inMemoryChatMemory = new InMemoryChatMemory();
         this.chatClient = builder
-                .defaultAdvisors(new MessageChatMemoryAdvisor(new InMemoryChatMemory()))
+                .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
                 .defaultFunctions("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")
                 .build();
         this.configService = configService;
@@ -47,7 +54,6 @@ public class OpenAiService {
 
 
     public String queryAiWithTemplate(String message, String network, String channel, String sentByNick, String sentByRealName, ServiceRequest request) {
-
 
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(hokanSystemTemplate);
         Map<String, Object> systemPromptParameters = new HashMap<>();
@@ -72,11 +78,20 @@ public class OpenAiService {
             default:
                 promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
         }
+        String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
 
         promptParameters.put("input", message);
         promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
         Message promptMessage = promptTemplate.createMessage(promptParameters);
-        ChatClient.ChatClientRequest.CallResponseSpec call1 = chatClient.prompt().system(systemMessage.getContent()).user(promptMessage.getContent()).call();
+        ChatClient.ChatClientRequest.CallResponseSpec call1
+                = chatClient.prompt()
+                .advisors(a -> a
+                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100)
+                )
+                .system(systemMessage.getContent())
+                .user(promptMessage.getContent())
+                .call();
 
         return call1.content();
     }
