@@ -9,7 +9,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.dto.AiResponse;
+import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.ArrayList;

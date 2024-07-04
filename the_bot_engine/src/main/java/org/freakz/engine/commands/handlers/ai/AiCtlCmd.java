@@ -8,6 +8,8 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
+import org.freakz.engine.dto.ai.AiCtrlResponse;
+import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +42,8 @@ public class AiCtlCmd extends AbstractCmd {
 
     @Override
     public String executeCommand(EngineRequest request, JSAPResult results) {
+        AiCtrlResponse aiResponse = doServiceRequestMethods(request, results, ServiceRequestType.AiCtrlService);
+
         return "TODO: AiCtrl";
     }
 
