@@ -3,6 +3,7 @@ package org.freakz.engine.functions;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.dto.ai.AiCtrlResponse;
 import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
@@ -119,10 +120,9 @@ public class OpenAiService {
     }
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
-    public <T extends ServiceResponse> AiResponse handleAiCtlServiceRequest(ServiceRequest request) {
-        AiResponse aiResponse = AiResponse.builder().build();
+    public <T extends ServiceResponse> AiCtrlResponse handleAiCtlServiceRequest(ServiceRequest request) {
+        AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();
         aiResponse.setStatus("OK: AiCtl!");
-
         return aiResponse;
     }
 }
