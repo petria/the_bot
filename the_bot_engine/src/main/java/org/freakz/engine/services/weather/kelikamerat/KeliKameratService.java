@@ -1,4 +1,4 @@
-package org.freakz.engine.services.kelikamerat;
+package org.freakz.engine.services.weather.kelikamerat;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.util.StringStuff;

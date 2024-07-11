@@ -1,4 +1,4 @@
-package org.freakz.engine.services.foreca;
+package org.freakz.engine.services.weather.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

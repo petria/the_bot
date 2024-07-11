@@ -2,9 +2,9 @@ package org.freakz.engine.functions;
 
 import com.martiansoftware.jsap.JSAPResult;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.engine.dto.ForecaResponse;
+import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.ServiceRequest;
-import org.freakz.engine.services.foreca.ForecaWeatherService;
+import org.freakz.engine.services.weather.foreca.ForecaWeatherService;
 
 import java.util.function.Function;
 

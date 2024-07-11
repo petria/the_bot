@@ -1,7 +1,7 @@
 package org.freakz.engine.functions;
 
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.engine.services.foreca.ForecaWeatherService;
+import org.freakz.engine.services.weather.foreca.ForecaWeatherService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;

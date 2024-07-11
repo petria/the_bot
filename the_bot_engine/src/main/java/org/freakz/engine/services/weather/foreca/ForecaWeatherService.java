@@ -1,4 +1,4 @@
-package org.freakz.engine.services.foreca;
+package org.freakz.engine.services.weather.foreca;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +8,7 @@ import org.freakz.common.model.foreca.ForecaSunUpDown;
 import org.freakz.common.model.foreca.ForecaWeatherData;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.CmpWeatherResponse;
-import org.freakz.engine.dto.ForecaResponse;
+import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +39,6 @@ public class ForecaWeatherService extends AbstractSpringService {
 
     public void initWithToCollectLinks(CachedLinks links) {
         forecaDataFetcher.setCachedLink(links);
-
     }
 
     public List<CountryCityLink> getMatchingCountryCityLinks(String place) {
@@ -145,7 +144,6 @@ public class ForecaWeatherService extends AbstractSpringService {
             response.setStatus("OK: data size " + forecaDataList.size());
 
         }
-
         return response;
     }
 

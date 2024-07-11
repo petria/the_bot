@@ -7,7 +7,7 @@ import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.dto.ForecaResponse;
+import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package org.freakz.engine.services.foreca;
+package org.freakz.engine.services.weather.foreca;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

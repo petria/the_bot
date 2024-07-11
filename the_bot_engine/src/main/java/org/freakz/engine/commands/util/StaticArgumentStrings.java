@@ -12,6 +12,7 @@ public class StaticArgumentStrings {
     public static final String ARG_ADD_OR_DEL = "AddOrDel";
     public static final String ARG_ALIAS = "Alias";
     public static final String ARG_AMOUNT = "Amount";
+    public static final String ARG_ASTRONOMY = "Astronomy";
     public static final String ARG_CHANNEL = "Channel";
     public static final String ARG_CHANNEL_ID = "ChannelId";
     public static final String ARG_CITY = "City";
