@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.engine.commands.HandlerAlias;
-import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
@@ -16,7 +15,7 @@ import java.util.List;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
 
-@HokanCommandHandler
+//@HokanCommandHandler
 @Slf4j
 public class ForecaCmd extends AbstractCmd {
 
@@ -60,8 +59,8 @@ public class ForecaCmd extends AbstractCmd {
     @Override
     public List<HandlerAlias> getAliases(String botName) {
         List<HandlerAlias> list = new ArrayList<>();
-        list.add(createWithArgsAlias("!saa", "!foreca"));
-        list.add(createWithArgsAlias("!sää", "!foreca"));
+//        list.add(createWithArgsAlias("!saa", "!foreca"));
+//        list.add(createWithArgsAlias("!sää", "!foreca"));
         return list;
     }
 

@@ -55,6 +55,11 @@ public class WeatherAPICmd extends AbstractCmd {
     @Override
     public List<HandlerAlias> getAliases(String botName) {
         List<HandlerAlias> list = new ArrayList<>();
+        list.add(createWithArgsAlias("!saa", "!weatherapi"));
+        list.add(createWithArgsAlias("!sää", "!weatherapi"));
+        list.add(createWithArgsAlias("!foreca", "!weatherapi"));
+        list.add(createWithArgsAlias("!keli", "!weatherapi"));
+
         return list;
     }
 
@@ -71,7 +76,7 @@ public class WeatherAPICmd extends AbstractCmd {
             String name = formatName(r, verbose);
             String feelsLike = formatFeelsLike(r, doFeelsLike);
             String astronomy = formatAstronomy(response.getAstronomyResponse(), doAstronomy);
-            return String.format("[%s] %s, %s°C%s%s", time, name, r.current().temp_c(), feelsLike, astronomy);
+            return String.format("%s: %s, %s°C%s%s", name, time, r.current().temp_c(), feelsLike, astronomy);
 
         } else {
             return response.getStatus();

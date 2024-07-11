@@ -19,22 +19,22 @@ public class WeatherAPIService {
 
     private final ConfigService configService;
     private final RestClient restClient;
-    private final String apiUrl = "http://api.weatherapi.com/v1";
-    private final String apiKey = "10dd82570c684d7b8b1114704240707";
+    private final String weatherApiUrl = "http://api.weatherapi.com/v1";
+    private final String weatherApiKey = "10dd82570c684d7b8b1114704240707";
 //    private final WeatherConfigProperties weatherProps;
 
     public WeatherAPIService(ConfigService configService) {
         this.configService = configService;
 
-        log.debug("Weather API URL: {}", apiUrl);
-        log.debug("Weather API Key: {}", apiKey);
-        this.restClient = RestClient.create(apiUrl);
+//        log.debug("Weather API URL: {}", apiUrl);
+//        log.debug("Weather API Key: {}", apiKey);
+        this.restClient = RestClient.create(weatherApiUrl);
 
     }
 
     private AstronomyResponse getAstronomyData(String query) {
         AstronomyResponse r = restClient.get()
-                .uri("/astronomy.json?key={key}&aqi=yes&alerts=yes&q={q}", apiKey, query)
+                .uri("/astronomy.json?key={key}&aqi=yes&alerts=yes&q={q}", weatherApiKey, query)
                 .retrieve()
                 .body(AstronomyResponse.class);
 
@@ -47,7 +47,7 @@ public class WeatherAPIService {
         String query = request.getResults().getString(ARG_PLACE).toLowerCase();
 
         ForecastResponse r = restClient.get()
-                .uri("/forecast.json?key={key}&aqi=yes&alerts=yes&q={q}", apiKey, query)
+                .uri("/forecast.json?key={key}&aqi=yes&alerts=yes&q={q}", weatherApiKey, query)
                 .retrieve()
                 .body(ForecastResponse.class);
 
