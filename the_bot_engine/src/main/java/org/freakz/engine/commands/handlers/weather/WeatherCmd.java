@@ -19,7 +19,7 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
 @HokanCommandHandler
 @Slf4j
-public class WeatherAPICmd extends AbstractCmd {
+public class WeatherCmd extends AbstractCmd {
 
 
     @Override
@@ -55,10 +55,10 @@ public class WeatherAPICmd extends AbstractCmd {
     @Override
     public List<HandlerAlias> getAliases(String botName) {
         List<HandlerAlias> list = new ArrayList<>();
-        list.add(createWithArgsAlias("!saa", "!weatherapi"));
-        list.add(createWithArgsAlias("!sää", "!weatherapi"));
-        list.add(createWithArgsAlias("!foreca", "!weatherapi"));
-        list.add(createWithArgsAlias("!keli", "!weatherapi"));
+        list.add(createWithArgsAlias("!saa", "!weather"));
+        list.add(createWithArgsAlias("!sää", "!weather"));
+        list.add(createWithArgsAlias("!foreca", "!weather"));
+        list.add(createWithArgsAlias("!keli", "!weather"));
 
         return list;
     }
