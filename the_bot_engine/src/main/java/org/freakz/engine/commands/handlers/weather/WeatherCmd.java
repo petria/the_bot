@@ -79,7 +79,7 @@ public class WeatherCmd extends AbstractCmd {
             return String.format("%s: %s, %s°C%s%s", name, time, r.current().temp_c(), feelsLike, astronomy);
 
         } else {
-            return response.getStatus();
+            return String.format("%s: %s", results.getString(ARG_PLACE), response.getErrorResponse().error().message());
         }
     }
 

@@ -1,10 +1,13 @@
 package org.freakz.engine.services.weather.weatherapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.weather.weatherapi.model.AstronomyResponse;
+import org.freakz.engine.services.weather.weatherapi.model.ErrorCode;
+import org.freakz.engine.services.weather.weatherapi.model.ErrorResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -45,19 +48,49 @@ public class WeatherAPIService {
     public <T extends ServiceResponse> WeatherAPIResponse handleForecaCmdServiceRequest(ServiceRequest request) {
 
         String query = request.getResults().getString(ARG_PLACE).toLowerCase();
+        try {
+            ForecastResponse r = restClient.get()
+                    .uri("/forecast.json?key={key}&aqi=yes&alerts=yes&q={q}", weatherApiKey, query)
+                    .retrieve()
+                    .body(ForecastResponse.class);
 
-        ForecastResponse r = restClient.get()
-                .uri("/forecast.json?key={key}&aqi=yes&alerts=yes&q={q}", weatherApiKey, query)
-                .retrieve()
-                .body(ForecastResponse.class);
+            WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().forecastResponseModel(r).build();
+            if (request.getResults().getBoolean(ARG_ASTRONOMY)) {
+                weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
+            }
+            weatherAPIResponse.setStatus("OK: WeatherAPI service");
 
-        WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().forecastResponseModel(r).build();
-        if (request.getResults().getBoolean(ARG_ASTRONOMY)) {
-            weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
+            return weatherAPIResponse;
+
+        } catch (Exception e) {
+            ErrorResponse errorResponse = getErrorFromException(e);
+            WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().build();
+            weatherAPIResponse.setStatus("NOK: fetching weather failed");
+            weatherAPIResponse.setErrorResponse(errorResponse);
+            return weatherAPIResponse;
         }
-        weatherAPIResponse.setStatus("OK: WeatherAPI service");
 
-        return weatherAPIResponse;
+    }
+
+    private ErrorResponse getErrorFromException(Exception e) {
+        ErrorResponse error;
+        try {
+            String msg = e.getMessage();
+            int idx1 = msg.indexOf("\"");
+            String json = msg.substring(idx1);
+            if (json.startsWith("\"") && json.endsWith("\"")) {
+                json = json.substring(1, json.length() - 1);
+                ObjectMapper mapper = new ObjectMapper();
+                error = mapper.readValue(json, ErrorResponse.class);
+                int foo = 0;
+            } else {
+                error = new ErrorResponse(new ErrorCode(-1, "Unknown error"));
+            }
+
+        } catch (Exception ex) {
+            error = new ErrorResponse(new ErrorCode(-1, "Unknown error"));
+        }
+        return error;
     }
 
 

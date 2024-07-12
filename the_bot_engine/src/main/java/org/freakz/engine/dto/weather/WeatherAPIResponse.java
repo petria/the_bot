@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.freakz.engine.services.api.ServiceResponse;
 import org.freakz.engine.services.weather.weatherapi.model.AstronomyResponse;
+import org.freakz.engine.services.weather.weatherapi.model.ErrorResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 
 @Builder
@@ -14,5 +15,6 @@ public class WeatherAPIResponse extends ServiceResponse {
 
     private ForecastResponse forecastResponseModel;
     private AstronomyResponse astronomyResponse;
+    private ErrorResponse errorResponse;
 
 }
