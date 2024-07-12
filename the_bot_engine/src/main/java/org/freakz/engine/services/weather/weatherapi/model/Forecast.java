@@ -1,4 +1,8 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
-public record Forecast() {
+import java.util.List;
+
+public record Forecast(
+        List<ForecastDay> forecastday
+) {
 }

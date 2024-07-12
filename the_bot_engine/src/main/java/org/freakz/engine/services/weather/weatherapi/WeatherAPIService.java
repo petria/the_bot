@@ -49,7 +49,7 @@ public class WeatherAPIService {
         String query = request.getResults().getString(ARG_PLACE).toLowerCase();
         try {
             ForecastResponse r = restClient.get()
-                    .uri("/forecast.json?key={key}&aqi=yes&alerts=yes&q={q}", weatherApiKey, query)
+                    .uri("/forecast.json?key={key}&aqi=yes&days=2&alerts=yes&q={q}", weatherApiKey, query)
                     .retrieve()
                     .body(ForecastResponse.class);
 
