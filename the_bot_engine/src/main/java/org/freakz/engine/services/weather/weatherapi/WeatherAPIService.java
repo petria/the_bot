@@ -22,17 +22,16 @@ public class WeatherAPIService {
 
     private final ConfigService configService;
     private final RestClient restClient;
-    private final String weatherApiUrl = "http://api.weatherapi.com/v1";
-    private final String weatherApiKey = "10dd82570c684d7b8b1114704240707";
-//    private final WeatherConfigProperties weatherProps;
 
-    public WeatherAPIService(ConfigService configService) {
+    private final String weatherApiUrl;
+    private final String weatherApiKey;
+
+
+    public WeatherAPIService(ConfigService configService, WeatherConfigProperties properties) {
         this.configService = configService;
-
-//        log.debug("Weather API URL: {}", apiUrl);
-//        log.debug("Weather API Key: {}", apiKey);
-        this.restClient = RestClient.create(weatherApiUrl);
-
+        this.weatherApiUrl = properties.apiUrl();
+        this.weatherApiKey = properties.apiKey();
+        this.restClient = RestClient.create(this.weatherApiUrl);
     }
 
     private AstronomyResponse getAstronomyData(String query) {
