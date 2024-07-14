@@ -83,11 +83,11 @@ public class WeatherAPIService {
                 error = mapper.readValue(json, ErrorResponse.class);
                 int foo = 0;
             } else {
-                error = new ErrorResponse(new ErrorCode(-1, "Unknown error"));
+                error = new ErrorResponse(new ErrorCode(-1, "Unknown error 1"));
             }
 
         } catch (Exception ex) {
-            error = new ErrorResponse(new ErrorCode(-1, "Unknown error"));
+            error = new ErrorResponse(new ErrorCode(-1, "Unknown error 2"));
         }
         return error;
     }
