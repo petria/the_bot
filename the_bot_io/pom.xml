@@ -23,6 +23,8 @@
         <org.kitteh.irc.version>8.0.0</org.kitteh.irc.version>
         <org.javacord.version>3.8.0</org.javacord.version>
         <telegrambots.version>6.8.0</telegrambots.version>
+        <com.ullink.slack.version>1.4.0</com.ullink.slack.version>
+
         <spring-cloud.version>2023.0.0</spring-cloud.version>
     </properties>
 
@@ -32,6 +34,18 @@
             <groupId>org.freakz</groupId>
             <artifactId>the_bot_common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.ullink.slack/simpleslackapi -->
+        <dependency>
+            <groupId>com.ullink.slack</groupId>
+            <artifactId>simpleslackapi</artifactId>
+            <version>${com.ullink.slack.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.slack.api</groupId>
+            <artifactId>bolt-jakarta-servlet</artifactId>
+            <version>1.40.2</version>
         </dependency>
 
 

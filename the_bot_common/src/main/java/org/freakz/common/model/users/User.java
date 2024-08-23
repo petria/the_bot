@@ -41,5 +41,7 @@ public class User extends DataNodeBase {
     @JsonProperty("discordId")
     private String discordId;
 
+    @JsonProperty("slackId")
+    private String slackId;
 
 }

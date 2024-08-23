@@ -17,9 +17,10 @@ import java.util.List;
 public class TheBotConfig {
 
     private BotConfig botConfig;
+    private SlackConfig slackConfig;
     private DiscordConfig discordConfig;
-
     private TelegramConfig telegramConfig;
+
     private List<IrcServerConfig> ircServerConfigs;
 
 }

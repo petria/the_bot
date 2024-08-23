@@ -2,6 +2,7 @@ package org.freakz.io;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.web.servlet.ServletComponentScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -12,6 +13,7 @@ import java.util.TimeZone;
 @EnableAsync
 @EnableFeignClients
 @EnableScheduling
+@ServletComponentScan
 public class SpringApplicationBotIo {
 
 
