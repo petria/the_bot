@@ -13,6 +13,10 @@ import java.util.List;
 @NoArgsConstructor
 public class SlackConfig {
 
+    private String slackToken;
+
+    private String botSlackUserId;
+
     private List<Channel> channelList;
 
     private boolean connectStartup;

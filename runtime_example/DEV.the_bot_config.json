@@ -2,6 +2,21 @@
   "botConfig": {
     "botName": "HokanDEVv"
   },
+  "slackConfig": {
+    "slackToken": "${SLACK_TOKEN_SECRET}",
+    "botSlackUserId": "U07HM8TK6P8",
+    "channelList": [
+      {
+        "id": "C07HWBR2PTN",
+        "description": "bot dev slack",
+        "name": "the-bot",
+        "type": "SERVER_TEXT_CHANNEL",
+        "echoToAlias": "SLACK-THE-BOT",
+        "echoToAliases": []
+      }
+    ],
+    "connectStartup": "true"
+  },
   "discordConfig": {
     "token": "${DISCORD_SECRET}",
     "channelList": [

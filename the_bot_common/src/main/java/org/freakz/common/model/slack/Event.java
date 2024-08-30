@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-class Event {
+public class Event {
     private String user;
     private String type;
     private String ts;

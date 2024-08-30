@@ -9,6 +9,8 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
+import org.freakz.common.model.slack.Event;
+import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.common.util.FeignUtils;
 import org.freakz.io.clients.EngineClient;
 import org.freakz.io.config.ConfigService;
@@ -176,6 +178,34 @@ public class EventPublisherService implements EventPublisher {
         return publishToEngine(connection, msg.getMessage(), update.getMessage().getFrom().getUserName(), msg.getTarget(), null, String.valueOf(userId), echoToAlias);
     }
 
+    private org.freakz.common.model.users.User publishSlackEvent(BotConnection connection, SlackEvent slackEvent, String echoToAlias) {
+        log.debug("Publish SLACK slackEvent: {}", slackEvent);
+
+        Event event = slackEvent.getEvent();
+        String message = event.getText();
+        Message msg = Message.builder()
+                .id("" + event.getChannel())
+                .messageSource(MessageSource.DISCORD_MESSAGE)
+                .time(LocalDateTime.now())
+                .sender(event.getUser())
+                .target(event.getChannel())
+                .message(message)
+                .build();
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                // publishToEngine(BotConnection connection, String message, String sender, String replyTo, Long channelId, String senderId, String echoToAlias)
+                log.debug("send async");
+                Long channelId = -1L;
+                String senderId = msg.getSender();
+                publishToEngine(connection, msg.getMessage(), msg.getSender(), msg.getTarget(), channelId, senderId, echoToAlias);
+                log.debug("send DONE");
+            }
+        });
+        t.start();
+        return new org.freakz.common.model.users.User();
+    }
 
     private org.freakz.common.model.users.User publishDiscordEvent(BotConnection connection, MessageCreateEvent event, String echoToAlias) {
         log.debug("Publish DISCORD event: {}", event);
@@ -242,8 +272,11 @@ Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/10
                 return publishDiscordEvent(connection, (MessageCreateEvent) source, echoToAlias);
             case TELEGRAM_CONNECTION:
                 return publishTelegramEvent(connection, (Update) source, echoToAlias);
+            case SLACK_CONNECTION:
+                return publishSlackEvent(connection, (SlackEvent) source, echoToAlias);
         }
         return null;
     }
+
 
 }

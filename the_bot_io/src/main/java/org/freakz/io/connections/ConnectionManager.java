@@ -120,7 +120,7 @@ public class ConnectionManager {
         log.debug(">> Connecting SLACK");
         if (theBotConfig.getSlackConfig().isConnectStartup()) {
             SlackConnection slackConnection = new SlackConnection();
-            slackConnection.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getSlackConfig(), slackEventsController);
+            slackConnection.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getSlackConfig(), slackEventsController, eventPublisher);
             addConnection(slackConnection);
         } else {
             log.warn("SLACK Startup connect disabled: {}", theBotConfig.getSlackConfig());

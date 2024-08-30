@@ -25,6 +25,11 @@ public class AccessService {
         User foundUser = null;
         for (User user : users) {
             switch (request.getNetwork()) {
+                case "Slack":
+                    if (request.getFromSenderId().equals(user.getSlackId())) {
+                        foundUser = user;
+                    }
+                    break;
                 case "BOT_WEB_CLIENT":
                     if (request.getFromSender().equals(user.getUsername())) {
                         foundUser = user;
