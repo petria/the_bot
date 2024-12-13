@@ -1,6 +1,3 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
-public record Astronomy(
-        Astro astro
-) {
-}
+public record Astronomy(Astro astro) {}

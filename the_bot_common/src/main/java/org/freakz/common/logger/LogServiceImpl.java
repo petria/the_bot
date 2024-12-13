@@ -16,65 +16,67 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-
 @Slf4j
 public class LogServiceImpl implements LogService {
 
-    private final String logDir;
+  private final String logDir;
 
-    private Map<String, Logger> channelLoggers = new HashMap<>();
+  private Map<String, Logger> channelLoggers = new HashMap<>();
 
-    public LogServiceImpl(String logDir) {
-        this.logDir = logDir;
-        log.debug("Initializing message logger, log dir: {}", this.logDir);
+  public LogServiceImpl(String logDir) {
+    this.logDir = logDir;
+    log.debug("Initializing message logger, log dir: {}", this.logDir);
+  }
+
+  @Override
+  public void logChannelMessage(
+      LocalDateTime localDateTime,
+      MessageSource messageSource,
+      String network,
+      String channel,
+      String message) {
+
+    DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
+    String day = formatter.format(localDateTime);
+    String key = String.format("%s%s%s", network, channel, day);
+    Logger logger = channelLoggers.get(key);
+    if (logger == null) {
+      String path = createPath(network, channel, day);
+      logger = createLoggerFor(key, path);
+      channelLoggers.put(key, logger);
+    }
+    logger.info(message);
+  }
+
+  private String createPath(String network, String channel, String day) {
+    String path = this.logDir + network + "/" + channel + "/";
+    File file = new File(path);
+    if (!file.exists()) {
+      boolean ok = file.mkdirs();
+      log.debug("Created log dir: {} -- {}", file.getAbsolutePath(), ok);
     }
 
-    @Override
-    public void logChannelMessage(LocalDateTime localDateTime, MessageSource messageSource, String network, String channel, String message) {
+    return path + day + ".log";
+  }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
-        String day = formatter.format(localDateTime);
-        String key = String.format("%s%s%s", network, channel, day);
-        Logger logger = channelLoggers.get(key);
-        if (logger == null) {
-            String path = createPath(network, channel, day);
-            logger = createLoggerFor(key, path);
-            channelLoggers.put(key, logger);
-        }
-        logger.info(message);
-    }
+  private Logger createLoggerFor(String string, String file) {
+    LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+    PatternLayoutEncoder ple = new PatternLayoutEncoder();
 
-    private String createPath(String network, String channel, String day) {
-        String path = this.logDir + network + "/" + channel + "/";
-        File file = new File(path);
-        if (!file.exists()) {
-            boolean ok = file.mkdirs();
-            log.debug("Created log dir: {} -- {}", file.getAbsolutePath(), ok);
-        }
+    ple.setPattern("%msg%n");
+    ple.setContext(lc);
+    ple.start();
+    FileAppender<ILoggingEvent> fileAppender = new FileAppender<ILoggingEvent>();
+    fileAppender.setFile(file);
+    fileAppender.setEncoder(ple);
+    fileAppender.setContext(lc);
+    fileAppender.start();
 
-        return path + day + ".log";
-    }
+    Logger logger = (Logger) LoggerFactory.getLogger(string);
+    logger.addAppender(fileAppender);
+    logger.setLevel(Level.DEBUG);
+    logger.setAdditive(true); /* set to true if root should log too */
 
-
-    private Logger createLoggerFor(String string, String file) {
-        LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-        PatternLayoutEncoder ple = new PatternLayoutEncoder();
-
-        ple.setPattern("%msg%n");
-        ple.setContext(lc);
-        ple.start();
-        FileAppender<ILoggingEvent> fileAppender = new FileAppender<ILoggingEvent>();
-        fileAppender.setFile(file);
-        fileAppender.setEncoder(ple);
-        fileAppender.setContext(lc);
-        fileAppender.start();
-
-        Logger logger = (Logger) LoggerFactory.getLogger(string);
-        logger.addAppender(fileAppender);
-        logger.setLevel(Level.DEBUG);
-        logger.setAdditive(true); /* set to true if root should log too */
-
-        return logger;
-    }
-
+    return logger;
+  }
 }

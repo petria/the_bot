@@ -1,5 +1,9 @@
 package org.freakz.engine.services.topcounter;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
+
+import java.time.LocalDate;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.dto.DataValues;
@@ -11,11 +15,6 @@ import org.freakz.engine.dto.stats.StatsNode;
 import org.freakz.engine.dto.stats.TopStatsResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.util.*;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
 @Service
 @SpringServiceMethodHandler

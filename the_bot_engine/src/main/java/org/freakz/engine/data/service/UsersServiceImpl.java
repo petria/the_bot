@@ -1,5 +1,6 @@
 package org.freakz.engine.data.service;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.users.User;
@@ -10,9 +11,6 @@ import org.freakz.engine.data.repository.impl.UsersRepository;
 import org.freakz.engine.data.repository.impl.UsersRepositoryImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-
 
 @Service
 @Slf4j

@@ -11,15 +11,13 @@ import lombok.ToString;
 @ToString
 public class BotConnectionChannel {
 
-    private String id;
+  private String id;
 
-    private String echoToAlias;
+  private String echoToAlias;
 
-    private String type;
+  private String type;
 
-    private String network;
+  private String network;
 
-    private String name;
-
-
+  private String name;
 }

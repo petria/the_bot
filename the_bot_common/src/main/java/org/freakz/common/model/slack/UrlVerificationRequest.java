@@ -5,8 +5,6 @@ import lombok.Data;
 @Data
 public class UrlVerificationRequest extends UrlVerificationResponse {
 
-    private String token;
-    private String type;
-
-
+  private String token;
+  private String type;
 }

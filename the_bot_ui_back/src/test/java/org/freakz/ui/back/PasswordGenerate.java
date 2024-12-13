@@ -6,13 +6,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class PasswordGenerate {
 
+  @Test
+  public void generatePassword() {
+    String password = "1234";
+    PasswordEncoder encoder = new BCryptPasswordEncoder();
+    String encode = encoder.encode(password);
 
-    @Test
-    public void generatePassword() {
-        String password = "1234";
-        PasswordEncoder encoder = new BCryptPasswordEncoder();
-        String encode = encoder.encode(password);
-
-        System.out.printf("%s = %s\n", password, encode);
-    }
+    System.out.printf("%s = %s\n", password, encode);
+  }
 }

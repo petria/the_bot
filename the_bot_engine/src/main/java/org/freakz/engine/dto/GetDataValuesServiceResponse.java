@@ -11,6 +11,5 @@ import org.freakz.engine.services.api.ServiceResponse;
 @EqualsAndHashCode(callSuper = false)
 public class GetDataValuesServiceResponse extends ServiceResponse {
 
-    private DataValuesService dataValuesService;
-
+  private DataValuesService dataValuesService;
 }

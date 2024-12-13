@@ -10,7 +10,6 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.QuizStartResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 
-
 @HokanCommandHandler
 public class QuizCmd extends AbstractCmd {
 

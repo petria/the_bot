@@ -7,10 +7,9 @@ import lombok.Data;
 @Data
 public class ForecaData {
 
-    private CountryCityLink cityLink;
+  private CountryCityLink cityLink;
 
-    private ForecaWeatherData weatherData;
+  private ForecaWeatherData weatherData;
 
-    private ForecaSunUpDown sunUpDown;
-
+  private ForecaSunUpDown sunUpDown;
 }

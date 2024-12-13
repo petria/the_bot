@@ -10,11 +10,10 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class ChannelOperationsService {
 
-
-    @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ChannelOpRequest)
-    public <T extends ServiceResponse> ServiceResponse handleChannelOp(ServiceRequest request) {
-        OPRequestResponse response = OPRequestResponse.builder().build();
-        response.setResponse("OPs!?");
-        return response;
-    }
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ChannelOpRequest)
+  public <T extends ServiceResponse> ServiceResponse handleChannelOp(ServiceRequest request) {
+    OPRequestResponse response = OPRequestResponse.builder().build();
+    response.setResponse("OPs!?");
+    return response;
+  }
 }

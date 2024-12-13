@@ -1,5 +1,7 @@
 package org.freakz.io.connections;
 
+import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
@@ -15,9 +17,6 @@ import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.event.message.MessageCreateEvent;
-
-import java.util.Optional;
-import java.util.Set;
 
 @Slf4j
 public class DiscordServerConnection extends BotConnection {

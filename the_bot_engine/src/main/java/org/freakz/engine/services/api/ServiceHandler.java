@@ -4,7 +4,7 @@ import org.freakz.engine.config.ConfigService;
 
 public interface ServiceHandler {
 
-    void initializeService(ConfigService configService) throws Exception;
+  void initializeService(ConfigService configService) throws Exception;
 
-    <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request);
+  <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request);
 }

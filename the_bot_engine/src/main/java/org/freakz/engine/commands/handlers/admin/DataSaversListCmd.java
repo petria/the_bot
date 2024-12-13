@@ -18,19 +18,19 @@ import org.freakz.engine.services.api.ServiceRequestType;
 @Slf4j
 public class DataSaversListCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("Show available Data Saver Services.");
-    }
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("Show available Data Saver Services.");
+  }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        DataSaverListResponse response = doServiceRequest(request, results, ServiceRequestType.DataSaverList);
-        StringBuilder sb = new StringBuilder("-= DataSaverList:\n");
-        for (DataSaverInfo info : response.getDataSaverInfoList()) {
-            sb.append(String.format("  %s: size=%d\n", info.getName(), info.getNodeCount()));
-        }
-        return sb.toString();
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    DataSaverListResponse response =
+        doServiceRequest(request, results, ServiceRequestType.DataSaverList);
+    StringBuilder sb = new StringBuilder("-= DataSaverList:\n");
+    for (DataSaverInfo info : response.getDataSaverInfoList()) {
+      sb.append(String.format("  %s: size=%d\n", info.getName(), info.getNodeCount()));
     }
-
+    return sb.toString();
+  }
 }

@@ -11,8 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class BotConfig {
 
-    private String botName;
-    private String apiKey;
-    private String openAiApiKey;
-
+  private String botName;
+  private String apiKey;
+  private String openAiApiKey;
 }

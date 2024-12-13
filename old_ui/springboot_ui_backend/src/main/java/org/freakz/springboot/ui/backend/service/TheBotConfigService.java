@@ -10,17 +10,16 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class TheBotConfigService implements CommandLineRunner {
 
-    private final TheBotProperties config;
+  private final TheBotProperties config;
 
-    @Autowired
-    public TheBotConfigService(TheBotProperties config) {
-        this.config = config;
-    }
+  @Autowired
+  public TheBotConfigService(TheBotProperties config) {
+    this.config = config;
+  }
 
-
-    @Override
-    public void run(String... args) throws Exception {
-        log.debug("the.bot.runtimeDir: {}", this.config.getRuntimeDir());
-        int foo = 0;
-    }
+  @Override
+  public void run(String... args) throws Exception {
+    log.debug("the.bot.runtimeDir: {}", this.config.getRuntimeDir());
+    int foo = 0;
+  }
 }

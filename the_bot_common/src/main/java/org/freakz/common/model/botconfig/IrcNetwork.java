@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class IrcNetwork {
 
-    private String name;
-    private IrcServer ircServer;
+  private String name;
+  private IrcServer ircServer;
 }

@@ -17,66 +17,69 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class MessagesController {
 
-    private final ConnectionManager connectionManager;
+  private final ConnectionManager connectionManager;
 
-    public MessagesController(ConnectionManager connectionManager) {
-        this.connectionManager = connectionManager;
+  public MessagesController(ConnectionManager connectionManager) {
+    this.connectionManager = connectionManager;
+  }
+
+  @PostMapping("/send/{connectionId}")
+  public ResponseEntity<?> sendMessageToConnection(
+      @PathVariable int connectionId, @RequestBody Message message) {
+    log.debug("to connection: {}", connectionId);
+    try {
+      connectionManager.sendMessageToConnection(connectionId, message);
+      return ResponseEntity.ok().build();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
 
+  @PostMapping("/send_raw/{connectionId}")
+  public ResponseEntity<?> sendRawMessageToConnection(
+      @PathVariable int connectionId, @RequestBody Message message) {
+    try {
+      connectionManager.sendRawMessageToConnection(connectionId, message);
+      return ResponseEntity.ok().build();
 
-    @PostMapping("/send/{connectionId}")
-    public ResponseEntity<?> sendMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) {
-        log.debug("to connection: {}", connectionId);
-        try {
-            connectionManager.sendMessageToConnection(connectionId, message);
-            return ResponseEntity.ok().build();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
 
-    @PostMapping("/send_raw/{connectionId}")
-    public ResponseEntity<?> sendRawMessageToConnection(@PathVariable int connectionId, @RequestBody Message message) {
-        try {
-            connectionManager.sendRawMessageToConnection(connectionId, message);
-            return ResponseEntity.ok().build();
+  @PostMapping("/send_message_by_target_alias")
+  public ResponseEntity<?> sendByTargetAlias(@RequestBody SendMessageByTargetAliasRequest request) {
+    log.debug("Request: {}", request);
+    SendMessageByTargetAliasResponse response = new SendMessageByTargetAliasResponse();
+    try {
+      connectionManager.sendMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
+      response.setSentTo(request.getTargetAlias());
 
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
+    } catch (InvalidTargetAliasException e) {
+      response.setSentTo("NOK:  " + e.getMessage());
     }
+    return ResponseEntity.ok(response);
+  }
 
-    @PostMapping("/send_message_by_target_alias")
-    public ResponseEntity<?> sendByTargetAlias(@RequestBody SendMessageByTargetAliasRequest request) {
-        log.debug("Request: {}", request);
-        SendMessageByTargetAliasResponse response = new SendMessageByTargetAliasResponse();
-        try {
-            connectionManager.sendMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
-            response.setSentTo(request.getTargetAlias());
+  @PostMapping("/send_irc_raw_message_by_target_alias")
+  public ResponseEntity<?> sendIrcRawByTargetAlias(
+      @RequestBody SendIrcRawMessageByTargetAliasRequest request) {
+    log.debug("Request: {}", request);
+    SendIrcRawMessageByTargetAliasResponse response = new SendIrcRawMessageByTargetAliasResponse();
 
-        } catch (InvalidTargetAliasException e) {
-            response.setSentTo("NOK:  " + e.getMessage());
-        }
-        return ResponseEntity.ok(response);
+    try {
+
+      String serverResponse =
+          connectionManager.sendIrcRawMessageByTargetAlias(
+              request.getMessage(), request.getTargetAlias());
+      response.setSentTo("OK: " + request.getTargetAlias());
+      response.setServerResponse(serverResponse);
+
+    } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {
+      response.setSentTo("NOK:  " + e.getMessage());
     }
-
-    @PostMapping("/send_irc_raw_message_by_target_alias")
-    public ResponseEntity<?> sendIrcRawByTargetAlias(@RequestBody SendIrcRawMessageByTargetAliasRequest request) {
-        log.debug("Request: {}", request);
-        SendIrcRawMessageByTargetAliasResponse response = new SendIrcRawMessageByTargetAliasResponse();
-
-        try {
-
-            String serverResponse = connectionManager.sendIrcRawMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
-            response.setSentTo("OK: " + request.getTargetAlias());
-            response.setServerResponse(serverResponse);
-
-        } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {
-            response.setSentTo("NOK:  " + e.getMessage());
-        }
-        return ResponseEntity.ok(response);
-    }
-
+    return ResponseEntity.ok(response);
+  }
 }

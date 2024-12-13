@@ -14,34 +14,33 @@ import org.freakz.common.model.dto.DataNodeBase;
 @ToString
 public class User extends DataNodeBase {
 
-    @JsonProperty("isAdmin")
-    private boolean isAdmin;
+  @JsonProperty("isAdmin")
+  private boolean isAdmin;
 
-    @JsonProperty("canDoIrcOp")
-    private boolean canDoIrcOp;
+  @JsonProperty("canDoIrcOp")
+  private boolean canDoIrcOp;
 
-    @JsonProperty("username")
-    private String username;
+  @JsonProperty("username")
+  private String username;
 
-    @JsonProperty("password")
-    private String password;
+  @JsonProperty("password")
+  private String password;
 
-    @JsonProperty("name")
-    private String name;
+  @JsonProperty("name")
+  private String name;
 
-    @JsonProperty("email")
-    private String email;
+  @JsonProperty("email")
+  private String email;
 
-    @JsonProperty("ircNick")
-    private String ircNick;
+  @JsonProperty("ircNick")
+  private String ircNick;
 
-    @JsonProperty("telegramId")
-    private String telegramId;
+  @JsonProperty("telegramId")
+  private String telegramId;
 
-    @JsonProperty("discordId")
-    private String discordId;
+  @JsonProperty("discordId")
+  private String discordId;
 
-    @JsonProperty("slackId")
-    private String slackId;
-
+  @JsonProperty("slackId")
+  private String slackId;
 }

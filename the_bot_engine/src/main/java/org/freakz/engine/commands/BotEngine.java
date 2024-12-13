@@ -3,6 +3,11 @@ package org.freakz.engine.commands;
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
 import feign.Response;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -25,204 +30,206 @@ import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Iterator;
-import java.util.stream.Collectors;
-
 @Service
 @Slf4j
 public class BotEngine {
 
-    private final AccessService accessService;
-    private final MessageSendClient messageSendClient;
-    @Getter
-    private final CommandHandlerLoader commandHandlerLoader;
-    @Getter
-    private final HokanServices hokanServices;
-    private final ConfigService configService;
+  private final AccessService accessService;
+  private final MessageSendClient messageSendClient;
+  @Getter private final CommandHandlerLoader commandHandlerLoader;
+  @Getter private final HokanServices hokanServices;
+  private final ConfigService configService;
 
-    private final ConversationsService conversationsService;
+  private final ConversationsService conversationsService;
 
-    private final CallCountInterceptor countInterceptor;
+  private final CallCountInterceptor countInterceptor;
 
-    private final UrlMetadataService urlMetadataService;
+  private final UrlMetadataService urlMetadataService;
 
-    private final OpenAiService openAiService;
+  private final OpenAiService openAiService;
 
-    private String botName = "HokanTheBot";
+  private String botName = "HokanTheBot";
 
-    public BotEngine(AccessService accessService, MessageSendClient messageSendClient, HokanServices hokanServices, ConfigService configService, ConversationsService conversationsService, CallCountInterceptor countInterceptor, UrlMetadataService urlMetadataService, OpenAiService openAiService) throws InitializeFailedException, IOException {
-        this.accessService = accessService;
-        this.messageSendClient = messageSendClient;
-        this.hokanServices = hokanServices;
-        this.configService = configService;
-        this.conversationsService = conversationsService;
-        this.countInterceptor = countInterceptor;
-        this.urlMetadataService = urlMetadataService;
-        this.openAiService = openAiService;
-        if (configService != null) {
-            this.botName = configService.readBotConfig().getBotConfig().getBotName();
-        }
-        this.commandHandlerLoader = new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
-        this.wholeLineTriggers = new WholeLineTriggersImpl(this, openAiService);
+  public BotEngine(
+      AccessService accessService,
+      MessageSendClient messageSendClient,
+      HokanServices hokanServices,
+      ConfigService configService,
+      ConversationsService conversationsService,
+      CallCountInterceptor countInterceptor,
+      UrlMetadataService urlMetadataService,
+      OpenAiService openAiService)
+      throws InitializeFailedException, IOException {
+    this.accessService = accessService;
+    this.messageSendClient = messageSendClient;
+    this.hokanServices = hokanServices;
+    this.configService = configService;
+    this.conversationsService = conversationsService;
+    this.countInterceptor = countInterceptor;
+    this.urlMetadataService = urlMetadataService;
+    this.openAiService = openAiService;
+    if (configService != null) {
+      this.botName = configService.readBotConfig().getBotConfig().getBotName();
+    }
+    this.commandHandlerLoader =
+        new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
+    this.wholeLineTriggers = new WholeLineTriggersImpl(this, openAiService);
+  }
+
+  private final WholeLineTriggers wholeLineTriggers;
+
+  @SneakyThrows
+  public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+
+    request.setBotConfig(configService.readBotConfig());
+
+    User user = accessService.getUser(request);
+    log.debug("User: {}", user);
+
+    String wholeLine = null;
+    if (doWholeLineTriggerCheck) {
+      wholeLine = handleWholeLineTriggers(request);
     }
 
-    private final WholeLineTriggers wholeLineTriggers;
+    this.urlMetadataService.handleEngineRequest(request, this);
+    this.conversationsService.handleConversations(this, request);
 
-    @SneakyThrows
-    public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+    String replyMessage = null;
+    if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
+      replyMessage = parseAndExecute(request, user);
+    }
+    if (wholeLine != null) {
+      replyMessage += " WL: " + wholeLine;
+    }
+    return UserAndReply.builder().user(user).replyMessage(replyMessage).build();
+  }
 
-        request.setBotConfig(configService.readBotConfig());
+  public String handleWholeLineTriggers(EngineRequest request) {
+    return wholeLineTriggers.checkWholeLineTrigger(request);
+  }
 
-        User user = accessService.getUser(request);
-        log.debug("User: {}", user);
+  @SneakyThrows
+  private String parseAndExecute(EngineRequest request, User user) {
+    log.debug("Handle request: {}", request.getCommand());
 
-        String wholeLine = null;
-        if (doWholeLineTriggerCheck) {
-            wholeLine = handleWholeLineTriggers(request);
-        }
+    String message = request.getMessage();
+    CommandArgs args = new CommandArgs(message);
 
-        this.urlMetadataService.handleEngineRequest(request, this);
-        this.conversationsService.handleConversations(this, request);
-
-        String replyMessage = null;
-        if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
-            replyMessage = parseAndExecute(request, user);
-        }
-        if (wholeLine != null) {
-            replyMessage += " WL: " + wholeLine;
-        }
-        return UserAndReply.builder().user(user).replyMessage(replyMessage).build();
-
-
+    HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);
+    if (handlerAlias != null) {
+      log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
+      message = handlerAlias.getTarget();
+      args = new CommandArgs(message);
+    } else {
+      handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(args.getCommand());
+      if (handlerAlias != null) {
+        args.setCommand(handlerAlias.getTarget());
+      }
     }
 
+    AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
+    if (abstractCmd != null) {
 
-    public String handleWholeLineTriggers(EngineRequest request) {
-        return wholeLineTriggers.checkWholeLineTrigger(request);
-    }
-
-
-    @SneakyThrows
-    private String parseAndExecute(EngineRequest request, User user) {
-        log.debug("Handle request: {}", request.getCommand());
-
-        String message = request.getMessage();
-        CommandArgs args = new CommandArgs(message);
-
-        HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);
-        if (handlerAlias != null) {
-            log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
-            message = handlerAlias.getTarget();
-            args = new CommandArgs(message);
-        } else {
-            handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(args.getCommand());
-            if (handlerAlias != null) {
-                args.setCommand(handlerAlias.getTarget());
-            }
-        }
-
-        AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
-        if (abstractCmd != null) {
-
-            if (abstractCmd.isAdminCommand() && !user.isAdmin()) {
-                log.debug("User is not admin but command is, access denied!");
-                return null;
-            }
-
-            abstractCmd.abstractInitCommandOptions();
-
-            if (args.hasArgs() && args.getArg(0).equals("?")) {
-                StringBuilder sb = new StringBuilder();
-                String usage = "!" + abstractCmd.getCommandName() + " " + abstractCmd.getJsap().getUsage();
-                String help = abstractCmd.getJsap().getHelp();
-                sb.append("Usage    : ");
-                sb.append(usage);
-                sb.append("\n");
-
-                sb.append("Help     : ");
-                sb.append(help);
-                sb.append("\n");
-
-                sendReplyMessage(request, sb.toString());
-                return sb.toString();
-            }
-
-            boolean parseRes;
-            JSAPResult results = null;
-            IDMap map = abstractCmd.getJsap().getIDMap();
-            Iterator<?> iterator = map.idIterator();
-
-            String argsLine = args.joinArgs(0);
-            if (iterator.hasNext()) {
-                results = abstractCmd.getJsap().parse(argsLine);
-                parseRes = results.success();
-            } else {
-                parseRes = true;
-            }
-
-            String reply;
-            if (!parseRes) {
-                reply = String.format("Invalid arguments, usage: %s %s", abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
-            } else {
-                request.setFromAdmin(user.isAdmin());
-                request.setUser(user);
-                reply = abstractCmd.executeCommand(request, results);
-            }
-
-            if (reply != null) {
-                return sendReplyMessage(request, reply);
-            }
-        }
+      if (abstractCmd.isAdminCommand() && !user.isAdmin()) {
+        log.debug("User is not admin but command is, access denied!");
         return null;
+      }
+
+      abstractCmd.abstractInitCommandOptions();
+
+      if (args.hasArgs() && args.getArg(0).equals("?")) {
+        StringBuilder sb = new StringBuilder();
+        String usage = "!" + abstractCmd.getCommandName() + " " + abstractCmd.getJsap().getUsage();
+        String help = abstractCmd.getJsap().getHelp();
+        sb.append("Usage    : ");
+        sb.append(usage);
+        sb.append("\n");
+
+        sb.append("Help     : ");
+        sb.append(help);
+        sb.append("\n");
+
+        sendReplyMessage(request, sb.toString());
+        return sb.toString();
+      }
+
+      boolean parseRes;
+      JSAPResult results = null;
+      IDMap map = abstractCmd.getJsap().getIDMap();
+      Iterator<?> iterator = map.idIterator();
+
+      String argsLine = args.joinArgs(0);
+      if (iterator.hasNext()) {
+        results = abstractCmd.getJsap().parse(argsLine);
+        parseRes = results.success();
+      } else {
+        parseRes = true;
+      }
+
+      String reply;
+      if (!parseRes) {
+        reply =
+            String.format(
+                "Invalid arguments, usage: %s %s",
+                abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
+      } else {
+        request.setFromAdmin(user.isAdmin());
+        request.setUser(user);
+        reply = abstractCmd.executeCommand(request, results);
+      }
+
+      if (reply != null) {
+        return sendReplyMessage(request, reply);
+      }
     }
+    return null;
+  }
 
-    public String sendReplyMessage(EngineRequest request, String reply) {
+  public String sendReplyMessage(EngineRequest request, String reply) {
 
-        if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
-            //log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
-            countInterceptor.computeCount("OUT: commandHandler");
-            return reply;
-        } else {
-            Message message
-                    = Message.builder()
-                    .sender(this.botName)
-                    .timestamp(System.currentTimeMillis())
-                    .requestTimestamp(request.getTimestamp())
-                    .message(reply)
-                    .target(request.getReplyTo())
-                    .id("" + request.getFromChannelId())
-                    .build();
-            try {
-                Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
-                int status = response.status();
-                log.debug("reply send status: {}", status);
-                if (status != 200) {
-                    String bodyJson = new BufferedReader(new InputStreamReader(response.body().asInputStream()))
-                            .lines().parallel().collect(Collectors.joining("\n"));
+    if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
+      // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
+      countInterceptor.computeCount("OUT: commandHandler");
+      return reply;
+    } else {
+      Message message =
+          Message.builder()
+              .sender(this.botName)
+              .timestamp(System.currentTimeMillis())
+              .requestTimestamp(request.getTimestamp())
+              .message(reply)
+              .target(request.getReplyTo())
+              .id("" + request.getFromChannelId())
+              .build();
+      try {
+        Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
+        int status = response.status();
+        log.debug("reply send status: {}", status);
+        if (status != 200) {
+          String bodyJson =
+              new BufferedReader(new InputStreamReader(response.body().asInputStream()))
+                  .lines()
+                  .parallel()
+                  .collect(Collectors.joining("\n"));
 
-                    log.debug("bodyJson: {}", bodyJson);
-                }
-
-            } catch (Exception ex) {
-                log.error("Sending reply failed: {}", ex.getMessage());
-            }
-            return reply;
+          log.debug("bodyJson: {}", bodyJson);
         }
+
+      } catch (Exception ex) {
+        log.error("Sending reply failed: {}", ex.getMessage());
+      }
+      return reply;
     }
+  }
 
-
-    //    @Async
-    private HokanCmd getCommandHandler(String name) {
-        try {
-            HokanCmd handler = this.commandHandlerLoader.getMatchingCommandHandlers(this, name);
-            return handler;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+  //    @Async
+  private HokanCmd getCommandHandler(String name) {
+    try {
+      HokanCmd handler = this.commandHandlerLoader.getMatchingCommandHandlers(this, name);
+      return handler;
+    } catch (Exception e) {
+      e.printStackTrace();
     }
-
+    return null;
+  }
 }

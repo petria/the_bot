@@ -1,13 +1,11 @@
 package org.freakz.engine.services.conversations;
 
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.freakz.common.model.engine.EngineRequest;
-
-import java.util.HashMap;
-import java.util.Map;
-
 
 @Data
 @EqualsAndHashCode(callSuper = false)

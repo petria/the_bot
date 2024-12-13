@@ -20,49 +20,42 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 @Slf4j
 public class CurrencyCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
 
-        jsap.setHelp("Currency Converter");
+    jsap.setHelp("Currency Converter");
 
-        UnflaggedOption opt = new UnflaggedOption(ARG_AMOUNT)
-                .setRequired(true)
-                .setDefault("100")
-                .setGreedy(false);
+    UnflaggedOption opt =
+        new UnflaggedOption(ARG_AMOUNT).setRequired(true).setDefault("100").setGreedy(false);
 
-        UnflaggedOption opt2 = new UnflaggedOption(ARG_FROM)
-                .setRequired(true)
-                .setGreedy(false)
-                .setDefault("INR");
+    UnflaggedOption opt2 =
+        new UnflaggedOption(ARG_FROM).setRequired(true).setGreedy(false).setDefault("INR");
 
-        UnflaggedOption opt3 = new UnflaggedOption(ARG_TO)
-                .setRequired(true)
-                .setGreedy(false)
-                .setDefault("EUR");
+    UnflaggedOption opt3 =
+        new UnflaggedOption(ARG_TO).setRequired(true).setGreedy(false).setDefault("EUR");
 
+    jsap.registerParameter(opt);
+    jsap.registerParameter(opt2);
+    jsap.registerParameter(opt3);
+  }
 
-        jsap.registerParameter(opt);
-        jsap.registerParameter(opt2);
-        jsap.registerParameter(opt3);
-
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    try {
+      double totalAmount = Double.parseDouble(results.getString(ARG_AMOUNT));
+      CurrencyResponse response =
+          doServiceRequest(request, results, ServiceRequestType.CurrencyService);
+      if (response.getStatus().startsWith("OK:")) {
+        double amountForOne = response.getAmount();
+        double resultAmount = totalAmount * amountForOne;
+        String from = " " + response.getFrom();
+        String to = " " + response.getTo();
+        return totalAmount + from + " equals " + resultAmount + to;
+      } else {
+        return "Enter Correct Currencies";
+      }
+    } catch (NumberFormatException e) {
+      return "Enter Correct Amount: " + results.getString(ARG_AMOUNT);
     }
-
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        try {
-            double totalAmount = Double.parseDouble(results.getString(ARG_AMOUNT));
-            CurrencyResponse response = doServiceRequest(request, results, ServiceRequestType.CurrencyService);
-            if (response.getStatus().startsWith("OK:")) {
-                double amountForOne = response.getAmount();
-                double resultAmount = totalAmount * amountForOne;
-                String from = " " + response.getFrom();
-                String to = " " + response.getTo();
-                return totalAmount + from + " equals " + resultAmount + to;
-            } else {
-                return "Enter Correct Currencies";
-            }
-        } catch (NumberFormatException e) {
-            return "Enter Correct Amount: " + results.getString(ARG_AMOUNT);
-        }
-    }
+  }
 }

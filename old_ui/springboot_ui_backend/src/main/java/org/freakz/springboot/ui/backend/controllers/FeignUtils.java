@@ -13,16 +13,18 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FeignUtils {
 
-
-    public static <T> Optional<T> getResponseBody(Response response, Class<T> klass, ObjectMapper mapper) {
-        try {
-            String bodyJson = new BufferedReader(new InputStreamReader(response.body().asInputStream()))
-                    .lines().parallel().collect(Collectors.joining("\n"));
-            return Optional.ofNullable(mapper.readValue(bodyJson, klass));
-        } catch (IOException e) {
-            log.error("Error when read feign response.", e);
-            return Optional.empty();
-        }
+  public static <T> Optional<T> getResponseBody(
+      Response response, Class<T> klass, ObjectMapper mapper) {
+    try {
+      String bodyJson =
+          new BufferedReader(new InputStreamReader(response.body().asInputStream()))
+              .lines()
+              .parallel()
+              .collect(Collectors.joining("\n"));
+      return Optional.ofNullable(mapper.readValue(bodyJson, klass));
+    } catch (IOException e) {
+      log.error("Error when read feign response.", e);
+      return Optional.empty();
     }
-
+  }
 }

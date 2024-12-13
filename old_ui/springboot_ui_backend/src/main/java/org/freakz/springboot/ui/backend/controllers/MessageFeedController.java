@@ -2,6 +2,9 @@ package org.freakz.springboot.ui.backend.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.payload.response.MessageFeedResponse;
@@ -16,10 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController

@@ -1,5 +1,7 @@
 package org.freakz.io.connections;
 
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.botconfig.TelegramConfig;
@@ -14,10 +16,6 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
-
-import java.util.ArrayList;
-import java.util.List;
-
 
 @Slf4j
 public class TelegramConnection extends BotConnection {

@@ -13,8 +13,7 @@ import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 @EqualsAndHashCode(callSuper = false)
 public class WeatherAPIResponse extends ServiceResponse {
 
-    private ForecastResponse forecastResponseModel;
-    private AstronomyResponse astronomyResponse;
-    private ErrorResponse errorResponse;
-
+  private ForecastResponse forecastResponseModel;
+  private AstronomyResponse astronomyResponse;
+  private ErrorResponse errorResponse;
 }

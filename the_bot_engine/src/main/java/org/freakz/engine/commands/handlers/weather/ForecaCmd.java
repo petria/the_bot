@@ -14,119 +14,118 @@ import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
-
-//@HokanCommandHandler
+// @HokanCommandHandler
 @Slf4j
 public class ForecaCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws JSAPException {
+  @Override
+  public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Get Foreca weather data for city. See https://www.foreca.fi/haku for city names!");
+    jsap.setHelp(
+        "Get Foreca weather data for city. See https://www.foreca.fi/haku for city names!");
 
-        FlaggedOption flg = new FlaggedOption(ARG_COUNT)
-                .setStringParser(JSAP.INTEGER_PARSER)
-                .setDefault("5")
-                .setLongFlag("count")
-                .setShortFlag('c');
-        jsap.registerParameter(flg);
+    FlaggedOption flg =
+        new FlaggedOption(ARG_COUNT)
+            .setStringParser(JSAP.INTEGER_PARSER)
+            .setDefault("5")
+            .setLongFlag("count")
+            .setShortFlag('c');
+    jsap.registerParameter(flg);
 
-        Switch feelsLike = new Switch(ARG_FEELS_LIKE)
-                .setLongFlag("feelsLike")
-                .setShortFlag('f');
-        jsap.registerParameter(feelsLike);
+    Switch feelsLike = new Switch(ARG_FEELS_LIKE).setLongFlag("feelsLike").setShortFlag('f');
+    jsap.registerParameter(feelsLike);
 
-        Switch sunUpDown = new Switch(ARG_SUN_UP_DOWN)
-                .setLongFlag("sunUpDown")
-                .setShortFlag('s');
-        jsap.registerParameter(sunUpDown);
+    Switch sunUpDown = new Switch(ARG_SUN_UP_DOWN).setLongFlag("sunUpDown").setShortFlag('s');
+    jsap.registerParameter(sunUpDown);
 
-        Switch verbose = new Switch(ARG_VERBOSE)
-                .setLongFlag("verbose")
-                .setShortFlag('v');
-        jsap.registerParameter(verbose);
+    Switch verbose = new Switch(ARG_VERBOSE).setLongFlag("verbose").setShortFlag('v');
+    jsap.registerParameter(verbose);
 
+    UnflaggedOption opt =
+        new UnflaggedOption(ARG_PLACE).setDefault("Oulu").setRequired(true).setGreedy(false);
 
-        UnflaggedOption opt = new UnflaggedOption(ARG_PLACE)
-                .setDefault("Oulu")
-                .setRequired(true)
-                .setGreedy(false);
+    jsap.registerParameter(opt);
+  }
 
-        jsap.registerParameter(opt);
+  @Override
+  public List<HandlerAlias> getAliases(String botName) {
+    List<HandlerAlias> list = new ArrayList<>();
+    //        list.add(createWithArgsAlias("!saa", "!foreca"));
+    //        list.add(createWithArgsAlias("!sää", "!foreca"));
+    return list;
+  }
 
+  private String formatWeather(
+      ForecaData d, boolean verbose, boolean sunUpDown, boolean feelsLike) {
+
+    String v = "";
+    if (verbose) {
+      v = d.getCityLink().region + "/" + d.getCityLink().country + "/";
     }
-
-    @Override
-    public List<HandlerAlias> getAliases(String botName) {
-        List<HandlerAlias> list = new ArrayList<>();
-//        list.add(createWithArgsAlias("!saa", "!foreca"));
-//        list.add(createWithArgsAlias("!sää", "!foreca"));
-        return list;
+    String upDown = "";
+    if (sunUpDown) {
+      upDown =
+          String.format(
+              " - Sun up/down: %s - %s (%dh %dm)",
+              d.getSunUpDown().getSunUpTime(),
+              d.getSunUpDown().getSunDownTime(),
+              d.getSunUpDown().getDayLengthHours(),
+              d.getSunUpDown().getDayLengthMinutes());
     }
-
-    private String formatWeather(ForecaData d, boolean verbose, boolean sunUpDown, boolean feelsLike) {
-
-        String v = "";
-        if (verbose) {
-            v = d.getCityLink().region + "/" + d.getCityLink().country + "/";
-        }
-        String upDown = "";
-        if (sunUpDown) {
-            upDown
-                    = String.format(" - Sun up/down: %s - %s (%dh %dm)",
-                    d.getSunUpDown().getSunUpTime(),
-                    d.getSunUpDown().getSunDownTime(),
-                    d.getSunUpDown().getDayLengthHours(),
-                    d.getSunUpDown().getDayLengthMinutes()
-            );
-        }
-        String feels = "";
-        if (feelsLike) {
-            feels = String.format(" (feels like: %2.1f°C)", d.getWeatherData().getFeelsLike());
-        }
-        String template = "%s%s: %s %s %2.1f°C%s%s";
-
-        return String.format(template, v, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), feels, upDown);
+    String feels = "";
+    if (feelsLike) {
+      feels = String.format(" (feels like: %2.1f°C)", d.getWeatherData().getFeelsLike());
     }
+    String template = "%s%s: %s %s %2.1f°C%s%s";
 
-    @Override
-    public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
+    return String.format(
+        template,
+        v,
+        d.getCityLink().city2,
+        d.getWeatherData().getDate(),
+        d.getWeatherData().getTime().replaceAll("\\.", ":"),
+        d.getWeatherData().getTemp(),
+        feels,
+        upDown);
+  }
 
+  @Override
+  public String executeCommand(EngineRequest engineRequest, JSAPResult results) {
 
-        boolean verbose = results.getBoolean(ARG_VERBOSE);
-        boolean sunUpDown = results.getBoolean(ARG_SUN_UP_DOWN);
-        boolean feelsLike = results.getBoolean(ARG_FEELS_LIKE);
+    boolean verbose = results.getBoolean(ARG_VERBOSE);
+    boolean sunUpDown = results.getBoolean(ARG_SUN_UP_DOWN);
+    boolean feelsLike = results.getBoolean(ARG_FEELS_LIKE);
 
-        String place = results.getString(ARG_PLACE);
+    String place = results.getString(ARG_PLACE);
 
-        log.debug("Place: {}", place);
+    log.debug("Place: {}", place);
 
-        ForecaResponse data = doServiceRequestMethods(engineRequest, results, ServiceRequestType.ForecaWeatherService);
+    ForecaResponse data =
+        doServiceRequestMethods(engineRequest, results, ServiceRequestType.ForecaWeatherService);
 
-        if (data.getStatus().startsWith("OK")) {
-            StringBuilder sb = new StringBuilder();
+    if (data.getStatus().startsWith("OK")) {
+      StringBuilder sb = new StringBuilder();
 
-            if (data.getForecaDataList().isEmpty()) {
-                sb.append("Check spelling, no Foreca data found with: ");
-                sb.append(place);
-            } else {
-                int xx = 0;
-                for (ForecaData forecaData : data.getForecaDataList()) {
-                    String formatted = formatWeather(forecaData, verbose, sunUpDown, feelsLike);
-                    if (xx != 0) {
-                        sb.append(", ");
-                    }
-                    sb.append(formatted);
-                    xx++;
-                    if (xx >= results.getInt(ARG_COUNT)) {
-                        break;
-                    }
-                }
-            }
-            return sb.toString();
-        } else {
-            return this.getClass().getSimpleName() + " error :: " + data.getStatus();
+      if (data.getForecaDataList().isEmpty()) {
+        sb.append("Check spelling, no Foreca data found with: ");
+        sb.append(place);
+      } else {
+        int xx = 0;
+        for (ForecaData forecaData : data.getForecaDataList()) {
+          String formatted = formatWeather(forecaData, verbose, sunUpDown, feelsLike);
+          if (xx != 0) {
+            sb.append(", ");
+          }
+          sb.append(formatted);
+          xx++;
+          if (xx >= results.getInt(ARG_COUNT)) {
+            break;
+          }
         }
-
+      }
+      return sb.toString();
+    } else {
+      return this.getClass().getSimpleName() + " error :: " + data.getStatus();
     }
+  }
 }

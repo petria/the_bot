@@ -13,11 +13,11 @@ import java.util.List;
 @NoArgsConstructor
 public class DiscordConfig {
 
-    private String token;
+  private String token;
 
-    private List<Channel> channelList;
+  private List<Channel> channelList;
 
-    private boolean connectStartup;
+  private boolean connectStartup;
 
-    private Long theBotUserId;
+  private Long theBotUserId;
 }

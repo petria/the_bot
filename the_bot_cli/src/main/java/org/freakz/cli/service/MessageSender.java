@@ -2,6 +2,7 @@ package org.freakz.cli.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.cli.clients.EngineClient;
 import org.freakz.common.model.engine.EngineRequest;
@@ -9,8 +10,6 @@ import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.util.FeignUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @Slf4j

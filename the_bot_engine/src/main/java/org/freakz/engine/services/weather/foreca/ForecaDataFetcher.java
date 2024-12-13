@@ -1,6 +1,15 @@
 package org.freakz.engine.services.weather.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.foreca.CountryCityLink;
 import org.freakz.common.model.foreca.CountryScanLinksByLetter;
@@ -12,16 +21,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-import java.io.File;
-import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 public class ForecaDataFetcher {

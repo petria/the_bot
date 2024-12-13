@@ -1,6 +1,10 @@
 package org.freakz.engine.services.translate;
 
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TEXT;
+
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.TranslateData;
@@ -10,11 +14,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TEXT;
 
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TranslateService)

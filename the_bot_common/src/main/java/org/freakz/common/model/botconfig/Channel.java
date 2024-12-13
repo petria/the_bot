@@ -13,17 +13,17 @@ import java.util.List;
 @NoArgsConstructor
 public class Channel {
 
-    private String id;
+  private String id;
 
-    private String description;
+  private String description;
 
-    private String name;
+  private String name;
 
-    private String type;
+  private String type;
 
-    private String echoToAlias;
+  private String echoToAlias;
 
-    private List<String> echoToAliases;
+  private List<String> echoToAliases;
 
-    private boolean joinOnStart;
+  private boolean joinOnStart;
 }

@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class HandlerAlias {
 
-    String alias;
-    String target;
+  String alias;
+  String target;
 
-    boolean withArgs;
+  boolean withArgs;
 
-    Class clazz;
+  Class clazz;
 }

@@ -7,7 +7,6 @@ import lombok.Data;
 @Data
 public class HandlerClass {
 
-    Class clazz;
-    boolean isAdmin;
-
+  Class clazz;
+  boolean isAdmin;
 }

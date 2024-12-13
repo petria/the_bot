@@ -14,15 +14,16 @@ import org.springframework.context.annotation.Primary;
 @EnableFeignClients
 public class SpringApplicationUiBackend {
 
-    @Bean
-    @Primary
-    public ObjectMapper primaryObjectMapper() {
-        return JsonMapper.builder().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .addModule(new JavaTimeModule()).build();
-    }
+  @Bean
+  @Primary
+  public ObjectMapper primaryObjectMapper() {
+    return JsonMapper.builder()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        .addModule(new JavaTimeModule())
+        .build();
+  }
 
-    public static void main(String[] args) {
-        SpringApplication.run(SpringApplicationUiBackend.class, args);
-    }
-
+  public static void main(String[] args) {
+    SpringApplication.run(SpringApplicationUiBackend.class, args);
+  }
 }

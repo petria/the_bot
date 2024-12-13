@@ -14,16 +14,14 @@ import java.io.IOException;
 @Slf4j
 public class ConfigService {
 
-    @Autowired
-    private TheBotProperties botProperties;
+  @Autowired private TheBotProperties botProperties;
 
-    private static RuntimeConfigReader configReader = new RuntimeConfigReader();
+  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 
-    @PostConstruct
-    public TheBotConfig readBotConfig() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        return configReader.readBotConfig(mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile());
-    }
-
-
+  @PostConstruct
+  public TheBotConfig readBotConfig() throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    return configReader.readBotConfig(
+        mapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile());
+  }
 }

@@ -11,9 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SendMessageByTargetAliasRequest {
 
+  private String message;
 
-    private String message;
-
-    private String targetAlias;
-
+  private String targetAlias;
 }

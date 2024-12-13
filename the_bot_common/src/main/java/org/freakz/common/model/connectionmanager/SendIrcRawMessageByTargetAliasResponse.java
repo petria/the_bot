@@ -5,8 +5,7 @@ import lombok.Data;
 @Data
 public class SendIrcRawMessageByTargetAliasResponse {
 
-    private String sentTo;
+  private String sentTo;
 
-    private String serverResponse;
-
+  private String serverResponse;
 }

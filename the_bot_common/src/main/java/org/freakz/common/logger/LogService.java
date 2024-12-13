@@ -6,6 +6,10 @@ import java.time.LocalDateTime;
 
 public interface LogService {
 
-    void logChannelMessage(LocalDateTime localDateTime, MessageSource messageSource, String network, String channel, String message);
-
+  void logChannelMessage(
+      LocalDateTime localDateTime,
+      MessageSource messageSource,
+      String network,
+      String channel,
+      String message);
 }

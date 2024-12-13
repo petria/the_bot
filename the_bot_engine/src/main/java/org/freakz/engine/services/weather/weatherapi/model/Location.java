@@ -1,9 +1,8 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.freakz.engine.services.weather.weatherapi.CustomLocalDateTimeDeserializer;
-
 import java.time.LocalDateTime;
+import org.freakz.engine.services.weather.weatherapi.CustomLocalDateTimeDeserializer;
 
 public record Location(
         String name,

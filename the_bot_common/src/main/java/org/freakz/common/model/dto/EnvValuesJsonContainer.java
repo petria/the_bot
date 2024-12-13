@@ -5,7 +5,6 @@ import org.freakz.common.model.env.SysEnvValue;
 
 import java.util.List;
 
-
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -13,6 +12,5 @@ import java.util.List;
 @NoArgsConstructor
 public class EnvValuesJsonContainer extends DataContainerBase {
 
-    private List<SysEnvValue> data_values;
-
+  private List<SysEnvValue> data_values;
 }

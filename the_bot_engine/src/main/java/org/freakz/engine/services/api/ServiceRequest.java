@@ -10,9 +10,8 @@ import org.springframework.context.ApplicationContext;
 @Data
 public class ServiceRequest {
 
-    private ApplicationContext applicationContext;
-    private EngineRequest engineRequest;
+  private ApplicationContext applicationContext;
+  private EngineRequest engineRequest;
 
-    private JSAPResult results;
-
+  private JSAPResult results;
 }

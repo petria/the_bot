@@ -7,9 +7,9 @@ import org.freakz.engine.commands.api.AbstractCmd;
 
 @HokanCommandHandler
 public class TestCmd extends AbstractCmd {
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
 
-        return "TestCmd";
-    }
+    return "TestCmd";
+  }
 }

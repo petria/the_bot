@@ -11,32 +11,30 @@ import org.freakz.common.model.users.User;
 @ToString
 public class EngineRequest {
 
-    private long timestamp;
-    private String command;
-    private String replyTo;
-    private int fromConnectionId;
+  private long timestamp;
+  private String command;
+  private String replyTo;
+  private int fromConnectionId;
 
-    private boolean isPrivateChannel;
-    private Long fromChannelId;
+  private boolean isPrivateChannel;
+  private Long fromChannelId;
 
-    private String fromSenderId;
-    private String fromSender;
-    private boolean isFromAdmin;
+  private String fromSenderId;
+  private String fromSender;
+  private boolean isFromAdmin;
 
-    private String network;
+  private String network;
 
-    private String echoToAlias;
+  private String echoToAlias;
 
-    private User user;
-    private TheBotConfig botConfig;
+  private User user;
+  private TheBotConfig botConfig;
 
-    public String getMessage() {
-        return command;
-    }
+  public String getMessage() {
+    return command;
+  }
 
-    public boolean isPrivateChannel() {
-        return isPrivateChannel;
-    }
-
-
+  public boolean isPrivateChannel() {
+    return isPrivateChannel;
+  }
 }

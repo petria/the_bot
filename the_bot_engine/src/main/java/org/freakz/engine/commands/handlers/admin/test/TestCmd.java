@@ -15,19 +15,25 @@ import org.freakz.engine.services.api.ServiceResponse;
 @HokanAdminCommand
 public class TestCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("Test multiple service handlers command");
-    }
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("Test multiple service handlers command");
+  }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
 
-        ServiceResponse response1 = doServiceRequest(request, results, ServiceRequestType.TestService1);
-        ServiceResponse response2 = doServiceRequestMethods(request, results, ServiceRequestType.TestService2);
-        ServiceResponse response3 = doServiceRequestMethods(request, results, ServiceRequestType.TestService3);
+    ServiceResponse response1 = doServiceRequest(request, results, ServiceRequestType.TestService1);
+    ServiceResponse response2 =
+        doServiceRequestMethods(request, results, ServiceRequestType.TestService2);
+    ServiceResponse response3 =
+        doServiceRequestMethods(request, results, ServiceRequestType.TestService3);
 
-        return "Testing: response1=" + response1 + " -- response2=" + response2 + " -- response3=" + response3;
-
-    }
+    return "Testing: response1="
+        + response1
+        + " -- response2="
+        + response2
+        + " -- response3="
+        + response3;
+  }
 }

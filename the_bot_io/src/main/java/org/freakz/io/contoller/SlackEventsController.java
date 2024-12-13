@@ -16,37 +16,35 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class SlackEventsController {
 
+  private SlackConnection slackConnection;
 
-    private SlackConnection slackConnection;
-
-//    public SlackEventsController(ConnectionManager connectionManager) {
-//        this.connectionManager = connectionManager;
-//    }
-// https://ebcd-2001-14ba-7241-df00-4f4-59f9-2bf1-fde2.ngrok-free.app/api/hokan/io/slack
-// https://xububuntu.airiot.fi:8090/api/hokan/io/slack
-//    @PostMapping
-public ResponseEntity<?> urlVerification(@RequestBody UrlVerificationRequest request) {
+  //    public SlackEventsController(ConnectionManager connectionManager) {
+  //        this.connectionManager = connectionManager;
+  //    }
+  // https://ebcd-2001-14ba-7241-df00-4f4-59f9-2bf1-fde2.ngrok-free.app/api/hokan/io/slack
+  // https://xububuntu.airiot.fi:8090/api/hokan/io/slack
+  //    @PostMapping
+  public ResponseEntity<?> urlVerification(@RequestBody UrlVerificationRequest request) {
     UrlVerificationResponse response = new UrlVerificationResponse();
     response.setChallenge(request.getChallenge());
     return ResponseEntity.ok(response);
-}
+  }
 
-    /*
-    https://api.slack.com/apps/A07JGLWG8BS/event-subscriptions?
-     */
-    @PostMapping
-    public ResponseEntity<?> handleSlackEvent(@RequestBody SlackEvent event) {
+  /*
+  https://api.slack.com/apps/A07JGLWG8BS/event-subscriptions?
+   */
+  @PostMapping
+  public ResponseEntity<?> handleSlackEvent(@RequestBody SlackEvent event) {
 
-
-//        log.debug("Slack event: {}", event);
-        if (this.slackConnection != null) {
-            slackConnection.handleSlackEvent(event);
-        }
-
-        return ResponseEntity.ok().build();
+    //        log.debug("Slack event: {}", event);
+    if (this.slackConnection != null) {
+      slackConnection.handleSlackEvent(event);
     }
 
-    public void init(SlackConnection slackConnection) {
-        this.slackConnection = slackConnection;
-    }
+    return ResponseEntity.ok().build();
+  }
+
+  public void init(SlackConnection slackConnection) {
+    this.slackConnection = slackConnection;
+  }
 }

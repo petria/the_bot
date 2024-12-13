@@ -12,22 +12,22 @@ import org.freakz.common.model.engine.EngineRequest;
 @ToString
 public class Conversation {
 
-    private long id;
+  private long id;
 
-    private ConversationType type;
+  private ConversationType type;
 
-    private int state = 0;
+  private int state = 0;
 
-    private String trigger;
+  private String trigger;
 
-    private ConversationContent content;
+  private ConversationContent content;
 
-    public int nextState() {
-        this.state++;
-        return this.state;
-    }
+  public int nextState() {
+    this.state++;
+    return this.state;
+  }
 
-    public String handleConversation(EngineRequest request) {
-        return this.content.handleConversation(request, state);
-    }
+  public String handleConversation(EngineRequest request) {
+    return this.content.handleConversation(request, state);
+  }
 }

@@ -14,13 +14,12 @@ import org.freakz.common.model.dto.DataNodeBase;
 @ToString
 public class SysEnvValue extends DataNodeBase {
 
-    @JsonProperty("keyName")
-    private String keyName;
+  @JsonProperty("keyName")
+  private String keyName;
 
-    @JsonProperty("value")
-    private String value;
+  @JsonProperty("value")
+  private String value;
 
-    @JsonProperty("modifiedBy")
-    private String modifiedBy;
-
+  @JsonProperty("modifiedBy")
+  private String modifiedBy;
 }

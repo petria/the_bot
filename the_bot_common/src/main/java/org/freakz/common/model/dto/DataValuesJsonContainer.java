@@ -4,9 +4,6 @@ import lombok.*;
 
 import java.util.List;
 
-
-
-
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -14,6 +11,5 @@ import java.util.List;
 @NoArgsConstructor
 public class DataValuesJsonContainer extends DataContainerBase {
 
-    private List<DataValues> data_values;
-
+  private List<DataValues> data_values;
 }

@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class IrcServer {
 
-    private String host;
-    private int port;
-
-
+  private String host;
+  private int port;
 }

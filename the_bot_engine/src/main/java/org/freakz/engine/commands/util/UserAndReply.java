@@ -12,8 +12,7 @@ import org.freakz.common.model.users.User;
 @NoArgsConstructor
 public class UserAndReply {
 
-    private User user;
+  private User user;
 
-    private String replyMessage;
-
+  private String replyMessage;
 }

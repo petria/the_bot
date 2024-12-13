@@ -7,12 +7,14 @@ import org.freakz.engine.data.repository.DataBaseRepository;
 import java.util.List;
 
 public interface DataValuesRepository extends DataBaseRepository<DataValues> {
-    List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(String nick, String channel, String network, String keyLike);
+  List<DataValues> findAllByNickAndChannelAndNetworkAndKeyNameIsLike(
+      String nick, String channel, String network, String keyLike);
 
-    List<DataValues> findAllByChannelAndNetworkAndKeyNameIsLike(String channel, String network, String keyLike);
+  List<DataValues> findAllByChannelAndNetworkAndKeyNameIsLike(
+      String channel, String network, String keyLike);
 
-    DataValues findByNickAndChannelAndNetworkAndKeyName(String nick, String channel, String network, String key);
+  DataValues findByNickAndChannelAndNetworkAndKeyName(
+      String nick, String channel, String network, String key);
 
-    DataValues save(DataValues data) throws DataRepositoryException;
-
+  DataValues save(DataValues data) throws DataRepositoryException;
 }

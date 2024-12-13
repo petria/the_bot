@@ -18,18 +18,13 @@ import java.util.List;
 @Slf4j
 public class MessageFeedController {
 
-    @Autowired
-    private MessageFeederService messageFeeder;
+  @Autowired private MessageFeederService messageFeeder;
 
-    @GetMapping("/after_id/{id}")
-    public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
-        List<Message> list = messageFeeder.getMessagesAfterId(id);
-        log.debug("after id {} -> {}", id, list.size());
-        MessageFeedResponse response
-                = MessageFeedResponse.builder()
-                .messages(list)
-                .build();
-        return ResponseEntity.ok(response);
-    }
-
+  @GetMapping("/after_id/{id}")
+  public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
+    List<Message> list = messageFeeder.getMessagesAfterId(id);
+    log.debug("after id {} -> {}", id, list.size());
+    MessageFeedResponse response = MessageFeedResponse.builder().messages(list).build();
+    return ResponseEntity.ok(response);
+  }
 }

@@ -8,8 +8,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @EnableFeignClients
 public class SpringBootTheBotUiBack {
 
-	public static void main(String[] args) {
+  public static void main(String[] args) {
     SpringApplication.run(SpringBootTheBotUiBack.class, args);
-	}
-
+  }
 }

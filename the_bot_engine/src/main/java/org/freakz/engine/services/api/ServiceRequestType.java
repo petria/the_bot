@@ -1,57 +1,54 @@
 package org.freakz.engine.services.api;
 
 public enum ServiceRequestType {
+  AiService,
+  AiCtrlService,
 
-    AiService,
-    AiCtrlService,
+  BuildInfoQuery,
+  ConnectionControlService,
 
-    BuildInfoQuery,
-    ConnectionControlService,
+  DataSaverList,
 
-    DataSaverList,
+  CurrencyService,
 
-    CurrencyService,
+  ForecaWeatherService,
+  CmpWeatherService,
 
-    ForecaWeatherService,
-    CmpWeatherService,
+  WeatherAPIService,
 
-    WeatherAPIService,
+  GetChannelUsers,
+  GetDataValuesService,
 
-    GetChannelUsers,
-    GetDataValuesService,
+  GetTopCountsService,
+  GetTopStatsRequest,
 
-    GetTopCountsService,
-    GetTopStatsRequest,
+  ChannelOpRequest,
 
-    ChannelOpRequest,
+  IrcRawMessage,
 
-    IrcRawMessage,
+  KelikameratService,
 
+  QuizStartRequest,
 
-    KelikameratService,
+  ReloadConfig,
 
-    QuizStartRequest,
+  SendMessageByTargetAlias,
 
-    ReloadConfig,
+  SystemStatus,
 
-    SendMessageByTargetAlias,
+  TranslateService,
 
-    SystemStatus,
+  UsersListService,
 
-    TranslateService,
+  TestService1,
 
-    UsersListService,
+  TestService2,
 
-    TestService1,
+  TestService3,
 
-    TestService2,
+  SetEnv,
 
-    TestService3,
+  UnSetEnv,
 
-    SetEnv,
-
-    UnSetEnv,
-
-    ListEnv,
-
+  ListEnv,
 }

@@ -1,5 +1,7 @@
 package org.freakz.engine.commands.handlers.irc;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
+
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
@@ -11,8 +13,6 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.ChannelUsersResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 
 @HokanCommandHandler
 @HokanAdminCommand

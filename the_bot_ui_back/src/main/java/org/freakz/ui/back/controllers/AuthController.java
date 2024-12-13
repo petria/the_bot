@@ -2,6 +2,8 @@ package org.freakz.ui.back.controllers;
 
 
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.freakz.ui.back.payload.request.LoginRequest;
 import org.freakz.ui.back.payload.response.JwtResponse;
 import org.freakz.ui.back.security.jwt.JwtUtils;
@@ -14,9 +16,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController

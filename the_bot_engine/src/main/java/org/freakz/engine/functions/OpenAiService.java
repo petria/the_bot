@@ -29,100 +29,113 @@ import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvis
 @SpringServiceMethodHandler
 public class OpenAiService {
 
+  @Value("classpath:/prompts/hokan-prompt-template.st")
+  private Resource hokanPromptTemplate;
 
-    @Value("classpath:/prompts/hokan-prompt-template.st")
-    private Resource hokanPromptTemplate;
+  @Value("classpath:/prompts/hokan-system-template.st")
+  private Resource hokanSystemTemplate;
 
-    @Value("classpath:/prompts/hokan-system-template.st")
-    private Resource hokanSystemTemplate;
+  private final InMemoryChatMemory inMemoryChatMemory;
 
-    private final InMemoryChatMemory inMemoryChatMemory;
+  private final ChatClient chatClient;
+  private final ConfigService configService;
 
-    private final ChatClient chatClient;
-    private final ConfigService configService;
+  private final ConnectionManagerService connectionManagerService;
 
-    private final ConnectionManagerService connectionManagerService;
+  public OpenAiService(
+      ChatClient.Builder builder,
+      ConfigService configService,
+      ConnectionManagerService connectionManagerService) {
+    this.inMemoryChatMemory = new InMemoryChatMemory();
+    this.chatClient =
+        builder
+            .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
+            .defaultFunctions(
+                "currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")
+            .build();
+    this.configService = configService;
+    this.connectionManagerService = connectionManagerService;
+  }
 
-    public OpenAiService(ChatClient.Builder builder, ConfigService configService, ConnectionManagerService connectionManagerService) {
-        this.inMemoryChatMemory = new InMemoryChatMemory();
-        this.chatClient = builder
-                .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
-                .defaultFunctions("currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")
-                .build();
-        this.configService = configService;
-        this.connectionManagerService = connectionManagerService;
-    }
+  public String queryAiWithTemplate(
+      String message,
+      String network,
+      String channel,
+      String sentByNick,
+      String sentByRealName,
+      ServiceRequest request) {
 
+    SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(hokanSystemTemplate);
+    Map<String, Object> systemPromptParameters = new HashMap<>();
+    systemPromptParameters.put("network", network);
+    systemPromptParameters.put("channel", channel);
+    systemPromptParameters.put("sentByNick", sentByNick);
+    systemPromptParameters.put("sentByRealName", sentByRealName);
+    systemPromptParameters.put("localTime", LocalDateTime.now().toString());
+    Message systemMessage = systemPromptTemplate.createMessage(systemPromptParameters);
 
-    public String queryAiWithTemplate(String message, String network, String channel, String sentByNick, String sentByRealName, ServiceRequest request) {
+    PromptTemplate promptTemplate = new PromptTemplate(hokanPromptTemplate);
+    Map<String, Object> promptParameters = new HashMap<>();
 
-        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(hokanSystemTemplate);
-        Map<String, Object> systemPromptParameters = new HashMap<>();
-        systemPromptParameters.put("network", network);
-        systemPromptParameters.put("channel", channel);
-        systemPromptParameters.put("sentByNick", sentByNick);
-        systemPromptParameters.put("sentByRealName", sentByRealName);
-        systemPromptParameters.put("localTime", LocalDateTime.now().toString());
-        Message systemMessage = systemPromptTemplate.createMessage(systemPromptParameters);
-
-        PromptTemplate promptTemplate = new PromptTemplate(hokanPromptTemplate);
-        Map<String, Object> promptParameters = new HashMap<>();
-
-        switch (request.getEngineRequest().getNetwork()) {
-            case "IRCNet":
-                if (request.getEngineRequest().isPrivateChannel()) {
-                    promptParameters.put("answerMaxLengthCharacters", 2500);
-                } else {
-                    promptParameters.put("answerMaxLengthCharacters", 400);
-                }
-                break;
-            default:
-                promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
+    switch (request.getEngineRequest().getNetwork()) {
+      case "IRCNet":
+        if (request.getEngineRequest().isPrivateChannel()) {
+          promptParameters.put("answerMaxLengthCharacters", 2500);
+        } else {
+          promptParameters.put("answerMaxLengthCharacters", 400);
         }
-        String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
-        log.debug("Using AI chatId: {}", chatId);
-        promptParameters.put("input", message);
-        promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
-        Message promptMessage = promptTemplate.createMessage(promptParameters);
-        ChatClient.ChatClientRequest.CallResponseSpec call1
-                = chatClient.prompt()
-                .advisors(a -> a
-                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100)
-                )
-                .system(systemMessage.getContent())
-                .user(promptMessage.getContent())
-                .call();
-
-        return call1.content();
+        break;
+      default:
+        promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
     }
+    String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
+    log.debug("Using AI chatId: {}", chatId);
+    promptParameters.put("input", message);
+    promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
+    Message promptMessage = promptTemplate.createMessage(promptParameters);
+    ChatClient.ChatClientRequest.CallResponseSpec call1 =
+        chatClient
+            .prompt()
+            .advisors(
+                a ->
+                    a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
+            .system(systemMessage.getContent())
+            .user(promptMessage.getContent())
+            .call();
 
-    @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
-    public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
+    return call1.content();
+  }
 
-//        GetConnectionMapResponse connectionsMap = connectionManagerService.getConnectionsMap(); TODO
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
+  public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
 
-        AiResponse aiResponse = AiResponse.builder().build();
-        aiResponse.setStatus("OK: AI!");
+    //        GetConnectionMapResponse connectionsMap =
+    // connectionManagerService.getConnectionsMap(); TODO
 
-        String message = request.getEngineRequest().getMessage();
-        CommandArgs args = new CommandArgs(message);
-        String queryMessage = args.joinArgs(0);
+    AiResponse aiResponse = AiResponse.builder().build();
+    aiResponse.setStatus("OK: AI!");
 
-        String network = request.getEngineRequest().getNetwork();
-        String channel = request.getEngineRequest().getReplyTo();
-        String sentByNick = request.getEngineRequest().getFromSender();
-        String sentByRealName = request.getEngineRequest().getUser().getName();
+    String message = request.getEngineRequest().getMessage();
+    CommandArgs args = new CommandArgs(message);
+    String queryMessage = args.joinArgs(0);
 
-        String queryResponse = queryAiWithTemplate(queryMessage, network, channel, sentByNick, sentByRealName, request);
-        aiResponse.setResult(queryResponse);
-        return aiResponse;
-    }
+    String network = request.getEngineRequest().getNetwork();
+    String channel = request.getEngineRequest().getReplyTo();
+    String sentByNick = request.getEngineRequest().getFromSender();
+    String sentByRealName = request.getEngineRequest().getUser().getName();
 
-    @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
-    public <T extends ServiceResponse> AiCtrlResponse handleAiCtlServiceRequest(ServiceRequest request) {
-        AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();
-        aiResponse.setStatus("OK: AiCtl!");
-        return aiResponse;
-    }
+    String queryResponse =
+        queryAiWithTemplate(queryMessage, network, channel, sentByNick, sentByRealName, request);
+    aiResponse.setResult(queryResponse);
+    return aiResponse;
+  }
+
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
+  public <T extends ServiceResponse> AiCtrlResponse handleAiCtlServiceRequest(
+      ServiceRequest request) {
+    AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();
+    aiResponse.setStatus("OK: AiCtl!");
+    return aiResponse;
+  }
 }

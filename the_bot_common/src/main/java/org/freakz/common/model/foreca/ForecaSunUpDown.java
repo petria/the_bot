@@ -7,11 +7,11 @@ import lombok.Data;
 @Data
 public class ForecaSunUpDown {
 
-    private int dayLengthTotalMinutes;
-    private int dayLengthHours;
-    private int dayLengthMinutes;
+  private int dayLengthTotalMinutes;
+  private int dayLengthHours;
+  private int dayLengthMinutes;
 
-    private String sunUpTime;
+  private String sunUpTime;
 
-    private String sunDownTime;
+  private String sunDownTime;
 }

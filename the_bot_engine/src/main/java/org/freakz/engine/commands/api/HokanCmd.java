@@ -12,16 +12,15 @@ import java.util.List;
 
 public interface HokanCmd {
 
-    void setBotEngine(BotEngine botEngine);
+  void setBotEngine(BotEngine botEngine);
 
-    void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException;
+  void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException;
 
-    String executeCommand(EngineRequest request, JSAPResult results);
+  String executeCommand(EngineRequest request, JSAPResult results);
 
-    List<HandlerAlias> getAliases(String botName);
+  List<HandlerAlias> getAliases(String botName);
 
-    boolean isAdminCommand();
+  boolean isAdminCommand();
 
-    void setIsAdminCommand(boolean isAdminCommand);
-
+  void setIsAdminCommand(boolean isAdminCommand);
 }

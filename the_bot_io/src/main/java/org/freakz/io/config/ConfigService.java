@@ -1,15 +1,14 @@
 package org.freakz.io.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
-
-import java.io.File;
-import java.io.IOException;
 
 @Service
 @Slf4j

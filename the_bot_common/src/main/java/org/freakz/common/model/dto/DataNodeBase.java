@@ -8,8 +8,6 @@ import lombok.Data;
 @Data
 public class DataNodeBase {
 
-    @JsonProperty("id")
-    private Long id;
-
-
+  @JsonProperty("id")
+  private Long id;
 }

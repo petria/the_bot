@@ -1,10 +1,8 @@
 package com.bezkoder.springjwt;
 
-//@SpringBootTest
+// @SpringBootTest
 public class SpringApplicationUiBackendTests {
 
-    //    @Test
-    public void contextLoads() {
-    }
-
+  //    @Test
+  public void contextLoads() {}
 }

@@ -15,5 +15,5 @@ import java.util.Map;
 @ToString
 public class ConnectionsResponse extends ServiceResponse {
 
-    private Map<Integer, BotConnectionResponse> connectionMap;
+  private Map<Integer, BotConnectionResponse> connectionMap;
 }

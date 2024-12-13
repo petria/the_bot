@@ -12,15 +12,14 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 /*
- Structure of master config file
- */
+Structure of master config file
+*/
 public class TheBotConfig {
 
-    private BotConfig botConfig;
-    private SlackConfig slackConfig;
-    private DiscordConfig discordConfig;
-    private TelegramConfig telegramConfig;
+  private BotConfig botConfig;
+  private SlackConfig slackConfig;
+  private DiscordConfig discordConfig;
+  private TelegramConfig telegramConfig;
 
-    private List<IrcServerConfig> ircServerConfigs;
-
+  private List<IrcServerConfig> ircServerConfigs;
 }

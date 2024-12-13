@@ -1,10 +1,8 @@
 package org.freakz.common.model.dto;
 
+import java.util.List;
 import lombok.*;
 import org.freakz.common.model.users.User;
-
-import java.util.List;
-
 
 @Builder
 @Data
@@ -13,6 +11,5 @@ import java.util.List;
 @NoArgsConstructor
 public class UserValuesJsonContainer extends DataContainerBase {
 
-    private List<User> data_values;
-
+  private List<User> data_values;
 }

@@ -1,9 +1,13 @@
 package org.freakz.engine.commands.handlers.util;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_EXPRESSION;
+
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
@@ -12,11 +16,6 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_EXPRESSION;
 
 @HokanCommandHandler
 @Slf4j

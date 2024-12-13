@@ -12,13 +12,12 @@ import java.util.concurrent.ConcurrentMap;
 @ToString
 public class StatusReportRequest {
 
-    private long timestamp;
-    private long uptimeStart;
-    private String name;
-    private String hostname;
-    private String user;
+  private long timestamp;
+  private long uptimeStart;
+  private String name;
+  private String hostname;
+  private String user;
 
-    private ConcurrentMap<String, Integer> httpMethodCallMap;
-    private Map<String, ChannelMessageCounters> channelMessageCountersMap;
-
+  private ConcurrentMap<String, Integer> httpMethodCallMap;
+  private Map<String, ChannelMessageCounters> channelMessageCountersMap;
 }

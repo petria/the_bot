@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 
-
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TestService1)
 @ServiceMethodHandler
 @Slf4j

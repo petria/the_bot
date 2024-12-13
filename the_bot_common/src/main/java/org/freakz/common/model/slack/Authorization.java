@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 class Authorization {
-    private String enterpriseId;
-    private String teamId;
-    private String userId;
-    private boolean isBot;
-    private boolean isEnterpriseInstall;
+  private String enterpriseId;
+  private String teamId;
+  private String userId;
+  private boolean isBot;
+  private boolean isEnterpriseInstall;
 }

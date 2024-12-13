@@ -12,7 +12,5 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = false)
 public class TopStatsResponse extends ServiceResponse {
 
-
-    private Map<String, StatsNode> nodeMap;
-
+  private Map<String, StatsNode> nodeMap;
 }

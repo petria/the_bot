@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 @FeignClient(name = "botIOClient", url = "localhost:8090", path = "/api/hokan/io")
 public interface BotIOClient {
 
-    @GetMapping("/ping")
-    Response getPing();
+  @GetMapping("/ping")
+  Response getPing();
 
-    @GetMapping("/message_feed/after_id/{id}")
-    Response getMessagesAfterId(@PathVariable("id") long id);
+  @GetMapping("/message_feed/after_id/{id}")
+  Response getMessagesAfterId(@PathVariable("id") long id);
 }

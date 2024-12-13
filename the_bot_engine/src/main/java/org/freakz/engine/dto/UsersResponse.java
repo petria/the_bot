@@ -15,6 +15,5 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = false)
 public class UsersResponse extends ServiceResponse {
 
-    private List<User> userList;
-
+  private List<User> userList;
 }

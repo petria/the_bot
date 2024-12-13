@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.freakz.engine.services.api.ServiceResponse;
 
-
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)

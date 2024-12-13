@@ -19,32 +19,29 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COMMAND;
 @HokanCommandHandler
 public class AiCtlCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws JSAPException {
+  @Override
+  public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-        jsap.setHelp("Control and view 'AI' settings.");
+    jsap.setHelp("Control and view 'AI' settings.");
 
-        UnflaggedOption opt = new UnflaggedOption(ARG_COMMAND)
-                .setRequired(true)
-                .setDefault("VIEW")
-                .setGreedy(false);
+    UnflaggedOption opt =
+        new UnflaggedOption(ARG_COMMAND).setRequired(true).setDefault("VIEW").setGreedy(false);
 
-        jsap.registerParameter(opt);
+    jsap.registerParameter(opt);
+  }
 
-    }
+  @Override
+  public List<HandlerAlias> getAliases(String botName) {
+    List<HandlerAlias> list = new ArrayList<>();
+    //        list.add(createToBotAliasWithArgs(botName, "!hokan"));
+    return list;
+  }
 
-    @Override
-    public List<HandlerAlias> getAliases(String botName) {
-        List<HandlerAlias> list = new ArrayList<>();
-//        list.add(createToBotAliasWithArgs(botName, "!hokan"));
-        return list;
-    }
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    AiCtrlResponse aiResponse =
+        doServiceRequestMethods(request, results, ServiceRequestType.AiCtrlService);
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        AiCtrlResponse aiResponse = doServiceRequestMethods(request, results, ServiceRequestType.AiCtrlService);
-
-        return "TODO: AiCtrl";
-    }
-
+    return "TODO: AiCtrl";
+  }
 }

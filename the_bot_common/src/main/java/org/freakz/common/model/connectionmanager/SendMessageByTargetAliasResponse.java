@@ -5,6 +5,5 @@ import lombok.Data;
 @Data
 public class SendMessageByTargetAliasResponse {
 
-    private String sentTo;
-
+  private String sentTo;
 }

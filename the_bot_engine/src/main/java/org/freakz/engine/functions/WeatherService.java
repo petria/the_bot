@@ -9,64 +9,59 @@ import org.freakz.engine.services.weather.foreca.ForecaWeatherService;
 import java.util.function.Function;
 
 /*
-   Weather API
-   https://www.weatherapi.com/api-explorer.aspx
- */
+  Weather API
+  https://www.weatherapi.com/api-explorer.aspx
+*/
 @Slf4j
 public class WeatherService implements Function<WeatherService.Request, WeatherService.Response> {
 
-    private final ForecaWeatherService forecaWeatherService;
+  private final ForecaWeatherService forecaWeatherService;
 
-    public WeatherService(ForecaWeatherService forecaWeatherService) {
-        log.debug("Init!");
-        this.forecaWeatherService = forecaWeatherService;
-    }
+  public WeatherService(ForecaWeatherService forecaWeatherService) {
+    log.debug("Init!");
+    this.forecaWeatherService = forecaWeatherService;
+  }
 
-    static class FakeJSAPResults extends JSAPResult {
-        private final String result;
+  static class FakeJSAPResults extends JSAPResult {
+    private final String result;
 
-        public FakeJSAPResults(String result) {
-            this.result = result;
-        }
-
-        @Override
-        public String getString(String s) {
-            return result;
-        }
+    public FakeJSAPResults(String result) {
+      this.result = result;
     }
 
     @Override
-    public Response apply(Request weatherRequest) {
-        log.info("Weather Request: {}", weatherRequest);
-
-        ServiceRequest request = ServiceRequest.builder().build();
-        JSAPResult results = new FakeJSAPResults(weatherRequest.city());
-        request.setResults(results);
-
-        ForecaResponse forecaResponse = forecaWeatherService.handleForecaCmdServiceRequest(request);
-        Response response = new Response(forecaResponse);
-        log.info("Weather API Response: {}", response);
-        return response;
+    public String getString(String s) {
+      return result;
     }
+  }
 
-    // mapping the response of the Weather API to records. I only mapped the information I was interested in.
-    public record Request(String city) {
-    }
+  @Override
+  public Response apply(Request weatherRequest) {
+    log.info("Weather Request: {}", weatherRequest);
 
-    public record Response(ForecaResponse response) {
-    }
-//    public record Response(Location location, Current current, Time time) {}
+    ServiceRequest request = ServiceRequest.builder().build();
+    JSAPResult results = new FakeJSAPResults(weatherRequest.city());
+    request.setResults(results);
 
-    public record Time(String timeNow) {
-    }
+    ForecaResponse forecaResponse = forecaWeatherService.handleForecaCmdServiceRequest(request);
+    Response response = new Response(forecaResponse);
+    log.info("Weather API Response: {}", response);
+    return response;
+  }
 
-    public record Location(String name, String region, String country, Long lat, Long lon) {
-    }
+  // mapping the response of the Weather API to records. I only mapped the information I was
+  // interested in.
+  public record Request(String city) {}
 
-    public record Current(String temp_f, Condition condition, String wind_mph, String humidity) {
-    }
+  public record Response(ForecaResponse response) {}
 
-    public record Condition(String text) {
-    }
+  //    public record Response(Location location, Current current, Time time) {}
 
+  public record Time(String timeNow) {}
+
+  public record Location(String name, String region, String country, Long lat, Long lon) {}
+
+  public record Current(String temp_f, Condition condition, String wind_mph, String humidity) {}
+
+  public record Condition(String text) {}
 }

@@ -4,14 +4,13 @@ import java.io.Serializable;
 
 public class DataValueStatsModel implements Serializable {
 
-    private String output;
+  private String output;
 
+  public String getOutput() {
+    return output;
+  }
 
-    public String getOutput() {
-        return output;
-    }
-
-    public void setOutput(String output) {
-        this.output = output;
-    }
+  public void setOutput(String output) {
+    this.output = output;
+  }
 }

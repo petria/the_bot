@@ -13,21 +13,16 @@ import java.util.concurrent.ConcurrentMap;
 @Slf4j
 public class CallCountInterceptor {
 
+  @Getter private final ConcurrentMap<String, Integer> callCounts = new ConcurrentHashMap<>();
 
-    @Getter
-    private final ConcurrentMap<String, Integer> callCounts = new ConcurrentHashMap<>();
+  @Around("execution(* org.freakz.cli.clients.*.*(..))")
+  public Object captureMessageSendingMethod(ProceedingJoinPoint jp) throws Throwable {
+    String methodName = "OUT: " + jp.getSignature().getName();
+    callCounts.compute(methodName, (key, val) -> val == null ? 1 : val + 1);
+    methodName = "IN: " + jp.getSignature().getName();
 
+    callCounts.compute(methodName, (key, val) -> val == null ? 1 : val + 1);
 
-    @Around("execution(* org.freakz.cli.clients.*.*(..))")
-    public Object captureMessageSendingMethod(ProceedingJoinPoint jp) throws Throwable {
-        String methodName = "OUT: " + jp.getSignature().getName();
-        callCounts.compute(methodName, (key, val) -> val == null ? 1 : val + 1);
-        methodName = "IN: " + jp.getSignature().getName();
-
-
-        callCounts.compute(methodName, (key, val) -> val == null ? 1 : val + 1);
-
-        return jp.proceed();
-    }
-
+    return jp.proceed();
+  }
 }

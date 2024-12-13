@@ -1,6 +1,5 @@
 package org.freakz.engine.data.repository;
 
-
 import lombok.Builder;
 import lombok.Data;
 
@@ -8,8 +7,7 @@ import lombok.Data;
 @Data
 public class DataSaverInfo {
 
-    private String name;
+  private String name;
 
-    private int nodeCount;
-
+  private int nodeCount;
 }

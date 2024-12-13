@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 class ElementDetail {
-    private String type;
-    private String text;
+  private String type;
+  private String text;
 }

@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/hokan/io/ping")
 public class PingController extends PingControllerBase {
 
-    @GetMapping()
-    @Override
-    public ResponseEntity<?> ping() {
-        return super.ping();
-    }
+  @GetMapping()
+  @Override
+  public ResponseEntity<?> ping() {
+    return super.ping();
+  }
 }

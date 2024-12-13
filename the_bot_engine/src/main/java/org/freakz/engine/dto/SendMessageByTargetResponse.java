@@ -12,6 +12,5 @@ import org.freakz.engine.services.api.ServiceResponse;
 @EqualsAndHashCode(callSuper = false)
 public class SendMessageByTargetResponse extends ServiceResponse {
 
-    private String sendTo;
-
+  private String sendTo;
 }

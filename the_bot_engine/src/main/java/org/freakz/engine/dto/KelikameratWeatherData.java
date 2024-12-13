@@ -1,15 +1,10 @@
 package org.freakz.engine.dto;
 
-
-import lombok.*;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import lombok.*;
 
-/**
- * Created by Petri Airio on 23.6.2015.
- * -
- */
+/** Created by Petri Airio on 23.6.2015. - */
 @Builder
 @Data
 @AllArgsConstructor
@@ -17,19 +12,17 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = false)
 public class KelikameratWeatherData implements Serializable {
 
-    private LocalDateTime time;
+  private LocalDateTime time;
 
-    private KelikameratUrl url;
+  private KelikameratUrl url;
 
-    private String place;
-    private String placeFromUrl;
+  private String place;
+  private String placeFromUrl;
 
-    private Float air;
-    private Float road;
-    private Float ground;
+  private Float air;
+  private Float road;
+  private Float ground;
 
-    private Float humidity;
-    private Float dewPoint;
-
-
+  private Float humidity;
+  private Float dewPoint;
 }

@@ -1,6 +1,11 @@
 package org.freakz.engine.commands.handlers.weather;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
+
 import com.martiansoftware.jsap.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
@@ -12,12 +17,6 @@ import org.freakz.engine.services.weather.weatherapi.model.Astro;
 import org.freakz.engine.services.weather.weatherapi.model.AstronomyResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastDay;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @HokanCommandHandler
 @Slf4j

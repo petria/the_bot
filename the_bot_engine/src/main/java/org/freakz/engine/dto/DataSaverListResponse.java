@@ -13,6 +13,5 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = false)
 public class DataSaverListResponse extends ServiceResponse {
 
-    private List<DataSaverInfo> dataSaverInfoList;
-
+  private List<DataSaverInfo> dataSaverInfoList;
 }

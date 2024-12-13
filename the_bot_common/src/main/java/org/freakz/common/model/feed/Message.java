@@ -1,8 +1,7 @@
 package org.freakz.common.model.feed;
 
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 @AllArgsConstructor
 @Builder

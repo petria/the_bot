@@ -1,13 +1,11 @@
 package org.freakz.common.model.response;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.freakz.common.model.feed.Message;
-
-import java.util.List;
-
 
 @AllArgsConstructor
 @Builder
@@ -15,6 +13,5 @@ import java.util.List;
 @NoArgsConstructor
 public class MessageFeedResponse {
 
-    private List<Message> messages;
-
+  private List<Message> messages;
 }

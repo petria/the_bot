@@ -10,6 +10,5 @@ import org.freakz.engine.services.api.ServiceResponse;
 @EqualsAndHashCode(callSuper = false)
 public class OPRequestResponse extends ServiceResponse {
 
-    private String response;
-
+  private String response;
 }

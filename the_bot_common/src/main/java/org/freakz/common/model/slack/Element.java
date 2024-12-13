@@ -10,6 +10,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 class Element {
-    private String type;
-    private List<ElementDetail> elements;
+  private String type;
+  private List<ElementDetail> elements;
 }

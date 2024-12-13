@@ -6,18 +6,16 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DataContainerBase {
 
-    protected final LocalDateTime lastSaved;
+  protected final LocalDateTime lastSaved;
 
-    protected Integer saveTimes = 0;
+  protected Integer saveTimes = 0;
 
-    public DataContainerBase() {
-        lastSaved = LocalDateTime.now();
-    }
-
+  public DataContainerBase() {
+    lastSaved = LocalDateTime.now();
+  }
 }

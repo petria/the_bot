@@ -1,5 +1,8 @@
 package org.freakz.engine.services.weather.weatherapi;
 
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
@@ -11,9 +14,6 @@ import org.freakz.engine.services.weather.weatherapi.model.ErrorResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @Slf4j
 @SpringServiceMethodHandler

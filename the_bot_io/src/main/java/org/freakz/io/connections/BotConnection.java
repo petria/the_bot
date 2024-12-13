@@ -12,44 +12,42 @@ import java.util.Map;
 @Slf4j
 public class BotConnection {
 
-    static int idCounter = 0;
+  static int idCounter = 0;
 
-    @Getter
-    private int id;
+  @Getter private int id;
 
-    //    @Getter
-    private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
+  //    @Getter
+  private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
 
-    @Getter
-    private BotConnectionType type;
+  @Getter private BotConnectionType type;
 
-    public BotConnection() {
-        this.id = idCounter;
-        idCounter++;
-    }
+  public BotConnection() {
+    this.id = idCounter;
+    idCounter++;
+  }
 
-    public BotConnection(BotConnectionType type) {
-        this();
-        this.type = type;
-    }
+  public BotConnection(BotConnectionType type) {
+    this();
+    this.type = type;
+  }
 
+  public void sendMessageTo(Message message) {
+    log.error("sendMessageTo(Message message) not implemented: " + this.getClass());
+  }
 
-    public void sendMessageTo(Message message) {
-        log.error("sendMessageTo(Message message) not implemented: " + this.getClass());
-    }
+  public void sendRawMessage(Message message) {
+    log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
+  }
 
-    public void sendRawMessage(Message message) {
-        log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
-    }
+  public String getNetwork() {
+    return "ConnectionNetwork";
+  }
 
-    public String getNetwork() {
-        return "ConnectionNetwork";
-    }
-
-    public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-//        List<String> list = List.of("getChannelUsersByTargetAlias(String targetAlias) not implemented: " + this.getClass());
-//        log.error(list.get(0));
-        return null;
-    }
-
+  public List<ChannelUser> getChannelUsersByTargetAlias(
+      String targetAlias, BotConnectionChannel channel) {
+    //        List<String> list = List.of("getChannelUsersByTargetAlias(String targetAlias) not
+    // implemented: " + this.getClass());
+    //        log.error(list.get(0));
+    return null;
+  }
 }

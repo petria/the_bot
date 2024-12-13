@@ -1,6 +1,5 @@
 package org.freakz.engine.commands.handlers.admin;
 
-
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
@@ -18,18 +17,22 @@ import org.freakz.engine.services.api.ServiceRequestType;
 @Slf4j
 public class UsersCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("List registered bot users.");
-    }
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("List registered bot users.");
+  }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        UsersResponse response = doServiceRequest(request, results, ServiceRequestType.UsersListService);
-        sb().append("== Users\n");
-        response.getUserList().forEach(user -> {
-            format(" [%d] %s ", user.getId(), user.getName());
-        });
-        return sb().toString();
-    }
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    UsersResponse response =
+        doServiceRequest(request, results, ServiceRequestType.UsersListService);
+    sb().append("== Users\n");
+    response
+        .getUserList()
+        .forEach(
+            user -> {
+              format(" [%d] %s ", user.getId(), user.getName());
+            });
+    return sb().toString();
+  }
 }

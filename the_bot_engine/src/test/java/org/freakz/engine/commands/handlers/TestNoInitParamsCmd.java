@@ -7,8 +7,8 @@ import org.freakz.engine.commands.api.AbstractCmd;
 
 @HokanCommandHandler
 public class TestNoInitParamsCmd extends AbstractCmd {
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        return getCommandClassName();
-    }
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    return getCommandClassName();
+  }
 }

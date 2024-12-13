@@ -5,10 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 /**
- * Orginal Date: 23.1.2012
- * Time: 11:34
- * <p>
- * Modified to the_bot 26.3.2023
+ * Orginal Date: 23.1.2012 Time: 11:34
+ *
+ * <p>Modified to the_bot 26.3.2023
  *
  * @author Petri Airio
  */
@@ -21,21 +20,18 @@ import lombok.*;
 @ToString
 public class DataValues extends DataNodeBase {
 
-    @JsonProperty("nick")
-    private String nick;
+  @JsonProperty("nick")
+  private String nick;
 
-    @JsonProperty("network")
-    private String network;
+  @JsonProperty("network")
+  private String network;
 
+  @JsonProperty("channel")
+  private String channel;
 
-    @JsonProperty("channel")
-    private String channel;
+  @JsonProperty("keyName")
+  private String keyName;
 
-    @JsonProperty("keyName")
-    private String keyName;
-
-
-    @JsonProperty("value")
-    private String value;
-
+  @JsonProperty("value")
+  private String value;
 }

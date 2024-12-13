@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useState} from "react";
 import cmdService from "../services/cmd.service";
 
 export default function CommandSend() {

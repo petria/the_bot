@@ -13,6 +13,5 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = false)
 public class ForecaResponse extends ServiceResponse {
 
-    private List<ForecaData> forecaDataList;
-
+  private List<ForecaData> forecaDataList;
 }

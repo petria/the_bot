@@ -13,6 +13,5 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = false)
 public class ListEnvResponse extends ServiceResponse {
 
-    private List<SysEnvValue> envValues;
-
+  private List<SysEnvValue> envValues;
 }

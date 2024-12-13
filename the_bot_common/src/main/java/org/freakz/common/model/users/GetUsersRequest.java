@@ -12,6 +12,5 @@ import java.util.concurrent.ConcurrentMap;
 @ToString
 public class GetUsersRequest {
 
-    private long timestamp;
-
+  private long timestamp;
 }

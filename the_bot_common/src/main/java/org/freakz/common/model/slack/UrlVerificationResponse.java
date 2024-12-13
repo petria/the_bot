@@ -5,6 +5,5 @@ import lombok.Data;
 @Data
 public class UrlVerificationResponse {
 
-    private String challenge;
-
+  private String challenge;
 }

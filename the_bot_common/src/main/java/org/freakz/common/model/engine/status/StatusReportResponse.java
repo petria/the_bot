@@ -9,6 +9,5 @@ import lombok.*;
 @ToString
 public class StatusReportResponse {
 
-    private String message;
-
+  private String message;
 }

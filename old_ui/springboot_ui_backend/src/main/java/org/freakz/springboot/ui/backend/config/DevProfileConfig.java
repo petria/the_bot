@@ -1,5 +1,7 @@
 package org.freakz.springboot.ui.backend.config;
 
+import java.util.HashSet;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.springboot.ui.backend.models.ERole;
 import org.freakz.springboot.ui.backend.models.Role;
@@ -12,9 +14,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.HashSet;
-import java.util.Set;
 
 @Component
 @Profile("dev")

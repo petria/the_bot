@@ -18,24 +18,25 @@ import org.freakz.engine.services.api.ServiceRequestType;
 @Slf4j
 public class EnvListCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("List system variables.");
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("List system variables.");
+  }
+
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+
+    StringBuilder sb = new StringBuilder("== ENV VARIABLES\n");
+    ListEnvResponse response =
+        doServiceRequestMethods(request, results, ServiceRequestType.ListEnv);
+    if (response != null && !response.getEnvValues().isEmpty()) {
+      for (SysEnvValue env : response.getEnvValues()) {
+        sb.append(String.format("%d: %s = %s\n", env.getId(), env.getKeyName(), env.getValue()));
+      }
+    } else {
+      sb.append("<none set yet>");
     }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-
-        StringBuilder sb = new StringBuilder("== ENV VARIABLES\n");
-        ListEnvResponse response = doServiceRequestMethods(request, results, ServiceRequestType.ListEnv);
-        if (response != null && !response.getEnvValues().isEmpty()) {
-            for (SysEnvValue env : response.getEnvValues()) {
-                sb.append(String.format("%d: %s = %s\n", env.getId(), env.getKeyName(), env.getValue()));
-            }
-        } else {
-            sb.append("<none set yet>");
-        }
-
-        return sb.toString();
-    }
+    return sb.toString();
+  }
 }

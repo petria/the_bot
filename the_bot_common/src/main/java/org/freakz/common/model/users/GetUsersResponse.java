@@ -11,6 +11,5 @@ import java.util.List;
 @ToString
 public class GetUsersResponse {
 
-    private List<User> users;
-
+  private List<User> users;
 }

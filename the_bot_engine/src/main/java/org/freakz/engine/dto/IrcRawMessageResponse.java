@@ -7,12 +7,10 @@ import org.freakz.engine.services.api.ServiceResponse;
 
 import java.io.Serializable;
 
-
 @Builder
 @Data
 @EqualsAndHashCode(callSuper = false)
 public class IrcRawMessageResponse extends ServiceResponse implements Serializable {
 
-    private String ircServerResponse;
-
+  private String ircServerResponse;
 }

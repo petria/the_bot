@@ -10,8 +10,7 @@ import org.freakz.common.model.users.User;
 @ToString
 public class EngineResponse {
 
-    private String message;
+  private String message;
 
-    private User user;
-
+  private User user;
 }

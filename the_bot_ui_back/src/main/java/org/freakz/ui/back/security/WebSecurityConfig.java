@@ -1,6 +1,7 @@
 package org.freakz.ui.back.security;
 
 
+import java.util.Arrays;
 import org.freakz.ui.back.security.jwt.AuthEntryPointJwt;
 import org.freakz.ui.back.security.jwt.AuthTokenFilter;
 import org.freakz.ui.back.security.services.UserDetailsServiceImpl;
@@ -20,8 +21,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
 
 @Configuration
 @EnableMethodSecurity

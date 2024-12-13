@@ -4,47 +4,47 @@ import UserService from "../services/user.service";
 import EventBus from "../common/EventBus";
 
 export default class BoardAdmin extends Component {
-  constructor(props) {
-    super(props);
+    constructor(props) {
+        super(props);
 
-    this.state = {
-      content: ""
-    };
-  }
+        this.state = {
+            content: ""
+        };
+    }
 
-  componentDidMount() {
-    UserService.getAdminBoard().then(
-      response => {
-        this.setState({
-          content: response.data
-        });
-      },
-      error => {
-        this.setState({
-          content:
-            (error.response &&
-              error.response.data &&
-              error.response.data.message) ||
-            error.message ||
-            error.toString()
-        });
+    componentDidMount() {
+        UserService.getAdminBoard().then(
+            response => {
+                this.setState({
+                    content: response.data
+                });
+            },
+            error => {
+                this.setState({
+                    content:
+                        (error.response &&
+                            error.response.data &&
+                            error.response.data.message) ||
+                        error.message ||
+                        error.toString()
+                });
 
-        if (error.response && error.response.status === 401) {
-          EventBus.dispatch("logout");
-        }
-      }
-    );
-  }
+                if (error.response && error.response.status === 401) {
+                    EventBus.dispatch("logout");
+                }
+            }
+        );
+    }
 
-  render() {
-    return (
-      <div className="container">
-        <header className="jumbotron">
+    render() {
+        return (
+            <div className="container">
+                <header className="jumbotron">
           <pre>
             {this.state.content}
           </pre>
-        </header>
-      </div>
-    );
-  }
+                </header>
+            </div>
+        );
+    }
 }

@@ -10,10 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "engineClient", url = "bot-engine:8100", path = "/api/hokan/engine")
 public interface EngineClient {
 
-    @PostMapping("/handle_request")
-    Response handleEngineRequest(@RequestBody EngineRequest request);
+  @PostMapping("/handle_request")
+  Response handleEngineRequest(@RequestBody EngineRequest request);
 
-    @PostMapping("/handle_status_report")
-    Response handleStatusReport(@RequestBody StatusReportRequest request);
-
+  @PostMapping("/handle_status_report")
+  Response handleStatusReport(@RequestBody StatusReportRequest request);
 }

@@ -1,6 +1,5 @@
 package org.freakz.engine.commands.handlers.admin;
 
-
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
@@ -17,18 +16,18 @@ import org.freakz.engine.commands.api.AbstractCmd;
 @Slf4j
 public class AliasCmd extends AbstractCmd {
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("List command aliases.");
-    }
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("List command aliases.");
+  }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
-        StringBuilder sb = new StringBuilder("Alias list:\n");
-        for (String alias : getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().keySet()) {
-            HandlerAlias ha = getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().get(alias);
-            sb.append(String.format("%s = %s\n", ha.getAlias(), ha.getTarget()));
-        }
-        return sb.toString();
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
+    StringBuilder sb = new StringBuilder("Alias list:\n");
+    for (String alias : getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().keySet()) {
+      HandlerAlias ha = getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().get(alias);
+      sb.append(String.format("%s = %s\n", ha.getAlias(), ha.getTarget()));
     }
+    return sb.toString();
+  }
 }

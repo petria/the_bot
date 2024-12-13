@@ -1,6 +1,8 @@
 package org.freakz.engine.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.botconfig.TheBotConfig;
@@ -8,72 +10,69 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.IOException;
-
 @Service
 @Slf4j
 public class ConfigService {
 
-    @Autowired
-    private TheBotProperties botProperties;
+  @Autowired private TheBotProperties botProperties;
 
-    @Autowired
-    private Environment environment;
+  @Autowired private Environment environment;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
-    private static RuntimeConfigReader configReader = new RuntimeConfigReader();
+  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 
-    private TheBotConfig theBotConfig = null;
+  private TheBotConfig theBotConfig = null;
 
-    public TheBotConfig readBotConfig() {
-        if (theBotConfig == null) {
-            try {
-                reloadConfig();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return theBotConfig;
+  public TheBotConfig readBotConfig() {
+    if (theBotConfig == null) {
+      try {
+        reloadConfig();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
+    return theBotConfig;
+  }
 
-    public String getActiveProfile() {
-        String activeProfile = environment.getProperty("hokan.runtime.profile");
-        if (activeProfile == null) {
-            activeProfile = "DEV";
-//            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
-        }
-        return activeProfile;
+  public String getActiveProfile() {
+    String activeProfile = environment.getProperty("hokan.runtime.profile");
+    if (activeProfile == null) {
+      activeProfile = "DEV";
+      //            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
     }
+    return activeProfile;
+  }
 
+  public void reloadConfig() throws IOException {
+    String activeProfile = getActiveProfile();
+    theBotConfig =
+        configReader.readBotConfig(
+            objectMapper,
+            botProperties.getRuntimeDir(),
+            botProperties.getSecretPropertiesFile(),
+            activeProfile);
+  }
 
-    public void reloadConfig() throws IOException {
-        String activeProfile = getActiveProfile();
-        theBotConfig = configReader.readBotConfig(objectMapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
-    }
+  public File getRuntimeDirFile(String fileName) {
+    File file = new File(botProperties.getRuntimeDir() + fileName);
+    return file;
+  }
 
-    public File getRuntimeDirFile(String fileName) {
-        File file = new File(botProperties.getRuntimeDir() + fileName);
-        return file;
-    }
+  public File getRuntimeDataFile(String fileName) {
+    File file = new File(botProperties.getDataDir() + fileName);
+    return file;
+  }
 
-    public File getRuntimeDataFile(String fileName) {
-        File file = new File(botProperties.getDataDir() + fileName);
-        return file;
-    }
+  public String getRuntimeDirFileName(String fileName) {
+    return botProperties.getRuntimeDir() + fileName;
+  }
 
-    public String getRuntimeDirFileName(String fileName) {
-        return botProperties.getRuntimeDir() + fileName;
-    }
+  public String getRuntimeDataFileName(String fileName) {
+    return botProperties.getDataDir() + fileName;
+  }
 
-    public String getRuntimeDataFileName(String fileName) {
-        return botProperties.getDataDir() + fileName;
-    }
-
-    public String getBotLogDir() {
-        return botProperties.getLogDir();
-    }
-
+  public String getBotLogDir() {
+    return botProperties.getLogDir();
+  }
 }
