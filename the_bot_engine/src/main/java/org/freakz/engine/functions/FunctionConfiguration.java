@@ -1,11 +1,13 @@
 package org.freakz.engine.functions;
 
-import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.services.weather.foreca.ForecaWeatherService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Description;
+
+import java.util.function.Function;
 
 @Configuration
 @Slf4j
@@ -14,8 +16,17 @@ public class FunctionConfiguration {
   //    private final WeatherConfigProperties props;
   private final ForecaWeatherService forecaWeatherService;
 
-  public FunctionConfiguration(ForecaWeatherService forecaWeatherService) {
+  private final BotEngine botEngine;
+
+  public FunctionConfiguration(ForecaWeatherService forecaWeatherService, BotEngine botEngine) {
     this.forecaWeatherService = forecaWeatherService;
+    this.botEngine = botEngine;
+  }
+
+  @Bean
+  @Description("Invokes Bot Engine to handle incoming message.")
+  public Function<BotEngineService.Request, BotEngineService.Response> handeEngineCommandFunction() {
+    return new BotEngineService(this.botEngine);
   }
 
   @Bean

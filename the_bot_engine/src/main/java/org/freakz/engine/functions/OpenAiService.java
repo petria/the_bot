@@ -35,6 +35,9 @@ public class OpenAiService {
   @Value("classpath:/prompts/hokan-system-template.st")
   private Resource hokanSystemTemplate;
 
+  @Value("classpath:/prompts/hokan-engine-template.st")
+  private Resource hokanEngineTemplate;
+
   private final InMemoryChatMemory inMemoryChatMemory;
 
   private final ChatClient chatClient;
@@ -50,8 +53,7 @@ public class OpenAiService {
     this.chatClient =
         builder
             .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
-            .defaultFunctions(
-                "currentWeatherFunction", "myCurrentLocationFunction", "ircChatInfoFunction")
+                .defaultFunctions("myCurrentLocationFunction", "ircChatInfoFunction", "handeEngineCommandFunction")
             .build();
     this.configService = configService;
     this.connectionManagerService = connectionManagerService;
@@ -73,6 +75,9 @@ public class OpenAiService {
     systemPromptParameters.put("sentByRealName", sentByRealName);
     systemPromptParameters.put("localTime", LocalDateTime.now().toString());
     Message systemMessage = systemPromptTemplate.createMessage(systemPromptParameters);
+
+    SystemPromptTemplate systemPromptTemplate2 = new SystemPromptTemplate(hokanEngineTemplate);
+    Message systemMessage2 = systemPromptTemplate2.createMessage(systemPromptParameters);
 
     PromptTemplate promptTemplate = new PromptTemplate(hokanPromptTemplate);
     Map<String, Object> promptParameters = new HashMap<>();
@@ -101,6 +106,7 @@ public class OpenAiService {
                     a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
             .system(systemMessage.getContent())
+                .system(systemMessage2.getContent())
             .user(promptMessage.getContent())
             .call();
 

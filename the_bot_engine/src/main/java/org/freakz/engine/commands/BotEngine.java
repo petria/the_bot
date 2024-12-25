@@ -3,11 +3,6 @@ package org.freakz.engine.commands;
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
 import feign.Response;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Iterator;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +24,12 @@ import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
 import org.springframework.stereotype.Service;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Iterator;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -187,7 +188,7 @@ public class BotEngine {
 
   public String sendReplyMessage(EngineRequest request, String reply) {
 
-    if (request.getNetwork().equals("BOT_CLI_CLIENT")) {
+    if (request.getNetwork().equals("BOT_CLI_CLIENT") || request.getNetwork().equals("BOT_INTERNAL")) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
       countInterceptor.computeCount("OUT: commandHandler");
       return reply;

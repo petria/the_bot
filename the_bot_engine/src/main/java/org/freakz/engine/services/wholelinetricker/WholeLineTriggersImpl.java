@@ -1,9 +1,5 @@
 package org.freakz.engine.services.wholelinetricker;
 
-import java.time.LocalDateTime;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.TimeDifferenceData;
 import org.freakz.common.model.engine.EngineRequest;
@@ -14,6 +10,11 @@ import org.freakz.engine.functions.OpenAiService;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
+
+import java.time.LocalDateTime;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 
 /**
  * User: petria
@@ -472,7 +473,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 //        checkDrugs(eRequest);
         checkPilalla(eRequest);
 //        checkPerkeleVittu(eRequest);
-        sb.append(checkJoulu(eRequest));
+//        sb.append(checkJoulu(eRequest));
 //        checkJuhannus(eRequest);
 //        checkPitasko(eRequest);
 //        checkSpede(eRequest);
