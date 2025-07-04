@@ -5,11 +5,11 @@ import static org.mockito.Mockito.when;
 import org.freakz.common.model.botconfig.BotConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.functions.OpenAiService;
+import org.freakz.engine.functions.HokanAiService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class OpenAiServiceTest {
+public class HokanAiServiceTest {
 
   //    @Test
   public void testOpenAi() {
@@ -21,7 +21,7 @@ public class OpenAiServiceTest {
     when(configService.readBotConfig()).thenReturn(theBotConfig);
     when(theBotConfig.getBotConfig()).thenReturn(botConfig);
     // tsek
-    OpenAiService service = new OpenAiService(null, null, null);
+    HokanAiService service = new HokanAiService(null, null, null);
     //        String s = service.queryAi("Pitäskö kaivaa kaljat kaapista?");
     int foo = 0;
   }

@@ -6,7 +6,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.functions.OpenAiService;
+import org.freakz.engine.functions.HokanAiService;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
@@ -26,12 +26,12 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
     private final TimeDifferenceService timeDifferenceService;
     private final BotEngine botEngine;
-    private final OpenAiService openAiService;
+    private final HokanAiService hokanAiService;
 
-    public WholeLineTriggersImpl(BotEngine botEngine, OpenAiService openAiService) {
+    public WholeLineTriggersImpl(BotEngine botEngine, HokanAiService hokanAiService) {
         this.timeDifferenceService = new TimeDifferenceServiceImpl();
         this.botEngine = botEngine;
-        this.openAiService = openAiService;
+        this.hokanAiService = hokanAiService;
     }
 
     private String _olpo = "";
@@ -292,7 +292,7 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
             if (!s.endsWith("?")) {
                 s = s + "?";
             }
-            String aiReply = openAiService.queryAiWithTemplate(s, "network", "channel", "sentByNick", "sentByRealName", ServiceRequest.builder().build());
+            String aiReply = hokanAiService.queryAiWithTemplate(s, "network", "channel", "sentByNick", "sentByRealName", ServiceRequest.builder().build());
             String reply = String.format("%s: %s", eRequest.getFromSender(), aiReply);
             processReply(eRequest, _olpo + reply);
         }

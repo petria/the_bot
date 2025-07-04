@@ -9,7 +9,9 @@ import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
+
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
@@ -21,13 +23,11 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
 
 @Service
 @Slf4j
 @SpringServiceMethodHandler
-public class OpenAiService {
+public class HokanAiService {
 
   @Value("classpath:/prompts/hokan-prompt-template.st")
   private Resource hokanPromptTemplate;
@@ -38,23 +38,31 @@ public class OpenAiService {
   @Value("classpath:/prompts/hokan-engine-template.st")
   private Resource hokanEngineTemplate;
 
-  private final InMemoryChatMemory inMemoryChatMemory;
-
   private final ChatClient chatClient;
   private final ConfigService configService;
 
   private final ConnectionManagerService connectionManagerService;
 
-  public OpenAiService(
+  public HokanAiService(
       ChatClient.Builder builder,
       ConfigService configService,
       ConnectionManagerService connectionManagerService) {
-    this.inMemoryChatMemory = new InMemoryChatMemory();
-    this.chatClient =
-        builder
-            .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
-                .defaultFunctions("myCurrentLocationFunction", "ircChatInfoFunction", "handeEngineCommandFunction")
-            .build();
+
+    ChatMemory chatMemory
+        = MessageWindowChatMemory.builder()
+        .maxMessages(1000)
+        .build();
+
+    this.chatClient
+        = builder
+        .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+//        .defaultToolCallbacks(toolCallBacks)
+        .build();
+
+//        builder
+//            .defaultAdvisors(new MessageChatMemoryAdvisor(inMemoryChatMemory))
+//                .defaultFunctions("myCurrentLocationFunction", "ircChatInfoFunction", "handeEngineCommandFunction")
+//            .build();
     this.configService = configService;
     this.connectionManagerService = connectionManagerService;
   }
@@ -98,19 +106,15 @@ public class OpenAiService {
     promptParameters.put("input", message);
     promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
     Message promptMessage = promptTemplate.createMessage(promptParameters);
-    ChatClient.ChatClientRequest.CallResponseSpec call1 =
-        chatClient
-            .prompt()
-            .advisors(
-                a ->
-                    a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
-            .system(systemMessage.getContent())
-                .system(systemMessage2.getContent())
-            .user(promptMessage.getContent())
-            .call();
+    String content
+        = this.chatClient.prompt()
+        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
+        .user(promptMessage.getText())
+        .system(systemMessage.getText())
+        .system(systemMessage2.getText())
+        .call().content();
 
-    return call1.content();
+    return content;
   }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)

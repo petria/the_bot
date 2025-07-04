@@ -15,7 +15,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.KelikameratResponse;
 import org.freakz.engine.dto.KelikameratUrl;
 import org.freakz.engine.dto.KelikameratWeatherData;
-import org.freakz.engine.functions.OpenAiService;
+import org.freakz.engine.functions.HokanAiService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
@@ -37,7 +37,7 @@ public class CommandHandlerTest {
   private ConversationsService conversationsService = Mockito.mock(ConversationsService.class);
   private CallCountInterceptor countInterceptor = Mockito.mock(CallCountInterceptor.class);
   private UrlMetadataService urlMetadataService = Mockito.mock(UrlMetadataService.class);
-  private OpenAiService openAiService = Mockito.mock(OpenAiService.class);
+  private HokanAiService hokanAiService = Mockito.mock(HokanAiService.class);
 
   //    @Test
   public void testWeatherCmd() throws Exception {
@@ -53,7 +53,7 @@ public class CommandHandlerTest {
             conversationsService,
             countInterceptor,
             urlMetadataService,
-            openAiService);
+            hokanAiService);
     /*        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
     if (reply != null) {
         System.out.printf("%s: %s\n", command, reply);
@@ -83,7 +83,7 @@ public class CommandHandlerTest {
             conversationsService,
             countInterceptor,
             urlMetadataService,
-            openAiService);
+            hokanAiService);
 
     NotImplementedException thrown =
         Assertions.assertThrows(

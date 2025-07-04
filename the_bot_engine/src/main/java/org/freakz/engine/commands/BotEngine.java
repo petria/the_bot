@@ -16,7 +16,7 @@ import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.functions.OpenAiService;
+import org.freakz.engine.functions.HokanAiService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
@@ -47,7 +47,7 @@ public class BotEngine {
 
   private final UrlMetadataService urlMetadataService;
 
-  private final OpenAiService openAiService;
+  private final HokanAiService hokanAiService;
 
   private String botName = "HokanTheBot";
 
@@ -59,7 +59,7 @@ public class BotEngine {
       ConversationsService conversationsService,
       CallCountInterceptor countInterceptor,
       UrlMetadataService urlMetadataService,
-      OpenAiService openAiService)
+      HokanAiService hokanAiService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.messageSendClient = messageSendClient;
@@ -68,13 +68,13 @@ public class BotEngine {
     this.conversationsService = conversationsService;
     this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
-    this.openAiService = openAiService;
+    this.hokanAiService = hokanAiService;
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
     }
     this.commandHandlerLoader =
         new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
-    this.wholeLineTriggers = new WholeLineTriggersImpl(this, openAiService);
+    this.wholeLineTriggers = new WholeLineTriggersImpl(this, hokanAiService);
   }
 
   private final WholeLineTriggers wholeLineTriggers;
