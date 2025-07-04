@@ -73,7 +73,7 @@ public class HokanCmd extends AbstractCmd {
             StringBuilder sb = new StringBuilder();
             sb.append(prefix).append(" START\n");
             for (String s : split) {
-                sb.append(prefix);
+                sb.append(prefix).append(" ");
                 if (id != null) {
                     sb.append(" --id ").append(id).append(" ");
                 }
