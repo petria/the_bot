@@ -63,7 +63,11 @@ public class ConversationCmd extends AbstractCmd {
 
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
-    return "";
+    if (request.getCommand().startsWith("!creply")) {
+      log.debug("handle !creply: {}", request.getMessage());
+      return null;
+    }
+    return "!hokan --prefix !creply you are having conversation with another bot? Tell me how you do today.";
   }
 
 }

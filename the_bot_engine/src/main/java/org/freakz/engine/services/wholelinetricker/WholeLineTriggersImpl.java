@@ -26,12 +26,11 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
     private final TimeDifferenceService timeDifferenceService;
     private final BotEngine botEngine;
-    private final HokanAiService hokanAiService;
 
-    public WholeLineTriggersImpl(BotEngine botEngine, HokanAiService hokanAiService) {
+    public WholeLineTriggersImpl(BotEngine botEngine) {
         this.timeDifferenceService = new TimeDifferenceServiceImpl();
         this.botEngine = botEngine;
-        this.hokanAiService = hokanAiService;
+
     }
 
     private String _olpo = "";
@@ -284,19 +283,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
             return line.split("vai");
         }
         return null;
-    }
-    private void checkPitasko(EngineRequest eRequest) {
-        String msg = eRequest.getMessage();
-        if (StringStuff.match(eRequest.getMessage(), "pit.i?sk..*", true)) {
-            String s = msg.replaceFirst("^\\S+", "Pitäisikö");
-            if (!s.endsWith("?")) {
-                s = s + "?";
-            }
-            String aiReply = hokanAiService.queryAiWithTemplate(s, "network", "channel", "sentByNick", "sentByRealName", ServiceRequest.builder().build());
-            String reply = String.format("%s: %s", eRequest.getFromSender(), aiReply);
-            processReply(eRequest, _olpo + reply);
-        }
-
     }
 
     private void checkPitaskoOld(EngineRequest eRequest) {

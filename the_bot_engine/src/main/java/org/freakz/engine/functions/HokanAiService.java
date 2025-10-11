@@ -9,7 +9,6 @@ import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -24,9 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-@Service
+//@Service
 @Slf4j
-@SpringServiceMethodHandler
+//@SpringServiceMethodHandler
 public class HokanAiService {
 
   @Value("classpath:/prompts/hokan-prompt-template.st")
@@ -110,14 +109,14 @@ public class HokanAiService {
         = this.chatClient.prompt()
         .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
         .user(promptMessage.getText())
-        .system(systemMessage.getText())
-        .system(systemMessage2.getText())
+//        .system(systemMessage.getText())
+//        .system(systemMessage2.getText())
         .call().content();
 
     return content;
   }
 
-  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
+//  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
   public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
 
     //        GetConnectionMapResponse connectionsMap =
@@ -141,7 +140,7 @@ public class HokanAiService {
     return aiResponse;
   }
 
-  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
+//  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
   public <T extends ServiceResponse> AiCtrlResponse handleAiCtlServiceRequest(
       ServiceRequest request) {
     AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();

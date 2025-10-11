@@ -37,7 +37,7 @@ public class CommandHandlerTest {
   private ConversationsService conversationsService = Mockito.mock(ConversationsService.class);
   private CallCountInterceptor countInterceptor = Mockito.mock(CallCountInterceptor.class);
   private UrlMetadataService urlMetadataService = Mockito.mock(UrlMetadataService.class);
-  private HokanAiService hokanAiService = Mockito.mock(HokanAiService.class);
+
 
   //    @Test
   public void testWeatherCmd() throws Exception {
@@ -52,8 +52,7 @@ public class CommandHandlerTest {
             configService,
             conversationsService,
             countInterceptor,
-            urlMetadataService,
-            hokanAiService);
+            urlMetadataService);
     /*        String reply = commandHandler.handleEngineRequest(createMockRequest(command));
     if (reply != null) {
         System.out.printf("%s: %s\n", command, reply);
@@ -82,8 +81,8 @@ public class CommandHandlerTest {
             configService,
             conversationsService,
             countInterceptor,
-            urlMetadataService,
-            hokanAiService);
+            urlMetadataService
+        );
 
     NotImplementedException thrown =
         Assertions.assertThrows(

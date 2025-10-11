@@ -44,7 +44,7 @@ public class WeatherAPIService {
     }
 
     @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WeatherAPIService)
-    public <T extends ServiceResponse> WeatherAPIResponse handleForecaCmdServiceRequest(ServiceRequest request) {
+    public <T extends ServiceResponse> WeatherAPIResponse handleWeatherCmdServiceRequest(ServiceRequest request) {
 
         String query = request.getResults().getString(ARG_PLACE).toLowerCase();
         try {
@@ -55,7 +55,7 @@ public class WeatherAPIService {
 
             WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().forecastResponseModel(r).build();
             if (request.getResults().getBoolean(ARG_ASTRONOMY)) {
-                weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
+                //weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
             }
             weatherAPIResponse.setStatus("OK: WeatherAPI service");
 

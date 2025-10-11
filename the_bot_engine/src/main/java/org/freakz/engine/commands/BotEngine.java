@@ -47,7 +47,8 @@ public class BotEngine {
 
   private final UrlMetadataService urlMetadataService;
 
-  private final HokanAiService hokanAiService;
+  private final WholeLineTriggers wholeLineTriggers;
+
 
   private String botName = "HokanTheBot";
 
@@ -58,8 +59,7 @@ public class BotEngine {
       ConfigService configService,
       ConversationsService conversationsService,
       CallCountInterceptor countInterceptor,
-      UrlMetadataService urlMetadataService,
-      HokanAiService hokanAiService)
+      UrlMetadataService urlMetadataService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.messageSendClient = messageSendClient;
@@ -68,16 +68,15 @@ public class BotEngine {
     this.conversationsService = conversationsService;
     this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
-    this.hokanAiService = hokanAiService;
+
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
     }
     this.commandHandlerLoader =
         new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
-    this.wholeLineTriggers = new WholeLineTriggersImpl(this, hokanAiService);
+    this.wholeLineTriggers = new WholeLineTriggersImpl(this);
   }
 
-  private final WholeLineTriggers wholeLineTriggers;
 
   @SneakyThrows
   public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
