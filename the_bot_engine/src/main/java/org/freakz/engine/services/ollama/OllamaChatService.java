@@ -1,6 +1,7 @@
 package org.freakz.engine.services.ollama;
 
-import org.freakz.engine.services.weather.foreca.ForecaWeatherService;
+import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.ai.support.ToolCallbacks;
@@ -41,18 +43,24 @@ public class OllamaChatService {
 
   private final OllamaClientFactory factory;
 
+  private final ConfigService configService;
+
   private final ChatMemory chatMemory = MessageWindowChatMemory.builder()
       .maxMessages(1000)
       .build(); // TODO
 
-  public OllamaChatService(OllamaClientFactory factory, WeatherAPIService weatherAPIService) {
+  public OllamaChatService(OllamaClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
     this.factory = factory;
     this.weatherAPIService = weatherAPIService;
+    this.configService = configService;
   }
 
 
 
-  public String ask(String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
+  public String ask(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
+
+    log.debug("Getting create client for: {} and model: {}", hostUrl, modelName);
+
     ChatClient client = factory.createClient(hostUrl, modelName);
 
     String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
@@ -63,14 +71,11 @@ public class OllamaChatService {
 
 
     try {
-      ToolCallback[] toolCallbacks = ToolCallbacks.from(new HokanToolCallBackFunctions(weatherAPIService));
+      ToolCallback[] toolCallbacks = ToolCallbacks.from(new AiToolCallBackFunctions(weatherAPIService));
 
       List<Message> memory = chatMemory.get(chatId);
 
-      List<Message> messages = new ArrayList<>();
-      messages.addAll(memory);
-
-
+      List<Message> messages = new ArrayList<>(memory);
 
       SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(hokanSystemTemplate);
       Map<String, Object> systemPromptParameters = new HashMap<>();
@@ -83,8 +88,30 @@ public class OllamaChatService {
       Message systemMessage = systemPromptTemplate.createMessage(systemPromptParameters);
       messages.addFirst(systemMessage);
 
-      UserMessage userMessage = new UserMessage(promptText);
-      messages.add(userMessage);
+
+      PromptTemplate promptTemplate = new PromptTemplate(hokanPromptTemplate);
+      Map<String, Object> promptParameters = new HashMap<>();
+
+      switch (network) {
+        case "IRCNet":
+          if (engineRequest.isPrivateChannel()) {
+            promptParameters.put("answerMaxLengthCharacters", 2500);
+          } else {
+            promptParameters.put("answerMaxLengthCharacters", 400);
+          }
+          break;
+        default:
+          promptParameters.put("answerMaxLengthCharacters", Long.MAX_VALUE);
+      }
+
+      promptParameters.put("input", promptText);
+      promptParameters.put("bot_name", configService.readBotConfig().getBotConfig().getBotName());
+      Message promptMessage = promptTemplate.createMessage(promptParameters);
+
+
+
+//      UserMessage userMessage = new UserMessage(promptText);
+      messages.add(promptMessage);
 
       Prompt prompt = new Prompt(messages,  OllamaOptions.builder()
           .toolCallbacks(toolCallbacks)
@@ -98,7 +125,7 @@ public class OllamaChatService {
         sb.append(g.getOutput().getText());
       });
 
-      chatMemory.add(chatId, List.of(userMessage, new AssistantMessage(sb.toString())));
+      chatMemory.add(chatId, List.of(promptMessage, new AssistantMessage(sb.toString())));
 
     } catch (Exception e) {
       log.error("Error while sending chat request: {}", e.getMessage());

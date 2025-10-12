@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 
 @Service
 @SpringServiceMethodHandler
-public class HokanAiServiceMessageHandler {
+public class AiCommandsHandlerService {
 
   private final OllamaChatService ollamaChatService;
 
-  public HokanAiServiceMessageHandler(OllamaChatService ollamaChatService) {
+  public AiCommandsHandlerService(OllamaChatService ollamaChatService) {
     this.ollamaChatService = ollamaChatService;
   }
 
@@ -32,7 +32,7 @@ public class HokanAiServiceMessageHandler {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-    String queryResponse = ollamaChatService.ask("http://localhost:11434", "qwen3:30b-a3b", queryMessage, network, channel, sentByNick, sentByRealName);
+    String queryResponse = ollamaChatService.ask(request.getEngineRequest(), "http://localhost:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
 
     aiResponse.setResult(queryResponse);
     return aiResponse;

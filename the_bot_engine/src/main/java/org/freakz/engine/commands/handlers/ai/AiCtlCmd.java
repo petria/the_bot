@@ -7,6 +7,7 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.ai.AiCtrlResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
@@ -17,6 +18,7 @@ import java.util.List;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COMMAND;
 
 @HokanCommandHandler
+@HokanDEVCommand
 public class AiCtlCmd extends AbstractCmd {
 
   @Override

@@ -55,7 +55,7 @@ public class WeatherAPIService {
 
             WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().forecastResponseModel(r).build();
             if (request.getResults().getBoolean(ARG_ASTRONOMY)) {
-                //weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
+                weatherAPIResponse.setAstronomyResponse(getAstronomyData(query));
             }
             weatherAPIResponse.setStatus("OK: WeatherAPI service");
 
