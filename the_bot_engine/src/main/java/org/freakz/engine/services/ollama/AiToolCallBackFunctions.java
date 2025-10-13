@@ -66,13 +66,21 @@ public class AiToolCallBackFunctions {
       String name = WeatherUtils.formatName(r, true);
       String feelsLike = WeatherUtils.formatFeelsLike(r, true);
       String astronomy = WeatherUtils.formatAstronomy(response.getAstronomyResponse(), true);
-      return String.format(
-          "Weather in city: '%s' - measure time: '%s', current temperature: '%s°C'%s%s", name, time, r.current().temp_c(), feelsLike, astronomy);
+      String weather = String.format(
+          "Weather in city: '%s'%nMeasure time: '%s'%nCurrent temperature: '%s°C'%s%nFeels like: %s%n", name, time, r.current().temp_c(), feelsLike, astronomy);
+//      log.debug("weather: {}", weather);
+      return weather;
 
     } else {
       return String.format(
           "%s: %s", results.getString(ARG_PLACE), response.getErrorResponse().error().message());
     }
+  }
+
+  @Tool(description = "Get the current physical location where the AI bot is running.")
+  public String getCurrentPhysicalLocationOfTheBot() {
+    log.debug("tool called: getCurrentPhysicalLocationOfTheBot()");
+    return "Hetzner datacenter, Finland";
   }
 
 }

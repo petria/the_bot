@@ -16,7 +16,6 @@ import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.functions.HokanAiService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.status.CallCountInterceptor;
