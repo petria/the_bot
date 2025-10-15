@@ -14,6 +14,7 @@ public enum ServiceRequestType {
   ForecaWeatherService,
   CmpWeatherService,
 
+  WaterTemperatureService,
   WeatherAPIService,
 
   GetChannelUsers,
