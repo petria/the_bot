@@ -45,7 +45,7 @@ public class WaterCmd extends AbstractCmd {
     WaterTemperatureResponse response =
         doServiceRequestMethods(engineRequest, results, ServiceRequestType.WaterTemperatureService);
     if (response.getStatus().startsWith("OK")) {
-      return "Water temperature response";
+      return response.getWaterTemperature();
     } else {
       return String.format(
           "%s: %s", results.getString(ARG_PLACE), response.getWaterTemperature());

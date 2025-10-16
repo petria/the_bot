@@ -3,6 +3,7 @@ package org.freakz.engine.services.ollama;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.dto.ai.AiCtrlResponse;
 import org.freakz.engine.dto.ai.AiResponse;
+import org.freakz.engine.dto.weather.WaterTemperatureResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,7 @@ public class AiCommandsHandlerService {
   }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
-  public <T extends ServiceResponse> AiResponse handleServiceRequest(ServiceRequest request) {
+  public AiResponse handleServiceRequest(ServiceRequest request) {
 
 
     AiResponse aiResponse = AiResponse.builder().build();
@@ -39,11 +40,20 @@ public class AiCommandsHandlerService {
   }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
-  public <T extends ServiceResponse> AiCtrlResponse handleAiCtlServiceRequest(
+  public AiCtrlResponse handleAiCtlServiceRequest(
       ServiceRequest request) {
     AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();
     aiResponse.setStatus("OK: AiCtl!");
     return aiResponse;
   }
+
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WaterTemperatureService)
+  public WaterTemperatureResponse handleWaterTemperatureServiceRequest(ServiceRequest request) {
+    WaterTemperatureResponse response = WaterTemperatureResponse.builder().build();
+    response.setWaterTemperature("water temperature 8.6°C");
+    response.setStatus("OK:");
+    return response;
+  }
+
 
 }

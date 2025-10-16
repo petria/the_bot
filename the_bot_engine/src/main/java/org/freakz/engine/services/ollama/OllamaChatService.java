@@ -55,7 +55,9 @@ public class OllamaChatService {
     this.configService = configService;
   }
 
-
+  public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
+    return "TODO";
+  }
 
   public String ask(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
 
