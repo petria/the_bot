@@ -15,13 +15,18 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.client.UnknownContentTypeException;
 
+import java.net.MalformedURLException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -55,13 +60,29 @@ public class OllamaChatService {
     this.configService = configService;
   }
 
-  public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
-    return "TODO";
+  public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String  channel, String sentByNick, String sentByRealName) throws MalformedURLException {
+
+    log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
+    ChatClient client = factory.createClient(hostUrl, modelName);
+
+    log.debug("Image URL: {}", imageUrl);
+    var urlResource = new UrlResource(imageUrl);
+    Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
+    try {
+      UserMessage build = UserMessage.builder().media(media).text(promptText).build();
+      String response = client.prompt(new Prompt(build)).call().content();
+      return response;
+    } catch (UnknownContentTypeException e) {
+      String responseBodyAsString = e.getResponseBodyAsString();
+      return "Ollama returned unexpected content type: " + responseBodyAsString;
+    }
+
+//    return "TODO";
   }
 
   public String ask(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
 
-    log.debug("Getting create client for: {} and model: {}", hostUrl, modelName);
+    log.debug("Getting client for chat: {} and model: {}", hostUrl, modelName);
 
     ChatClient client = factory.createClient(hostUrl, modelName);
 
