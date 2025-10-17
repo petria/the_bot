@@ -38,7 +38,7 @@ public class LogServiceImpl implements LogService {
 
     DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
     String day = formatter.format(localDateTime);
-    String key = String.format("%s%s%s", network, channel, day);
+    String key = String.format("%s%s%s", network, channel, day).toLowerCase();
     Logger logger = channelLoggers.get(key);
     if (logger == null) {
       String path = createPath(network, channel, day);
@@ -50,6 +50,7 @@ public class LogServiceImpl implements LogService {
 
   private String createPath(String network, String channel, String day) {
     String path = this.logDir + network + "/" + channel + "/";
+    path = path.toLowerCase();
     File file = new File(path);
     if (!file.exists()) {
       boolean ok = file.mkdirs();
