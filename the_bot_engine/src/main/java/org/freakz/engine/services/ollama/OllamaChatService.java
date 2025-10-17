@@ -1,5 +1,7 @@
 package org.freakz.engine.services.ollama;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
@@ -61,6 +63,7 @@ public class OllamaChatService {
   }
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String  channel, String sentByNick, String sentByRealName) throws MalformedURLException {
+    String response;
 
     log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
     ChatClient client = factory.createClient(hostUrl, modelName);
@@ -70,13 +73,27 @@ public class OllamaChatService {
     Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
     try {
       UserMessage build = UserMessage.builder().media(media).text(promptText).build();
-      String response = client.prompt(new Prompt(build)).call().content();
-      return response;
+      response = client.prompt(new Prompt(build)).call().content();
+
     } catch (UnknownContentTypeException e) {
+      // TODO fix this stupid way to get data
       String responseBodyAsString = e.getResponseBodyAsString();
-      return "Ollama returned unexpected content type: " + responseBodyAsString;
+      ObjectMapper mapper = new ObjectMapper();
+      try {
+        Map map = mapper.readValue(responseBodyAsString, HashMap.class);
+        if (map.containsKey("message")) {
+          map =  (HashMap) map.get("message");
+          response = (String) map.get("content");
+        } else {
+          response = "N/A";
+        }
+      } catch (JsonProcessingException ex) {
+        response = "ERROR: " + ex.getMessage();
+      }
+
     }
 
+    return response;
 //    return "TODO";
   }
 
