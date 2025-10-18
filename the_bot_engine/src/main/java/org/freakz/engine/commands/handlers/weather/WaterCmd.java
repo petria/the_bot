@@ -48,7 +48,7 @@ public class WaterCmd extends AbstractCmd {
       return response.getWaterTemperature();
     } else {
       return String.format(
-          "%s: %s", results.getString(ARG_PLACE), response.getWaterTemperature());
+          "%s: %s", results.getString(ARG_PLACE), response.getStatus());
     }
   }
 

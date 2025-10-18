@@ -72,23 +72,30 @@ public class AiCommandsHandlerService {
 //    String imageUrl = "https://wwwi2.ymparisto.fi/i2/65/l653941026y/twlyhyt.png";
 //                     https://wwwi2.ymparisto.fi/i2/59/q5904450y/twlyhyt.png
     String place = request.getResults().getString(ARG_PLACE);
+    boolean found = false;
     for (String key : waterTemperatureService.getDataMap().keySet()) {
-      if (key.contains(place)) {
+      if (key.toLowerCase().contains(place.toLowerCase())) {
         WaterTemperatureData data = waterTemperatureService.getDataMap().get(key);
         String imageUrl = data.getWaterTemperatureChartImageUrl();
         try {
 //          log.info("Query chart image from URL: {}", imageUrl);
-          String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), "http://bot-ollama:11434", "qwen3-vl:235b-cloud", promptMessage, imageUrl,  network, channel, sentByNick, sentByRealName);
-          response.setWaterTemperature("water temperature: "  + queryResponse);
+          // qwen2.5vl:7b
+          // qwen3-vl:235b-cloud
+          String ollamaModel = "qwen2.5vl:7b";
+          String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), "http://bot-ollama:11434", ollamaModel, promptMessage, imageUrl,  network, channel, sentByNick, sentByRealName);
+          response.setWaterTemperature(key + " : "  + queryResponse);
           response.setStatus("OK:");
         } catch (MalformedURLException e) {
           log.error(e.getMessage(), e);
           response.setStatus("ERROR: "  + e.getMessage());
         }
+        found = true;
         break;
       }
     }
-
+    if (!found) {
+      response.setStatus("NOK: not found");
+    }
 
     return response;
   }

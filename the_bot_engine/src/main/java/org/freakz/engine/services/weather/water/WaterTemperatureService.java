@@ -7,6 +7,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -21,6 +22,13 @@ public class WaterTemperatureService {
 
   @Getter
   private Map<String, WaterTemperatureData> dataMap = new HashMap<>();
+
+  private final WaterTemperatureInitializerService initializerService;
+
+  @Autowired
+  public WaterTemperatureService(WaterTemperatureInitializerService initializerService) {
+    this.initializerService = initializerService;
+  }
 
   public Map<String, String> getVesiAForecastAreas(String html) {
     Map<String, String> forecastAreas = new HashMap<>();
@@ -46,7 +54,6 @@ public class WaterTemperatureService {
     if (select != null) {
       String alt = select.attr("alt");
       String urlForStatsPng = basePageUrl + "/" + subAreaPart + "/twlyhyt.png";
-//      System.out.println(urlForStatsPng + " -> " + alt);
 
       WaterTemperatureData data = new WaterTemperatureData();
       data.setPlace1(areaName);
@@ -61,7 +68,6 @@ public class WaterTemperatureService {
   public void scanAreaWaterPlaces(String areaName, String areaUrl) throws IOException {
 
     String url = BASE_URL + areaUrl.substring(3);
-    //view-source:https://wwwi2.ymparisto.fi/i2/65/
 
     Document doc = Jsoup.connect(url).get();
     Elements select = doc.select("a");
@@ -83,36 +89,8 @@ public class WaterTemperatureService {
   }
 
   @PostConstruct
-  public void scanWaterMeasurementSites() throws IOException {
-    String url = "https://wwwi2.ymparisto.fi/i2/95/vesiA.html";
-    Document doc = Jsoup.connect(url).get();
-
-    Map<String, String> forecastAreas = getVesiAForecastAreas(doc.html());
-    if (forecastAreas != null && !forecastAreas.isEmpty()) {
-      log.debug("Start scanning water forecast places: {}", forecastAreas.size());
-      this.dataMap.clear();
-      for (Map.Entry<String, String> entry : forecastAreas.entrySet()) {
-//        System.out.println(entry.getKey() + " -> " + entry.getValue());
-        scanAreaWaterPlaces(entry.getKey(), entry.getValue());
-      }
-      log.debug("End scanning water forecast places, total places: {}", this.dataMap.size());
-    }
-
+  public void scanWaterMeasurementSites() {
+    initializerService.initialize(this);
   }
-
-  public static void main(String[] args) throws IOException {
-    WaterTemperatureService service = new WaterTemperatureService();
-    service.scanWaterMeasurementSites();
-
-    //        File input = new File("vesiA.html");
-//        Document doc = Jsoup.parse(input, "UTF-8", "");
-
-
-//    String url = "https://wwwi2.ymparisto.fi/i2/65/"; // https://wwwi2.ymparisto.fi/i2/65/../65/l653941026y/wqfi.html
-//    String areUrl = "../59/";
-//    service.scanAreaWaterPlaces(areUrl);
-
-  }
-
 
 }
