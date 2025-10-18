@@ -67,13 +67,14 @@ public class OllamaChatService {
 
     log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
     ChatClient client = factory.createClient(hostUrl, modelName);
-
+    long start = 0L;
     log.debug("Image URL: {}", imageUrl);
     var urlResource = new UrlResource(imageUrl);
     Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
     try {
       UserMessage build = UserMessage.builder().media(media).text(promptText).build();
-      log.debug("Sending image query prompt to ollama.. ");
+      log.debug("Sending prompt to ollama.. ");
+      start = System.currentTimeMillis();
       response = client.prompt(new Prompt(build)).call().content();
       log.debug("... image Done1");
 
@@ -95,7 +96,7 @@ public class OllamaChatService {
       }
 
     }
-
+    log.debug("... query took {} ms", System.currentTimeMillis() - start);
     return response;
 //    return "TODO";
   }

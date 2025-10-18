@@ -85,7 +85,7 @@ public class AiCommandsHandlerService {
           // llama3.2-vision:latest
 //          String ollamaHost = "http://192.168.0.111:11434";//"http://bot-ollama:11434";
           String ollamaHost = "http://bot-ollama:11434";
-          String ollamaModel = "qwen2.5vl:32b";
+          String ollamaModel = "qwen2.5vl:7b";
           String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl,  network, channel, sentByNick, sentByRealName);
           response.setWaterTemperature(key + " : "  + queryResponse);
           response.setStatus("OK:");
