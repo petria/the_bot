@@ -73,7 +73,7 @@ public class OllamaChatService {
     Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
     try {
       UserMessage build = UserMessage.builder().media(media).text(promptText).build();
-      log.debug("Sending image query prompt.. ");
+      log.debug("Sending image query prompt to ollama.. ");
       response = client.prompt(new Prompt(build)).call().content();
       log.debug("... image Done1");
 

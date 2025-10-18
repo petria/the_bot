@@ -180,7 +180,12 @@ public class BotEngine {
       } else {
         request.setFromAdmin(user.isAdmin());
         request.setUser(user);
-        reply = abstractCmd.executeCommand(request, results);
+        try {
+          reply = abstractCmd.executeCommand(request, results);
+
+        } catch (Exception e) {
+          reply = "Command failed: " + e.getMessage();
+        }
       }
 
       if (reply != null) {

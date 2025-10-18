@@ -68,7 +68,8 @@ public class AiCommandsHandlerService {
     String channel = request.getEngineRequest().getReplyTo();
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
-    String promptMessage = "What is the current measured water temperature. Also find measurement date and time from lower right corner of image. Answer nothing else but \"DDD - YYY XXX °C\" DDD is date and time, YYY is measurement location and where XXX is temperature.";
+//    String promptMessage = "What is the current measured water temperature. Also find measurement date and time from lower right corner of image. Answer nothing else but \"DDD - YYY XXX °C\" DDD is date and time, YYY is measurement location and where XXX is temperature.";
+    String promptMessage = "What is the current measured water temperature. Also find measurement date and time from lower right corner of image. Answer nothing else but \"XXX °C\"  where XXX is temperature.";
 //    String imageUrl = "https://wwwi2.ymparisto.fi/i2/65/l653941026y/twlyhyt.png";
 //                     https://wwwi2.ymparisto.fi/i2/59/q5904450y/twlyhyt.png
     String place = request.getResults().getString(ARG_PLACE);
@@ -81,8 +82,11 @@ public class AiCommandsHandlerService {
 //          log.info("Query chart image from URL: {}", imageUrl);
           // qwen2.5vl:7b
           // qwen3-vl:235b-cloud
-          String ollamaModel = "qwen2.5vl:7b";
-          String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), "http://bot-ollama:11434", ollamaModel, promptMessage, imageUrl,  network, channel, sentByNick, sentByRealName);
+          // llama3.2-vision:latest
+//          String ollamaHost = "http://192.168.0.111:11434";//"http://bot-ollama:11434";
+          String ollamaHost = "http://bot-ollama:11434";
+          String ollamaModel = "qwen2.5vl:32b";
+          String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl,  network, channel, sentByNick, sentByRealName);
           response.setWaterTemperature(key + " : "  + queryResponse);
           response.setStatus("OK:");
         } catch (MalformedURLException e) {
