@@ -28,7 +28,7 @@
         <org.javacord.version>3.8.0</org.javacord.version>
         <telegrambots.version>6.5.0</telegrambots.version>
         <jsap.version>2.1</jsap.version>
-        <jsoup.version>1.15.3</jsoup.version>
+        <jsoup.version>1.21.2</jsoup.version>
         <org.reflections.version>0.10.2</org.reflections.version>
 
     </properties>

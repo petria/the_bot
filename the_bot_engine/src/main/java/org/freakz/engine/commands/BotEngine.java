@@ -9,8 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.clients.MessageSendClient;
+import org.freakz.engine.clients.RestMessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
@@ -22,11 +24,14 @@ import org.freakz.engine.services.status.CallCountInterceptor;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.stream.Collectors;
 
@@ -35,7 +40,7 @@ import java.util.stream.Collectors;
 public class BotEngine {
 
   private final AccessService accessService;
-  private final MessageSendClient messageSendClient;
+
   @Getter private final CommandHandlerLoader commandHandlerLoader;
   @Getter private final HokanServices hokanServices;
   private final ConfigService configService;
@@ -48,6 +53,7 @@ public class BotEngine {
 
   private final WholeLineTriggers wholeLineTriggers;
 
+  private final RestMessageSendClient restMessageSendClient;
 
   private String botName = "HokanTheBot";
 
@@ -58,15 +64,15 @@ public class BotEngine {
       ConfigService configService,
       ConversationsService conversationsService,
       CallCountInterceptor countInterceptor,
-      UrlMetadataService urlMetadataService)
+      UrlMetadataService urlMetadataService, RestMessageSendClient restMessageSendClient)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
-    this.messageSendClient = messageSendClient;
     this.hokanServices = hokanServices;
     this.configService = configService;
     this.conversationsService = conversationsService;
     this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
+    this.restMessageSendClient = restMessageSendClient;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -195,14 +201,20 @@ public class BotEngine {
           Message.builder()
               .sender(this.botName)
               .timestamp(System.currentTimeMillis())
+              .time(LocalDateTime.now())
               .requestTimestamp(request.getTimestamp())
               .message(reply)
+              .messageSource(MessageSource.NONE)
               .target(request.getReplyTo())
               .id("" + request.getFromChannelId())
               .build();
       try {
-        Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
-        int status = response.status();
+//        Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);
+        ResponseEntity<String> response = restMessageSendClient.sendMessage(request.getFromConnectionId(), message);
+        HttpStatusCode statusCode = response.getStatusCode();
+        log.debug("Reply status: {}", statusCode);
+
+/*        int status = response.status();
         log.debug("reply send status: {}", status);
         if (status != 200) {
           String bodyJson =
@@ -213,7 +225,7 @@ public class BotEngine {
 
           log.debug("bodyJson: {}", bodyJson);
         }
-
+*/
       } catch (Exception ex) {
         log.error("Sending reply failed: {}", ex.getMessage());
       }

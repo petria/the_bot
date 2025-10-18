@@ -73,9 +73,12 @@ public class OllamaChatService {
     Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
     try {
       UserMessage build = UserMessage.builder().media(media).text(promptText).build();
+      log.debug("Sending image query prompt.. ");
       response = client.prompt(new Prompt(build)).call().content();
+      log.debug("... image Done1");
 
     } catch (UnknownContentTypeException e) {
+      log.debug("... image Done2");
       // TODO fix this stupid way to get data
       String responseBodyAsString = e.getResponseBodyAsString();
       ObjectMapper mapper = new ObjectMapper();
