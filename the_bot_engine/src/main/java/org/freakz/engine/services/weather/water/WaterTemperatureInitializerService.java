@@ -19,7 +19,8 @@ public class WaterTemperatureInitializerService {
             String url = "https://wwwi2.ymparisto.fi/i2/95/vesiA.html";
             Document doc = Jsoup.connect(url).get();
 
-            Map<String, String> forecastAreas = service.getVesiAForecastAreas(doc.html());
+            Map<String, String> forecastAreas = service.getWaterAreaFromOptions(doc.html());
+
             if (forecastAreas != null && !forecastAreas.isEmpty()) {
                 log.debug("Start scanning water forecast places: {}", forecastAreas.size());
                 service.getDataMap().clear();
@@ -28,6 +29,7 @@ public class WaterTemperatureInitializerService {
                 }
                 log.debug("End scanning water forecast places, total places: {}", service.getDataMap().size());
             }
+
         } catch (IOException e) {
             log.error("Failed to initialize WaterTemperatureService", e);
         }

@@ -30,7 +30,7 @@ public class WaterTemperatureService {
     this.initializerService = initializerService;
   }
 
-  public Map<String, String> getVesiAForecastAreas(String html) {
+  public Map<String, String> getWaterAreaFromOptions(String html) {
     Map<String, String> forecastAreas = new HashMap<>();
     Document doc = Jsoup.parse(html);
     Element select = doc.select("select[name=forma]").first();
