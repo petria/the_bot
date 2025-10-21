@@ -48,7 +48,7 @@ public class OllamaAiService {
 
   private final WeatherAPIService weatherAPIService;
 
-  private final OllamaClientFactory factory;
+  private final AiClientFactory factory;
 
   private final ConfigService configService;
 
@@ -56,7 +56,7 @@ public class OllamaAiService {
       .maxMessages(1000)
       .build(); // TODO
 
-  public OllamaAiService(OllamaClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
+  public OllamaAiService(AiClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
     this.factory = factory;
     this.weatherAPIService = weatherAPIService;
     this.configService = configService;
@@ -66,7 +66,7 @@ public class OllamaAiService {
     String response;
 
     log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
-    ChatClient client = factory.createClient(hostUrl, modelName);
+    ChatClient client = factory.createOllamaClient(hostUrl, modelName);
     long start = 0L;
     log.debug("Image URL: {}", imageUrl);
     var urlResource = new UrlResource(imageUrl);
@@ -105,7 +105,7 @@ public class OllamaAiService {
 
     log.debug("Getting client for chat: {} and model: {}", hostUrl, modelName);
 
-    ChatClient client = factory.createClient(hostUrl, modelName);
+    ChatClient client = factory.createOllamaClient(hostUrl, modelName);
 
     String chatId = String.format("%s-%s-%s", network, channel, sentByNick);
     log.debug("Using AI chatId: {}", chatId);

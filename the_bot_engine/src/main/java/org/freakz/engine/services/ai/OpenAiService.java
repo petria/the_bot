@@ -23,17 +23,17 @@ import java.util.Map;
 @Slf4j
 public class OpenAiService {
 
-  private final ChatClient openAiChatClient;
+  private final AiClientFactory factory;
 
-  public OpenAiService(@Qualifier("openAiChatClient") ChatClient openAiChatClient) {
-    this.openAiChatClient = openAiChatClient;
+  public OpenAiService(AiClientFactory factory) {
+    this.factory = factory;
   }
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
     String response;
 
 //    log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
-    ChatClient client = openAiChatClient;
+    ChatClient client = factory.openAiChatClient("chatgpt-4o-latest");  //openAiChatClient;
     long start = 0L;
     log.debug("Image URL: {}", imageUrl);
     var urlResource = new UrlResource(imageUrl);
