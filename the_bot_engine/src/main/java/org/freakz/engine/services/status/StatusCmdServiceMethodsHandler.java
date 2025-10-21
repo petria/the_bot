@@ -77,7 +77,7 @@ public class StatusCmdServiceMethodsHandler extends AbstractService {
         }
       }
     }
-    return new int[] {in, out, inStatus, outStatus};
+    return new int[]{in, out, inStatus, outStatus};
   }
 
   private String formatStatusReportRequest(

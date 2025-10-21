@@ -6,7 +6,9 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 
-/** Created by Petri Airio on 22.6.2015. */
+/**
+ * Created by Petri Airio on 22.6.2015.
+ */
 @Data
 @Builder
 @EqualsAndHashCode(callSuper = false)

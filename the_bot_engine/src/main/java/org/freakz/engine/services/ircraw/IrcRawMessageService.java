@@ -16,7 +16,8 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_A
 public class IrcRawMessageService extends AbstractService {
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request) {

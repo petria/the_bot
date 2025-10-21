@@ -1,10 +1,13 @@
 package org.freakz.engine.dto;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
 import lombok.*;
 
-/** Created by Petri Airio on 23.6.2015. - */
+import java.io.Serializable;
+import java.time.LocalDateTime;
+
+/**
+ * Created by Petri Airio on 23.6.2015. -
+ */
 @Builder
 @Data
 @AllArgsConstructor

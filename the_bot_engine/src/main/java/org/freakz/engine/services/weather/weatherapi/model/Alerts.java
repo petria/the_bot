@@ -1,3 +1,4 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
-public record Alerts() {}
+public record Alerts() {
+}

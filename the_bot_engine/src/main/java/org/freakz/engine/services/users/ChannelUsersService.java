@@ -18,7 +18,8 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_A
 @SuppressWarnings("unchecked")
 public class ChannelUsersService extends AbstractService {
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public ChannelUsersResponse handleServiceRequest(ServiceRequest request) {

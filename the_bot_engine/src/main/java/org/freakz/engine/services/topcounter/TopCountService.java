@@ -51,11 +51,11 @@ public class TopCountService {
     String nick =
         request
             .getFromSender(); // .getFromSender();
-                              // //""//request.getIrcMessageEvent().getSender().toLowerCase();
+    // //""//request.getIrcMessageEvent().getSender().toLowerCase();
     String channel =
         request
             .getReplyTo(); // request.getEngineRequest().
-                           // getIrcMessageEvent().getChannel().toLowerCase();
+    // getIrcMessageEvent().getChannel().toLowerCase();
     String network =
         request.getNetwork(); // request.getIrcMessageEvent().getNetwork().toLowerCase();
     String key = String.format(countEnum.getLastTimeKeyName(), nick.toUpperCase());
@@ -71,14 +71,14 @@ public class TopCountService {
   private static Map<Integer, String[]> COUNT_MSGS = new HashMap<>();
 
   static {
-    COUNT_MSGS.put(COUNTS[0], new String[] {"Mi Frend-läppä", "Mi Frend-läppä", "Mi Frend-läppä"});
+    COUNT_MSGS.put(COUNTS[0], new String[]{"Mi Frend-läppä", "Mi Frend-läppä", "Mi Frend-läppä"});
     COUNT_MSGS.put(
-        COUNTS[1], new String[] {"Yor Mi Frend-läppä", "Yor Mi Frend-läppä", "Yor Mi Frend-läppä"});
-    COUNT_MSGS.put(COUNTS[2], new String[] {"2^10", "1k", "2^10"});
-    COUNT_MSGS.put(COUNTS[3], new String[] {"3 msg1", "3 msg2", "3 msg3"});
-    COUNT_MSGS.put(COUNTS[4], new String[] {"4 msg1", "4 msg2", "4 msg3"});
-    COUNT_MSGS.put(COUNTS[5], new String[] {"5 msg1", "5 msg2", "5 msg3"});
-    COUNT_MSGS.put(COUNTS[6], new String[] {"6 msg1", "6 msg2", "6 msg3"});
+        COUNTS[1], new String[]{"Yor Mi Frend-läppä", "Yor Mi Frend-läppä", "Yor Mi Frend-läppä"});
+    COUNT_MSGS.put(COUNTS[2], new String[]{"2^10", "1k", "2^10"});
+    COUNT_MSGS.put(COUNTS[3], new String[]{"3 msg1", "3 msg2", "3 msg3"});
+    COUNT_MSGS.put(COUNTS[4], new String[]{"4 msg1", "4 msg2", "4 msg3"});
+    COUNT_MSGS.put(COUNTS[5], new String[]{"5 msg1", "5 msg2", "5 msg3"});
+    COUNT_MSGS.put(COUNTS[6], new String[]{"6 msg1", "6 msg2", "6 msg3"});
   }
 
   private boolean doCalc(EngineRequest request, TopCountsEnum countEnum)

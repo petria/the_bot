@@ -15,7 +15,8 @@ public class ConversationsService {
   private static long nextId = 0;
   private Map<String, Conversation> conversationMap = new HashMap<>();
 
-  public ConversationsService() {}
+  public ConversationsService() {
+  }
 
   private long nextId() {
     nextId++;

@@ -2,13 +2,16 @@ package org.freakz.engine.dto;
 
 import java.io.Serializable;
 
-/** Created by Petri Airio on 12.11.2015. - */
+/**
+ * Created by Petri Airio on 12.11.2015. -
+ */
 public class TranslateData implements Serializable {
 
   private String translation;
   private String context;
 
-  public TranslateData() {}
+  public TranslateData() {
+  }
 
   public TranslateData(String translation, String context) {
     this.translation = translation;

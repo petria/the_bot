@@ -10,7 +10,8 @@ import org.springframework.context.ApplicationContext;
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.GetDataValuesService)
 public class GetDataValuesServiceService extends AbstractService {
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> GetDataValuesServiceResponse handleServiceRequest(

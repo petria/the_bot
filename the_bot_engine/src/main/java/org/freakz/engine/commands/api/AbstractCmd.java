@@ -3,8 +3,6 @@ package org.freakz.engine.commands.api;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
-import java.util.Collections;
-import java.util.List;
 import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
@@ -14,13 +12,18 @@ import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.api.ServiceRequestType;
 import org.freakz.engine.services.api.ServiceResponse;
 
+import java.util.Collections;
+import java.util.List;
+
 public abstract class AbstractCmd implements HokanCmd {
 
   private boolean adminCommand = false;
 
-  @Getter private JSAP jsap = new JSAP();
+  @Getter
+  private JSAP jsap = new JSAP();
 
-  @Getter private BotEngine botEngine;
+  @Getter
+  private BotEngine botEngine;
 
   private final StringBuilder sb = new StringBuilder();
 

@@ -5,7 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Created by Petri Airio on 13.04.2023. - */
+/**
+ * Created by Petri Airio on 13.04.2023. -
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface HokanAdminCommand {}
+public @interface HokanAdminCommand {
+}

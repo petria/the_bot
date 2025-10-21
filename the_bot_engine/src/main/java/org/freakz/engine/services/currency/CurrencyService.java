@@ -18,7 +18,8 @@ public class CurrencyService extends AbstractService {
   private String currencyClass = "zzDege";
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> CurrencyResponse handleServiceRequest(ServiceRequest request) {

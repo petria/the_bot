@@ -3,7 +3,6 @@ package org.freakz.engine.commands.handlers.ai;
 
 import com.martiansoftware.jsap.*;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.weaver.tools.cache.AsynchronousFileCacheBacking;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
@@ -22,7 +21,7 @@ public class ConversationCmd extends AbstractCmd {
   private final ConversationService conversationService;
 
   public ConversationCmd() {
-    this.conversationService = new  ConversationService();
+    this.conversationService = new ConversationService();
   }
 
   @Override

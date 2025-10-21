@@ -11,6 +11,6 @@ import org.freakz.engine.services.api.ServiceResponse;
 @EqualsAndHashCode(callSuper = false)
 public class EnvResponse extends ServiceResponse {
 
-    private SysEnvValue envValue;
+  private SysEnvValue envValue;
 
 }

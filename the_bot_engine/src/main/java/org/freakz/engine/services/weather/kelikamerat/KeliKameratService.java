@@ -22,7 +22,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
-/** Created by Petri Airio on 08.02.2023. */
+/**
+ * Created by Petri Airio on 08.02.2023.
+ */
 // @Service
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
@@ -31,24 +33,24 @@ public class KeliKameratService extends AbstractService {
   private static final String BASE_ULR = "https://www.kelikamerat.info";
 
   private static final String[] KELIKAMERAT_URLS = {
-    "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Karjala",
-    "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Pohjanmaa",
-    "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Savo",
-    "https://www.kelikamerat.info/kelikamerat/Kainuu",
-    "https://www.kelikamerat.info/kelikamerat/Kanta-H%C3%A4me",
-    "https://www.kelikamerat.info/kelikamerat/Keski-Pohjanmaa",
-    "https://www.kelikamerat.info/kelikamerat/Keski-Suomi",
-    "https://www.kelikamerat.info/kelikamerat/Kymenlaakso",
-    "https://www.kelikamerat.info/kelikamerat/Lappi",
-    "https://www.kelikamerat.info/kelikamerat/P%C3%A4ij%C3%A4t-H%C3%A4me",
-    "https://www.kelikamerat.info/kelikamerat/Pirkanmaa",
-    "https://www.kelikamerat.info/kelikamerat/Pohjanmaa",
-    "https://www.kelikamerat.info/kelikamerat/Pohjois-Karjala",
-    "https://www.kelikamerat.info/kelikamerat/Pohjois-Pohjanmaa",
-    "https://www.kelikamerat.info/kelikamerat/Pohjois-Savo",
-    "https://www.kelikamerat.info/kelikamerat/Satakunta",
-    "https://www.kelikamerat.info/kelikamerat/Uusimaa",
-    "https://www.kelikamerat.info/kelikamerat/Varsinais-Suomi"
+      "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Karjala",
+      "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Pohjanmaa",
+      "https://www.kelikamerat.info/kelikamerat/Etel%C3%A4-Savo",
+      "https://www.kelikamerat.info/kelikamerat/Kainuu",
+      "https://www.kelikamerat.info/kelikamerat/Kanta-H%C3%A4me",
+      "https://www.kelikamerat.info/kelikamerat/Keski-Pohjanmaa",
+      "https://www.kelikamerat.info/kelikamerat/Keski-Suomi",
+      "https://www.kelikamerat.info/kelikamerat/Kymenlaakso",
+      "https://www.kelikamerat.info/kelikamerat/Lappi",
+      "https://www.kelikamerat.info/kelikamerat/P%C3%A4ij%C3%A4t-H%C3%A4me",
+      "https://www.kelikamerat.info/kelikamerat/Pirkanmaa",
+      "https://www.kelikamerat.info/kelikamerat/Pohjanmaa",
+      "https://www.kelikamerat.info/kelikamerat/Pohjois-Karjala",
+      "https://www.kelikamerat.info/kelikamerat/Pohjois-Pohjanmaa",
+      "https://www.kelikamerat.info/kelikamerat/Pohjois-Savo",
+      "https://www.kelikamerat.info/kelikamerat/Satakunta",
+      "https://www.kelikamerat.info/kelikamerat/Uusimaa",
+      "https://www.kelikamerat.info/kelikamerat/Varsinais-Suomi"
   };
 
   private static List<KelikameratUrl> stationUrls;

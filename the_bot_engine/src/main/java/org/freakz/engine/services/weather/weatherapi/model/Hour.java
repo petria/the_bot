@@ -41,4 +41,5 @@ public record Hour(
     Double gust_kph,
     Double uv,
     Double short_rad,
-    Double diff_rad) {}
+    Double diff_rad) {
+}

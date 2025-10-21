@@ -1,7 +1,8 @@
 package org.freakz.engine.services.timeservice;
 
-import java.time.LocalDateTime;
 import org.freakz.common.model.TimeDifferenceData;
+
+import java.time.LocalDateTime;
 
 public interface TimeDifferenceService {
 

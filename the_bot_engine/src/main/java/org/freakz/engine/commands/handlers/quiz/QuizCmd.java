@@ -14,16 +14,16 @@ import org.freakz.engine.services.api.ServiceRequestType;
 public class QuizCmd extends AbstractCmd {
 
 
-    @Override
-    public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-        jsap.setHelp("Quiz test.");
-    }
+  @Override
+  public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
+    jsap.setHelp("Quiz test.");
+  }
 
-    @Override
-    public String executeCommand(EngineRequest request, JSAPResult results) {
+  @Override
+  public String executeCommand(EngineRequest request, JSAPResult results) {
 
-        QuizStartResponse response = doServiceRequest(request, results, ServiceRequestType.QuizStartRequest);
+    QuizStartResponse response = doServiceRequest(request, results, ServiceRequestType.QuizStartRequest);
 
-        return "QuizStartResponse: " + response;
-    }
+    return "QuizStartResponse: " + response;
+  }
 }

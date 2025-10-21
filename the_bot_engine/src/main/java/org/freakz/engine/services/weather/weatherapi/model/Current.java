@@ -32,4 +32,5 @@ public record Current(
     Double uv,
     Double gust_mph,
     Double gust_kph,
-    @JsonProperty("air_quality") AirQuality air_quality) {}
+    @JsonProperty("air_quality") AirQuality air_quality) {
+}

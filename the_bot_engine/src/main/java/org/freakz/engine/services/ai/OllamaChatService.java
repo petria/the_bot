@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ollama;
+package org.freakz.engine.services.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,7 +62,7 @@ public class OllamaChatService {
     this.configService = configService;
   }
 
-  public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String  channel, String sentByNick, String sentByRealName) throws MalformedURLException {
+  public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
     String response;
 
     log.debug("Getting client for image: {} and model: {}", hostUrl, modelName);
@@ -86,7 +86,7 @@ public class OllamaChatService {
       try {
         Map map = mapper.readValue(responseBodyAsString, HashMap.class);
         if (map.containsKey("message")) {
-          map =  (HashMap) map.get("message");
+          map = (HashMap) map.get("message");
           response = (String) map.get("content");
         } else {
           response = "N/A";
@@ -101,7 +101,7 @@ public class OllamaChatService {
 //    return "TODO";
   }
 
-  public String ask(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String  channel, String sentByNick, String sentByRealName) {
+  public String ask(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String network, String channel, String sentByNick, String sentByRealName) {
 
     log.debug("Getting client for chat: {} and model: {}", hostUrl, modelName);
 
@@ -153,11 +153,10 @@ public class OllamaChatService {
       Message promptMessage = promptTemplate.createMessage(promptParameters);
 
 
-
 //      UserMessage userMessage = new UserMessage(promptText);
       messages.add(promptMessage);
 
-      Prompt prompt = new Prompt(messages,  OllamaOptions.builder()
+      Prompt prompt = new Prompt(messages, OllamaOptions.builder()
           .toolCallbacks(toolCallbacks)
           .model(modelName) // "qwen3:30b-a3b"
           .temperature(0.4)

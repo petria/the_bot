@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ollama;
+package org.freakz.engine.services.ai;
 
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.engine.commands.util.WeatherUtils;

@@ -2,7 +2,6 @@ package org.freakz.engine.commands;
 
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
-import feign.Response;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +27,9 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.util.Iterator;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -41,8 +37,10 @@ public class BotEngine {
 
   private final AccessService accessService;
 
-  @Getter private final CommandHandlerLoader commandHandlerLoader;
-  @Getter private final HokanServices hokanServices;
+  @Getter
+  private final CommandHandlerLoader commandHandlerLoader;
+  @Getter
+  private final HokanServices hokanServices;
   private final ConfigService configService;
 
   private final ConversationsService conversationsService;

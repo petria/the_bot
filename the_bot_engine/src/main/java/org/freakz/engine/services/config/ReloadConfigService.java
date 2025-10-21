@@ -13,7 +13,8 @@ import java.io.IOException;
 public class ReloadConfigService extends AbstractService {
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ReloadConfig)
   public <T extends ServiceResponse> ServiceResponse reloadConfigHandler(ServiceRequest request) {

@@ -11,7 +11,8 @@ import org.springframework.context.ApplicationContext;
 public class QuizStartService extends AbstractService {
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> QuizStartResponse handleServiceRequest(

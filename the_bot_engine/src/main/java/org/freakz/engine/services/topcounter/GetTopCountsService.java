@@ -16,7 +16,8 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TOP_KEY;
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.GetTopCountsService)
 public class GetTopCountsService extends AbstractService {
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> TopCountsResponse handleServiceRequest(

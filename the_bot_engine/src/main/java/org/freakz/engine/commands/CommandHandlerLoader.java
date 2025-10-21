@@ -1,8 +1,5 @@
 package org.freakz.engine.commands;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
-import java.util.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
@@ -13,6 +10,10 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.util.*;
 
 @Slf4j
 public class CommandHandlerLoader {
@@ -27,9 +28,11 @@ public class CommandHandlerLoader {
     }
   }
 
-  @Getter private Map<String, HandlerClass> handlersMap = new TreeMap<>();
+  @Getter
+  private Map<String, HandlerClass> handlersMap = new TreeMap<>();
 
-  @Getter private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
+  @Getter
+  private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
   public void initializeCommandHandlers(String activeProfile, String botName) throws Exception {
     Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
@@ -83,9 +86,9 @@ public class CommandHandlerLoader {
 
   public HokanCmd getMatchingCommandHandlers(BotEngine botEngine, String trigger)
       throws NoSuchMethodException,
-          InvocationTargetException,
-          InstantiationException,
-          IllegalAccessException {
+      InvocationTargetException,
+      InstantiationException,
+      IllegalAccessException {
     for (String key : this.handlersMap.keySet()) {
       String match = String.format("!%s", key.toLowerCase());
       if (match.equalsIgnoreCase(trigger)) {

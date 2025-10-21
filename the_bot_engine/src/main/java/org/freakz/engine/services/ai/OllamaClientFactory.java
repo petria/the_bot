@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ollama;
+package org.freakz.engine.services.ai;
 
 
 import org.springframework.ai.chat.client.ChatClient;

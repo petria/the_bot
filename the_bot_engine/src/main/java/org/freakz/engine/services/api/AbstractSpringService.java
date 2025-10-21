@@ -5,7 +5,8 @@ import org.freakz.engine.config.ConfigService;
 
 public class AbstractSpringService extends AbstractService {
 
-  @Getter private ConfigService configService;
+  @Getter
+  private ConfigService configService;
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

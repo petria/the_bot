@@ -1,21 +1,21 @@
 package org.freakz.engine.commands.handlers.weather;
 
-import com.martiansoftware.jsap.*;
+import com.martiansoftware.jsap.JSAP;
+import com.martiansoftware.jsap.JSAPException;
+import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.UnflaggedOption;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.commands.util.WeatherUtils;
 import org.freakz.engine.dto.weather.WaterTemperatureResponse;
-import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
-import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
 @HokanCommandHandler
 @Slf4j

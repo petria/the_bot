@@ -1,8 +1,5 @@
 package org.freakz.engine.services.data;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.DataControllerService;
@@ -12,12 +9,17 @@ import org.freakz.engine.dto.DataSaverListResponse;
 import org.freakz.engine.services.api.*;
 import org.springframework.context.ApplicationContext;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.DataSaverList)
 public class DataSaverListService extends AbstractService {
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @Override
   public <T extends ServiceResponse> DataSaverListResponse handleServiceRequest(

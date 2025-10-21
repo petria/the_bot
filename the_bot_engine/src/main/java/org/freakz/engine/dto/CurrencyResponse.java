@@ -9,7 +9,7 @@ import org.freakz.engine.services.api.ServiceResponse;
 @Data
 @EqualsAndHashCode(callSuper = false)
 public class CurrencyResponse extends ServiceResponse {
-    private double amount;
-    private String from;
-    private String to;
+  private double amount;
+  private String from;
+  private String to;
 }

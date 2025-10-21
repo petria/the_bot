@@ -20,7 +20,8 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VALUE;
 public class EnvService extends AbstractService {
 
   @Override
-  public void initializeService(ConfigService configService) throws Exception {}
+  public void initializeService(ConfigService configService) throws Exception {
+  }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ListEnv)
   public <T extends ServiceResponse> ServiceResponse listEnvVariables(ServiceRequest request) {
