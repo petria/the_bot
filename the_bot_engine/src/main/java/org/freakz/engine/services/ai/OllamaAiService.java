@@ -33,9 +33,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-public class OllamaChatService {
+public class OllamaAiService {
 
-  private static final Logger log = LoggerFactory.getLogger(OllamaChatService.class);
+  private static final Logger log = LoggerFactory.getLogger(OllamaAiService.class);
 
   @Value("classpath:/prompts/hokan-engine-template.st")
   private Resource hokanEngineTemplate;
@@ -56,7 +56,7 @@ public class OllamaChatService {
       .maxMessages(1000)
       .build(); // TODO
 
-  public OllamaChatService(OllamaClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
+  public OllamaAiService(OllamaClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
     this.factory = factory;
     this.weatherAPIService = weatherAPIService;
     this.configService = configService;
@@ -73,7 +73,7 @@ public class OllamaChatService {
     Media media = new Media(MimeTypeUtils.IMAGE_PNG, urlResource);
     try {
       UserMessage build = UserMessage.builder().media(media).text(promptText).build();
-      log.debug("Sending prompt to ollama.. ");
+      log.debug("Sending prompt to Ollama API.. ");
       start = System.currentTimeMillis();
       response = client.prompt(new Prompt(build)).call().content();
       log.debug("... image Done1");

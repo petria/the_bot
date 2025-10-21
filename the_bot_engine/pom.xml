@@ -72,27 +72,16 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!--        <dependency>
-                    <groupId>org.springframework.ai</groupId>
-                    <artifactId>spring-ai-openai</artifactId>
-                </dependency>
-        -->
-<!--        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
-        </dependency>-->
-
-
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-ollama</artifactId>
         </dependency>
 
-<!--        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
--->
+
         <!-- CalculatorCmd -->
         <dependency>
             <groupId>net.objecthunter</groupId>

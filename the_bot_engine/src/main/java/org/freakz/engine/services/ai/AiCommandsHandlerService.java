@@ -24,12 +24,15 @@ public class AiCommandsHandlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AiCommandsHandlerService.class);
 
-  private final OllamaChatService ollamaChatService;
+  private final OllamaAiService ollamaAiService;
+
+  private final OpenAiService openAiService;
 
   private final WaterTemperatureService waterTemperatureService;
 
-  public AiCommandsHandlerService(OllamaChatService ollamaChatService, WaterTemperatureService waterTemperatureService) {
-    this.ollamaChatService = ollamaChatService;
+  public AiCommandsHandlerService(OllamaAiService ollamaAiService, OpenAiService openAiService, WaterTemperatureService waterTemperatureService) {
+    this.ollamaAiService = ollamaAiService;
+    this.openAiService = openAiService;
     this.waterTemperatureService = waterTemperatureService;
   }
 
@@ -49,7 +52,7 @@ public class AiCommandsHandlerService {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-    String queryResponse = ollamaChatService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
+    String queryResponse = ollamaAiService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
 
     aiResponse.setResult(queryResponse);
     return aiResponse;
@@ -91,10 +94,11 @@ public class AiCommandsHandlerService {
 //          String ollamaModel = "qwen2.5vl:32b";
           String ollamaModel = "qwen3-vl:235b-cloud";
 
-//          String promptMessage = "What is the current measured water temperature. Also find measurement date and time from lower right corner of image. Answer nothing else but \"XXX °C\"  where XXX is temperature.";
-          String promptMessage = "Analyze chart image.";
+          String promptMessage = "What is the current measured water temperature. Answer nothing else but XXX°C  where XXX is temperature.";
+//          String promptMessage = "Analyze chart image.";
 
-          String queryResponse = ollamaChatService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
+//          String queryResponse = ollamaAiService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
+          String queryResponse = openAiService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
 
           log.debug("queryResponse: {}", queryResponse);
 
