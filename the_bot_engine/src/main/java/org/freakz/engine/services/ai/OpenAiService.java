@@ -29,6 +29,8 @@ public class OpenAiService {
     this.factory = factory;
   }
 
+
+
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
     String response;
 
