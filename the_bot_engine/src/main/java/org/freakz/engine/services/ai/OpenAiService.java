@@ -32,6 +32,7 @@ public class OpenAiService {
 
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
+
     String response;
 
     ChatClient client = factory.openAiChatClient("chatgpt-4o-latest");  //openAiChatClient;
