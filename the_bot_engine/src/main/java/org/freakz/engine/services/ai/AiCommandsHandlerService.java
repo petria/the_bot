@@ -52,9 +52,9 @@ public class AiCommandsHandlerService {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-    String queryResponse = ollamaAiService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
+//    String queryResponse = ollamaAiService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
 
-    aiResponse.setResult(queryResponse);
+    aiResponse.setResult("TODO!");
     return aiResponse;
   }
 
