@@ -17,4 +17,8 @@ public interface EnvValuesService {
   SysEnvValue unSetEnvValue(String key, User user);
 
   SysEnvValue findFirstByKey(String key);
+
+  String getKeyValueOrDefault(String key, String defaultValue);
+
+  boolean getKeyValueBooleanOrDefault(String key, boolean defaultValue);
 }

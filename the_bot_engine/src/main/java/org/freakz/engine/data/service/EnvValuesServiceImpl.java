@@ -77,4 +77,23 @@ public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService
     }
     return null;
   }
+
+  @Override
+  public String getKeyValueOrDefault(String key, String defaultValue) {
+    SysEnvValue envValue = findFirstByKey(key);
+    if (envValue != null) {
+      return envValue.getValue();
+    }
+    return defaultValue;
+  }
+
+  @Override
+  public boolean getKeyValueBooleanOrDefault(String key, boolean defaultValue) {
+    SysEnvValue envValue = findFirstByKey(key);
+    if (envValue != null) {
+      return envValue.getValue().equals("true");
+    }
+    return defaultValue;
+  }
+
 }

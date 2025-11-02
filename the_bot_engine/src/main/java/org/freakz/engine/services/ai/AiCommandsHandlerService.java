@@ -1,6 +1,8 @@
 package org.freakz.engine.services.ai;
 
+import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.commands.util.CommandArgs;
+import org.freakz.engine.data.service.EnvValuesService;
 import org.freakz.engine.dto.ai.AiCtrlResponse;
 import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.dto.weather.WaterTemperatureResponse;
@@ -12,6 +14,7 @@ import org.freakz.engine.services.weather.water.WaterTemperatureData;
 import org.freakz.engine.services.weather.water.WaterTemperatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.openfeign.loadbalancer.LoadBalancerFeignRequestTransformer;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
@@ -24,13 +27,17 @@ public class AiCommandsHandlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AiCommandsHandlerService.class);
 
+  private final EnvValuesService envValuesService;
+
   private final OllamaAiService ollamaAiService;
 
   private final OpenAiService openAiService;
 
   private final WaterTemperatureService waterTemperatureService;
 
-  public AiCommandsHandlerService(OllamaAiService ollamaAiService, OpenAiService openAiService, WaterTemperatureService waterTemperatureService) {
+
+  public AiCommandsHandlerService(EnvValuesService envValuesService, OllamaAiService ollamaAiService, OpenAiService openAiService, WaterTemperatureService waterTemperatureService) {
+    this.envValuesService = envValuesService;
     this.ollamaAiService = ollamaAiService;
     this.openAiService = openAiService;
     this.waterTemperatureService = waterTemperatureService;
@@ -68,37 +75,38 @@ public class AiCommandsHandlerService {
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WaterTemperatureService)
   public WaterTemperatureResponse handleWaterTemperatureServiceRequest(ServiceRequest request) {
+
+
+    SysEnvValue envValue = envValuesService.findFirstByKey("ollamaWaterHost");
+
     WaterTemperatureResponse response = WaterTemperatureResponse.builder().build();
 
     String network = request.getEngineRequest().getNetwork();
     String channel = request.getEngineRequest().getReplyTo();
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
-//    String promptMessage = "What is the current measured water temperature. Also find measurement date and time from lower right corner of image. Answer nothing else but \"DDD - YYY XXX °C\" DDD is date and time, YYY is measurement location and where XXX is temperature.";
-//    String imageUrl = "https://wwwi2.ymparisto.fi/i2/65/l653941026y/twlyhyt.png";
-//                     https://wwwi2.ymparisto.fi/i2/59/q5904450y/twlyhyt.png
+
     String place = request.getResults().getString(ARG_PLACE);
+
     boolean found = false;
     for (String key : waterTemperatureService.getDataMap().keySet()) {
       if (key.toLowerCase().contains(place.toLowerCase())) {
         WaterTemperatureData data = waterTemperatureService.getDataMap().get(key);
         String imageUrl = data.getWaterTemperatureChartImageUrl();
         try {
-//          log.info("Query chart image from URL: {}", imageUrl);
-          // qwen2.5vl:7b
-          // qwen3-vl:235b-cloud
-          // llama3.2-vision:latest
-//          String ollamaHost = "http://192.168.0.111:11434";//"http://bot-ollama:11434";
-          String ollamaHost = "http://bot-ollama:11434";
-//          String ollamaHost = "http://192.168.0.143:11434";
-//          String ollamaModel = "qwen2.5vl:32b";
-          String ollamaModel = "qwen3-vl:235b-cloud";
+
+          String ollamaWaterHost = envValuesService.getKeyValueOrDefault("ollamaWaterHost", "http://bot-ollama:11434");
+          String ollamaWaterModel = envValuesService.getKeyValueOrDefault( "ollamaWaterModel","qwen3-vl:235b-cloud");
 
           String promptMessage = "What is the current measured water temperature. Answer nothing else but XXX°C  where XXX is temperature.";
-//          String promptMessage = "Analyze chart image.";
-
-//          String queryResponse = ollamaAiService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
-          String queryResponse = openAiService.describeImageFromUrl(request.getEngineRequest(), ollamaHost, ollamaModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
+          String queryResponse;
+          if (envValuesService.getKeyValueBooleanOrDefault("waterUseOllama", false)) {
+            log.debug("Using OLLAMA to resolve water temperature");
+            queryResponse = ollamaAiService.describeImageFromUrl(request.getEngineRequest(), ollamaWaterHost, ollamaWaterModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
+          } else {
+            log.debug("Using OpenAI to resolve water temperature");
+            queryResponse = openAiService.describeImageFromUrl(request.getEngineRequest(), ollamaWaterHost, ollamaWaterModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
+          }
 
           log.debug("queryResponse: {}", queryResponse);
 
@@ -112,6 +120,7 @@ public class AiCommandsHandlerService {
         break;
       }
     }
+
     if (!found) {
       response.setStatus("NOK: not found");
     }
