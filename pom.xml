@@ -9,13 +9,11 @@
     <version>2.0-SNAPSHOT</version>
     <name>the_bot</name>
 
-
     <modules>
         <module>the_bot_common</module>
         <module>the_bot_cli</module>
         <module>the_bot_io</module>
         <module>the_bot_engine</module>
-        <module>the_bot_ui_back</module>
     </modules>
 
 </project>
