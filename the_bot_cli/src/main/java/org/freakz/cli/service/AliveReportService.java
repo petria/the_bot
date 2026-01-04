@@ -1,9 +1,9 @@
 package org.freakz.cli.service;
 
-import feign.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.freakz.cli.clients.EngineClient;
 import org.freakz.common.model.engine.status.StatusReportRequest;
+import org.freakz.common.spring.rest.RestEngineClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
@@ -14,13 +14,10 @@ public class AliveReportService {
 
   private static final long startup = System.currentTimeMillis();
 
-  private final EngineClient engineClient;
+  private final RestEngineClient engineClient;
 
-  private final CallCountInterceptor callCountInterceptor;
-
-  public AliveReportService(EngineClient engineClient, CallCountInterceptor callCountInterceptor) {
+  public AliveReportService(RestEngineClient engineClient) {
     this.engineClient = engineClient;
-    this.callCountInterceptor = callCountInterceptor;
   }
 
   private String hostname = null;
@@ -42,16 +39,17 @@ public class AliveReportService {
             .timestamp(System.currentTimeMillis())
             .name("BOT_CLI")
             .hostname(hostname)
-            .httpMethodCallMap(callCountInterceptor.getCallCounts())
+            .httpMethodCallMap(null) // TODO
             .user(user)
             .build();
     try {
-      Response response = engineClient.handleStatusReport(request);
-      if (response.status() != 200) {
-        log.error("Update status failed: {}", response);
+      ResponseEntity<?> responseEntity = engineClient.handleStatusReport(request);
+      if (!responseEntity.getStatusCode().is2xxSuccessful()) {
+        log.error("Update status failed: {}", responseEntity);
       }
     } catch (Exception e) {
       log.error("Update status failed", e);
     }
   }
+
 }

@@ -1,8 +1,10 @@
-package org.freakz.engine.clients;
+package org.freakz.common.spring.rest;
 
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
+import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.common.model.feed.Message;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -31,23 +33,23 @@ public class RestMessageSendClient {
     }
   }
 
-  public ResponseEntity<String> sendMessageByTargetAlias(SendMessageByTargetAliasRequest request) {
+  public ResponseEntity<SendMessageByTargetAliasResponse> sendMessageByTargetAlias(SendMessageByTargetAliasRequest request) {
     String url = BASE_URL + "/send_message_by_target_alias";
     try {
-      return restTemplate.postForEntity(url, request, String.class);
+      return restTemplate.postForEntity(url, request, SendMessageByTargetAliasResponse.class);
     } catch (Exception e) {
       log.error("Error sending message by target alias: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(e.getMessage());
+      return ResponseEntity.internalServerError().body(new SendMessageByTargetAliasResponse());
     }
   }
 
-  public ResponseEntity<String> sendIrcRawMessageByTargetAlias(SendIrcRawMessageByTargetAliasRequest request) {
+  public ResponseEntity<SendIrcRawMessageByTargetAliasResponse> sendIrcRawMessageByTargetAlias(SendIrcRawMessageByTargetAliasRequest request) {
     String url = BASE_URL + "/send_irc_raw_message_by_target_alias";
     try {
-      return restTemplate.postForEntity(url, request, String.class);
+      return restTemplate.postForEntity(url, request, SendIrcRawMessageByTargetAliasResponse.class);
     } catch (Exception e) {
       log.error("Error sending irc raw message by target alias: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(e.getMessage());
+      return ResponseEntity.internalServerError().body(new SendIrcRawMessageByTargetAliasResponse());
     }
   }
 }

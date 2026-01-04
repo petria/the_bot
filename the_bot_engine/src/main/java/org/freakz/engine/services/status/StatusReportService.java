@@ -3,7 +3,6 @@ package org.freakz.engine.services.status;
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.common.model.engine.status.StatusReportResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,8 +15,8 @@ public class StatusReportService {
 
   private Map<String, StatusReportRequest> requestMap = new HashMap<>();
 
-  @Autowired
-  private CallCountInterceptor callCounts;
+//  @Autowired
+//  private CallCountInterceptor callCounts;
 
   public StatusReportService() {
     StatusReportRequest request =
@@ -46,6 +45,6 @@ public class StatusReportService {
   }
 
   public ConcurrentMap<String, Integer> getCallCounts() {
-    return this.callCounts.getCallCounts();
+    return null; // TODO  remove this.callCounts.getCallCounts();
   }
 }

@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -21,7 +20,6 @@ import java.util.concurrent.Executor;
 
 @EnableConfigurationProperties(WeatherConfigProperties.class)
 @SpringBootApplication
-@EnableFeignClients
 @EnableAsync
 @EnableScheduling
 public class SpringApplicationBotEngine {

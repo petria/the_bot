@@ -1,7 +1,7 @@
 package org.freakz.io.connections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.Response;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +13,7 @@ import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.slack.Event;
 import org.freakz.common.model.slack.SlackEvent;
-import org.freakz.common.util.FeignUtils;
-import org.freakz.io.clients.EngineClient;
+import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.io.config.ConfigService;
 import org.freakz.io.config.TheBotProperties;
 import org.freakz.io.service.MessageFeederService;
@@ -23,6 +22,7 @@ import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -36,7 +36,7 @@ public class EventPublisherService implements EventPublisher {
 
   @Autowired private MessageFeederService messageFeederService;
 
-  @Autowired private EngineClient engineClient;
+  @Autowired private RestEngineClient engineClient;
 
   private final TheBotProperties theBotProperties;
 
@@ -74,20 +74,21 @@ public class EventPublisherService implements EventPublisher {
             .echoToAlias(echoToAlias)
             .build();
     try {
-      Response response = engineClient.handleEngineRequest(request);
-      if (response.status() != 200) {
-        log.error("{}: Engine not running: {}", response.status(), response.reason());
-      } else {
-        Optional<EngineResponse> responseBody =
-            FeignUtils.getResponseBody(response, EngineResponse.class, new ObjectMapper());
-        if (responseBody.isPresent()) {
-          EngineResponse engineResponse = responseBody.get();
+      ResponseEntity<EngineResponse> response = engineClient.handleEngineRequest(request);
+      if (response.getStatusCode().is2xxSuccessful()) {
+        EngineResponse engineResponse = response.getBody();
+        if (engineResponse != null) {
           log.debug("EngineResponse: {}", engineResponse);
           return engineResponse.getUser();
         } else {
           log.error("No EngineResponse!?");
+
         }
+      } else {
+        log.error("Engine not running: {}", response.getStatusCode());
+
       }
+
     } catch (Exception e) {
       log.error("Unable to send to Engine", e);
     }

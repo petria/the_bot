@@ -10,8 +10,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
-import org.freakz.engine.clients.MessageSendClient;
-import org.freakz.engine.clients.RestMessageSendClient;
+import org.freakz.common.spring.rest.RestMessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
@@ -19,7 +18,6 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.conversations.ConversationsService;
-import org.freakz.engine.services.status.CallCountInterceptor;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
@@ -45,8 +43,6 @@ public class BotEngine {
 
   private final ConversationsService conversationsService;
 
-  private final CallCountInterceptor countInterceptor;
-
   private final UrlMetadataService urlMetadataService;
 
   private final WholeLineTriggers wholeLineTriggers;
@@ -57,18 +53,16 @@ public class BotEngine {
 
   public BotEngine(
       AccessService accessService,
-      MessageSendClient messageSendClient,
       HokanServices hokanServices,
       ConfigService configService,
       ConversationsService conversationsService,
-      CallCountInterceptor countInterceptor,
       UrlMetadataService urlMetadataService, RestMessageSendClient restMessageSendClient)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
     this.conversationsService = conversationsService;
-    this.countInterceptor = countInterceptor;
+//    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
 
@@ -197,7 +191,7 @@ public class BotEngine {
 
     if (request.getNetwork().equals("BOT_CLI_CLIENT") || request.getNetwork().equals("BOT_INTERNAL")) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
-      countInterceptor.computeCount("OUT: commandHandler");
+// TODO       countInterceptor.computeCount("OUT: commandHandler");
       return reply;
     } else {
       Message message =
