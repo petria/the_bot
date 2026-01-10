@@ -38,9 +38,6 @@ public class ConnectionManager {
     @Autowired
     private SlackEventsController slackEventsController;
 
-    @Autowired
-    @Getter
-    private CallCountInterceptor callCountInterceptor;
 
     private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
 

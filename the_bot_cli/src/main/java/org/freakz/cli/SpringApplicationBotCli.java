@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -13,6 +14,7 @@ import java.util.concurrent.Executor;
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
+@ComponentScan(basePackages = {"org.freakz.cli", "org.freakz.common.spring.rest"})
 public class SpringApplicationBotCli {
 
   @Bean

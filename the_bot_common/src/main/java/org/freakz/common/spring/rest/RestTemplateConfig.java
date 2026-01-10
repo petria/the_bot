@@ -1,4 +1,4 @@
-package org.freakz.engine.config;
+package org.freakz.common.spring.rest;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
