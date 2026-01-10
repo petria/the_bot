@@ -1,15 +1,60 @@
 package org.freakz.common.model.connectionmanager;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.Objects;
 
-@Builder
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class ChannelUsersByTargetAliasRequest {
 
-  private String targetAlias;
+    private String targetAlias;
+
+    public ChannelUsersByTargetAliasRequest() {
+    }
+
+    public ChannelUsersByTargetAliasRequest(String targetAlias) {
+        this.targetAlias = targetAlias;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public String getTargetAlias() {
+        return targetAlias;
+    }
+
+    public void setTargetAlias(String targetAlias) {
+        this.targetAlias = targetAlias;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ChannelUsersByTargetAliasRequest that = (ChannelUsersByTargetAliasRequest) o;
+        return Objects.equals(targetAlias, that.targetAlias);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(targetAlias);
+    }
+
+    @Override
+    public String toString() {
+        return "ChannelUsersByTargetAliasRequest{" +
+                "targetAlias='" + targetAlias + '\'' +
+                '}';
+    }
+
+    public static class Builder {
+        private String targetAlias;
+
+        public Builder targetAlias(String targetAlias) {
+            this.targetAlias = targetAlias;
+            return this;
+        }
+
+        public ChannelUsersByTargetAliasRequest build() {
+            return new ChannelUsersByTargetAliasRequest(targetAlias);
+        }
+    }
 }

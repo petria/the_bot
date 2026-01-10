@@ -9,13 +9,14 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.botconfig.TheBotConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 public class RuntimeConfigReader {
 
-  private Properties secretProperties;
+    private static final Logger log = LoggerFactory.getLogger(RuntimeConfigReader.class);
+    private Properties secretProperties;
 
   private void readSecretsProperties(String secretPropertiesPath) {
     log.debug("Loading secrets properties from: {}", secretPropertiesPath);

@@ -1,22 +1,23 @@
 package org.freakz.common.spring.rest;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.common.model.feed.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 @Component
-@Slf4j
 public class RestMessageSendClient {
 
-  private final RestTemplate restTemplate;
-  private final String BASE_URL = "http://bot-io:8090/api/hokan/io/messages";
+    private static final Logger log = LoggerFactory.getLogger(RestMessageSendClient.class);
+    private final RestTemplate restTemplate;
+    private final String BASE_URL = "http://bot-io:8090/api/hokan/io/messages";
 
   @Autowired
   public RestMessageSendClient(RestTemplate restTemplate) {

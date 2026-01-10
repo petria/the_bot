@@ -1,9 +1,10 @@
 package org.freakz.common.spring.rest;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -11,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 
 @Component
-@Slf4j
 public class RestConnectionManagerClient {
 
+  private static final Logger log = LoggerFactory.getLogger(RestConnectionManagerClient.class);
   private final RestTemplate restTemplate;
   private final String BASE_URL = "http://bot-io:8090/api/hokan/io/connection_manager";
 

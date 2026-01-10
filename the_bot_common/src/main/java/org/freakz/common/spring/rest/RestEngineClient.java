@@ -1,10 +1,11 @@
 package org.freakz.common.spring.rest;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.common.model.engine.status.StatusReportResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -12,11 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 
 @Component
-@Slf4j
 public class RestEngineClient {
 
-  private final RestTemplate restTemplate;
-  private final String BASE_URL = "http://bot-engine:8100/api/hokan/engine";
+    private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
+    private final RestTemplate restTemplate;
+    private final String BASE_URL = "http://bot-engine:8100/api/hokan/engine";
 
   @Autowired
   public RestEngineClient(RestTemplate restTemplate) {
