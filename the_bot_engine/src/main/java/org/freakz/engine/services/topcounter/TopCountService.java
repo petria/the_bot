@@ -1,6 +1,5 @@
 package org.freakz.engine.services.topcounter;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValuesModel;
@@ -8,6 +7,8 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.data.service.DataValuesService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,8 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class TopCountService {
+
+  private static final Logger log = LoggerFactory.getLogger(TopCountService.class);
 
   private final BotEngine botEngine;
 

@@ -1,15 +1,18 @@
 package org.freakz.engine.services.connections;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.ConnectionsResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.ConnectionControlService)
 public class ConnectionControlService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(ConnectionControlService.class);
+
   @Override
   public void initializeService(ConfigService configService) throws Exception {
   }

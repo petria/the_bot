@@ -15,9 +15,9 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class RestEngineClient {
 
-    private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
-    private final RestTemplate restTemplate;
-    private final String BASE_URL = "http://bot-engine:8100/api/hokan/engine";
+  private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
+  private final RestTemplate restTemplate;
+  private final String BASE_URL = "http://bot-engine:8100/api/hokan/engine";
 
   @Autowired
   public RestEngineClient(RestTemplate restTemplate) {
@@ -25,7 +25,7 @@ public class RestEngineClient {
   }
 
 
-//  @PostMapping("/handle_request")
+  //  @PostMapping("/handle_request")
   public ResponseEntity<EngineResponse> handleEngineRequest(@RequestBody EngineRequest request) {
     String url = BASE_URL + "/handle_request";
     try {
@@ -36,7 +36,7 @@ public class RestEngineClient {
     }
   }
 
-//  @PostMapping("/handle_status_report")
+  //  @PostMapping("/handle_status_report")
   public ResponseEntity<StatusReportResponse> handleStatusReport(@RequestBody StatusReportRequest request) {
     String url = BASE_URL + "/handle_status_report";
     try {

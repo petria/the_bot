@@ -95,7 +95,7 @@ public class AiCommandsHandlerService {
         try {
 
           String ollamaWaterHost = envValuesService.getKeyValueOrDefault("ollamaWaterHost", "http://bot-ollama:11434");
-          String ollamaWaterModel = envValuesService.getKeyValueOrDefault( "ollamaWaterModel","qwen3-vl:235b-cloud");
+          String ollamaWaterModel = envValuesService.getKeyValueOrDefault("ollamaWaterModel", "qwen3-vl:235b-cloud");
 
           String promptMessage = "What is the current measured water temperature. Answer nothing else but XXX°C  where XXX is temperature.";
           String queryResponse;

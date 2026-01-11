@@ -1,12 +1,13 @@
 package org.freakz.engine.services.env;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.freakz.engine.dto.env.EnvResponse;
 import org.freakz.engine.dto.env.ListEnvResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.util.List;
@@ -15,9 +16,10 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_KEY;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VALUE;
 
 @ServiceMethodHandler
-@Slf4j
 @SuppressWarnings("unchecked")
 public class EnvService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(EnvService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

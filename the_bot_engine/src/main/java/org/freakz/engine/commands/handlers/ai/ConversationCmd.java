@@ -2,11 +2,12 @@ package org.freakz.engine.commands.handlers.ai;
 
 
 import com.martiansoftware.jsap.*;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +16,9 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PREFIX;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
 @HokanCommandHandler
-@Slf4j
 public class ConversationCmd extends AbstractCmd {
+
+  private static final Logger log = LoggerFactory.getLogger(ConversationCmd.class);
 
   private final ConversationService conversationService;
 

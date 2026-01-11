@@ -1,11 +1,12 @@
 package org.freakz.engine.services;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -19,9 +20,10 @@ import static org.reflections.scanners.Scanners.SubTypes;
 import static org.reflections.scanners.Scanners.TypesAnnotated;
 
 @Service
-@Slf4j
 @SuppressWarnings("unchecked")
 public class HokanServices {
+
+  private static final Logger log = LoggerFactory.getLogger(HokanServices.class);
 
   private final Executor executor;
 

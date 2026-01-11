@@ -17,10 +17,10 @@ import java.util.Map;
 
 public class LogServiceImpl implements LogService {
 
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(LogServiceImpl.class);
-    private final String logDir;
+  private static final org.slf4j.Logger log = LoggerFactory.getLogger(LogServiceImpl.class);
+  private final String logDir;
 
-    private Map<String, Logger> channelLoggers = new HashMap<>();
+  private Map<String, Logger> channelLoggers = new HashMap<>();
 
   public LogServiceImpl(String logDir) {
     this.logDir = logDir;

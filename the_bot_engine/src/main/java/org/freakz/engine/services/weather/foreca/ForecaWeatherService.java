@@ -1,7 +1,6 @@
 package org.freakz.engine.services.weather.foreca;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.foreca.CountryCityLink;
 import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.common.model.foreca.ForecaSunUpDown;
@@ -10,6 +9,8 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,10 +18,11 @@ import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
-@Slf4j
 @SpringServiceMethodHandler
 @Service
 public class ForecaWeatherService extends AbstractSpringService {
+
+  private static final Logger log = LoggerFactory.getLogger(ForecaWeatherService.class);
 
   private static final ForecaDataFetcher forecaDataFetcher = new ForecaDataFetcher();
 

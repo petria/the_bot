@@ -1,8 +1,9 @@
 package org.freakz.engine.services.status;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.common.model.engine.status.StatusReportResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -10,8 +11,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 @Service
-@Slf4j
 public class StatusReportService {
+
+  private static final Logger log = LoggerFactory.getLogger(StatusReportService.class);
 
   private Map<String, StatusReportRequest> requestMap = new HashMap<>();
 

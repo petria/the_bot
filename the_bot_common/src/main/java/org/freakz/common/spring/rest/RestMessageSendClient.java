@@ -15,9 +15,9 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class RestMessageSendClient {
 
-    private static final Logger log = LoggerFactory.getLogger(RestMessageSendClient.class);
-    private final RestTemplate restTemplate;
-    private final String BASE_URL = "http://bot-io:8090/api/hokan/io/messages";
+  private static final Logger log = LoggerFactory.getLogger(RestMessageSendClient.class);
+  private final RestTemplate restTemplate;
+  private final String BASE_URL = "http://bot-io:8090/api/hokan/io/messages";
 
   @Autowired
   public RestMessageSendClient(RestTemplate restTemplate) {

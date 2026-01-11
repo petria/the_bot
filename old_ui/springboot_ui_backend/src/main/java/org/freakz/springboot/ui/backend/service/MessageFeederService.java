@@ -16,7 +16,8 @@ public class MessageFeederService {
 
   private final List<Message> feed = new ArrayList<>();
 
-  public MessageFeederService() {}
+  public MessageFeederService() {
+  }
 
   public List<Message> getMessagesSinceTimestamp(long timestamp) {
     List<Message> collect =

@@ -4,7 +4,6 @@ import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.common.model.engine.EngineRequest;
@@ -13,6 +12,8 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.stats.TopCountsResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +22,9 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_CHANNEL;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TOP_KEY;
 
 @HokanCommandHandler
-@Slf4j
 public class TopCountsCmd extends AbstractCmd {
+
+  private static final Logger log = LoggerFactory.getLogger(TopCountsCmd.class);
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {

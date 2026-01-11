@@ -1,16 +1,18 @@
 package org.freakz.cli.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.common.spring.rest.RestEngineClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
 
 @Service
-@Slf4j
 public class AliveReportService {
+
+  private static final Logger log = LoggerFactory.getLogger(AliveReportService.class);
 
   private static final long startup = System.currentTimeMillis();
 

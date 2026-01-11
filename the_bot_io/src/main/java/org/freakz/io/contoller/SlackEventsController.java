@@ -1,10 +1,12 @@
 package org.freakz.io.contoller;
 
-import lombok.extern.slf4j.Slf4j;
+
 import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.common.model.slack.UrlVerificationRequest;
 import org.freakz.common.model.slack.UrlVerificationResponse;
 import org.freakz.io.connections.SlackConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,8 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/hokan/io/slack")
-@Slf4j
 public class SlackEventsController {
+
+  private static final Logger log = LoggerFactory.getLogger(SlackEventsController.class);
 
   private SlackConnection slackConnection;
 

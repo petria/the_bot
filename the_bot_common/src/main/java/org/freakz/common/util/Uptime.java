@@ -39,7 +39,7 @@ public class Uptime implements Serializable, Cloneable {
     long utime = Math.abs(this.time - time2);
 
     if (utime == 0) {
-      return new Integer[] {0, 0, 0, 0};
+      return new Integer[]{0, 0, 0, 0};
     }
 
     long ut_secs = utime / 1000;

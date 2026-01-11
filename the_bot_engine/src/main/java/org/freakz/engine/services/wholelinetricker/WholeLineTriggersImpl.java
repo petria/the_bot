@@ -1,6 +1,5 @@
 package org.freakz.engine.services.wholelinetricker;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.TimeDifferenceData;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
@@ -8,6 +7,8 @@ import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.Calendar;
@@ -19,8 +20,9 @@ import java.util.GregorianCalendar;
  * Date: 21-Jan-2009
  * Time: 08:22:02
  */
-@Slf4j
 public class WholeLineTriggersImpl implements WholeLineTriggers {
+
+  private static final Logger log = LoggerFactory.getLogger(WholeLineTriggersImpl.class);
 
   private final TimeDifferenceService timeDifferenceService;
   private final BotEngine botEngine;

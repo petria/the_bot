@@ -1,12 +1,12 @@
 package org.freakz.engine.services.weather.water;
 
 import jakarta.annotation.PostConstruct;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,13 +15,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class WaterTemperatureService {
+
+  private static final Logger log = LoggerFactory.getLogger(WaterTemperatureService.class);
 
   private final static String BASE_URL = "https://wwwi2.ymparisto.fi/i2/";
 
-  @Getter
   private Map<String, WaterTemperatureData> dataMap = new HashMap<>();
+
+  public Map<String, WaterTemperatureData> getDataMap() {
+    return dataMap;
+  }
 
   private final WaterTemperatureInitializerService initializerService;
 

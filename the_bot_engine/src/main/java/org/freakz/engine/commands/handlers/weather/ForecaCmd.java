@@ -1,13 +1,14 @@
 package org.freakz.engine.commands.handlers.weather;
 
 import com.martiansoftware.jsap.*;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.weather.ForecaResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +16,9 @@ import java.util.List;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
 
 // @HokanCommandHandler
-@Slf4j
 public class ForecaCmd extends AbstractCmd {
+
+  private static final Logger log = LoggerFactory.getLogger(ForecaCmd.class);
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {

@@ -1,14 +1,16 @@
 package org.freakz.engine.services.conversations;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.QuizStartResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.QuizStartRequest)
 public class QuizStartService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(QuizStartService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

@@ -1,17 +1,19 @@
 package org.freakz.engine.services.connections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.*;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.spring.rest.RestMessageSendClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class ConnectionManagerService {
+
+  private static final Logger log = LoggerFactory.getLogger(ConnectionManagerService.class);
 
 
   @Autowired
@@ -42,7 +44,7 @@ public class ConnectionManagerService {
     ResponseEntity<SendMessageByTargetAliasResponse> response = messageSendClient.sendMessageByTargetAlias(request);
 //    Response response = messageSendClient.sendMessageByTargetAlias(request);
 //    Optional<SendMessageByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendMessageByTargetAliasResponse.class, objectMapper);
-  //  return responseBody.get();
+    //  return responseBody.get();
     return response.getBody();
   }
 

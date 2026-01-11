@@ -1,6 +1,5 @@
 package org.freakz.engine.controller;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.status.StatusReportRequest;
@@ -12,6 +11,8 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.status.StatusReportService;
 import org.freakz.engine.services.topcounter.TopCountService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,8 +20,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/hokan/engine")
-@Slf4j
 public class EngineController {
+
+  private static final Logger log = LoggerFactory.getLogger(EngineController.class);
 
   private final BotEngine botEngine;
   private final TopCountService countService;
@@ -37,7 +39,7 @@ public class EngineController {
   }
 
   @PostMapping("/handle_request")
-  public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) {
+  public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) throws Exception {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
     this.countService.calculateTopCounters(request);

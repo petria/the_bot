@@ -2,7 +2,9 @@ package org.freakz.springboot.ui.backend.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
+
 import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.payload.response.PingResponse;
 import org.freakz.springboot.ui.backend.clients.BotIOClient;
@@ -21,7 +23,8 @@ public class ServerConfigController {
 
   private final BotIOClient botIOClient;
 
-  @Autowired private ObjectMapper objectMapper;
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @Autowired
   public ServerConfigController(BotIOClient botIOClient) {

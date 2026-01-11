@@ -2,8 +2,9 @@ package org.freakz.engine.services.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -19,15 +20,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class OpenAiService {
+
+  private static final Logger log = LoggerFactory.getLogger(OpenAiService.class);
 
   private final AiClientFactory factory;
 
   public OpenAiService(AiClientFactory factory) {
     this.factory = factory;
   }
-
 
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
@@ -47,7 +48,7 @@ public class OpenAiService {
       if (chatResponse != null) {
         response = chatResponse.getResult().getOutput().getText();
       } else {
-        response ="N/A";
+        response = "N/A";
       }
       log.debug("... image Done1");
 

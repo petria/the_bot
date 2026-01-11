@@ -1,6 +1,5 @@
 package org.freakz.engine.data.repository.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.EnvValuesJsonContainer;
@@ -10,6 +9,8 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.RepositoryBaseImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,9 +19,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-@Slf4j
 public class EnvValuesRepositoryImpl extends RepositoryBaseImpl
     implements EnvValuesRepository, DataSavingService {
+
+  private static final Logger log = LoggerFactory.getLogger(EnvValuesRepositoryImpl.class);
 
   private static final String ENV_VALUES_FILE_NAME = "env_values.json";
 

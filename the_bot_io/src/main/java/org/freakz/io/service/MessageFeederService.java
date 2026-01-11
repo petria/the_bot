@@ -1,21 +1,25 @@
 package org.freakz.io.service;
 
+import org.freakz.common.model.feed.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.feed.Message;
-import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class MessageFeederService {
+
+  private static final Logger log = LoggerFactory.getLogger(MessageFeederService.class);
 
   private final List<Message> feed = new ArrayList<>();
 
-  public MessageFeederService() {}
+  public MessageFeederService() {
+  }
 
   public List<Message> getMessagesSinceTimestamp(long timestamp) {
     List<Message> collect =

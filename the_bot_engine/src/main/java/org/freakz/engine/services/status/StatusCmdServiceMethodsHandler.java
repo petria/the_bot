@@ -1,11 +1,12 @@
 package org.freakz.engine.services.status;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.timeservice.TimeDifferenceService;
 import org.freakz.engine.services.timeservice.TimeDifferenceServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,8 +16,9 @@ import java.util.concurrent.ConcurrentMap;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_VERBOSE;
 
 @ServiceMethodHandler
-@Slf4j
 public class StatusCmdServiceMethodsHandler extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(StatusCmdServiceMethodsHandler.class);
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.SystemStatus)
   public <T extends ServiceResponse> ServiceResponse handleServiceRequest(ServiceRequest request) {

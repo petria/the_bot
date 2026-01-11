@@ -1,16 +1,18 @@
 package org.freakz.engine.services.conversations;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class ConversationsService {
+
+  private static final Logger log = LoggerFactory.getLogger(ConversationsService.class);
 
   private static long nextId = 0;
   private Map<String, Conversation> conversationMap = new HashMap<>();

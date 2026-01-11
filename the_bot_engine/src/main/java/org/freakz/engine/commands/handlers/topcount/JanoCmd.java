@@ -3,7 +3,6 @@ package org.freakz.engine.commands.handlers.topcount;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.Uptime;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
@@ -11,10 +10,13 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.dto.GetDataValuesServiceResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @HokanCommandHandler
-@Slf4j
 public class JanoCmd extends AbstractCmd {
+
+  private static final Logger log = LoggerFactory.getLogger(JanoCmd.class);
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {

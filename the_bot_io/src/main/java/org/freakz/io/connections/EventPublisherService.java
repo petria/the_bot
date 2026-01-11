@@ -1,10 +1,5 @@
 package org.freakz.io.connections;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.logger.LogService;
 import org.freakz.common.logger.LogServiceImpl;
 import org.freakz.common.model.engine.EngineRequest;
@@ -21,6 +16,8 @@ import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
@@ -28,15 +25,21 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 
+import java.time.LocalDateTime;
+
 @Service
-@Slf4j
 public class EventPublisherService implements EventPublisher {
 
-  @Autowired private ConfigService configService;
+  private static final Logger log = LoggerFactory.getLogger(EventPublisherService.class);
 
-  @Autowired private MessageFeederService messageFeederService;
+  @Autowired
+  private ConfigService configService;
 
-  @Autowired private RestEngineClient engineClient;
+  @Autowired
+  private MessageFeederService messageFeederService;
+
+  @Autowired
+  private RestEngineClient engineClient;
 
   private final TheBotProperties theBotProperties;
 
@@ -327,7 +330,6 @@ public class EventPublisherService implements EventPublisher {
     return new org.freakz.common.model.users.User();
   }
 
-  @Override
   public org.freakz.common.model.users.User publishEvent(
       BotConnection connection, Object source, String echoToAlias) {
     switch (connection.getType()) {

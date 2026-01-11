@@ -1,8 +1,9 @@
 package org.freakz.engine.services.weather.water;
 
-import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -10,8 +11,9 @@ import java.io.IOException;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class WaterTemperatureInitializerService {
+
+  private static final Logger log = LoggerFactory.getLogger(WaterTemperatureInitializerService.class);
 
   @Async
   public void initialize(WaterTemperatureService service) {

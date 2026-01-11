@@ -2,9 +2,6 @@ package org.freakz.engine.commands;
 
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
@@ -21,6 +18,8 @@ import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,16 +29,23 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 
 @Service
-@Slf4j
 public class BotEngine {
+
+  private static final Logger log = LoggerFactory.getLogger(BotEngine.class);
 
   private final AccessService accessService;
 
-  @Getter
   private final CommandHandlerLoader commandHandlerLoader;
-  @Getter
   private final HokanServices hokanServices;
   private final ConfigService configService;
+
+  public CommandHandlerLoader getCommandHandlerLoader() {
+    return commandHandlerLoader;
+  }
+
+  public HokanServices getHokanServices() {
+    return hokanServices;
+  }
 
   private final ConversationsService conversationsService;
 
@@ -75,8 +81,7 @@ public class BotEngine {
   }
 
 
-  @SneakyThrows
-  public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+  public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) throws Exception {
 
     request.setBotConfig(configService.readBotConfig());
 
@@ -105,8 +110,7 @@ public class BotEngine {
     return wholeLineTriggers.checkWholeLineTrigger(request);
   }
 
-  @SneakyThrows
-  private String parseAndExecute(EngineRequest request, User user) {
+  private String parseAndExecute(EngineRequest request, User user) throws Exception {
     log.debug("Handle request: {}", request.getCommand());
 
     String message = request.getMessage();

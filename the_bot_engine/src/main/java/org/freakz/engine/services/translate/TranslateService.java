@@ -1,7 +1,6 @@
 package org.freakz.engine.services.translate;
 
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.TranslateData;
 import org.freakz.engine.dto.TranslateResponse;
@@ -10,15 +9,18 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TEXT;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TranslateService)
 public class TranslateService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(TranslateService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

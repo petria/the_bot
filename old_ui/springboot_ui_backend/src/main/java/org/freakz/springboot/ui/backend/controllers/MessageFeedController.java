@@ -2,9 +2,11 @@ package org.freakz.springboot.ui.backend.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Response;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.payload.response.MessageFeedResponse;
@@ -26,63 +28,63 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class MessageFeedController {
 
-    @Autowired
-    private MessageFeederService messageFeeder;
+  @Autowired
+  private MessageFeederService messageFeeder;
 
-    @Autowired
-    private BotIOClient botIOClient;
+  @Autowired
+  private BotIOClient botIOClient;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+  @Autowired
+  private ObjectMapper objectMapper;
 
-    @GetMapping("/current_day")
-    public ResponseEntity<?> getMessagesOfCurrentDay() {
-        List<Message> list = messageFeeder.getMessagesForDay(LocalDate.now());
-        return ResponseEntity.ok(list);
-    }
+  @GetMapping("/current_day")
+  public ResponseEntity<?> getMessagesOfCurrentDay() {
+    List<Message> list = messageFeeder.getMessagesForDay(LocalDate.now());
+    return ResponseEntity.ok(list);
+  }
 
-    @GetMapping("/after_id/{id}")
-    public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
-        Response response = botIOClient.getMessagesAfterId(id);
-        Optional<MessageFeedResponse> responseBody = FeignUtils.getResponseBody(response, MessageFeedResponse.class, objectMapper);
+  @GetMapping("/after_id/{id}")
+  public ResponseEntity<?> getMessagesAfterId(@PathVariable("id") long id) {
+    Response response = botIOClient.getMessagesAfterId(id);
+    Optional<MessageFeedResponse> responseBody = FeignUtils.getResponseBody(response, MessageFeedResponse.class, objectMapper);
 
 //        List<Message> list = messageFeeder.getMessagesAfterId(id);
 //        log.debug("after id {} -> {}", id, list.size());
-        return ResponseEntity.ok(responseBody.get().getMessages());
+    return ResponseEntity.ok(responseBody.get().getMessages());
+  }
+
+  @GetMapping("/last/{max}")
+  public ResponseEntity<?> getMessagesLastMessages(@PathVariable("max") long max) {
+    List<Message> list = messageFeeder.getLastMessages(max);
+    log.debug("last {} -> {}", max, list.size());
+    return ResponseEntity.ok(list);
+  }
+
+  @GetMapping("/since/{timestamp}")
+  public ResponseEntity<?> getMessagesSinceTimestamp(@PathVariable("timestamp") long timestamp) {
+    List<Message> list = messageFeeder.getMessagesSinceTimestamp(timestamp);
+    return ResponseEntity.ok(list);
+  }
+
+  @PostMapping("/insert")
+  public ResponseEntity<?> insertToMessageFeed(@RequestBody Message message) {
+    log.debug("Insert to feed: {}", message);
+    int count = messageFeeder.insertMessage(message);
+    log.debug("Feed size now: {}", count);
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping("/insert_batch")
+  public ResponseEntity<?> insertBatchToMessageFeed(@RequestBody List<Message> messages) {
+
+    log.debug("Insert batch to feed: {}", messages.size());
+
+    for (Message message : messages) {
+      messageFeeder.insertMessage(message);
     }
 
-    @GetMapping("/last/{max}")
-    public ResponseEntity<?> getMessagesLastMessages(@PathVariable("max") long max) {
-        List<Message> list = messageFeeder.getLastMessages(max);
-        log.debug("last {} -> {}", max, list.size());
-        return ResponseEntity.ok(list);
-    }
-
-    @GetMapping("/since/{timestamp}")
-    public ResponseEntity<?> getMessagesSinceTimestamp(@PathVariable("timestamp") long timestamp) {
-        List<Message> list = messageFeeder.getMessagesSinceTimestamp(timestamp);
-        return ResponseEntity.ok(list);
-    }
-
-    @PostMapping("/insert")
-    public ResponseEntity<?> insertToMessageFeed(@RequestBody Message message) {
-        log.debug("Insert to feed: {}", message);
-        int count = messageFeeder.insertMessage(message);
-        log.debug("Feed size now: {}", count);
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/insert_batch")
-    public ResponseEntity<?> insertBatchToMessageFeed(@RequestBody List<Message> messages) {
-
-        log.debug("Insert batch to feed: {}", messages.size());
-
-        for (Message message : messages) {
-            messageFeeder.insertMessage(message);
-        }
-
-        log.debug("Feed size now: {}", messageFeeder.getCount());
-        return ResponseEntity.ok().build();
-    }
+    log.debug("Feed size now: {}", messageFeeder.getCount());
+    return ResponseEntity.ok().build();
+  }
 
 }

@@ -1,6 +1,5 @@
 package org.freakz.engine.services.users;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.ChannelUsersResponse;
@@ -9,14 +8,18 @@ import org.freakz.engine.services.api.ServiceMessageHandler;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.api.ServiceRequestType;
 import org.freakz.engine.services.connections.ConnectionManagerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.GetChannelUsers)
 @SuppressWarnings("unchecked")
 public class ChannelUsersService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(ChannelUsersService.class);
+
   @Override
   public void initializeService(ConfigService configService) throws Exception {
   }

@@ -1,5 +1,8 @@
 package org.freakz.common.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
@@ -10,8 +13,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * String manipulation methods.
@@ -36,60 +37,61 @@ public class StringStuff {
   public static final SimpleDateFormat STRING_STUFF_DF_DMM = new SimpleDateFormat("d.MM.");
   public static final SimpleDateFormat STRING_STUFF_DF_DM = new SimpleDateFormat("d.M.");
   private static final String[] entityTable = {
-    "&Auml;", "Ä",
-    "%C3%84", "Ä",
-    "&auml;", "ä",
-    "%C3%A4", "ä",
-    "&Ouml;", "Ö",
-    "&ouml;", "ö",
-    "%C3%B6", "ö",
-    "&Aring;", "Å",
-    "&aring;", "å",
-    "&nbsp;", " ",
-    "&mdash;", "-",
-    "&quot;", "\"",
-    "&raquo;", ">>",
-    "&bull;", "o",
-    "&amp;", "&",
-    "&#x22;", " ",
-    "&ndash;", "-",
-    "&#x202a;", "",
-    "&#x202c;", "",
-    "&rlm;", ""
+      "&Auml;", "Ä",
+      "%C3%84", "Ä",
+      "&auml;", "ä",
+      "%C3%A4", "ä",
+      "&Ouml;", "Ö",
+      "&ouml;", "ö",
+      "%C3%B6", "ö",
+      "&Aring;", "Å",
+      "&aring;", "å",
+      "&nbsp;", " ",
+      "&mdash;", "-",
+      "&quot;", "\"",
+      "&raquo;", ">>",
+      "&bull;", "o",
+      "&amp;", "&",
+      "&#x22;", " ",
+      "&ndash;", "-",
+      "&#x202a;", "",
+      "&#x202c;", "",
+      "&rlm;", ""
   };
   private static Random random = new Random(new Date().getTime());
   private static Map<String, StringBuilder> quoteCache = new HashMap<>();
   private static char PASSWD_CHARS[] = {
-    'A', 'a', 'B', 'C', 'D', 'X', 'y', '4', '5', '6', '7', 'k', 'm', 'Q', 's'
+      'A', 'a', 'B', 'C', 'D', 'X', 'y', '4', '5', '6', '7', 'k', 'm', 'Q', 's'
   };
   private static String HAXOR_STRING_CONV_TABLE[] = {
-    "rules", "rul3z",
-    "skills", "skillz",
-    "cause", "cuz",
-    "because", "cuz",
-    "rocks", "rockz",
-    "is", "iz",
-    "have", "gotz",
-    "beats", "b3atz",
-    // Don't forget about the quakers
-    "frags", "fragz",
-    "fear", "phear",
-    "elite", "l33t",
-    "you", "u",
-    "hello", "yo",
-    "a", "@",
-    "A", "@",
-    "e", "3",
-    "E", "3",
-    "o", "0",
-    "O", "0",
-    "s", "5",
-    "S", "$",
-    "t", "7",
-    "T", "7"
+      "rules", "rul3z",
+      "skills", "skillz",
+      "cause", "cuz",
+      "because", "cuz",
+      "rocks", "rockz",
+      "is", "iz",
+      "have", "gotz",
+      "beats", "b3atz",
+      // Don't forget about the quakers
+      "frags", "fragz",
+      "fear", "phear",
+      "elite", "l33t",
+      "you", "u",
+      "hello", "yo",
+      "a", "@",
+      "A", "@",
+      "e", "3",
+      "E", "3",
+      "o", "0",
+      "O", "0",
+      "s", "5",
+      "S", "$",
+      "t", "7",
+      "T", "7"
   };
 
-  private StringStuff() {}
+  private StringStuff() {
+  }
 
   public static boolean match(String s, String pat) {
     return match(s, pat, true);
@@ -261,7 +263,7 @@ public class StringStuff {
    * dateStr be in format dd.MM.yyyy e.g. 09.06.1972 / 24.12.2005
    *
    * @param dateStr the String to be converted to the Date object
-   * @param sdf formatter to be used for parsing
+   * @param sdf     formatter to be used for parsing
    * @return the parsed Date object or null if parsing failed
    */
   public static Date parseStringToDate(String dateStr, SimpleDateFormat sdf) {
@@ -474,7 +476,7 @@ public class StringStuff {
   }
 
   /**
-   * @param data Object to format in column
+   * @param data    Object to format in column
    * @param colSize column size in chars
    * @param padding what to use as padding character
    * @return formatted column
@@ -559,7 +561,7 @@ public class StringStuff {
       i +=
           Character.charCount(
               codePoint); // Increment with the number of code units(java chars) needed to represent
-                          // a Unicode char.
+      // a Unicode char.
     }
     return out.toString();
   }

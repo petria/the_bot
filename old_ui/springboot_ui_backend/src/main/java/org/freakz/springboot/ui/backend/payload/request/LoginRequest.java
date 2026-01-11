@@ -3,9 +3,11 @@ package org.freakz.springboot.ui.backend.payload.request;
 import javax.validation.constraints.NotBlank;
 
 public class LoginRequest {
-  @NotBlank private String username;
+  @NotBlank
+  private String username;
 
-  @NotBlank private String password;
+  @NotBlank
+  private String password;
 
   public String getUsername() {
     return username;

@@ -1,6 +1,5 @@
 package org.freakz.engine.services.weather.kelikamerat;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.util.StringStuff;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.KelikameratResponse;
@@ -11,6 +10,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -26,9 +27,10 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
  * Created by Petri Airio on 08.02.2023.
  */
 // @Service
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.KelikameratService)
 public class KeliKameratService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(KeliKameratService.class);
 
   private static final String BASE_ULR = "https://www.kelikamerat.info";
 

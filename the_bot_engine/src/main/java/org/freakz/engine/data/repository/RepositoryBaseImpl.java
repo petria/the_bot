@@ -2,17 +2,19 @@ package org.freakz.engine.data.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.engine.config.ConfigService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 public class RepositoryBaseImpl {
+
+  private static final Logger log = LoggerFactory.getLogger(RepositoryBaseImpl.class);
 
   static class RepositoryInstanceData {
     protected int saveTrigger = -1;

@@ -14,7 +14,8 @@ import java.io.IOException;
 @Slf4j
 public class ConfigService {
 
-  @Autowired private TheBotProperties botProperties;
+  @Autowired
+  private TheBotProperties botProperties;
 
   private static RuntimeConfigReader configReader = new RuntimeConfigReader();
 

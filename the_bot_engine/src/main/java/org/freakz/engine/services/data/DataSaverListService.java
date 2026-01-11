@@ -1,21 +1,23 @@
 package org.freakz.engine.services.data;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.DataControllerService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.dto.DataSaverListResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.DataSaverList)
 public class DataSaverListService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(DataSaverListService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

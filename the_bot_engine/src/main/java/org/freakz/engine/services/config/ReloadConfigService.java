@@ -1,16 +1,18 @@
 package org.freakz.engine.services.config;
 
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.spring.rest.RestServerConfigClient;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 @ServiceMethodHandler
-@Slf4j
 public class ReloadConfigService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(ReloadConfigService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

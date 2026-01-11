@@ -1,6 +1,5 @@
 package org.freakz.engine.data.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValueStatsModel;
 import org.freakz.common.model.dto.DataValues;
@@ -10,6 +9,8 @@ import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.impl.DataValuesRepository;
 import org.freakz.engine.data.repository.impl.DataValuesRepositoryImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,8 +19,9 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 @Service
-@Slf4j
 public class DataValuesServiceImpl implements DataValuesService, DataSavingService {
+
+  private static final Logger log = LoggerFactory.getLogger(DataValuesServiceImpl.class);
 
   //    @Autowired
   private final DataValuesRepository dataValuesRepository;
