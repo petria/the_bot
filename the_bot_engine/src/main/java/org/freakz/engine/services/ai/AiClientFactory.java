@@ -4,35 +4,36 @@ package org.freakz.engine.services.ai;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaApi;
-import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AiClientFactory {
 
-  private final RetryTemplate retryTemplate;
+//  private final RetryTemplate retryTemplate;
 
   @Value("${spring.ai.openai.api-key}")
   private String openApiKey;
 
   public AiClientFactory() {
-    this.retryTemplate = RetryTemplate.builder()
+/*    this.retryTemplate = RetryTemplate.builder()
+        
         .maxAttempts(2)
         .fixedBackoff(500)
-        .build();
+        .build();*/
   }
 
   public ChatClient openAiChatClient(String modelName) {
     OpenAiApi openAiApi = OpenAiApi.builder().apiKey(openApiKey).build();
 
+//    org.springframework.core.retry.RetryTemplate retryTemplate;
     OpenAiChatModel aiChatModel = OpenAiChatModel.builder()
         .openAiApi(openAiApi)
-        .retryTemplate(retryTemplate)
+//        .retryTemplate(retryTemplate)
         .defaultOptions(OpenAiChatOptions.builder()
             .model(modelName)
             .build())
@@ -47,8 +48,8 @@ public class AiClientFactory {
 
     OllamaChatModel chatModel = OllamaChatModel.builder()
         .ollamaApi(ollamaApi)
-        .retryTemplate(retryTemplate)
-        .defaultOptions(OllamaOptions.builder()
+  //      .retryTemplate(retryTemplate)
+        .defaultOptions(OllamaChatOptions.builder()
             .model(modelName)    // default model (user can override later)
             .build())
         .build();

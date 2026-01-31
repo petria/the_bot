@@ -1,9 +1,10 @@
 package org.freakz.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class RuntimeConfigReader {
   }
 
   public TheBotConfig readBotConfig(
-      ObjectMapper mapper, String runtimeDir, String secretPropertiesFile, String profile)
+      JsonMapper mapper, String runtimeDir, String secretPropertiesFile, String profile)
       throws IOException {
     log.debug("readBotConfig --->>> PROFILE: {}", profile);
     String secretsFile;

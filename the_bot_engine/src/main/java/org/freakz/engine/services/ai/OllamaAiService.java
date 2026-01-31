@@ -18,7 +18,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.content.Media;
-import org.springframework.ai.ollama.api.OllamaOptions;
+
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
@@ -156,7 +157,7 @@ public class OllamaAiService {
 //      UserMessage userMessage = new UserMessage(promptText);
       messages.add(promptMessage);
 
-      Prompt prompt = new Prompt(messages, OllamaOptions.builder()
+      Prompt prompt = new Prompt(messages, OllamaChatOptions.builder()
           .toolCallbacks(toolCallbacks)
           .model(modelName) // "qwen3:30b-a3b"
           .temperature(0.4)

@@ -30,7 +30,6 @@ public class ConnectionManager {
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
 
-
   @Autowired
   private ConfigService configService;
 
