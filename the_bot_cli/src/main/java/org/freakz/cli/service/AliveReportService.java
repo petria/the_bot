@@ -17,12 +17,11 @@ public class AliveReportService {
   private static final long startup = System.currentTimeMillis();
 
   private final RestEngineClient engineClient;
+  private String hostname = null;
 
   public AliveReportService(RestEngineClient engineClient) {
     this.engineClient = engineClient;
   }
-
-  private String hostname = null;
 
   public void sendReport(String user) {
     if (hostname == null) {

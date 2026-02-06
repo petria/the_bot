@@ -15,6 +15,10 @@ public class ChannelUsersResponse extends ServiceResponse implements Serializabl
     this.response = response;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getResponse() {
     return response;
   }
@@ -43,10 +47,6 @@ public class ChannelUsersResponse extends ServiceResponse implements Serializabl
     return "ChannelUsersResponse{" +
         "response='" + response + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

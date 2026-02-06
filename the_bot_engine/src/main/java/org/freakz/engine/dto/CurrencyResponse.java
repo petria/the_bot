@@ -16,6 +16,10 @@ public class CurrencyResponse extends ServiceResponse {
     this.to = to;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public double getAmount() {
     return amount;
   }
@@ -70,10 +74,6 @@ public class CurrencyResponse extends ServiceResponse {
         ", from='" + from + '\'' +
         ", to='" + to + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

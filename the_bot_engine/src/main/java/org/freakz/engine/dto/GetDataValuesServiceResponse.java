@@ -14,6 +14,10 @@ public class GetDataValuesServiceResponse extends ServiceResponse {
     this.dataValuesService = dataValuesService;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public DataValuesService getDataValuesService() {
     return dataValuesService;
   }
@@ -42,10 +46,6 @@ public class GetDataValuesServiceResponse extends ServiceResponse {
     return "GetDataValuesServiceResponse{" +
         "dataValuesService=" + dataValuesService +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

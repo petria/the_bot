@@ -20,18 +20,16 @@ public class WaterTemperatureService {
   private static final Logger log = LoggerFactory.getLogger(WaterTemperatureService.class);
 
   private final static String BASE_URL = "https://wwwi2.ymparisto.fi/i2/";
-
-  private Map<String, WaterTemperatureData> dataMap = new HashMap<>();
-
-  public Map<String, WaterTemperatureData> getDataMap() {
-    return dataMap;
-  }
-
   private final WaterTemperatureInitializerService initializerService;
+  private Map<String, WaterTemperatureData> dataMap = new HashMap<>();
 
   @Autowired
   public WaterTemperatureService(WaterTemperatureInitializerService initializerService) {
     this.initializerService = initializerService;
+  }
+
+  public Map<String, WaterTemperatureData> getDataMap() {
+    return dataMap;
   }
 
   public Map<String, String> getWaterAreaFromOptions(String html) {

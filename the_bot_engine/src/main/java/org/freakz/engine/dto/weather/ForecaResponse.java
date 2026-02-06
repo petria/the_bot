@@ -16,6 +16,10 @@ public class ForecaResponse extends ServiceResponse {
     this.forecaDataList = forecaDataList;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<ForecaData> getForecaDataList() {
     return forecaDataList;
   }
@@ -44,10 +48,6 @@ public class ForecaResponse extends ServiceResponse {
     return "ForecaResponse{" +
         "forecaDataList=" + forecaDataList +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

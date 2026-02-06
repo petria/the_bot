@@ -1,7 +1,5 @@
 package org.freakz.engine.services.ai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import org.freakz.common.model.engine.EngineRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

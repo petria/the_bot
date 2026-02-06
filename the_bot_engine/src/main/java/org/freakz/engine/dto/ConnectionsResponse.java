@@ -16,6 +16,10 @@ public class ConnectionsResponse extends ServiceResponse {
     this.connectionMap = connectionMap;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public Map<Integer, BotConnectionResponse> getConnectionMap() {
     return connectionMap;
   }
@@ -44,10 +48,6 @@ public class ConnectionsResponse extends ServiceResponse {
     return "ConnectionsResponse{" +
         "connectionMap=" + connectionMap +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

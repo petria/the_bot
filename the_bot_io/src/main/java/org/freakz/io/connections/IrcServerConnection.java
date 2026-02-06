@@ -32,11 +32,16 @@ public class IrcServerConnection extends BotConnection {
   private static final Logger log = LoggerFactory.getLogger(IrcServerConnection.class);
 
   private final EventPublisher publisher;
+  private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
   private Client client;
   private ConnectionManager connectionManager;
-
   private IrcServerConfig config;
   private String botNick;
+
+  public IrcServerConnection(EventPublisher publisher) {
+    super(BotConnectionType.IRC_CONNECTION);
+    this.publisher = publisher;
+  }
 
   public IrcServerConfig getConfig() {
     return config;
@@ -44,11 +49,6 @@ public class IrcServerConnection extends BotConnection {
 
   public Client getClient() {
     return client;
-  }
-
-  public IrcServerConnection(EventPublisher publisher) {
-    super(BotConnectionType.IRC_CONNECTION);
-    this.publisher = publisher;
   }
 
   @Override
@@ -167,7 +167,6 @@ public class IrcServerConnection extends BotConnection {
     });
   }
 
-
   @Handler
   public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
     this.connectionManager.ircConnectionEstablished(this);
@@ -190,7 +189,6 @@ public class IrcServerConnection extends BotConnection {
     this.connectionManager.ircConnectionEnded(this);
     this.client.shutdown();
   }
-
 
   public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
     this.connectionManager = connectionManager;
@@ -288,8 +286,6 @@ public class IrcServerConnection extends BotConnection {
     }
     return channelUsers;
   }
-
-  private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
 
   @Handler
   public void handleWhoisReply(WhoisEvent event) {

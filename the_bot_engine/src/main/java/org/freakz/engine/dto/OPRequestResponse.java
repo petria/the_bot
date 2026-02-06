@@ -13,6 +13,10 @@ public class OPRequestResponse extends ServiceResponse {
     this.response = response;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getResponse() {
     return response;
   }
@@ -41,10 +45,6 @@ public class OPRequestResponse extends ServiceResponse {
     return "OPRequestResponse{" +
         "response='" + response + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

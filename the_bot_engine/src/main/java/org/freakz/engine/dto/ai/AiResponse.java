@@ -12,6 +12,10 @@ public class AiResponse extends ServiceResponse {
     this.result = result;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getResult() {
     return result;
   }
@@ -40,10 +44,6 @@ public class AiResponse extends ServiceResponse {
     return "AiResponse{" +
         "result='" + result + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

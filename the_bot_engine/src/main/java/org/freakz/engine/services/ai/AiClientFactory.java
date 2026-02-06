@@ -48,7 +48,7 @@ public class AiClientFactory {
 
     OllamaChatModel chatModel = OllamaChatModel.builder()
         .ollamaApi(ollamaApi)
-  //      .retryTemplate(retryTemplate)
+        //      .retryTemplate(retryTemplate)
         .defaultOptions(OllamaChatOptions.builder()
             .model(modelName)    // default model (user can override later)
             .build())

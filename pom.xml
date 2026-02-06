@@ -1,4 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -35,16 +35,16 @@
         </dependencies>
     </dependencyManagement>
 
-<!--    <repositories>
-        <repository>
-            <id>spring-milestones</id>
-            <name>Spring Milestones</name>
-            <url>https://repo.spring.io/milestone</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>-->
+    <!--    <repositories>
+            <repository>
+                <id>spring-milestones</id>
+                <name>Spring Milestones</name>
+                <url>https://repo.spring.io/milestone</url>
+                <snapshots>
+                    <enabled>false</enabled>
+                </snapshots>
+            </repository>
+        </repositories>-->
 
     <modules>
         <module>the_bot_common</module>
@@ -59,27 +59,27 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-<!--                    <executions>
-                        <execution>
-                            <id>build-info</id>
-                            <goals>
-                                <goal>build-info</goal>
-                            </goals>
-                            <configuration>
-                                <additionalProperties>
-                                    <java.version>${java.version}</java.version>
-                                    <os.name>${os.name}</os.name>
-                                    <os.version>${os.version}</os.version>
-                                    <os.arch>${os.arch}</os.arch>
-                                </additionalProperties>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <goals>
-                                <goal>repackage</goal>
-                            </goals>
-                        </execution>
-                    </executions>-->
+                    <!--                    <executions>
+                                            <execution>
+                                                <id>build-info</id>
+                                                <goals>
+                                                    <goal>build-info</goal>
+                                                </goals>
+                                                <configuration>
+                                                    <additionalProperties>
+                                                        <java.version>${java.version}</java.version>
+                                                        <os.name>${os.name}</os.name>
+                                                        <os.version>${os.version}</os.version>
+                                                        <os.arch>${os.arch}</os.arch>
+                                                    </additionalProperties>
+                                                </configuration>
+                                            </execution>
+                                            <execution>
+                                                <goals>
+                                                    <goal>repackage</goal>
+                                                </goals>
+                                            </execution>
+                                        </executions>-->
                 </plugin>
 
                 <plugin>

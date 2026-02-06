@@ -7,6 +7,9 @@ import java.io.Serializable;
  */
 public class KelikameratUrl implements Serializable {
 
+  private String areaUrl;
+  private String stationUrl;
+
   public KelikameratUrl() {
   }
 
@@ -15,9 +18,9 @@ public class KelikameratUrl implements Serializable {
     this.stationUrl = stationUrl;
   }
 
-  private String areaUrl;
-
-  private String stationUrl;
+  public static Builder builder() {
+    return new Builder();
+  }
 
   public String getAreaUrl() {
     return areaUrl;
@@ -59,10 +62,6 @@ public class KelikameratUrl implements Serializable {
         "areaUrl='" + areaUrl + '\'' +
         ", stationUrl='" + stationUrl + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

@@ -17,17 +17,6 @@ import java.util.concurrent.Executor;
 @ComponentScan(basePackages = {"org.freakz.cli", "org.freakz.common.spring.rest"})
 public class SpringApplicationBotCli {
 
-  @Bean
-  public Executor taskExecutor() {
-    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-    executor.setCorePoolSize(10);
-    executor.setMaxPoolSize(10);
-    executor.setQueueCapacity(500);
-    executor.setThreadNamePrefix("BotCli-");
-    executor.initialize();
-    return executor;
-  }
-
   public static void main(String[] args) {
     // System.out.println("Hello world!");
     try {
@@ -43,5 +32,16 @@ public class SpringApplicationBotCli {
     } catch (Exception e) {
       // int foo = 0;
     }
+  }
+
+  @Bean
+  public Executor taskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(10);
+    executor.setMaxPoolSize(10);
+    executor.setQueueCapacity(500);
+    executor.setThreadNamePrefix("BotCli-");
+    executor.initialize();
+    return executor;
   }
 }

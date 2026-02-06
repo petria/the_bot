@@ -22,6 +22,16 @@ public class BotConnection {
 
   private BotConnectionType type;
 
+  public BotConnection() {
+    this.id = idCounter;
+    idCounter++;
+  }
+
+  public BotConnection(BotConnectionType type) {
+    this();
+    this.type = type;
+  }
+
   public int getId() {
     return id;
   }
@@ -32,16 +42,6 @@ public class BotConnection {
 
   public BotConnectionType getType() {
     return type;
-  }
-
-  public BotConnection() {
-    this.id = idCounter;
-    idCounter++;
-  }
-
-  public BotConnection(BotConnectionType type) {
-    this();
-    this.type = type;
   }
 
   public void sendMessageTo(Message message) {

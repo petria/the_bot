@@ -1,6 +1,5 @@
 package org.freakz.engine;
 
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.freakz.engine.services.weather.weatherapi.WeatherConfigProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
@@ -11,9 +10,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.util.TimeZone;
 import java.util.concurrent.Executor;
@@ -25,6 +21,14 @@ import java.util.concurrent.Executor;
 @ComponentScan(basePackages = {"org.freakz.engine", "org.freakz.common.spring"})
 public class SpringApplicationBotEngine {
 
+
+  public static void main(String[] args) {
+    String timezone = System.getProperty("TZ", "Europe/Helsinki");
+    System.out.printf("Setting default timezone: %s", timezone);
+    TimeZone.setDefault(TimeZone.getTimeZone(timezone));
+
+    SpringApplication.run(SpringApplicationBotEngine.class, args);
+  }
 
   @Bean
   public Executor taskExecutor() {
@@ -47,13 +51,5 @@ public class SpringApplicationBotEngine {
     executor.setThreadNamePrefix("BotServices-");
     executor.initialize();
     return executor;
-  }
-
-  public static void main(String[] args) {
-    String timezone = System.getProperty("TZ", "Europe/Helsinki");
-    System.out.printf("Setting default timezone: %s", timezone);
-    TimeZone.setDefault(TimeZone.getTimeZone(timezone));
-
-    SpringApplication.run(SpringApplicationBotEngine.class, args);
   }
 }

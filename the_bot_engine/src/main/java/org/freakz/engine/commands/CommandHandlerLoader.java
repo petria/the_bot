@@ -18,6 +18,8 @@ import java.util.*;
 public class CommandHandlerLoader {
 
   private static final Logger log = LoggerFactory.getLogger(CommandHandlerLoader.class);
+  private Map<String, HandlerClass> handlersMap = new TreeMap<>();
+  private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
   public CommandHandlerLoader(String activeProfile, String botName)
       throws InitializeFailedException {
@@ -28,10 +30,6 @@ public class CommandHandlerLoader {
       throw new InitializeFailedException("Could not initialize command handlers correctly!");
     }
   }
-
-  private Map<String, HandlerClass> handlersMap = new TreeMap<>();
-
-  private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
   public Map<String, HandlerClass> getHandlersMap() {
     return handlersMap;

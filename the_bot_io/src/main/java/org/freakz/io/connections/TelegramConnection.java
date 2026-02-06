@@ -27,6 +27,7 @@ public class TelegramConnection extends BotConnection {
   private ConnectionManager connectionManager;
 
 //    private TelegramBot telegramBot;
+  private HokanTelegram bot;
 
   public TelegramConnection(EventPublisher eventPublisher) {
     super();
@@ -86,8 +87,6 @@ public class TelegramConnection extends BotConnection {
 
   }
 
-  private HokanTelegram bot;
-
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
 //        telegramBot = new TelegramBot(telegramConfig.getToken());
 //        telegramBot.
@@ -97,6 +96,11 @@ public class TelegramConnection extends BotConnection {
     //botsApi.
     botsApi.registerBot(bot);
 
+  }
+
+  @Override
+  public String getNetwork() {
+    return "TelegramNetwork";
   }
 
   static class HokanTelegram extends TelegramLongPollingBot {
@@ -231,11 +235,5 @@ public class TelegramConnection extends BotConnection {
       });
 
     }
-  }
-
-
-  @Override
-  public String getNetwork() {
-    return "TelegramNetwork";
   }
 }

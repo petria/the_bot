@@ -15,6 +15,10 @@ public class IrcRawMessageResponse extends ServiceResponse implements Serializab
     this.ircServerResponse = ircServerResponse;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getIrcServerResponse() {
     return ircServerResponse;
   }
@@ -43,10 +47,6 @@ public class IrcRawMessageResponse extends ServiceResponse implements Serializab
     return "IrcRawMessageResponse{" +
         "ircServerResponse='" + ircServerResponse + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

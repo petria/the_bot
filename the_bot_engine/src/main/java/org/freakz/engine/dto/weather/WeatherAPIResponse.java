@@ -20,6 +20,10 @@ public class WeatherAPIResponse extends ServiceResponse {
     this.errorResponse = errorResponse;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public ForecastResponse getForecastResponseModel() {
     return forecastResponseModel;
   }
@@ -73,10 +77,6 @@ public class WeatherAPIResponse extends ServiceResponse {
         ", astronomyResponse=" + astronomyResponse +
         ", errorResponse=" + errorResponse +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

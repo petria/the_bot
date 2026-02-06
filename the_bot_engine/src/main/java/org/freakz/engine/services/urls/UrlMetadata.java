@@ -15,6 +15,12 @@ public class UrlMetadata {
     this.metaAttributes = metaAttributes;
   }
 
+  public static Builder builder() {
+
+    return new Builder();
+
+  }
+
   public String getUrl() {
     return url;
   }
@@ -79,7 +85,6 @@ public class UrlMetadata {
         '}';
   }
 
-
   public String getMetaAttributeValue(String key) {
     if (metaAttributes == null) {
       return null;
@@ -110,14 +115,6 @@ public class UrlMetadata {
     return this;
 
   }
-
-
-  public static Builder builder() {
-
-    return new Builder();
-
-  }
-
 
   public static class Builder {
 

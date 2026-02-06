@@ -37,6 +37,10 @@ public class KelikameratWeatherData implements Serializable {
     this.dewPoint = dewPoint;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public LocalDateTime getTime() {
     return time;
   }
@@ -154,10 +158,6 @@ public class KelikameratWeatherData implements Serializable {
         ", humidity=" + humidity +
         ", dewPoint=" + dewPoint +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

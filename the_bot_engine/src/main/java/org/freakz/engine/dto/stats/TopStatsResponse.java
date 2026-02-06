@@ -15,6 +15,10 @@ public class TopStatsResponse extends ServiceResponse {
     this.nodeMap = nodeMap;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public Map<String, StatsNode> getNodeMap() {
     return nodeMap;
   }
@@ -43,10 +47,6 @@ public class TopStatsResponse extends ServiceResponse {
     return "TopStatsResponse{" +
         "nodeMap=" + nodeMap +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

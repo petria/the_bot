@@ -13,6 +13,10 @@ public class SendMessageByTargetResponse extends ServiceResponse {
     this.sendTo = sendTo;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getSendTo() {
     return sendTo;
   }
@@ -41,10 +45,6 @@ public class SendMessageByTargetResponse extends ServiceResponse {
     return "SendMessageByTargetResponse{" +
         "sendTo='" + sendTo + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

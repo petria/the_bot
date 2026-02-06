@@ -23,8 +23,6 @@ import java.util.regex.PatternSyntaxException;
  */
 public class StringStuff {
 
-  private static final Logger log = LoggerFactory.getLogger(StringStuff.class);
-
   public static final SimpleDateFormat STRING_STUFF_DF_HH = new SimpleDateFormat("HH");
   public static final SimpleDateFormat STRING_STUFF_DF_HHMM = new SimpleDateFormat("HH:mm");
   public static final SimpleDateFormat STRING_STUFF_DF_HHMMSS = new SimpleDateFormat("HH:mm:ss");
@@ -36,6 +34,7 @@ public class StringStuff {
       new SimpleDateFormat("dd.MM.yyyy");
   public static final SimpleDateFormat STRING_STUFF_DF_DMM = new SimpleDateFormat("d.MM.");
   public static final SimpleDateFormat STRING_STUFF_DF_DM = new SimpleDateFormat("d.M.");
+  private static final Logger log = LoggerFactory.getLogger(StringStuff.class);
   private static final String[] entityTable = {
       "&Auml;", "Ä",
       "%C3%84", "Ä",

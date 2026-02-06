@@ -16,6 +16,10 @@ public class DataSaverListResponse extends ServiceResponse {
     this.dataSaverInfoList = dataSaverInfoList;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<DataSaverInfo> getDataSaverInfoList() {
     return dataSaverInfoList;
   }
@@ -44,10 +48,6 @@ public class DataSaverListResponse extends ServiceResponse {
     return "DataSaverListResponse{" +
         "dataSaverInfoList=" + dataSaverInfoList +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

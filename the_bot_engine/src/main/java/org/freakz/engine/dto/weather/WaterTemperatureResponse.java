@@ -13,6 +13,12 @@ public class WaterTemperatureResponse extends ServiceResponse {
     this.waterTemperature = waterTemperature;
   }
 
+  public static Builder builder() {
+
+    return new Builder();
+
+  }
+
   public String getWaterTemperature() {
     return waterTemperature;
   }
@@ -47,14 +53,6 @@ public class WaterTemperatureResponse extends ServiceResponse {
         '}';
 
   }
-
-
-  public static Builder builder() {
-
-    return new Builder();
-
-  }
-
 
   public static class Builder {
 

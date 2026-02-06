@@ -16,6 +16,10 @@ public class HandlerAlias {
     this.clazz = clazz;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getAlias() {
     return alias;
   }
@@ -78,10 +82,6 @@ public class HandlerAlias {
         ", withArgs=" + withArgs +
         ", clazz=" + clazz +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

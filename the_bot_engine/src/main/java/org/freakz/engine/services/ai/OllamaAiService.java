@@ -18,7 +18,6 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.content.Media;
-
 import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
@@ -37,25 +36,18 @@ import java.util.*;
 public class OllamaAiService {
 
   private static final Logger log = LoggerFactory.getLogger(OllamaAiService.class);
-
-  @Value("classpath:/prompts/hokan-engine-template.st")
-  private Resource hokanEngineTemplate;
-
-  @Value("classpath:/prompts/hokan-prompt-template.st")
-  private Resource hokanPromptTemplate;
-
-  @Value("classpath:/prompts/hokan-system-template.st")
-  private Resource hokanSystemTemplate;
-
   private final WeatherAPIService weatherAPIService;
-
   private final AiClientFactory factory;
-
   private final ConfigService configService;
-
   private final ChatMemory chatMemory = MessageWindowChatMemory.builder()
       .maxMessages(1000)
       .build(); // TODO
+  @Value("classpath:/prompts/hokan-engine-template.st")
+  private Resource hokanEngineTemplate;
+  @Value("classpath:/prompts/hokan-prompt-template.st")
+  private Resource hokanPromptTemplate;
+  @Value("classpath:/prompts/hokan-system-template.st")
+  private Resource hokanSystemTemplate;
 
   public OllamaAiService(AiClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
     this.factory = factory;

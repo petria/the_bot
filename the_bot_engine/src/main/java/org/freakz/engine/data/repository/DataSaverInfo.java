@@ -14,6 +14,10 @@ public class DataSaverInfo {
     this.nodeCount = nodeCount;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public String getName() {
     return name;
   }
@@ -54,10 +58,6 @@ public class DataSaverInfo {
         "name='" + name + '\'' +
         ", nodeCount=" + nodeCount +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

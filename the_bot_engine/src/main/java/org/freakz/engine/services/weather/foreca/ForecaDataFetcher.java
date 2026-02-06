@@ -29,6 +29,7 @@ public class ForecaDataFetcher {
   private static final Logger log = LoggerFactory.getLogger(ForecaDataFetcher.class);
 
   private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
+  private static Map<String, CountryCityLink> toCollectLinks = null;
   public String[] REGION_URLS
       = {
       "https://www.foreca.fi/Asia/haku",
@@ -41,7 +42,6 @@ public class ForecaDataFetcher {
       "https://www.foreca.fi/North_America/United_States/haku"
   };
   String urlBase = "https://www.foreca.fi";
-  private static Map<String, CountryCityLink> toCollectLinks = null;
   private ObjectMapper mapper = new ObjectMapper();
 
 

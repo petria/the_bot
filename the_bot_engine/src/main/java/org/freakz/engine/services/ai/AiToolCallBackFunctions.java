@@ -20,26 +20,6 @@ public class AiToolCallBackFunctions {
 
   private final WeatherAPIService weatherAPIService;
 
-  static class FakeJSAPResults extends JSAPResult {
-    private final String result;
-    private final boolean boolResult;
-
-    public FakeJSAPResults(String result, boolean boolResult) {
-      this.result = result;
-      this.boolResult = boolResult;
-    }
-
-    @Override
-    public String getString(String s) {
-      return result;
-    }
-
-    @Override
-    public boolean getBoolean(String s) {
-      return boolResult;
-    }
-  }
-
   public AiToolCallBackFunctions(WeatherAPIService weatherAPIService) {
     this.weatherAPIService = weatherAPIService;
   }
@@ -81,6 +61,26 @@ public class AiToolCallBackFunctions {
   public String getCurrentPhysicalLocationOfTheBot() {
     log.debug("tool called: getCurrentPhysicalLocationOfTheBot()");
     return "Hetzner datacenter, Finland";
+  }
+
+  static class FakeJSAPResults extends JSAPResult {
+    private final String result;
+    private final boolean boolResult;
+
+    public FakeJSAPResults(String result, boolean boolResult) {
+      this.result = result;
+      this.boolResult = boolResult;
+    }
+
+    @Override
+    public String getString(String s) {
+      return result;
+    }
+
+    @Override
+    public boolean getBoolean(String s) {
+      return boolResult;
+    }
   }
 
 }

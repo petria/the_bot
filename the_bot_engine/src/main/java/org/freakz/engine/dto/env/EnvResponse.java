@@ -14,6 +14,12 @@ public class EnvResponse extends ServiceResponse {
     this.envValue = envValue;
   }
 
+  public static Builder builder() {
+
+    return new Builder();
+
+  }
+
   public SysEnvValue getEnvValue() {
     return envValue;
   }
@@ -48,14 +54,6 @@ public class EnvResponse extends ServiceResponse {
         '}';
 
   }
-
-
-  public static Builder builder() {
-
-    return new Builder();
-
-  }
-
 
   public static class Builder {
 

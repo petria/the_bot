@@ -10,6 +10,10 @@ public class HandlerClass {
     this.isAdmin = isAdmin;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public Class getClazz() {
     return clazz;
   }
@@ -50,10 +54,6 @@ public class HandlerClass {
         "clazz=" + clazz +
         ", isAdmin=" + isAdmin +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

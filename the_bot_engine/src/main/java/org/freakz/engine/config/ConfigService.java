@@ -16,18 +16,13 @@ import java.io.IOException;
 public class ConfigService {
 
   private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
-
+  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
   @Autowired
   private TheBotProperties botProperties;
-
   @Autowired
   private Environment environment;
-
   @Autowired
   private JsonMapper objectMapper;
-
-  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
-
   private TheBotConfig theBotConfig = null;
 
   public TheBotConfig readBotConfig() {

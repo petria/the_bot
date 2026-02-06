@@ -16,6 +16,10 @@ public class UserAndReply {
     this.replyMessage = replyMessage;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public User getUser() {
     return user;
   }
@@ -56,10 +60,6 @@ public class UserAndReply {
         "user=" + user +
         ", replyMessage='" + replyMessage + '\'' +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

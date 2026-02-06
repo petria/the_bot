@@ -81,10 +81,6 @@ public class EngineRequest {
     this.fromConnectionId = fromConnectionId;
   }
 
-  public void setPrivateChannel(boolean privateChannel) {
-    isPrivateChannel = privateChannel;
-  }
-
   public Long getFromChannelId() {
     return fromChannelId;
   }
@@ -181,6 +177,18 @@ public class EngineRequest {
         '}';
   }
 
+  public String getMessage() {
+    return command;
+  }
+
+  public boolean isPrivateChannel() {
+    return isPrivateChannel;
+  }
+
+  public void setPrivateChannel(boolean privateChannel) {
+    isPrivateChannel = privateChannel;
+  }
+
   public static class Builder {
     private long timestamp;
     private String command;
@@ -264,13 +272,5 @@ public class EngineRequest {
     public EngineRequest build() {
       return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, isFromAdmin, network, echoToAlias, user, botConfig);
     }
-  }
-
-  public String getMessage() {
-    return command;
-  }
-
-  public boolean isPrivateChannel() {
-    return isPrivateChannel;
   }
 }

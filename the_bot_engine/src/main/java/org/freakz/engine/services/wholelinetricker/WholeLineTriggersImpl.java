@@ -23,17 +23,23 @@ import java.util.GregorianCalendar;
 public class WholeLineTriggersImpl implements WholeLineTriggers {
 
   private static final Logger log = LoggerFactory.getLogger(WholeLineTriggersImpl.class);
-
+  private final static String[] stonez1 = {"kivi", "paperi", "sakset"};
+  private final static String[] stonez2 = {"paperi", "sakset", "kivi"};
+  private static long _lastReply = 0;
   private final TimeDifferenceService timeDifferenceService;
   private final BotEngine botEngine;
+
+  //    TTR0gVk001
+  private String _olpo = "";
+  private int jouluRandomBase = 65;
+  private int juhannusRandomBase = 65;
+
 
   public WholeLineTriggersImpl(BotEngine botEngine) {
     this.timeDifferenceService = new TimeDifferenceServiceImpl();
     this.botEngine = botEngine;
 
   }
-
-  private String _olpo = "";
 
   private void checkPilalla(EngineRequest eRequest) {
     int rnd = 1 + (int) (Math.random() * 100);
@@ -45,8 +51,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
       processReply(eRequest, _olpo + eRequest.getFromSender() + ": pelkkää paskaa tilalla!");
     }
   }
-
-  //    TTR0gVk001
 
   private void checkPyksyCrypto(EngineRequest eRequest) {
 /*        int rnd = 1 + (int) (Math.random() * 100);
@@ -98,7 +102,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     }
   }
 
-
   private void checkPerkeleVittu(EngineRequest eRequest) {
     int rnd = 1 + (int) (Math.random() * 100);
     if (rnd < 85) {
@@ -148,8 +151,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     }
 
   }
-
-  private int jouluRandomBase = 65;
 
   public LocalDateTime getJouluTime(LocalDateTime now) {
     LocalDateTime start = LocalDateTime.of(now.getYear(), 12, 24, 12, 0);
@@ -243,8 +244,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     return "";
   }
 
-  private int juhannusRandomBase = 65;
-
   private void checkJuhannus(EngineRequest eRequest) {
 
     String line = eRequest.getMessage();
@@ -274,7 +273,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
       juhannusRandomBase--;
     }
   }
-
 
   private String[] splitByWord(String line) {
     int idx = line.indexOf(" ");
@@ -402,10 +400,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
     }
   }
 
-
-  private final static String[] stonez1 = {"kivi", "paperi", "sakset"};
-  private final static String[] stonez2 = {"paperi", "sakset", "kivi"};
-
   private void checkStonePaper(EngineRequest eRequest) {
     String msg = eRequest.getMessage().toLowerCase();
     int fndIdx = -1;
@@ -436,7 +430,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
 
   }
 
-
   private void checkMuisti(EngineRequest eRequest) {
     String msg = eRequest.getMessage().toLowerCase();
     if (msg.startsWith("muista")) {
@@ -447,8 +440,6 @@ public class WholeLineTriggersImpl implements WholeLineTriggers {
   private void processReply(EngineRequest eRequest, String reply) {
     botEngine.sendReplyMessage(eRequest, reply);
   }
-
-  private static long _lastReply = 0;
 
   @Override
   public String checkWholeLineTrigger(EngineRequest eRequest) {

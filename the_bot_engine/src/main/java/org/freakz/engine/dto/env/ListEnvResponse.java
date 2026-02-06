@@ -16,6 +16,10 @@ public class ListEnvResponse extends ServiceResponse {
     this.envValues = envValues;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<SysEnvValue> getEnvValues() {
     return envValues;
   }
@@ -44,10 +48,6 @@ public class ListEnvResponse extends ServiceResponse {
     return "ListEnvResponse{" +
         "envValues=" + envValues +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

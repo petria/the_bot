@@ -15,13 +15,11 @@ public class CliService implements CommandLineRunner {
   private static final Logger log = LoggerFactory.getLogger(CliService.class);
 
   private static final Scanner scanner = new Scanner(System.in);
+  boolean pressed = false;
   private String user = "_Pete_";
-
   private boolean doMainLoop = true;
-
   @Autowired
   private MessageSender sender;
-
   @Autowired
   private AliveReportService reportService;
 
@@ -94,8 +92,6 @@ public class CliService implements CommandLineRunner {
       //
     }
   }
-
-  boolean pressed = false;
 
   private void prompt() {
     prompt(null);

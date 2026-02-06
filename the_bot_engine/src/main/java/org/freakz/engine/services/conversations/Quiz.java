@@ -96,6 +96,10 @@ public class Quiz extends ConversationContent {
       this.questionMap = questionMap;
     }
 
+    public static Builder builder() {
+      return new Builder();
+    }
+
     public String getStep() {
       return step;
     }
@@ -138,8 +142,8 @@ public class Quiz extends ConversationContent {
           '}';
     }
 
-    public static Builder builder() {
-      return new Builder();
+    public void addQuizQuestion(String key, QuizQuestion question) {
+      questionMap.put(key, question);
     }
 
     public static class Builder {
@@ -164,16 +168,12 @@ public class Quiz extends ConversationContent {
       }
     }
 
-    public void addQuizQuestion(String key, QuizQuestion question) {
-      questionMap.put(key, question);
-    }
-
   }
 
 
   static class QuizQuestion {
-    private String question;
     boolean isCorrect;
+    private String question;
 
     public QuizQuestion() {
     }
@@ -181,6 +181,12 @@ public class Quiz extends ConversationContent {
     public QuizQuestion(String question, boolean isCorrect) {
       this.question = question;
       this.isCorrect = isCorrect;
+    }
+
+    public static Builder builder() {
+
+      return new Builder();
+
     }
 
     public String getQuestion() {
@@ -230,14 +236,6 @@ public class Quiz extends ConversationContent {
           '}';
 
     }
-
-
-    public static Builder builder() {
-
-      return new Builder();
-
-    }
-
 
     public static class Builder {
 

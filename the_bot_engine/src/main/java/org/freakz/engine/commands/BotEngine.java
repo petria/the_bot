@@ -38,23 +38,10 @@ public class BotEngine {
   private final CommandHandlerLoader commandHandlerLoader;
   private final HokanServices hokanServices;
   private final ConfigService configService;
-
-  public CommandHandlerLoader getCommandHandlerLoader() {
-    return commandHandlerLoader;
-  }
-
-  public HokanServices getHokanServices() {
-    return hokanServices;
-  }
-
   private final ConversationsService conversationsService;
-
   private final UrlMetadataService urlMetadataService;
-
   private final WholeLineTriggers wholeLineTriggers;
-
   private final RestMessageSendClient restMessageSendClient;
-
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -80,6 +67,13 @@ public class BotEngine {
     this.wholeLineTriggers = new WholeLineTriggersImpl(this);
   }
 
+  public CommandHandlerLoader getCommandHandlerLoader() {
+    return commandHandlerLoader;
+  }
+
+  public HokanServices getHokanServices() {
+    return hokanServices;
+  }
 
   public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) throws Exception {
 

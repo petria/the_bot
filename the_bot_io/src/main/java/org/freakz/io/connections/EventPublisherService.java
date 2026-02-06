@@ -31,19 +31,14 @@ import java.time.LocalDateTime;
 public class EventPublisherService implements EventPublisher {
 
   private static final Logger log = LoggerFactory.getLogger(EventPublisherService.class);
-
+  private final TheBotProperties theBotProperties;
+  private final LogService logService;
   @Autowired
   private ConfigService configService;
-
   @Autowired
   private MessageFeederService messageFeederService;
-
   @Autowired
   private RestEngineClient engineClient;
-
-  private final TheBotProperties theBotProperties;
-
-  private final LogService logService;
 
   @Autowired
   public EventPublisherService(TheBotProperties theBotProperties) {

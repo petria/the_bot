@@ -1,8 +1,6 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.freakz.engine.services.weather.weatherapi.CustomLocalDateTimeDeserializer;
 
 import java.time.LocalDateTime;
 

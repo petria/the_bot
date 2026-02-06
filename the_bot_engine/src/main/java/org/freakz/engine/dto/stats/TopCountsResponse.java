@@ -16,6 +16,10 @@ public class TopCountsResponse extends ServiceResponse {
     this.dataValues = dataValues;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<DataValuesModel> getDataValues() {
     return dataValues;
   }
@@ -44,10 +48,6 @@ public class TopCountsResponse extends ServiceResponse {
     return "TopCountsResponse{" +
         "dataValues=" + dataValues +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

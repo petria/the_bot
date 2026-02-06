@@ -20,6 +20,10 @@ public class ServiceRequest {
     this.results = results;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public ApplicationContext getApplicationContext() {
     return applicationContext;
   }
@@ -72,10 +76,6 @@ public class ServiceRequest {
         ", engineRequest=" + engineRequest +
         ", results=" + results +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

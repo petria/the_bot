@@ -2,6 +2,7 @@ package org.freakz.engine.data.repository;
 
 //import com.fasterxml.jackson.databind.ObjectMapper;
 //import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
@@ -15,25 +16,10 @@ import java.util.Map;
 
 public class RepositoryBaseImpl {
 
-  private static final Logger log = LoggerFactory.getLogger(RepositoryBaseImpl.class);
-
-  static class RepositoryInstanceData {
-    protected int saveTrigger = -1;
-
-    protected boolean isDirty = false;
-
-    protected long highestId = -1;
-
-    private final List<DataNodeBase> dataValues = new ArrayList<>();
-
-  }
-
   public static final int SAVE_TRIGGER_WAIT_TIME_MILLISECONDS = 500;
-
-  protected final ConfigService configService;
-
+  private static final Logger log = LoggerFactory.getLogger(RepositoryBaseImpl.class);
   private static Map<String, RepositoryInstanceData> dataMap = new HashMap();
-
+  protected final ConfigService configService;
   protected final JsonMapper mapper;
 
   public RepositoryBaseImpl(ConfigService configService, JsonMapper mapper) {
@@ -90,5 +76,13 @@ public class RepositoryBaseImpl {
 //        log.debug("simpleName: {}", simpleName);
     RepositoryInstanceData data = getInstanceData();
     return data.dataValues;
+  }
+
+  static class RepositoryInstanceData {
+    private final List<DataNodeBase> dataValues = new ArrayList<>();
+    protected int saveTrigger = -1;
+    protected boolean isDirty = false;
+    protected long highestId = -1;
+
   }
 }

@@ -16,10 +16,9 @@ import java.util.List;
 
 public abstract class AbstractCmd implements HokanCmd {
 
+  private final StringBuilder sb = new StringBuilder();
   private boolean adminCommand = false;
-
   private JSAP jsap = new JSAP();
-
   private BotEngine botEngine;
 
   public JSAP getJsap() {
@@ -30,7 +29,9 @@ public abstract class AbstractCmd implements HokanCmd {
     return botEngine;
   }
 
-  private final StringBuilder sb = new StringBuilder();
+  public void setBotEngine(BotEngine botEngine) {
+    this.botEngine = botEngine;
+  }
 
   public StringBuilder sb() {
     return sb;
@@ -83,10 +84,6 @@ public abstract class AbstractCmd implements HokanCmd {
 
   public HandlerAlias createToBotAliasWithArgs(String botName, String target) {
     return HandlerAlias.builder().alias(botName + ":").target(target).withArgs(true).build();
-  }
-
-  public void setBotEngine(BotEngine botEngine) {
-    this.botEngine = botEngine;
   }
 
   public <T extends ServiceResponse> T doServiceRequest(

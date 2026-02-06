@@ -16,6 +16,10 @@ public class KelikameratResponse extends ServiceResponse implements Serializable
     this.dataList = dataList;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<KelikameratWeatherData> getDataList() {
     return dataList;
   }
@@ -44,10 +48,6 @@ public class KelikameratResponse extends ServiceResponse implements Serializable
     return "KelikameratResponse{" +
         "dataList=" + dataList +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {

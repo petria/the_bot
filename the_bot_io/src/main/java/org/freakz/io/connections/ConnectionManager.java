@@ -30,19 +30,13 @@ import java.util.Map;
 public class ConnectionManager implements CommandLineRunner {
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
-
+  private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
   @Autowired
   private ConfigService configService;
-
   @Autowired
   private EventPublisher eventPublisher;
-
   @Autowired
   private SlackEventsController slackEventsController;
-
-
-  private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
-
   private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
   private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
@@ -242,13 +236,6 @@ public class ConnectionManager implements CommandLineRunner {
     return users;
   }
 
-
-  class Dual {
-    public BotConnection connection;
-    public BotConnectionChannel channel;
-  }
-
-
   private Dual findChannelByTargetAlias(String targetAlias) {
     JoinedChannelContainer container = this.joinedChannelsMap.get(targetAlias.toUpperCase());
     if (container != null) {
@@ -286,6 +273,11 @@ public class ConnectionManager implements CommandLineRunner {
     } else {
       throw new InvalidChannelIdException("No connection found with connectionId: " + connectionId);
     }
+  }
+
+  class Dual {
+    public BotConnection connection;
+    public BotConnectionChannel channel;
   }
 
 }

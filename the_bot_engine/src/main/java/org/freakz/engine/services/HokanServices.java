@@ -28,6 +28,9 @@ public class HokanServices {
   private final Executor executor;
 
   private final ConfigService configService;
+  private final ApplicationContext applicationContext;
+  private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
+
 
   public HokanServices(@Qualifier("Services") Executor executor, ConfigService configService, ApplicationContext applicationContext) {
     this.executor = executor;
@@ -35,9 +38,6 @@ public class HokanServices {
     this.applicationContext = applicationContext;
 
   }
-
-  private final ApplicationContext applicationContext;
-
 
   @PostConstruct
   public void runInitializeService() throws Exception {
@@ -116,14 +116,6 @@ public class HokanServices {
     return null;
   }
 
-
-  private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
-
-  class MethodAndType {
-    Method method;
-    boolean isSpring;
-  }
-
   private Map<Class<?>, List<MethodAndType>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
 
 
@@ -182,6 +174,11 @@ public class HokanServices {
       }
     }
     return null;
+  }
+
+  class MethodAndType {
+    Method method;
+    boolean isSpring;
   }
 
 }

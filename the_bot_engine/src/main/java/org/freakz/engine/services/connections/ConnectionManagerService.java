@@ -1,6 +1,5 @@
 package org.freakz.engine.services.connections;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.connectionmanager.*;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.spring.rest.RestMessageSendClient;

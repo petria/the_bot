@@ -16,6 +16,10 @@ public class UsersResponse extends ServiceResponse {
     this.userList = userList;
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public List<User> getUserList() {
     return userList;
   }
@@ -44,10 +48,6 @@ public class UsersResponse extends ServiceResponse {
     return "UsersResponse{" +
         "userList=" + userList +
         '}';
-  }
-
-  public static Builder builder() {
-    return new Builder();
   }
 
   public static class Builder {
