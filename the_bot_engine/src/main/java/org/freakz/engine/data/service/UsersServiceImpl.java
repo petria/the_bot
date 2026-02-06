@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -21,11 +22,12 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
 
   private final ConfigService configService;
   private final UsersRepository usersRepository;
+  private final JsonMapper jsonMapper;
 
-  @Autowired
-  public UsersServiceImpl(ConfigService configService) throws Exception {
+  public UsersServiceImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
     this.configService = configService;
-    this.usersRepository = new UsersRepositoryImpl(configService);
+    this.jsonMapper = jsonMapper;
+    this.usersRepository = new UsersRepositoryImpl(configService, jsonMapper);
   }
 
   @Override

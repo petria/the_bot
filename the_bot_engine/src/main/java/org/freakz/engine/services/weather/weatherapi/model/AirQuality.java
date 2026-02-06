@@ -9,6 +9,6 @@ public record AirQuality(
     Double so2,
     Double pm2_5,
     Double pm10,
-    @JsonProperty("us-epa-index") int us_epa_index,
-    @JsonProperty("gn-defra-index") int gb_defra_index) {
+    @JsonProperty("us-epa-index") Integer us_epa_index,
+    @JsonProperty("gn-defra-index") Integer gb_defra_index) {
 }

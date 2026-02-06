@@ -11,8 +11,7 @@ import java.util.TimeZone;
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
-//@ServletComponentScan
-@ComponentScan(basePackages = {"org.freakz.io", "org.freakz.common.spring.rest"})
+@ComponentScan(basePackages = {"org.freakz.io", "org.freakz.common.spring"})
 public class SpringApplicationBotIo {
 
   static void main(String[] args) {

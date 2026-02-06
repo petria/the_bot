@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -28,10 +29,12 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
 
   private final ConfigService configService;
 
-  @Autowired
-  public DataValuesServiceImpl(ConfigService configService) throws Exception {
+  private final JsonMapper jsonMapper;
+
+  public DataValuesServiceImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
     this.configService = configService;
-    this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
+    this.dataValuesRepository = new DataValuesRepositoryImpl(configService, jsonMapper);
+    this.jsonMapper = jsonMapper;
   }
 
   private Map<String, DataValuesModel> combineCounters(List<DataValues> modelsList, String key) {

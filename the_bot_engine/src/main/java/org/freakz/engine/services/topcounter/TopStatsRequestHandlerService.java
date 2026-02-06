@@ -12,6 +12,7 @@ import org.freakz.engine.services.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -28,12 +29,13 @@ public class TopStatsRequestHandlerService extends AbstractSpringService {
 
   private final ConfigService configService;
   private final DataValuesRepository dataValuesRepository;
+  private final JsonMapper jsonMapper;
 
-
-  public TopStatsRequestHandlerService(DataValuesService dataValuesService, ConfigService configService) throws Exception {
+  public TopStatsRequestHandlerService(DataValuesService dataValuesService, ConfigService configService, JsonMapper jsonMapper) throws Exception {
     this.dataValuesService = dataValuesService;
     this.configService = configService;
-    this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
+    this.jsonMapper = jsonMapper;
+    this.dataValuesRepository = new DataValuesRepositoryImpl(configService, jsonMapper);
   }
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.GetTopStatsRequest)

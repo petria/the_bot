@@ -1,5 +1,6 @@
 package org.freakz.engine.services.weather.weatherapi.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.freakz.engine.services.weather.weatherapi.CustomLocalDateTimeDeserializer;
 
@@ -7,10 +8,11 @@ import java.time.LocalDateTime;
 
 public record Hour(
     Long time_epoch,
-    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class) LocalDateTime time,
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
+    LocalDateTime time,
     String temp_c,
     String temp_f,
-    int is_day,
+    Integer is_day,
     Condition condition,
     String wind_mph,
     String wind_kph,

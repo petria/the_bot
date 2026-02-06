@@ -16,6 +16,7 @@ import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -26,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class ConnectionManager {
+public class ConnectionManager implements CommandLineRunner {
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
 
@@ -80,6 +81,12 @@ public class ConnectionManager {
     this.connectionMap.put(connection.getId(), connection);
   }
 
+  @Override
+  public void run(String... args) throws Exception {
+    log.debug(">>> Initializing connection manager <<<");
+    init();
+    log.debug(">>> Init done <<<");
+  }
 
   @PostConstruct
   public void init() throws IOException, TelegramApiException {
@@ -234,6 +241,7 @@ public class ConnectionManager {
 
     return users;
   }
+
 
   class Dual {
     public BotConnection connection;

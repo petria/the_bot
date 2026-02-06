@@ -1,11 +1,12 @@
 package org.freakz.engine.data.repository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+//import com.fasterxml.jackson.databind.ObjectMapper;
+//import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,12 +34,11 @@ public class RepositoryBaseImpl {
 
   private static Map<String, RepositoryInstanceData> dataMap = new HashMap();
 
-  protected final ObjectMapper mapper;
+  protected final JsonMapper mapper;
 
-  public RepositoryBaseImpl(ConfigService configService) {
-    this.mapper = new ObjectMapper();
-    this.mapper.registerModule(new JavaTimeModule());
+  public RepositoryBaseImpl(ConfigService configService, JsonMapper mapper) {
     this.configService = configService;
+    this.mapper = mapper;
   }
 
   protected int getSaveTrigger() {

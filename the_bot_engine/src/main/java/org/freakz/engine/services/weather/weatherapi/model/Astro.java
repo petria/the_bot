@@ -7,6 +7,6 @@ public record Astro(
     String moonset,
     String moon_phase,
     String moon_illumination,
-    int is_moon_up,
-    int is_sun_up) {
+    Integer is_moon_up,
+    Integer is_sun_up) {
 }

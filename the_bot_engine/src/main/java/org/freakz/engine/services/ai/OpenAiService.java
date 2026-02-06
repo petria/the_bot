@@ -1,7 +1,7 @@
 package org.freakz.engine.services.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.freakz.common.model.engine.EngineRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +14,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.client.UnknownContentTypeException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.MalformedURLException;
 import java.util.HashMap;
@@ -25,9 +26,11 @@ public class OpenAiService {
   private static final Logger log = LoggerFactory.getLogger(OpenAiService.class);
 
   private final AiClientFactory factory;
+  private final JsonMapper jsonMapper;
 
-  public OpenAiService(AiClientFactory factory) {
+  public OpenAiService(AiClientFactory factory, JsonMapper jsonMapper) {
     this.factory = factory;
+    this.jsonMapper = jsonMapper;
   }
 
 
@@ -56,16 +59,16 @@ public class OpenAiService {
       log.debug("... image Done2");
       // TODO fix this stupid way to get data
       String responseBodyAsString = e.getResponseBodyAsString();
-      ObjectMapper mapper = new ObjectMapper();
+//      ObjectMapper mapper = new ObjectMapper();
       try {
-        Map map = mapper.readValue(responseBodyAsString, HashMap.class);
+        Map map = jsonMapper.readValue(responseBodyAsString, HashMap.class);
         if (map.containsKey("message")) {
           map = (HashMap) map.get("message");
           response = (String) map.get("content");
         } else {
           response = "N/A";
         }
-      } catch (JsonProcessingException ex) {
+      } catch (Exception ex) {
         response = "ERROR: " + ex.getMessage();
       }
 

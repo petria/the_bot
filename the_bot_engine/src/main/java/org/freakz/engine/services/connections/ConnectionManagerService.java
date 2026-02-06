@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class ConnectionManagerService {
@@ -23,7 +24,7 @@ public class ConnectionManagerService {
   private RestMessageSendClient messageSendClient;
 
   @Autowired
-  private ObjectMapper objectMapper;
+  private JsonMapper objectMapper;
 
   public GetConnectionMapResponse getConnectionsMap() {
     GetConnectionMapResponse connectionMap = connectionManagerClient.getConnectionMap();

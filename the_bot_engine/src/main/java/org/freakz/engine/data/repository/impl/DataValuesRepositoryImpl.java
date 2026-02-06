@@ -11,6 +11,7 @@ import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.RepositoryBaseImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,8 +28,8 @@ public class DataValuesRepositoryImpl extends RepositoryBaseImpl
 
   private static final String DATA_VALUES_FILE_NAME = "data_values.json";
 
-  public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
-    super(configService);
+  public DataValuesRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
+    super(configService, jsonMapper);
     initialize();
   }
 

@@ -16,9 +16,11 @@ class JacksonJsonMapperConfig {
 
     builder.changeDefaultPropertyInclusion(include -> include.withValueInclusion(JsonInclude.Include.NON_NULL))
         .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-            DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .disable(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES)
+        .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
         .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+
         .findAndAddModules();
 
     return builder.build();

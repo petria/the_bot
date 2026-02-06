@@ -10,6 +10,7 @@ import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.RepositoryBaseImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,8 +26,8 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl
 
   private static final String USERS_FILE_NAME = "users.json";
 
-  public UsersRepositoryImpl(ConfigService configService) throws Exception {
-    super(configService);
+  public UsersRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
+    super(configService, jsonMapper);
     initialize();
     //        createUsers();
   }
