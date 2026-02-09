@@ -14,7 +14,6 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
-import org.freakz.engine.services.conversations.ConversationsService;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
@@ -38,7 +37,6 @@ public class BotEngine {
   private final CommandHandlerLoader commandHandlerLoader;
   private final HokanServices hokanServices;
   private final ConfigService configService;
-  private final ConversationsService conversationsService;
   private final UrlMetadataService urlMetadataService;
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
@@ -48,13 +46,11 @@ public class BotEngine {
       AccessService accessService,
       HokanServices hokanServices,
       ConfigService configService,
-      ConversationsService conversationsService,
       UrlMetadataService urlMetadataService, RestMessageSendClient restMessageSendClient)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
-    this.conversationsService = conversationsService;
 //    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
@@ -88,7 +84,6 @@ public class BotEngine {
     }
 
     this.urlMetadataService.handleEngineRequest(request, this);
-    this.conversationsService.handleConversations(this, request);
 
     String replyMessage = null;
     if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
