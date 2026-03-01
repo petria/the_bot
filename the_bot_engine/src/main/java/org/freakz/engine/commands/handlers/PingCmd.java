@@ -16,7 +16,7 @@ public class PingCmd extends AbstractCmd {
 
   @Override
   public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-
+    jsap.setHelp("Replies with pong and timestamp for current time on server bot is running on.");
   }
 
   @Override

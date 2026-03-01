@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
+import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.commands.CommandHandlerLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -39,6 +41,7 @@ public class OllamaAiService {
   private final WeatherAPIService weatherAPIService;
   private final AiClientFactory factory;
   private final ConfigService configService;
+  private final BotEngine botEngine;
   private final ChatMemory chatMemory = MessageWindowChatMemory.builder()
       .maxMessages(1000)
       .build(); // TODO
@@ -49,10 +52,14 @@ public class OllamaAiService {
   @Value("classpath:/prompts/hokan-system-template.st")
   private Resource hokanSystemTemplate;
 
-  public OllamaAiService(AiClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
+  public OllamaAiService(AiClientFactory factory,
+                         WeatherAPIService weatherAPIService,
+                         ConfigService configService,
+                         BotEngine botEngine) {
     this.factory = factory;
     this.weatherAPIService = weatherAPIService;
     this.configService = configService;
+    this.botEngine = botEngine;
   }
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
@@ -108,7 +115,10 @@ public class OllamaAiService {
 
 
     try {
-      ToolCallback[] toolCallbacks = ToolCallbacks.from(new AiToolCallBackFunctions(weatherAPIService));
+      CommandHandlerLoader loader = botEngine.getCommandHandlerLoader();
+      ToolCallback[] toolCallbacks = ToolCallbacks.from(
+          new CommandToolCallBackFunctions(botEngine, loader)
+      );
 
       List<Message> memory = chatMemory.get(chatId);
 

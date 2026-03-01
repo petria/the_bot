@@ -45,7 +45,6 @@ public class AiCommandsHandlerService {
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
   public AiResponse handleServiceRequest(ServiceRequest request) {
 
-
     AiResponse aiResponse = AiResponse.builder().build();
     aiResponse.setStatus("OK: AI!");
 
@@ -58,9 +57,21 @@ public class AiCommandsHandlerService {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-//    String queryResponse = ollamaAiService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
+    String hostUrl = envValuesService.getKeyValueOrDefault("ollamaHost", "http://bot-ollama:11434");
+    String modelName = envValuesService.getKeyValueOrDefault("ollamaChatModel", "qwen2.5:14b");
 
-    aiResponse.setResult(sentByNick + ": ok!");
+    String queryResponse = ollamaAiService.ask(
+        request.getEngineRequest(),
+        hostUrl,
+        modelName,
+        queryMessage,
+        network,
+        channel,
+        sentByNick,
+        sentByRealName
+    );
+
+    aiResponse.setResult(queryResponse);
     return aiResponse;
   }
 
