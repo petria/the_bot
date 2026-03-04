@@ -1,0 +1,60 @@
+name: CI - Build and Push Docker Images
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_ENGINE: ghcr.io/${{ github.repository }}-engine
+      IMAGE_IO: ghcr.io/${{ github.repository }}-io
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml -Dmaven.test.skip=true
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push bot-engine image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./the_bot_engine
+          file: ./the_bot_engine/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_ENGINE }}:${{ github.sha }}
+            ${{ env.IMAGE_ENGINE }}:latest
+
+      - name: Build and push bot-io image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./the_bot_io
+          file: ./the_bot_io/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_IO }}:${{ github.sha }}
+            ${{ env.IMAGE_IO }}:latest
