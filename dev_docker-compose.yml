@@ -4,10 +4,10 @@ services:
   bot-engine:
     build: ./the_bot_engine
     volumes:
-      - /Users/petria/code/github/the_bot/runtime:/runtime
-      - /Users/petria/code/github/the_bot/config:/config
+      - /home/hokan/the_bot/runtime:/runtime
+      - /home/hokan/the_bot/config:/config
     ports:
-      - "8100:8100"
+      - "127.0.0.1:8100:8100"
     environment:
       - TZ="Europe/Helsinki"
       - hokan.runtime.profile=DEV
@@ -16,11 +16,14 @@ services:
   bot-io:
     build: ./the_bot_io
     volumes:
-      - /Users/petria/code/github/the_bot/runtime:/runtime
-      - /Users/petria/code/github/the_bot/config:/config
+      - /home/hokan/the_bot/runtime:/runtime
+      - /home/hokan/the_bot/config:/config
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     environment:
       - TZ="Europe/Helsinki"
       - hokan.runtime.profile=DEV
     container_name: bot-io
+networks:
+  default:
+    driver: bridge
