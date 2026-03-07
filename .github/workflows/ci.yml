@@ -39,9 +39,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare bot-engine Docker build context
-        run: cp ymparisto.crt ./the_bot_engine/ymparisto.crt
-
       - name: Build and push bot-engine image
         uses: docker/build-push-action@v5
         with:
