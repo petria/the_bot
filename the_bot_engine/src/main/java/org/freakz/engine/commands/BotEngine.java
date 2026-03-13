@@ -2,27 +2,23 @@ package org.freakz.engine.commands;
 
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
-import org.freakz.engine.clients.MessageSendClient;
-import org.freakz.engine.clients.RestMessageSendClient;
+import org.freakz.common.spring.rest.RestMessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
-import org.freakz.engine.services.conversations.ConversationsService;
-import org.freakz.engine.services.status.CallCountInterceptor;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -32,43 +28,30 @@ import java.time.LocalDateTime;
 import java.util.Iterator;
 
 @Service
-@Slf4j
 public class BotEngine {
+
+  private static final Logger log = LoggerFactory.getLogger(BotEngine.class);
 
   private final AccessService accessService;
 
-  @Getter
   private final CommandHandlerLoader commandHandlerLoader;
-  @Getter
   private final HokanServices hokanServices;
   private final ConfigService configService;
-
-  private final ConversationsService conversationsService;
-
-  private final CallCountInterceptor countInterceptor;
-
   private final UrlMetadataService urlMetadataService;
-
   private final WholeLineTriggers wholeLineTriggers;
-
   private final RestMessageSendClient restMessageSendClient;
-
   private String botName = "HokanTheBot";
 
   public BotEngine(
       AccessService accessService,
-      MessageSendClient messageSendClient,
       HokanServices hokanServices,
       ConfigService configService,
-      ConversationsService conversationsService,
-      CallCountInterceptor countInterceptor,
       UrlMetadataService urlMetadataService, RestMessageSendClient restMessageSendClient)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
-    this.conversationsService = conversationsService;
-    this.countInterceptor = countInterceptor;
+//    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
 
@@ -80,9 +63,15 @@ public class BotEngine {
     this.wholeLineTriggers = new WholeLineTriggersImpl(this);
   }
 
+  public CommandHandlerLoader getCommandHandlerLoader() {
+    return commandHandlerLoader;
+  }
 
-  @SneakyThrows
-  public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) {
+  public HokanServices getHokanServices() {
+    return hokanServices;
+  }
+
+  public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) throws Exception {
 
     request.setBotConfig(configService.readBotConfig());
 
@@ -95,7 +84,6 @@ public class BotEngine {
     }
 
     this.urlMetadataService.handleEngineRequest(request, this);
-    this.conversationsService.handleConversations(this, request);
 
     String replyMessage = null;
     if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
@@ -111,8 +99,7 @@ public class BotEngine {
     return wholeLineTriggers.checkWholeLineTrigger(request);
   }
 
-  @SneakyThrows
-  private String parseAndExecute(EngineRequest request, User user) {
+  private String parseAndExecute(EngineRequest request, User user) throws Exception {
     log.debug("Handle request: {}", request.getCommand());
 
     String message = request.getMessage();
@@ -197,7 +184,7 @@ public class BotEngine {
 
     if (request.getNetwork().equals("BOT_CLI_CLIENT") || request.getNetwork().equals("BOT_INTERNAL")) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
-      countInterceptor.computeCount("OUT: commandHandler");
+// TODO       countInterceptor.computeCount("OUT: commandHandler");
       return reply;
     } else {
       Message message =

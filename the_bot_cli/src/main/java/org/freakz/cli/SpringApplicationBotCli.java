@@ -3,8 +3,8 @@ package org.freakz.cli;
 import ch.qos.logback.classic.Level;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -13,20 +13,9 @@ import java.util.concurrent.Executor;
 
 @SpringBootApplication
 @EnableAsync
-@EnableFeignClients
 @EnableScheduling
+@ComponentScan(basePackages = {"org.freakz.cli", "org.freakz.common.spring.rest"})
 public class SpringApplicationBotCli {
-
-  @Bean
-  public Executor taskExecutor() {
-    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-    executor.setCorePoolSize(10);
-    executor.setMaxPoolSize(10);
-    executor.setQueueCapacity(500);
-    executor.setThreadNamePrefix("BotCli-");
-    executor.initialize();
-    return executor;
-  }
 
   public static void main(String[] args) {
     // System.out.println("Hello world!");
@@ -43,5 +32,16 @@ public class SpringApplicationBotCli {
     } catch (Exception e) {
       // int foo = 0;
     }
+  }
+
+  @Bean
+  public Executor taskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(10);
+    executor.setMaxPoolSize(10);
+    executor.setQueueCapacity(500);
+    executor.setThreadNamePrefix("BotCli-");
+    executor.initialize();
+    return executor;
   }
 }

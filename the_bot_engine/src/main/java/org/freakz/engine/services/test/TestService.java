@@ -1,13 +1,15 @@
 package org.freakz.engine.services.test;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.TestService1)
 @ServiceMethodHandler
-@Slf4j
 public class TestService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(TestService.class);
 
 
   @Override

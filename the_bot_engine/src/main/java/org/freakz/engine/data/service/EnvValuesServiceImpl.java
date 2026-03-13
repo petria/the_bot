@@ -1,6 +1,5 @@
 package org.freakz.engine.data.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.common.model.users.User;
@@ -9,23 +8,29 @@ import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.impl.EnvValuesRepository;
 import org.freakz.engine.data.repository.impl.EnvValuesRepositoryImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@Slf4j
 public class EnvValuesServiceImpl implements DataSavingService, EnvValuesService {
+
+  private static final Logger log = LoggerFactory.getLogger(EnvValuesServiceImpl.class);
 
   private final ConfigService configService;
   private final EnvValuesRepository repository;
+  private final JsonMapper jsonMapper;
 
   @Autowired
-  public EnvValuesServiceImpl(ConfigService configService) throws Exception {
+  public EnvValuesServiceImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
     this.configService = configService;
-    this.repository = new EnvValuesRepositoryImpl(configService);
+    this.jsonMapper = jsonMapper;
+    this.repository = new EnvValuesRepositoryImpl(configService, jsonMapper);
   }
 
   @Override

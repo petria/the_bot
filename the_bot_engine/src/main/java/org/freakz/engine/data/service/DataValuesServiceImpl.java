@@ -1,6 +1,5 @@
 package org.freakz.engine.data.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValueStatsModel;
 import org.freakz.common.model.dto.DataValues;
@@ -10,26 +9,31 @@ import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.impl.DataValuesRepository;
 import org.freakz.engine.data.repository.impl.DataValuesRepositoryImpl;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.IntStream;
 
 @Service
-@Slf4j
 public class DataValuesServiceImpl implements DataValuesService, DataSavingService {
+
+  private static final Logger log = LoggerFactory.getLogger(DataValuesServiceImpl.class);
 
   //    @Autowired
   private final DataValuesRepository dataValuesRepository;
 
   private final ConfigService configService;
 
-  @Autowired
-  public DataValuesServiceImpl(ConfigService configService) throws Exception {
+  private final JsonMapper jsonMapper;
+
+  public DataValuesServiceImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
     this.configService = configService;
-    this.dataValuesRepository = new DataValuesRepositoryImpl(configService);
+    this.dataValuesRepository = new DataValuesRepositoryImpl(configService, jsonMapper);
+    this.jsonMapper = jsonMapper;
   }
 
   private Map<String, DataValuesModel> combineCounters(List<DataValues> modelsList, String key) {

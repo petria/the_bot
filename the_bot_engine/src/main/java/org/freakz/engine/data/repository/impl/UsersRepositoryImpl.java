@@ -1,6 +1,5 @@
 package org.freakz.engine.data.repository.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.UserValuesJsonContainer;
@@ -9,6 +8,9 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.RepositoryBaseImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,14 +19,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-@Slf4j
 public class UsersRepositoryImpl extends RepositoryBaseImpl
     implements UsersRepository, DataSavingService {
 
+  private static final Logger log = LoggerFactory.getLogger(UsersRepositoryImpl.class);
+
   private static final String USERS_FILE_NAME = "users.json";
 
-  public UsersRepositoryImpl(ConfigService configService) throws Exception {
-    super(configService);
+  public UsersRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
+    super(configService, jsonMapper);
     initialize();
     //        createUsers();
   }

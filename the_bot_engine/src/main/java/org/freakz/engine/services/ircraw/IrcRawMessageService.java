@@ -1,19 +1,21 @@
 package org.freakz.engine.services.ircraw;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.IrcRawMessageResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.connections.ConnectionManagerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.IrcRawMessage)
 public class IrcRawMessageService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(IrcRawMessageService.class);
 
   @Override
   public void initializeService(ConfigService configService) throws Exception {

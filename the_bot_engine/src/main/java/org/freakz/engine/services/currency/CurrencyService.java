@@ -1,18 +1,20 @@
 package org.freakz.engine.services.currency;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.CurrencyResponse;
 import org.freakz.engine.services.api.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_FROM;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TO;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.CurrencyService)
 public class CurrencyService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(CurrencyService.class);
   private String urlBase = "https://www.google.com/finance/quote/";
   private String amountClass = "YMlKec fxKbKc";
   private String currencyClass = "zzDege";

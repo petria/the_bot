@@ -1,8 +1,5 @@
 package org.freakz.io.contoller;
 
-import java.util.List;
-import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRequest;
@@ -12,14 +9,20 @@ import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
 import org.freakz.io.mappers.DataToDTOMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/hokan/io/connection_manager")
-@Slf4j
 public class ConnectionManagerController {
+
+  private static final Logger log = LoggerFactory.getLogger(ConnectionManagerController.class);
 
   private final ConnectionManager connectionManager;
   private final DataToDTOMapper mapper;

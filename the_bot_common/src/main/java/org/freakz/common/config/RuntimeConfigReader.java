@@ -1,20 +1,23 @@
 package org.freakz.common.config;
 
-import static org.freakz.common.config.ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.freakz.common.model.botconfig.TheBotConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import lombok.extern.slf4j.Slf4j;
-import org.freakz.common.model.botconfig.TheBotConfig;
 
-@Slf4j
+import static org.freakz.common.config.ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
+
 public class RuntimeConfigReader {
 
+  private static final Logger log = LoggerFactory.getLogger(RuntimeConfigReader.class);
   private Properties secretProperties;
 
   private void readSecretsProperties(String secretPropertiesPath) {
@@ -30,7 +33,7 @@ public class RuntimeConfigReader {
   }
 
   public TheBotConfig readBotConfig(
-      ObjectMapper mapper, String runtimeDir, String secretPropertiesFile, String profile)
+      JsonMapper mapper, String runtimeDir, String secretPropertiesFile, String profile)
       throws IOException {
     log.debug("readBotConfig --->>> PROFILE: {}", profile);
     String secretsFile;

@@ -2,25 +2,28 @@ version: '2.4'
 services:
   #  Hokan the Bot engine container
   bot-engine:
-    build: ./the_bot_engine
+    image: ghcr.io/petria/the_bot-engine:${IMAGE_TAG:-latest}
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
       - /home/hokan/the_bot/config:/config
     ports:
-      - "8100:8100"
+      - "127.0.0.1:8100:8100"
     environment:
       - TZ="Europe/Helsinki"
       - hokan.runtime.profile=PROD
     container_name: bot-engine
   #  Hokan the Bot io container
   bot-io:
-    build: ./the_bot_io
+    image: ghcr.io/petria/the_bot-io:${IMAGE_TAG:-latest}
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
       - /home/hokan/the_bot/config:/config
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     environment:
       - TZ="Europe/Helsinki"
       - hokan.runtime.profile=PROD
     container_name: bot-io
+networks:
+  default:
+    driver: bridge

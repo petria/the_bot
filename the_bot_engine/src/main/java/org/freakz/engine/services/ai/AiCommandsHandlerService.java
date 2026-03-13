@@ -14,7 +14,6 @@ import org.freakz.engine.services.weather.water.WaterTemperatureData;
 import org.freakz.engine.services.weather.water.WaterTemperatureService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cloud.openfeign.loadbalancer.LoadBalancerFeignRequestTransformer;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
@@ -46,7 +45,6 @@ public class AiCommandsHandlerService {
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiService)
   public AiResponse handleServiceRequest(ServiceRequest request) {
 
-
     AiResponse aiResponse = AiResponse.builder().build();
     aiResponse.setStatus("OK: AI!");
 
@@ -59,9 +57,21 @@ public class AiCommandsHandlerService {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-//    String queryResponse = ollamaAiService.ask(request.getEngineRequest(), "http://bot-ollama:11434", "llama3.1:8b", queryMessage, network, channel, sentByNick, sentByRealName);
+    String hostUrl = envValuesService.getKeyValueOrDefault("ollamaHost", "http://bot-ollama:11434");
+    String modelName = envValuesService.getKeyValueOrDefault("ollamaChatModel", "qwen2.5:14b");
 
-    aiResponse.setResult(sentByNick + ": ok!");
+    String queryResponse = ollamaAiService.ask(
+        request.getEngineRequest(),
+        hostUrl,
+        modelName,
+        queryMessage,
+        network,
+        channel,
+        sentByNick,
+        sentByRealName
+    );
+
+    aiResponse.setResult(queryResponse);
     return aiResponse;
   }
 
@@ -96,7 +106,7 @@ public class AiCommandsHandlerService {
         try {
 
           String ollamaWaterHost = envValuesService.getKeyValueOrDefault("ollamaWaterHost", "http://bot-ollama:11434");
-          String ollamaWaterModel = envValuesService.getKeyValueOrDefault( "ollamaWaterModel","qwen3-vl:235b-cloud");
+          String ollamaWaterModel = envValuesService.getKeyValueOrDefault("ollamaWaterModel", "qwen3-vl:235b-cloud");
 
           String promptMessage = "What is the current measured water temperature. Answer nothing else but XXX°C  where XXX is temperature.";
           String queryResponse;

@@ -1,11 +1,12 @@
 package org.freakz.engine.services;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.api.*;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,17 @@ import static org.reflections.scanners.Scanners.SubTypes;
 import static org.reflections.scanners.Scanners.TypesAnnotated;
 
 @Service
-@Slf4j
 @SuppressWarnings("unchecked")
 public class HokanServices {
+
+  private static final Logger log = LoggerFactory.getLogger(HokanServices.class);
 
   private final Executor executor;
 
   private final ConfigService configService;
+  private final ApplicationContext applicationContext;
+  private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
+
 
   public HokanServices(@Qualifier("Services") Executor executor, ConfigService configService, ApplicationContext applicationContext) {
     this.executor = executor;
@@ -33,9 +38,6 @@ public class HokanServices {
     this.applicationContext = applicationContext;
 
   }
-
-  private final ApplicationContext applicationContext;
-
 
   @PostConstruct
   public void runInitializeService() throws Exception {
@@ -114,14 +116,6 @@ public class HokanServices {
     return null;
   }
 
-
-  private final Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
-
-  class MethodAndType {
-    Method method;
-    boolean isSpring;
-  }
-
   private Map<Class<?>, List<MethodAndType>> findServiceMessageHandlerMethods(ServiceRequestType serviceRequestType) {
 
 
@@ -180,6 +174,11 @@ public class HokanServices {
       }
     }
     return null;
+  }
+
+  class MethodAndType {
+    Method method;
+    boolean isSpring;
   }
 
 }

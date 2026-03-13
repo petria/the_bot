@@ -6,7 +6,6 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.FileAppender;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.feed.MessageSource;
 import org.slf4j.LoggerFactory;
 
@@ -16,9 +15,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-@Slf4j
 public class LogServiceImpl implements LogService {
 
+  private static final org.slf4j.Logger log = LoggerFactory.getLogger(LogServiceImpl.class);
   private final String logDir;
 
   private Map<String, Logger> channelLoggers = new HashMap<>();

@@ -1,6 +1,5 @@
 package org.freakz.engine.data.repository.impl;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
@@ -10,6 +9,9 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
 import org.freakz.engine.data.repository.RepositoryBaseImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,14 +21,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
 public class DataValuesRepositoryImpl extends RepositoryBaseImpl
     implements DataValuesRepository, DataSavingService {
 
+  private static final Logger log = LoggerFactory.getLogger(DataValuesRepositoryImpl.class);
+
   private static final String DATA_VALUES_FILE_NAME = "data_values.json";
 
-  public DataValuesRepositoryImpl(ConfigService configService) throws Exception {
-    super(configService);
+  public DataValuesRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
+    super(configService, jsonMapper);
     initialize();
   }
 

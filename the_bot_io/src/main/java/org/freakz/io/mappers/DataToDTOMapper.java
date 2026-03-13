@@ -1,12 +1,13 @@
 package org.freakz.io.mappers;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.freakz.common.model.connectionmanager.BotConnectionChannelResponse;
 import org.freakz.common.model.connectionmanager.BotConnectionResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.BotConnectionChannel;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class DataToDTOMapper {
   public GetConnectionMapResponse toGetConnectionMapResponse(

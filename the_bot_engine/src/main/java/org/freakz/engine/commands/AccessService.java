@@ -1,17 +1,19 @@
 package org.freakz.engine.commands;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.data.service.UsersService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-@Slf4j
 @SuppressWarnings("unchecked")
 public class AccessService {
+
+  private static final Logger log = LoggerFactory.getLogger(AccessService.class);
 
 
   private final UsersService usersService;

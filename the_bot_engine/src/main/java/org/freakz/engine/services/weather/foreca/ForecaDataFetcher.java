@@ -1,7 +1,6 @@
 package org.freakz.engine.services.weather.foreca;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.foreca.CountryCityLink;
 import org.freakz.common.model.foreca.CountryScanLinksByLetter;
 import org.freakz.common.model.foreca.ForecaSunUpDown;
@@ -12,6 +11,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -23,10 +24,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 public class ForecaDataFetcher {
 
+  private static final Logger log = LoggerFactory.getLogger(ForecaDataFetcher.class);
+
   private static ScriptEngine engine = new ScriptEngineManager().getEngineByName("graal.js");
+  private static Map<String, CountryCityLink> toCollectLinks = null;
   public String[] REGION_URLS
       = {
       "https://www.foreca.fi/Asia/haku",
@@ -39,7 +42,6 @@ public class ForecaDataFetcher {
       "https://www.foreca.fi/North_America/United_States/haku"
   };
   String urlBase = "https://www.foreca.fi";
-  private static Map<String, CountryCityLink> toCollectLinks = null;
   private ObjectMapper mapper = new ObjectMapper();
 
 

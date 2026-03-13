@@ -1,25 +1,26 @@
 package org.freakz.io.connections;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 public class BotConnection {
+
+  private static final Logger log = LoggerFactory.getLogger(BotConnection.class);
 
   static int idCounter = 0;
 
-  @Getter private int id;
+  private int id;
 
-  //    @Getter
   private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
 
-  @Getter private BotConnectionType type;
+  private BotConnectionType type;
 
   public BotConnection() {
     this.id = idCounter;
@@ -29,6 +30,18 @@ public class BotConnection {
   public BotConnection(BotConnectionType type) {
     this();
     this.type = type;
+  }
+
+  public int getId() {
+    return id;
+  }
+
+  public Map<String, BotConnectionChannel> getChannelMap() {
+    return channelMap;
+  }
+
+  public BotConnectionType getType() {
+    return type;
   }
 
   public void sendMessageTo(Message message) {

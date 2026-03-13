@@ -1,6 +1,6 @@
 package org.freakz.io.contoller;
 
-import lombok.extern.slf4j.Slf4j;
+
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.exception.TargetAliasNotIrcChannelException;
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
@@ -9,13 +9,16 @@ import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest
 import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.io.connections.ConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/hokan/io/messages")
-@Slf4j
 public class MessagesController {
+
+  private static final Logger log = LoggerFactory.getLogger(MessagesController.class);
 
   private final ConnectionManager connectionManager;
 

@@ -14,6 +14,10 @@ import org.springframework.context.annotation.Primary;
 @EnableFeignClients
 public class SpringApplicationUiBackend {
 
+  public static void main(String[] args) {
+    SpringApplication.run(SpringApplicationUiBackend.class, args);
+  }
+
   @Bean
   @Primary
   public ObjectMapper primaryObjectMapper() {
@@ -21,9 +25,5 @@ public class SpringApplicationUiBackend {
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         .addModule(new JavaTimeModule())
         .build();
-  }
-
-  public static void main(String[] args) {
-    SpringApplication.run(SpringApplicationUiBackend.class, args);
   }
 }

@@ -3,7 +3,6 @@ package org.freakz.engine.commands.api;
 import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
-import lombok.Getter;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
@@ -17,15 +16,22 @@ import java.util.List;
 
 public abstract class AbstractCmd implements HokanCmd {
 
+  private final StringBuilder sb = new StringBuilder();
   private boolean adminCommand = false;
-
-  @Getter
   private JSAP jsap = new JSAP();
-
-  @Getter
   private BotEngine botEngine;
 
-  private final StringBuilder sb = new StringBuilder();
+  public JSAP getJsap() {
+    return jsap;
+  }
+
+  public BotEngine getBotEngine() {
+    return botEngine;
+  }
+
+  public void setBotEngine(BotEngine botEngine) {
+    this.botEngine = botEngine;
+  }
 
   public StringBuilder sb() {
     return sb;
@@ -78,10 +84,6 @@ public abstract class AbstractCmd implements HokanCmd {
 
   public HandlerAlias createToBotAliasWithArgs(String botName, String target) {
     return HandlerAlias.builder().alias(botName + ":").target(target).withArgs(true).build();
-  }
-
-  public void setBotEngine(BotEngine botEngine) {
-    this.botEngine = botEngine;
   }
 
   public <T extends ServiceResponse> T doServiceRequest(

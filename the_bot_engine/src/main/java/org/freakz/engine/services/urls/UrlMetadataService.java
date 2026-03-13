@@ -1,6 +1,5 @@
 package org.freakz.engine.services.urls;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.commands.BotEngine;
@@ -10,6 +9,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -19,8 +20,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-@Slf4j
 public class UrlMetadataService {
+
+  private static final Logger log = LoggerFactory.getLogger(UrlMetadataService.class);
 
   private final EnvValuesService envValuesService;
 
@@ -95,13 +97,15 @@ public class UrlMetadataService {
       }
 
       Elements title = head.select("title");
-      UrlMetadata metadata = UrlMetadata.builder().url(url).title(title.text()).metaAttributes(metaAttributes).build().ok();
+      UrlMetadata metadata = UrlMetadata.builder().url(url).title(title.text()).metaAttributes(metaAttributes).build();
+      metadata = metadata.ok();
       metadata = checkSpecialTitles(metadata);
       return metadata;
 
     } catch (Exception e) {
       log.error("url title fetch failed: {}", url, e);
-      UrlMetadata error = UrlMetadata.builder().url(url).build().error(e.getMessage());
+      UrlMetadata error = UrlMetadata.builder().url(url).build();
+      error = error.error(e.getMessage());
       return error;
     }
   }

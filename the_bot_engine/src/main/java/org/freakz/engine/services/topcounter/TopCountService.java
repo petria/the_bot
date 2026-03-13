@@ -1,6 +1,5 @@
 package org.freakz.engine.services.topcounter;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.enums.TopCountsEnum;
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValuesModel;
@@ -8,6 +7,8 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.util.StringStuff;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.data.service.DataValuesService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +18,25 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class TopCountService {
 
-  private final BotEngine botEngine;
+  private static final Logger log = LoggerFactory.getLogger(TopCountService.class);
+  //                              0     1     2     3     4     5     6
+  private static int[] COUNTS = {500, 1000, 1024, 2000, 3000, 4000, 10000};
+  private static Map<Integer, String[]> COUNT_MSGS = new HashMap<>();
 
+  static {
+    COUNT_MSGS.put(COUNTS[0], new String[]{"Mi Frend-läppä", "Mi Frend-läppä", "Mi Frend-läppä"});
+    COUNT_MSGS.put(
+        COUNTS[1], new String[]{"Yor Mi Frend-läppä", "Yor Mi Frend-läppä", "Yor Mi Frend-läppä"});
+    COUNT_MSGS.put(COUNTS[2], new String[]{"2^10", "1k", "2^10"});
+    COUNT_MSGS.put(COUNTS[3], new String[]{"3 msg1", "3 msg2", "3 msg3"});
+    COUNT_MSGS.put(COUNTS[4], new String[]{"4 msg1", "4 msg2", "4 msg3"});
+    COUNT_MSGS.put(COUNTS[5], new String[]{"5 msg1", "5 msg2", "5 msg3"});
+    COUNT_MSGS.put(COUNTS[6], new String[]{"6 msg1", "6 msg2", "6 msg3"});
+  }
+
+  private final BotEngine botEngine;
   private final DataValuesService dataValuesService;
 
   @Autowired
@@ -64,21 +79,6 @@ public class TopCountService {
     } catch (DataRepositoryException e) {
       log.error("Could not handleLastTime", e);
     }
-  }
-
-  //                              0     1     2     3     4     5     6
-  private static int[] COUNTS = {500, 1000, 1024, 2000, 3000, 4000, 10000};
-  private static Map<Integer, String[]> COUNT_MSGS = new HashMap<>();
-
-  static {
-    COUNT_MSGS.put(COUNTS[0], new String[]{"Mi Frend-läppä", "Mi Frend-läppä", "Mi Frend-läppä"});
-    COUNT_MSGS.put(
-        COUNTS[1], new String[]{"Yor Mi Frend-läppä", "Yor Mi Frend-läppä", "Yor Mi Frend-läppä"});
-    COUNT_MSGS.put(COUNTS[2], new String[]{"2^10", "1k", "2^10"});
-    COUNT_MSGS.put(COUNTS[3], new String[]{"3 msg1", "3 msg2", "3 msg3"});
-    COUNT_MSGS.put(COUNTS[4], new String[]{"4 msg1", "4 msg2", "4 msg3"});
-    COUNT_MSGS.put(COUNTS[5], new String[]{"5 msg1", "5 msg2", "5 msg3"});
-    COUNT_MSGS.put(COUNTS[6], new String[]{"6 msg1", "6 msg2", "6 msg3"});
   }
 
   private boolean doCalc(EngineRequest request, TopCountsEnum countEnum)
@@ -178,13 +178,6 @@ public class TopCountService {
     return this.dataValuesService;
   }
 
-  class PositionChange {
-    DataValuesModel ahead = null;
-    DataValuesModel own = null;
-    int position = 0;
-    DataValuesModel after = null;
-  }
-
   private PositionChange getNickPosition(String channel, String network, String key, String nick) {
     List<DataValuesModel> dataValues = dataValuesService.getDataValuesAsc(channel, network, key);
     if (dataValues.size() > 0) {
@@ -205,5 +198,12 @@ public class TopCountService {
       }
     }
     return null;
+  }
+
+  class PositionChange {
+    DataValuesModel ahead = null;
+    DataValuesModel own = null;
+    int position = 0;
+    DataValuesModel after = null;
   }
 }

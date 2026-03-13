@@ -8,6 +8,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+
 import lombok.ToString;
 
 @Entity
@@ -22,7 +23,8 @@ public class Role {
   @Column(length = 20)
   private ERole name;
 
-  public Role() {}
+  public Role() {
+  }
 
   public Role(ERole name) {
     this.name = name;

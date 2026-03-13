@@ -1,10 +1,11 @@
 package org.freakz.engine.services.topcounter;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.dto.DataValuesModel;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.stats.TopCountsResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.List;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_CHANNEL;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TOP_KEY;
 
-@Slf4j
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.GetTopCountsService)
 public class GetTopCountsService extends AbstractService {
+
+  private static final Logger log = LoggerFactory.getLogger(GetTopCountsService.class);
+
   @Override
   public void initializeService(ConfigService configService) throws Exception {
   }

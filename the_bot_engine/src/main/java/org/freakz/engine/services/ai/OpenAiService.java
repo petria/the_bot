@@ -1,34 +1,35 @@
 package org.freakz.engine.services.ai;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.client.UnknownContentTypeException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Slf4j
 public class OpenAiService {
 
+  private static final Logger log = LoggerFactory.getLogger(OpenAiService.class);
+
   private final AiClientFactory factory;
+  private final JsonMapper jsonMapper;
 
-  public OpenAiService(AiClientFactory factory) {
+  public OpenAiService(AiClientFactory factory, JsonMapper jsonMapper) {
     this.factory = factory;
+    this.jsonMapper = jsonMapper;
   }
-
 
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
@@ -48,7 +49,7 @@ public class OpenAiService {
       if (chatResponse != null) {
         response = chatResponse.getResult().getOutput().getText();
       } else {
-        response ="N/A";
+        response = "N/A";
       }
       log.debug("... image Done1");
 
@@ -56,16 +57,16 @@ public class OpenAiService {
       log.debug("... image Done2");
       // TODO fix this stupid way to get data
       String responseBodyAsString = e.getResponseBodyAsString();
-      ObjectMapper mapper = new ObjectMapper();
+//      ObjectMapper mapper = new ObjectMapper();
       try {
-        Map map = mapper.readValue(responseBodyAsString, HashMap.class);
+        Map map = jsonMapper.readValue(responseBodyAsString, HashMap.class);
         if (map.containsKey("message")) {
           map = (HashMap) map.get("message");
           response = (String) map.get("content");
         } else {
           response = "N/A";
         }
-      } catch (JsonProcessingException ex) {
+      } catch (Exception ex) {
         response = "ERROR: " + ex.getMessage();
       }
 

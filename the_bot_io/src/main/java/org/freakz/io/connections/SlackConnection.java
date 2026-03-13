@@ -4,15 +4,17 @@ import com.slack.api.Slack;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.SlackConfig;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.io.contoller.SlackEventsController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 public class SlackConnection extends BotConnection {
+
+  private static final Logger log = LoggerFactory.getLogger(SlackConnection.class);
 
   private SlackEventsController slackEventsController;
   private ConnectionManager connectionManager;

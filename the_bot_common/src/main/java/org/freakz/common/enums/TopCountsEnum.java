@@ -58,6 +58,26 @@ public enum TopCountsEnum {
     this.doLastTIme = doLastTime;
   }
 
+  public static List<String> getPrettyNames() {
+    List<String> list = new ArrayList<>();
+    for (TopCountsEnum e : values()) {
+      list.add(e.getPrettyName());
+    }
+    return list;
+  }
+
+  public static TopCountsEnum getByPrettyName(String prettyName) {
+    if (prettyName == null) {
+      return null;
+    }
+    for (TopCountsEnum e : values()) {
+      if (e.getPrettyName().equals(prettyName)) {
+        return e;
+      }
+    }
+    return null;
+  }
+
   public String getRegex() {
     return regex;
   }
@@ -80,25 +100,5 @@ public enum TopCountsEnum {
 
   public boolean isDoLastTIme() {
     return doLastTIme;
-  }
-
-  public static List<String> getPrettyNames() {
-    List<String> list = new ArrayList<>();
-    for (TopCountsEnum e : values()) {
-      list.add(e.getPrettyName());
-    }
-    return list;
-  }
-
-  public static TopCountsEnum getByPrettyName(String prettyName) {
-    if (prettyName == null) {
-      return null;
-    }
-    for (TopCountsEnum e : values()) {
-      if (e.getPrettyName().equals(prettyName)) {
-        return e;
-      }
-    }
-    return null;
   }
 }

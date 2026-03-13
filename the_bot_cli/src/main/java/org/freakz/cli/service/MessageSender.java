@@ -1,57 +1,48 @@
 package org.freakz.cli.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.Response;
-import java.util.Optional;
-import lombok.extern.slf4j.Slf4j;
-import org.freakz.cli.clients.EngineClient;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
-import org.freakz.common.util.FeignUtils;
+import org.freakz.common.spring.rest.RestEngineClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class MessageSender {
 
-    @Autowired
-    private EngineClient engineClient;
+  private static final Logger log = LoggerFactory.getLogger(MessageSender.class);
 
-    public String sendToServer(String message, String botUser) {
+  @Autowired
+  private RestEngineClient engineClient;
+
+  public String sendToServer(String message, String botUser) {
 
 
-        EngineRequest request
-                = EngineRequest.builder()
-                .fromChannelId(-1L)
-                .timestamp(System.currentTimeMillis())
-                .command(message)
-                .replyTo("NO_REPLY")
-                .fromConnectionId(-1)
-                .fromSender(botUser)
-                .fromSenderId("NO_SENDER_ID")
-                .network("BOT_CLI_CLIENT")
-                .echoToAlias("THE_BOT_CLI")
-                .build();
-        try {
-            Response response = engineClient.handleEngineRequest(request);
-            if (response.status() != 200) {
-                log.error("{}: Engine not running: {}", response.status(), response.reason());
-            } else {
-                Optional<EngineResponse> responseBody = FeignUtils.getResponseBody(response, EngineResponse.class, new ObjectMapper());
-                if (responseBody.isPresent()) {
-                    EngineResponse engineResponse = responseBody.get();
-//                    log.debug("EngineResponse: {}", engineResponse);
-                    return engineResponse.getMessage();
-                } else {
-                    log.error("No EngineResponse!?");
-                }
-            }
-        } catch (Exception e) {
-            log.error("Unable to send to Engine: {}", e.getMessage());
-        }
-
-        return "<error>";
+    EngineRequest request
+        = EngineRequest.builder()
+        .fromChannelId(-1L)
+        .timestamp(System.currentTimeMillis())
+        .command(message)
+        .replyTo("NO_REPLY")
+        .fromConnectionId(-1)
+        .fromSender(botUser)
+        .fromSenderId("NO_SENDER_ID")
+        .network("BOT_CLI_CLIENT")
+        .echoToAlias("THE_BOT_CLI")
+        .build();
+    try {
+      ResponseEntity<EngineResponse> responseEntity = engineClient.handleEngineRequest(request);
+      if (responseEntity.getStatusCode().is2xxSuccessful()) {
+        EngineResponse engineResponse = responseEntity.getBody();
+        return engineResponse.getMessage();
+      }
+    } catch (Exception e) {
+      log.error("Unable to send to Engine: {}", e.getMessage());
     }
+
+    return "<error>";
+  }
 
 }

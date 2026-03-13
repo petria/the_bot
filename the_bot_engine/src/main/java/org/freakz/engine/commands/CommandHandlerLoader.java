@@ -1,7 +1,5 @@
 package org.freakz.engine.commands;
 
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
@@ -10,13 +8,18 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
-@Slf4j
 public class CommandHandlerLoader {
+
+  private static final Logger log = LoggerFactory.getLogger(CommandHandlerLoader.class);
+  private Map<String, HandlerClass> handlersMap = new TreeMap<>();
+  private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
 
   public CommandHandlerLoader(String activeProfile, String botName)
       throws InitializeFailedException {
@@ -28,11 +31,13 @@ public class CommandHandlerLoader {
     }
   }
 
-  @Getter
-  private Map<String, HandlerClass> handlersMap = new TreeMap<>();
+  public Map<String, HandlerClass> getHandlersMap() {
+    return handlersMap;
+  }
 
-  @Getter
-  private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
+  public Map<String, HandlerAlias> getHandlerAliasMap() {
+    return handlerAliasMap;
+  }
 
   public void initializeCommandHandlers(String activeProfile, String botName) throws Exception {
     Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));

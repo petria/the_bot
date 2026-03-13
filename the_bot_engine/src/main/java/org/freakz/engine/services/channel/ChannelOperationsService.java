@@ -1,14 +1,16 @@
 package org.freakz.engine.services.channel;
 
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.dto.OPRequestResponse;
 import org.freakz.engine.services.api.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 @SpringServiceMethodHandler
-@Slf4j
 public class ChannelOperationsService {
+
+  private static final Logger log = LoggerFactory.getLogger(ChannelOperationsService.class);
 
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.ChannelOpRequest)
   public <T extends ServiceResponse> ServiceResponse handleChannelOp(ServiceRequest request) {

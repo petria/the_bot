@@ -1,31 +1,28 @@
 package org.freakz.engine.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.botconfig.TheBotConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
 
 @Service
-@Slf4j
 public class ConfigService {
 
+  private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
+  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
   @Autowired
   private TheBotProperties botProperties;
-
   @Autowired
   private Environment environment;
-
   @Autowired
-  private ObjectMapper objectMapper;
-
-  private static RuntimeConfigReader configReader = new RuntimeConfigReader();
-
+  private JsonMapper objectMapper;
   private TheBotConfig theBotConfig = null;
 
   public TheBotConfig readBotConfig() {

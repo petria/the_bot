@@ -1,0 +1,30 @@
+name: Deploy to VM
+
+on:
+  workflow_run:
+    workflows: ["CI - Build and Push Docker Images"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /home/hokan/the_bot
+            # Write IMAGE_TAG with the new image tag (commit SHA)
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
+            # Log in to the GitHub Container Registry
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
+            # Pull the new images
+            docker compose pull
+            # Restart the services
+            docker compose up -d

@@ -12,8 +12,8 @@ import java.util.List;
  */
 public class CommandArgs implements Serializable {
 
-  private String command;
   private final String[] args;
+  private String command;
 
   public CommandArgs(String line) {
     String[] split = line.split(" ");

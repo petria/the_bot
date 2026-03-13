@@ -4,21 +4,23 @@ import com.martiansoftware.jsap.JSAP;
 import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.SendMessageByTargetResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
 
 @HokanCommandHandler
 @HokanAdminCommand
-@Slf4j
 public class MessageCmd extends AbstractCmd {
+
+  private static final Logger log = LoggerFactory.getLogger(MessageCmd.class);
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {

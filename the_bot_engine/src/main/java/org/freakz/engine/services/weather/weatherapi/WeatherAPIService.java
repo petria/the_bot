@@ -1,7 +1,6 @@
 package org.freakz.engine.services.weather.weatherapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.*;
@@ -9,16 +8,19 @@ import org.freakz.engine.services.weather.weatherapi.model.AstronomyResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ErrorCode;
 import org.freakz.engine.services.weather.weatherapi.model.ErrorResponse;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
-@Slf4j
 @SpringServiceMethodHandler
 @Service
 public class WeatherAPIService {
+
+  private static final Logger log = LoggerFactory.getLogger(WeatherAPIService.class);
 
   private final ConfigService configService;
   private final RestClient restClient;

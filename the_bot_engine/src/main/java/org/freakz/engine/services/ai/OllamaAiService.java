@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
+import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.commands.CommandHandlerLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,7 +20,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.content.Media;
-import org.springframework.ai.ollama.api.OllamaOptions;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.support.ToolCallbacks;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,30 +38,28 @@ import java.util.*;
 public class OllamaAiService {
 
   private static final Logger log = LoggerFactory.getLogger(OllamaAiService.class);
-
-  @Value("classpath:/prompts/hokan-engine-template.st")
-  private Resource hokanEngineTemplate;
-
-  @Value("classpath:/prompts/hokan-prompt-template.st")
-  private Resource hokanPromptTemplate;
-
-  @Value("classpath:/prompts/hokan-system-template.st")
-  private Resource hokanSystemTemplate;
-
   private final WeatherAPIService weatherAPIService;
-
   private final AiClientFactory factory;
-
   private final ConfigService configService;
-
+  private final BotEngine botEngine;
   private final ChatMemory chatMemory = MessageWindowChatMemory.builder()
       .maxMessages(1000)
       .build(); // TODO
+  @Value("classpath:/prompts/hokan-engine-template.st")
+  private Resource hokanEngineTemplate;
+  @Value("classpath:/prompts/hokan-prompt-template.st")
+  private Resource hokanPromptTemplate;
+  @Value("classpath:/prompts/hokan-system-template.st")
+  private Resource hokanSystemTemplate;
 
-  public OllamaAiService(AiClientFactory factory, WeatherAPIService weatherAPIService, ConfigService configService) {
+  public OllamaAiService(AiClientFactory factory,
+                         WeatherAPIService weatherAPIService,
+                         ConfigService configService,
+                         BotEngine botEngine) {
     this.factory = factory;
     this.weatherAPIService = weatherAPIService;
     this.configService = configService;
+    this.botEngine = botEngine;
   }
 
   public String describeImageFromUrl(EngineRequest engineRequest, String hostUrl, String modelName, String promptText, String imageUrl, String network, String channel, String sentByNick, String sentByRealName) throws MalformedURLException {
@@ -115,7 +115,10 @@ public class OllamaAiService {
 
 
     try {
-      ToolCallback[] toolCallbacks = ToolCallbacks.from(new AiToolCallBackFunctions(weatherAPIService));
+      CommandHandlerLoader loader = botEngine.getCommandHandlerLoader();
+      ToolCallback[] toolCallbacks = ToolCallbacks.from(
+          new CommandToolCallBackFunctions(botEngine, loader)
+      );
 
       List<Message> memory = chatMemory.get(chatId);
 
@@ -156,7 +159,7 @@ public class OllamaAiService {
 //      UserMessage userMessage = new UserMessage(promptText);
       messages.add(promptMessage);
 
-      Prompt prompt = new Prompt(messages, OllamaOptions.builder()
+      Prompt prompt = new Prompt(messages, OllamaChatOptions.builder()
           .toolCallbacks(toolCallbacks)
           .model(modelName) // "qwen3:30b-a3b"
           .temperature(0.4)
