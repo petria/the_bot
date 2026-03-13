@@ -2,7 +2,7 @@ version: '2.4'
 services:
   #  Hokan the Bot engine container
   bot-engine:
-    build: ./the_bot_engine
+    image: ghcr.io/petria/the_bot-engine:${IMAGE_TAG:-latest}
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
       - /home/hokan/the_bot/config:/config
@@ -14,7 +14,7 @@ services:
     container_name: bot-engine
   #  Hokan the Bot io container
   bot-io:
-    build: ./the_bot_io
+    image: ghcr.io/petria/the_bot-io:${IMAGE_TAG:-latest}
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
       - /home/hokan/the_bot/config:/config
