@@ -17,19 +17,12 @@ public enum ServiceRequestType {
   WaterTemperatureService,
   WeatherAPIService,
 
-  GetChannelUsers,
   GetDataValuesService,
 
   GetTopCountsService,
   GetTopStatsRequest,
 
   ChannelOpRequest,
-
-  IrcRawMessage,
-
-  KelikameratService,
-
-  QuizStartRequest,
 
   ReloadConfig,
 
@@ -38,8 +31,6 @@ public enum ServiceRequestType {
   SystemStatus,
 
   TranslateService,
-
-  UsersListService,
 
   TestService1,
 
