@@ -36,6 +36,7 @@ public class MessageCmd extends AbstractCmd {
 
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
+
     SendMessageByTargetResponse response =
         doServiceRequest(request, results, ServiceRequestType.SendMessageByTargetAlias);
     if (response.getSendTo().startsWith("NOK: ")) {
