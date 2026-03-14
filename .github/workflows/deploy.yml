@@ -9,22 +9,65 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
 
     steps:
-      - name: Deploy to VM
+      - name: Download deploy metadata from CI run
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: deploy-meta-${{ github.event.workflow_run.head_sha }}
+          path: .
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read deploy metadata
+        id: meta
+        run: |
+          echo "DEPLOY_SHA=$(jq -r '.sha' deploy-meta.json)" >> "$GITHUB_ENV"
+          echo "ENGINE_CHANGED=$(jq -r '.engine_changed' deploy-meta.json)" >> "$GITHUB_ENV"
+          echo "IO_CHANGED=$(jq -r '.io_changed' deploy-meta.json)" >> "$GITHUB_ENV"
+
+      - name: Deploy changed services to VM
         uses: appleboy/ssh-action@master
+        env:
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+          ENGINE_CHANGED: ${{ env.ENGINE_CHANGED }}
+          IO_CHANGED: ${{ env.IO_CHANGED }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED
           script: |
             cd /home/hokan/the_bot
-            # Write IMAGE_TAG with the new image tag (commit SHA)
-            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
-            # Log in to the GitHub Container Registry
+
+            if [ -f .env ]; then
+              source .env
+            fi
+
+            if [ "$ENGINE_CHANGED" = "true" ]; then
+              ENGINE_IMAGE_TAG="$DEPLOY_SHA"
+            fi
+
+            if [ "$IO_CHANGED" = "true" ]; then
+              IO_IMAGE_TAG="$DEPLOY_SHA"
+            fi
+
+            echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" > .env
+            echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
+
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
-            # Pull the new images
-            docker compose pull
-            # Restart the services
-            docker compose up -d
+
+            if [ "$ENGINE_CHANGED" = "true" ]; then
+              docker compose pull bot-engine
+              docker compose up -d bot-engine
+            fi
+
+            if [ "$IO_CHANGED" = "true" ]; then
+              docker compose pull bot-io
+              docker compose up -d bot-io
+            fi
+
+            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
+              echo "No bot-engine/bot-io changes. Nothing to deploy."
+            fi
