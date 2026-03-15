@@ -55,6 +55,7 @@ jobs:
 
             echo "SPRING_PROFILES_ACTIVE=prod" > .env
             echo "HOKAN_RUNTIME_PROFILE=PROD" >> .env
+            echo "HOKAN_DATA_DIR=${HOKAN_DATA_DIR:-/home/hokan/the_bot}" >> .env
             echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" >> .env
             echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
             echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env

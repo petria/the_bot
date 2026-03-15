@@ -3,10 +3,10 @@ services:
   bot-openclaw:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     volumes:
-      - /home/hokan/the_bot/openclaw/state:/state
-      - /home/hokan/the_bot/openclaw/workspace:/workspace
-      - /home/hokan/the_bot/openclaw/config:/config
-      - /home/hokan/the_bot/openclaw/logs:/logs
+      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/state
+      - ${HOKAN_DATA_DIR:-.}/openclaw/workspace:/workspace
+      - ${HOKAN_DATA_DIR:-.}/openclaw/config:/config
+      - ${HOKAN_DATA_DIR:-.}/openclaw/logs:/logs
     ports:
       - "127.0.0.1:${OPENCLAW_HOST_PORT:-18790}:18789"
     environment:
@@ -23,8 +23,8 @@ services:
     depends_on:
       - bot-openclaw
     volumes:
-      - /home/hokan/the_bot/runtime:/runtime
-      - /home/hokan/the_bot/config:/config
+      - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
       - "127.0.0.1:8100:8100"
     environment:
@@ -40,8 +40,8 @@ services:
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
     volumes:
-      - /home/hokan/the_bot/runtime:/runtime
-      - /home/hokan/the_bot/config:/config
+      - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
       - "127.0.0.1:8090:8090"
     environment:
