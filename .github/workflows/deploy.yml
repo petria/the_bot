@@ -63,6 +63,7 @@ jobs:
             echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}" >> .env
             echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
             echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
+            echo "OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}" >> .env
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 

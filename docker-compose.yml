@@ -25,6 +25,7 @@ services:
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
+      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/openclaw-state:ro
     ports:
       - "127.0.0.1:8100:8100"
     environment:
@@ -35,6 +36,7 @@ services:
       - hokan.ai.openclaw.wake.url=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}
       - hokan.ai.openclaw.hooks.token=${OPENCLAW_HOOKS_TOKEN}
       - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
+      - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
       - AI_BACKEND=${AI_BACKEND:-ollama}
       - OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-true}
     container_name: bot-engine

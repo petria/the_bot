@@ -74,7 +74,9 @@ public class AiCommandsHandlerService {
     String queryResponse;
     if ("openclaw".equals(backend)) {
       OpenClawAiService.OpenClawAskResult askResult = openClawAiService.ask(request.getEngineRequest(), queryMessage);
-      if (askResult.isAccepted()) {
+      if (askResult.isCompleted()) {
+        queryResponse = askResult.getReply();
+      } else if (askResult.isAccepted()) {
         String runId = askResult.getRunId() == null ? "n/a" : askResult.getRunId();
         queryResponse = "OpenClaw accepted request (runId: " + runId + ").";
       } else if (fallbackToOllama) {
