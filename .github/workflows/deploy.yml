@@ -59,10 +59,10 @@ jobs:
             echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" >> .env
             echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
             echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env
-            echo "OPENCLAW_HOST_PORT=${OPENCLAW_HOST_PORT:-18790}" >> .env
+            echo "OPENCLAW_HOST_PORT=${OPENCLAW_HOST_PORT:-18890}" >> .env
             echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}" >> .env
-            echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18789/hooks/agent}" >> .env
-            echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18789/hooks/wake}" >> .env
+            echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
+            echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 

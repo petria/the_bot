@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.13",
+    "lastTouchedAt": "2026-03-15T09:11:58.057Z"
+  },
+  "auth": {
+    "profiles": {
+      "openai-codex:default": {
+        "provider": "openai-codex",
+        "mode": "oauth"
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai-codex/gpt-5.4"
+      },
+      "workspace": "/workspace",
+      "compaction": {
+        "mode": "safeguard"
+      }
+    }
+  },
+  "tools": {
+    "profile": "minimal"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "token": "${OPENCLAW_HOOKS_TOKEN}",
+    "defaultSessionKey": "hook:hokan",
+    "allowRequestSessionKey": true,
+    "allowedSessionKeyPrefixes": [
+      "hook:",
+      "irc:",
+      "discord:",
+      "telegram:",
+      "slack:"
+    ],
+    "allowedAgentIds": [
+      "main"
+    ]
+  },
+  "gateway": {
+    "port": 18889,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "7cba97152c67b5a4cdc6a4006d9d8e5bdcd3c6bca97adfb6"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  }
+}
