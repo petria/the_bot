@@ -53,7 +53,9 @@ jobs:
               IO_IMAGE_TAG="$DEPLOY_SHA"
             fi
 
-            echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" > .env
+            echo "SPRING_PROFILES_ACTIVE=prod" > .env
+            echo "HOKAN_RUNTIME_PROFILE=PROD" >> .env
+            echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" >> .env
             echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
