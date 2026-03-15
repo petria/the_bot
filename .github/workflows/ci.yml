@@ -31,11 +31,15 @@ jobs:
               - 'the_bot_engine/**'
               - 'the_bot_common/**'
               - 'pom.xml'
+              - 'docker-compose.yml'
+              - 'env/**'
               - '.github/workflows/**'
             io:
               - 'the_bot_io/**'
               - 'the_bot_common/**'
               - 'pom.xml'
+              - 'docker-compose.yml'
+              - 'env/**'
               - '.github/workflows/**'
 
       - name: Set up JDK 25
