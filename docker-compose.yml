@@ -34,6 +34,9 @@ services:
       - hokan.ai.openclaw.hooks.url=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}
       - hokan.ai.openclaw.wake.url=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}
       - hokan.ai.openclaw.hooks.token=${OPENCLAW_HOOKS_TOKEN}
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
+      - AI_BACKEND=${AI_BACKEND:-ollama}
+      - OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-true}
     container_name: bot-engine
 
   # Hokan the Bot io container

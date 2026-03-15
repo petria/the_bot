@@ -7,12 +7,14 @@ import org.freakz.engine.data.service.EnvValuesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -23,10 +25,10 @@ public class OpenClawAiService {
   private static final Logger log = LoggerFactory.getLogger(OpenClawAiService.class);
 
   private final EnvValuesService envValuesService;
-  private final ObjectMapper objectMapper;
+  private final JsonMapper objectMapper;
   private final HttpClient httpClient;
 
-  public OpenClawAiService(EnvValuesService envValuesService, ObjectMapper objectMapper) {
+  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper) {
     this.envValuesService = envValuesService;
     this.objectMapper = objectMapper;
     this.httpClient = HttpClient.newBuilder().build();
@@ -34,9 +36,9 @@ public class OpenClawAiService {
 
   public OpenClawAskResult ask(EngineRequest engineRequest, String queryMessage) {
 
-    String hooksUrl = envValuesService.getKeyValueOrDefault("openclawHooksUrl", "http://bot-openclaw:18889/hooks/agent");
-    String hooksToken = envValuesService.getKeyValueOrDefault("openclawHooksToken", "");
-    int requestTimeoutSeconds = parseIntEnv("openclawRequestTimeoutSeconds", 15);
+    String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent");
+    String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "");
+    int requestTimeoutSeconds = parseIntConfig("openclawRequestTimeoutSeconds", "OPENCLAW_REQUEST_TIMEOUT_SECONDS", 15);
 
     if (hooksToken == null || hooksToken.isBlank()) {
       return OpenClawAskResult.failure("OpenClaw hooks token is missing (env key: openclawHooksToken).");
@@ -66,8 +68,7 @@ public class OpenClawAiService {
         return OpenClawAskResult.failure("OpenClaw hook failed with HTTP " + response.statusCode());
       }
 
-      Map<String, Object> responseMap = objectMapper.readValue(response.body(), new TypeReference<>() {
-      });
+      HashMap responseMap = objectMapper.readValue(response.body(), HashMap.class);
       boolean ok = Boolean.TRUE.equals(responseMap.get("ok"));
       String runId = Objects.toString(responseMap.get("runId"), "");
 
@@ -109,8 +110,22 @@ public class OpenClawAiService {
     return sanitized;
   }
 
-  private int parseIntEnv(String key, int defaultValue) {
-    String value = envValuesService.getKeyValueOrDefault(key, Integer.toString(defaultValue));
+  private String getConfigValue(String key, String envKey, String defaultValue) {
+    String fromStore = envValuesService.getKeyValueOrDefault(key, null);
+    if (fromStore != null && !fromStore.isBlank()) {
+      return fromStore;
+    }
+
+    String fromEnv = System.getenv(envKey);
+    if (fromEnv != null && !fromEnv.isBlank()) {
+      return fromEnv;
+    }
+
+    return defaultValue;
+  }
+
+  private int parseIntConfig(String key, String envKey, int defaultValue) {
+    String value = getConfigValue(key, envKey, Integer.toString(defaultValue));
     try {
       return Integer.parseInt(value);
     } catch (Exception e) {

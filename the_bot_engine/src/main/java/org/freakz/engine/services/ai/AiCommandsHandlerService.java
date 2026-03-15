@@ -62,8 +62,11 @@ public class AiCommandsHandlerService {
     String sentByNick = request.getEngineRequest().getFromSender();
     String sentByRealName = request.getEngineRequest().getUser().getName();
 
-    String backend = envValuesService.getKeyValueOrDefault("aiBackend", "ollama").toLowerCase(Locale.ROOT);
-    boolean fallbackToOllama = envValuesService.getKeyValueBooleanOrDefault("openclawFallbackToOllama", true);
+    String backendRaw = envValuesService.getKeyValueOrDefault("aiBackend", System.getenv("AI_BACKEND") == null ? "ollama" : System.getenv("AI_BACKEND"));
+    String backend = backendRaw.toLowerCase(Locale.ROOT);
+
+    String fallbackRaw = envValuesService.getKeyValueOrDefault("openclawFallbackToOllama", System.getenv("OPENCLAW_FALLBACK_TO_OLLAMA") == null ? "true" : System.getenv("OPENCLAW_FALLBACK_TO_OLLAMA"));
+    boolean fallbackToOllama = "true".equalsIgnoreCase(fallbackRaw);
 
     String hostUrl = envValuesService.getKeyValueOrDefault("ollamaHost", "http://bot-ollama:11434");
     String modelName = envValuesService.getKeyValueOrDefault("ollamaChatModel", "qwen2.5:14b");
