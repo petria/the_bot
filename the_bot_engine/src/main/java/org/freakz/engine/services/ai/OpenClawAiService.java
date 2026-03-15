@@ -91,15 +91,38 @@ public class OpenClawAiService {
   }
 
   private String buildSessionKey(EngineRequest request) {
+    String protocol = resolveProtocol(request.getNetwork());
     String network = sanitizePart(request.getNetwork(), "unknown");
     String nick = sanitizePart(request.getFromSender(), "unknown");
 
     if (request.isPrivateChannel()) {
-      return "irc:" + network + ":dm:" + nick;
+      return protocol + ":" + network + ":dm:" + nick;
     }
 
     String channel = sanitizePart(request.getReplyTo(), "unknown");
-    return "irc:" + network + ":channel:" + channel + ":user:" + nick;
+    return protocol + ":" + network + ":channel:" + channel + ":user:" + nick;
+  }
+
+  private String resolveProtocol(String networkRaw) {
+    if (networkRaw == null) {
+      return "chat";
+    }
+
+    String n = networkRaw.trim().toLowerCase();
+    if (n.contains("discord")) {
+      return "discord";
+    }
+    if (n.contains("telegram")) {
+      return "telegram";
+    }
+    if (n.contains("slack")) {
+      return "slack";
+    }
+    if (n.contains("irc")) {
+      return "irc";
+    }
+
+    return sanitizePart(n, "chat");
   }
 
   private String sanitizePart(String value, String fallback) {
