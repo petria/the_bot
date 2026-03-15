@@ -59,6 +59,7 @@ public class OpenClawAiService {
       HttpRequest request = HttpRequest.newBuilder()
           .uri(URI.create(hooksUrl))
           .timeout(Duration.ofSeconds(requestTimeoutSeconds))
+          .version(HttpClient.Version.HTTP_1_1)
           .header("Authorization", "Bearer " + hooksToken)
           .header("Content-Type", "application/json")
           .POST(HttpRequest.BodyPublishers.ofString(json))
