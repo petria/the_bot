@@ -265,7 +265,8 @@ public class EventPublisherService implements EventPublisher {
 
     String channelStr = event.getChannel().toString();
     int idx1 = channelStr.indexOf("name: ");
-    String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1);
+    String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]","");
+
     log.debug("replyTo: '{}'", replyTo);
 
     Message msg =
@@ -277,8 +278,6 @@ public class EventPublisherService implements EventPublisher {
             .target(channelStr)
             .message(event.getMessageContent())
             .build();
-    //        int size = messageFeederService.insertMessage(msg);
-    //        log.debug("Feed size after insert: {}", size);
 
     String logMessage;
     if (event.getMessage().getAttachments().size() > 0) {
