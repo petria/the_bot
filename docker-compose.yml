@@ -1,7 +1,27 @@
 services:
+  # Hokan dedicated OpenClaw container
+  bot-openclaw:
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    volumes:
+      - /home/hokan/the_bot/openclaw/state:/state
+      - /home/hokan/the_bot/openclaw/workspace:/workspace
+      - /home/hokan/the_bot/openclaw/config:/config
+      - /home/hokan/the_bot/openclaw/logs:/logs
+    ports:
+      - "127.0.0.1:${OPENCLAW_HOST_PORT:-18790}:18789"
+    environment:
+      - TZ=Europe/Helsinki
+      - OPENCLAW_STATE_DIR=/state
+      - OPENCLAW_WORKSPACE_DIR=/workspace
+      - OPENCLAW_CONFIG_PATH=/config/config.json
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
+    container_name: bot-openclaw
+
   # Hokan the Bot engine container
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
+    depends_on:
+      - bot-openclaw
     volumes:
       - /home/hokan/the_bot/runtime:/runtime
       - /home/hokan/the_bot/config:/config
@@ -11,6 +31,9 @@ services:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - hokan.runtime.profile=${HOKAN_RUNTIME_PROFILE:-DEV}
+      - hokan.ai.openclaw.hooks.url=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18789/hooks/agent}
+      - hokan.ai.openclaw.wake.url=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18789/hooks/wake}
+      - hokan.ai.openclaw.hooks.token=${OPENCLAW_HOOKS_TOKEN}
     container_name: bot-engine
 
   # Hokan the Bot io container
