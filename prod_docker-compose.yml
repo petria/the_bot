@@ -10,6 +10,7 @@ services:
       - "127.0.0.1:8100:8100"
     environment:
       - TZ="Europe/Helsinki"
+      - SPRING_PROFILES_ACTIVE=prod
       - hokan.runtime.profile=PROD
     container_name: bot-engine
   #  Hokan the Bot io container
@@ -22,6 +23,7 @@ services:
       - "127.0.0.1:8090:8090"
     environment:
       - TZ="Europe/Helsinki"
+      - SPRING_PROFILES_ACTIVE=prod
       - hokan.runtime.profile=PROD
     container_name: bot-io
 networks:
