@@ -36,9 +36,11 @@ public class OpenClawAiService {
 
   public OpenClawAskResult ask(EngineRequest engineRequest, String queryMessage) {
 
-    String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent");
-    String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "");
+    String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent").trim();
+    String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "").trim();
     int requestTimeoutSeconds = parseIntConfig("openclawRequestTimeoutSeconds", "OPENCLAW_REQUEST_TIMEOUT_SECONDS", 15);
+
+    log.debug("hooksUrl: {}", hooksUrl);
 
     if (hooksToken == null || hooksToken.isBlank()) {
       return OpenClawAskResult.failure("OpenClaw hooks token is missing (env key: openclawHooksToken).");
@@ -62,10 +64,12 @@ public class OpenClawAiService {
           .POST(HttpRequest.BodyPublishers.ofString(json))
           .build();
 
+      log.debug("OpenClaw request: method={} url={} sessionKey={}", request.method(), hooksUrl, payload.get("sessionKey"));
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        return OpenClawAskResult.failure("OpenClaw hook failed with HTTP " + response.statusCode());
+        log.warn("OpenClaw hook non-2xx: status={} body={}", response.statusCode(), response.body());
+        return OpenClawAskResult.failure("OpenClaw hook failed with HTTP " + response.statusCode() + " body: " + response.body());
       }
 
       HashMap responseMap = objectMapper.readValue(response.body(), HashMap.class);
