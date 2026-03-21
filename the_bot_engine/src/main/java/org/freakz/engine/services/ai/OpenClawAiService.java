@@ -13,8 +13,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -99,6 +103,7 @@ public class OpenClawAiService {
   private String waitForReplyText(String sessionKey, long startMillis, int timeoutSeconds) {
     long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
     String prefixedKey = "agent:main:" + sessionKey;
+    SessionLogTail sessionTail = null;
 
     while (System.currentTimeMillis() < deadline) {
       try {
@@ -115,13 +120,17 @@ public class OpenClawAiService {
           continue;
         }
 
-        String sessionFile = sessionNode.path("sessionFile").asText("");
-        if (sessionFile.isBlank()) {
+        Path sessionFilePath = resolveSessionFilePath(sessionNode);
+        if (sessionFilePath == null) {
           sleep(250);
           continue;
         }
 
-        String text = readLatestAssistantTextAfter(Path.of(sessionFile), startMillis);
+        if (sessionTail == null || !sessionTail.isFor(sessionFilePath)) {
+          sessionTail = new SessionLogTail(sessionFilePath, objectMapper, startMillis);
+        }
+
+        String text = sessionTail.readLatestAssistantText();
         if (text != null && !text.isBlank() && !"NO_REPLY".equalsIgnoreCase(text.trim())) {
           return text;
         }
@@ -136,59 +145,96 @@ public class OpenClawAiService {
     return null;
   }
 
-  private String readLatestAssistantTextAfter(Path sessionFilePath, long startMillis) throws IOException {
-    if (!Files.exists(sessionFilePath)) {
+  private Path getSessionsIndexPath() {
+    return getSessionsDirPath().resolve("sessions.json");
+  }
+
+  private Path getSessionsDirPath() {
+    return getStateDirHostPath().resolve(Path.of("agents", "main", "sessions"));
+  }
+
+  private Path getStateDirHostPath() {
+    String base = getConfigValue("openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
+    return Path.of(base);
+  }
+
+  private Path resolveSessionFilePath(JsonNode sessionNode) {
+    String sessionFile = sessionNode.path("sessionFile").asText("").trim();
+    if (!sessionFile.isBlank()) {
+      Path configuredPath = Path.of(sessionFile);
+      if (Files.exists(configuredPath)) {
+        return configuredPath;
+      }
+
+      if (configuredPath.isAbsolute() && configuredPath.startsWith(Path.of("/state"))) {
+        Path translatedPath = getStateDirHostPath().resolve(Path.of("/state").relativize(configuredPath));
+        if (Files.exists(translatedPath)) {
+          return translatedPath;
+        }
+      }
+    }
+
+    String sessionId = sessionNode.path("sessionId").asText("").trim();
+    if (!sessionId.isBlank()) {
+      Path sessionIdPath = getSessionsDirPath().resolve(sessionId + ".jsonl");
+      if (Files.exists(sessionIdPath)) {
+        return sessionIdPath;
+      }
+    }
+
+    return null;
+  }
+
+  private String normalizeAssistantReply(String text) {
+    if (text == null) {
+      return "";
+    }
+
+    return text.replaceFirst("^\\s*\\[\\[[^\\]]+\\]\\]\\s*", "").trim();
+  }
+
+  private String extractAssistantTextFromLine(String line, long startMillis) {
+    if (line == null || line.isBlank()) {
+      return null;
+    }
+
+    JsonNode node;
+    try {
+      node = objectMapper.readTree(line);
+    } catch (Exception ignore) {
+      return null;
+    }
+
+    if (!"message".equals(node.path("type").asText(""))) {
+      return null;
+    }
+
+    JsonNode messageNode = node.path("message");
+    if (!"assistant".equals(messageNode.path("role").asText(""))) {
+      return null;
+    }
+
+    long ts = messageNode.path("timestamp").asLong(0L);
+    if (ts < startMillis) {
       return null;
     }
 
     String latest = null;
-    for (String line : Files.readAllLines(sessionFilePath)) {
-      if (line == null || line.isBlank()) {
-        continue;
-      }
+    JsonNode contentArr = messageNode.path("content");
+    if (!contentArr.isArray()) {
+      return null;
+    }
 
-      JsonNode node;
-      try {
-        node = objectMapper.readTree(line);
-      } catch (Exception ignore) {
-        continue;
-      }
-
-      if (!"message".equals(node.path("type").asText(""))) {
-        continue;
-      }
-
-      JsonNode messageNode = node.path("message");
-      if (!"assistant".equals(messageNode.path("role").asText(""))) {
-        continue;
-      }
-
-      long ts = messageNode.path("timestamp").asLong(0L);
-      if (ts < startMillis) {
-        continue;
-      }
-
-      JsonNode contentArr = messageNode.path("content");
-      if (!contentArr.isArray()) {
-        continue;
-      }
-
-      for (JsonNode item : contentArr) {
-        if ("text".equals(item.path("type").asText(""))) {
-          String text = item.path("text").asText("");
-          if (!text.isBlank()) {
-            latest = text;
-          }
+    for (JsonNode item : contentArr) {
+      if ("text".equals(item.path("type").asText(""))) {
+        String text = normalizeAssistantReply(item.path("text").asText(""));
+        if (!text.isBlank()) {
+          latest = text;
         }
       }
     }
 
     return latest;
-  }
-
-  private Path getSessionsIndexPath() {
-    String base = getConfigValue("openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
-    return Path.of(base, "agents", "main", "sessions", "sessions.json");
   }
 
   private String buildSessionKey(EngineRequest request) {
@@ -315,6 +361,64 @@ public class OpenClawAiService {
 
     public String getError() {
       return error;
+    }
+  }
+
+  private final class SessionLogTail {
+    private final Path path;
+    private final long startMillis;
+    private long position;
+    private String bufferedPartialLine = "";
+
+    private SessionLogTail(Path path, JsonMapper objectMapper, long startMillis) {
+      this.path = path;
+      this.startMillis = startMillis;
+    }
+
+    private boolean isFor(Path otherPath) {
+      return path.equals(otherPath);
+    }
+
+    private String readLatestAssistantText() throws IOException {
+      if (!Files.exists(path)) {
+        return null;
+      }
+
+      String latest = null;
+      try (SeekableByteChannel channel = Files.newByteChannel(path, StandardOpenOption.READ)) {
+        long size = channel.size();
+        if (position > size) {
+          position = 0L;
+          bufferedPartialLine = "";
+        }
+
+        channel.position(position);
+        ByteBuffer buffer = ByteBuffer.allocate(4096);
+        StringBuilder chunkBuilder = new StringBuilder(bufferedPartialLine);
+
+        while (channel.read(buffer) > 0) {
+          buffer.flip();
+          chunkBuilder.append(StandardCharsets.UTF_8.decode(buffer));
+          buffer.clear();
+        }
+
+        position = channel.position();
+
+        String content = chunkBuilder.toString();
+        String[] lines = content.split("\\R", -1);
+        int completeLineCount = content.endsWith("\n") || content.endsWith("\r") ? lines.length : lines.length - 1;
+
+        for (int i = 0; i < completeLineCount; i++) {
+          String text = extractAssistantTextFromLine(lines[i], startMillis);
+          if (text != null && !text.isBlank()) {
+            latest = text;
+          }
+        }
+
+        bufferedPartialLine = completeLineCount < lines.length ? lines[lines.length - 1] : "";
+      }
+
+      return latest;
     }
   }
 }
