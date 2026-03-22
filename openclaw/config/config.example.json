@@ -1,7 +1,6 @@
 {
   "meta": {
-    "lastTouchedVersion": "2026.3.13",
-    "lastTouchedAt": "2026-03-15T09:11:58.057Z"
+    "lastTouchedVersion": "2026.3.13"
   },
   "auth": {
     "profiles": {
@@ -23,7 +22,16 @@
     }
   },
   "tools": {
-    "profile": "minimal"
+    "profile": "full",
+    "web": {
+      "search": {
+        "enabled": true,
+        "apiKey": "${BRAVE_SEARCH_API_KEY}"
+      },
+      "fetch": {
+        "enabled": true
+      }
+    }
   },
   "commands": {
     "native": "auto",
@@ -63,7 +71,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "7cba97152c67b5a4cdc6a4006d9d8e5bdcd3c6bca97adfb6"
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
     },
     "tailscale": {
       "mode": "off",
