@@ -21,6 +21,7 @@ import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.Executor;
 
 @Service
 public class EventPublisherService implements EventPublisher {
@@ -35,16 +37,16 @@ public class EventPublisherService implements EventPublisher {
   private static final Logger log = LoggerFactory.getLogger(EventPublisherService.class);
   private final TheBotProperties theBotProperties;
   private final LogService logService;
-  @Autowired
-  private ConfigService configService;
-  @Autowired
-  private MessageFeederService messageFeederService;
+
   @Autowired
   private RestEngineClient engineClient;
 
+  private final Executor taskExecutor;
+
   @Autowired
-  public EventPublisherService(TheBotProperties theBotProperties) {
+  public EventPublisherService(TheBotProperties theBotProperties, @Qualifier("taskExecutor") Executor taskExecutor) {
     this.theBotProperties = theBotProperties;
+    this.taskExecutor = taskExecutor;
     logService = new LogServiceImpl(this.theBotProperties.getLogDir());
   }
 
@@ -139,6 +141,21 @@ public class EventPublisherService implements EventPublisher {
         message);
   }
 
+  private void publishToEngineAsync(
+      BotConnection connection,
+      String message,
+      String sender,
+      String replyTo,
+      Long channelId,
+      String senderId,
+      String echoToAlias) {
+    taskExecutor.execute(() -> {
+      log.debug("send async");
+      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias);
+      log.debug("send DONE");
+    });
+  }
+
   private org.freakz.common.model.users.User publishIrcPrivateEvent(
       BotConnection connection, PrivateMessageEvent event, String echoToAlias) {
     log.debug("Publish IRC private event: {}", event);
@@ -151,24 +168,14 @@ public class EventPublisherService implements EventPublisher {
             .message(event.getMessage())
             .build();
 
-    Thread t =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                log.debug("send async");
-                publishToEngine(
-                    connection,
-                    msg.getMessage(),
-                    msg.getSender(),
-                    msg.getTarget(),
-                    null,
-                    msg.getSender(),
-                    echoToAlias);
-                log.debug("send DONE");
-              }
-            });
-    t.start();
+    publishToEngineAsync(
+        connection,
+        msg.getMessage(),
+        msg.getSender(),
+        msg.getTarget(),
+        null,
+        msg.getSender(),
+        echoToAlias);
 
     return new org.freakz.common.model.users.User();
   }
@@ -188,24 +195,14 @@ public class EventPublisherService implements EventPublisher {
     ChatIdentity identity = buildChatIdentity(connection, event.getChannel().getName(), event.getActor().getNick(), event.getActor().getNick(), false);
     logMessageForIdentity(identity, event.getActor().getNick(), event.getMessage());
 
-    Thread t =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                log.debug("send async");
-                publishToEngine(
-                    connection,
-                    msg.getMessage(),
-                    msg.getSender(),
-                    msg.getTarget(),
-                    null,
-                    msg.getSender(),
-                    echoToAlias);
-                log.debug("send DONE");
-              }
-            });
-    t.start();
+    publishToEngineAsync(
+        connection,
+        msg.getMessage(),
+        msg.getSender(),
+        msg.getTarget(),
+        null,
+        msg.getSender(),
+        echoToAlias);
 
     return new org.freakz.common.model.users.User();
   }
@@ -255,28 +252,16 @@ public class EventPublisherService implements EventPublisher {
             .message(message)
             .build();
 
-    Thread t =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                // publishToEngine(BotConnection connection, String message, String sender, String
-                // replyTo, Long channelId, String senderId, String echoToAlias)
-                log.debug("send async");
-                Long channelId = -1L;
-                String senderId = msg.getSender();
-                publishToEngine(
-                    connection,
-                    msg.getMessage(),
-                    msg.getSender(),
-                    msg.getTarget(),
-                    channelId,
-                    senderId,
-                    echoToAlias);
-                log.debug("send DONE");
-              }
-            });
-    t.start();
+    Long channelId = -1L;
+    String senderId = msg.getSender();
+    publishToEngineAsync(
+        connection,
+        msg.getMessage(),
+        msg.getSender(),
+        msg.getTarget(),
+        channelId,
+        senderId,
+        echoToAlias);
     return new org.freakz.common.model.users.User();
   }
 
@@ -321,24 +306,14 @@ public class EventPublisherService implements EventPublisher {
     Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
      */
 
-    Thread t =
-        new Thread(
-            new Runnable() {
-              @Override
-              public void run() {
-                log.debug("send async");
-                publishToEngine(
-                    connection,
-                    msg.getMessage(),
-                    msg.getSender(),
-                    replyTo,
-                    id,
-                    String.valueOf(userId),
-                    echoToAlias);
-                log.debug("send DONE");
-              }
-            });
-    t.start();
+    publishToEngineAsync(
+        connection,
+        msg.getMessage(),
+        msg.getSender(),
+        replyTo,
+        id,
+        String.valueOf(userId),
+        echoToAlias);
     return new org.freakz.common.model.users.User();
   }
 

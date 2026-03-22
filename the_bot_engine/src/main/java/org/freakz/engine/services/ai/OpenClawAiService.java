@@ -21,6 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -55,7 +58,7 @@ public class OpenClawAiService {
 
     try {
       Map<String, Object> payload = new LinkedHashMap<>();
-      payload.put("message", queryMessage);
+      payload.put("message", buildHookEnvelope(engineRequest, sessionKey, queryMessage));
       payload.put("name", "Hokan");
       payload.put("sessionKey", sessionKey);
       payload.put("wakeMode", "now");
@@ -258,6 +261,74 @@ public class OpenClawAiService {
     }
 
     return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + nick;
+  }
+
+  private String buildHookEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
+    String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
+    String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
+    String chatType = ChatIdentityUtil.sanitize(request.getChatType(), request.isPrivateChannel() ? "dm" : "channel");
+
+    String chatTarget;
+    String chatId = request.getChatId();
+    if (chatId != null && !chatId.isBlank()) {
+      chatTarget = ChatIdentityUtil.extractTargetFromChatId(chatId, ChatIdentityUtil.sanitize(request.getReplyTo(), "unknown"));
+    } else {
+      chatTarget = ChatIdentityUtil.sanitize(request.getReplyTo(), "unknown");
+      chatId = ChatIdentityUtil.buildChatId(protocol, network, chatType, chatTarget);
+    }
+
+    String senderNick = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
+    String senderId = ChatIdentityUtil.sanitize(request.getFromSenderId(), "unknown");
+    String senderName = request.getUser() != null && request.getUser().getName() != null
+        ? request.getUser().getName().replaceAll("[\\r\\n]+", " ").trim()
+        : senderNick;
+
+    String runtimeLogRoot = getConfigValue("openclawRuntimeLogRoot", "OPENCLAW_RUNTIME_LOG_ROOT", "/workspace/runtime/logs");
+    String logFile = runtimeLogRoot + "/" + protocol + "/" + network + "/" + chatType + "/" + chatTarget + "/" + LocalDate.now(ZoneId.of("Europe/Helsinki")) + ".log";
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("[HOKAN_CONTEXT v1]\n");
+    sb.append("source=").append(protocol).append("\n");
+    sb.append("network=").append(network).append("\n");
+    sb.append("chat_type=").append(chatType).append("\n");
+    sb.append("channel=").append(chatTarget).append("\n");
+    sb.append("thread=\n");
+    sb.append("sender_nick=").append(senderNick).append("\n");
+    sb.append("sender_id=").append(senderId).append("\n");
+    sb.append("sender_name=").append(senderName).append("\n");
+    sb.append("is_admin=").append(request.isFromAdmin()).append("\n");
+    sb.append("session_key=").append(sessionKey).append("\n");
+    sb.append("chat_id=").append(chatId).append("\n");
+    sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
+    sb.append("log_file=").append(logFile).append("\n");
+    sb.append("log_hint_lines=80\n");
+
+    if ("irc".equals(protocol)) {
+      sb.append("output_policy=compact\n");
+      if ("channel".equals(chatType)) {
+        sb.append("output_max_lines=4\n");
+        sb.append("output_max_chars=380\n");
+      } else {
+        sb.append("output_max_lines=8\n");
+        sb.append("output_max_chars=380\n");
+      }
+      sb.append("output_prefer_single_message=true\n");
+      sb.append("output_avoid_markdown_tables=true\n");
+      sb.append("output_no_code_blocks=true\n");
+    }
+
+    sb.append("\n");
+    sb.append("recent_messages_source=log_file\n");
+    sb.append("recent_messages:\n");
+    sb.append("- not inlined by bot-engine\n");
+    sb.append("- if needed, read from log_file (latest lines first)\n");
+    sb.append("- suggested range: last 80 lines\n");
+    sb.append("[/HOKAN_CONTEXT]\n\n");
+    sb.append("[USER_PROMPT]\n");
+    sb.append(userPrompt == null ? "" : userPrompt).append("\n");
+    sb.append("[/USER_PROMPT]");
+
+    return sb.toString();
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
