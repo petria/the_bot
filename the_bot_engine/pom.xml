@@ -9,6 +9,7 @@
         <version>3.0-SNAPSHOT</version>
     </parent>
 
+
     <artifactId>the_bot_engine</artifactId>
     <name>the_bot_engine</name>
 
