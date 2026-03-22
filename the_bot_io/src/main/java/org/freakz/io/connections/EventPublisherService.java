@@ -1,5 +1,7 @@
 package org.freakz.io.connections;
 
+import org.freakz.common.chat.ChatIdentity;
+import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.logger.LogService;
 import org.freakz.common.logger.LogServiceImpl;
 import org.freakz.common.model.engine.EngineRequest;
@@ -58,6 +60,9 @@ public class EventPublisherService implements EventPublisher {
     if (echoToAlias != null && echoToAlias.startsWith("PRIVATE-")) {
       isPrivateChannel = true;
     }
+
+    ChatIdentity identity = buildChatIdentity(connection, replyTo, senderId, sender, isPrivateChannel);
+
     EngineRequest request =
         EngineRequest.builder()
             .fromChannelId(channelId)
@@ -69,6 +74,9 @@ public class EventPublisherService implements EventPublisher {
             .fromSender(sender)
             .fromSenderId(senderId)
             .network(connection.getNetwork())
+            .chatProtocol(identity.getProtocol())
+            .chatType(identity.getChatType())
+            .chatId(identity.getChatId())
             .echoToAlias(echoToAlias)
             .build();
     try {
@@ -95,18 +103,40 @@ public class EventPublisherService implements EventPublisher {
 
   @Async
   @Override
-  public void logMessage(
-      MessageSource messageSource, String network, String channel, String sender, String message) {
-    //        log.debug("Do log: {}", messageSource);
-
+  public void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
     LocalDateTime ldt = LocalDateTime.now();
 
     String time = String.format("%02d:%02d:%02d", ldt.getHour(), ldt.getMinute(), ldt.getSecond());
     String logMessage = String.format("%s %s: %s", time, sender, message);
 
     this.logService.logChannelMessage(ldt, messageSource, network, channel, logMessage);
-    //        logService.logChannelMessage();
-    //        this.logService.logChannelMessage();
+
+  }
+
+  private ChatIdentity buildChatIdentity(BotConnection connection, String replyTo, String senderId, String sender, boolean isPrivateChannel) {
+    String protocol = switch (connection.getType()) {
+      case IRC_CONNECTION -> "irc";
+      case DISCORD_CONNECTION -> "discord";
+      case TELEGRAM_CONNECTION -> "telegram";
+      case SLACK_CONNECTION -> "slack";
+    };
+
+    String network = ChatIdentityUtil.sanitize(connection.getNetwork(), "unknown");
+    String chatType = isPrivateChannel ? "dm" : "channel";
+    String rawTarget = isPrivateChannel ? (senderId != null ? senderId : sender) : replyTo;
+    String target = ChatIdentityUtil.sanitize(rawTarget, "unknown");
+    String chatId = ChatIdentityUtil.buildChatId(protocol, network, chatType, target);
+
+    return new ChatIdentity(protocol, chatType, chatId, network, target);
+  }
+
+  private void logMessageForIdentity(ChatIdentity identity, String sender, String message) {
+    logMessage(
+        MessageSource.NONE,
+        identity.getProtocol(),
+        identity.getNetwork() + "/" + identity.getChatType() + "/" + identity.getTarget(),
+        sender,
+        message);
   }
 
   private org.freakz.common.model.users.User publishIrcPrivateEvent(
@@ -155,12 +185,8 @@ public class EventPublisherService implements EventPublisher {
             .message(event.getMessage())
             .build();
 
-    logMessage(
-        MessageSource.IRC_MESSAGE,
-        connection.getNetwork(),
-        event.getChannel().getName(),
-        event.getActor().getNick(),
-        event.getMessage());
+    ChatIdentity identity = buildChatIdentity(connection, event.getChannel().getName(), event.getActor().getNick(), event.getActor().getNick(), false);
+    logMessageForIdentity(identity, event.getActor().getNick(), event.getMessage());
 
     Thread t =
         new Thread(
@@ -199,12 +225,8 @@ public class EventPublisherService implements EventPublisher {
             .message(update.getMessage().getText())
             .build();
 
-    logMessage(
-        MessageSource.TELEGRAM_MESSAGE,
-        "telegram",
-        msg.getTarget(),
-        msg.getSender(),
-        msg.getMessage());
+    ChatIdentity identity = buildChatIdentity(connection, msg.getTarget(), String.valueOf(update.getMessage().getFrom().getId()), msg.getSender(), false);
+    logMessageForIdentity(identity, msg.getSender(), msg.getMessage());
     long userId = update.getMessage().getFrom().getId();
 
     return publishToEngine(
@@ -291,13 +313,9 @@ public class EventPublisherService implements EventPublisher {
     } else {
       logMessage = event.getMessageContent();
     }
-    logMessage(
-        MessageSource.DISCORD_MESSAGE,
-        "discord",
-        replyTo,
-        event.getMessageAuthor().getName(),
-        logMessage);
     long userId = event.getMessageAuthor().asUser().get().getId();
+    ChatIdentity identity = buildChatIdentity(connection, replyTo, String.valueOf(userId), event.getMessageAuthor().getName(), false);
+    logMessageForIdentity(identity, event.getMessageAuthor().getName(), logMessage);
 
     /*
     Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)

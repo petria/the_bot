@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import net.engio.mbassy.listener.Handler;
+import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.exception.InvalidTargetAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
@@ -238,7 +239,11 @@ public class IrcServerConnection extends BotConnection {
           } else {
             this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
             channel.get().sendMessage(splitLine);
-            publisher.logMessage(MessageSource.IRC_MESSAGE, getNetwork(), message.getTarget(), botNick, splitLine);
+            String protocol = "irc";
+            String network = ChatIdentityUtil.sanitize(getNetwork(), "unknown");
+            String chatType = message.getTarget().startsWith("PRIVATE-") ? "dm" : "channel";
+            String target = ChatIdentityUtil.sanitize(message.getTarget().replaceFirst("^PRIVATE-", ""), "unknown");
+            publisher.logMessage(MessageSource.NONE, protocol, network + "/" + chatType + "/" + target, botNick, splitLine);
             if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
               checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
             }

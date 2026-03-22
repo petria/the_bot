@@ -1,5 +1,6 @@
 package org.freakz.engine.services.ai;
 
+import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.slf4j.Logger;
@@ -238,51 +239,25 @@ public class OpenClawAiService {
   }
 
   private String buildSessionKey(EngineRequest request) {
-    String protocol = resolveProtocol(request.getNetwork());
-    String network = sanitizePart(request.getNetwork(), "unknown");
-    String nick = sanitizePart(request.getFromSender(), "unknown");
+    String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
+    String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
+    String nick = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
 
-    if (request.isPrivateChannel()) {
+    String chatType = ChatIdentityUtil.sanitize(request.getChatType(), request.isPrivateChannel() ? "dm" : "channel");
+    String chatTarget;
+
+    String chatId = request.getChatId();
+    if (chatId != null && !chatId.isBlank() && chatId.contains("/")) {
+      chatTarget = ChatIdentityUtil.extractTargetFromChatId(chatId, "unknown");
+    } else {
+      chatTarget = ChatIdentityUtil.sanitize(request.getReplyTo(), "unknown");
+    }
+
+    if ("dm".equals(chatType)) {
       return protocol + ":" + network + ":dm:" + nick;
     }
 
-    String channel = sanitizePart(request.getReplyTo(), "unknown");
-    return protocol + ":" + network + ":channel:" + channel + ":user:" + nick;
-  }
-
-  private String resolveProtocol(String networkRaw) {
-    if (networkRaw == null) {
-      return "chat";
-    }
-
-    String n = networkRaw.trim().toLowerCase();
-    if (n.contains("discord")) {
-      return "discord";
-    }
-    if (n.contains("telegram")) {
-      return "telegram";
-    }
-    if (n.contains("slack")) {
-      return "slack";
-    }
-    if (n.contains("irc")) {
-      return "irc";
-    }
-
-    return sanitizePart(n, "chat");
-  }
-
-  private String sanitizePart(String value, String fallback) {
-    if (value == null || value.isBlank()) {
-      return fallback;
-    }
-
-    String sanitized = value.trim().toLowerCase().replaceAll("[^a-z0-9#:_-]+", "-");
-    if (sanitized.isBlank()) {
-      return fallback;
-    }
-
-    return sanitized;
+    return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + nick;
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {

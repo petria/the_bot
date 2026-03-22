@@ -7,8 +7,7 @@ import org.springframework.scheduling.annotation.Async;
 public interface EventPublisher {
 
   @Async
-  void logMessage(
-      MessageSource messageSource, String network, String channel, String sender, String message);
+  void logMessage(MessageSource messageSource, String network, String channel, String sender, String message);
 
   User publishEvent(BotConnection connection, Object source, String echoToAlias);
 }
