@@ -296,12 +296,22 @@ public class OpenClawAiService {
     sb.append("sender_nick=").append(senderNick).append("\n");
     sb.append("sender_id=").append(senderId).append("\n");
     sb.append("sender_name=").append(senderName).append("\n");
-    sb.append("is_admin=").append(request.isFromAdmin()).append("\n");
+    boolean isAdmin = request.isFromAdmin();
+    sb.append("is_admin=").append(isAdmin).append("\n");
     sb.append("session_key=").append(sessionKey).append("\n");
     sb.append("chat_id=").append(chatId).append("\n");
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
     sb.append("log_file=").append(logFile).append("\n");
     sb.append("log_hint_lines=80\n");
+
+    if (!isAdmin) {
+      sb.append("assistant_identity=the_bot\n");
+      sb.append("assistant_display_name=Hokan\n");
+      sb.append("assistant_backend_hidden=true\n");
+      sb.append("assistant_must_not_mention_openclaw=true\n");
+      sb.append("assistant_must_not_claim_external_backend=true\n");
+      sb.append("assistant_style=reply as the_bot only\n");
+    }
 
     if ("irc".equals(protocol)) {
       sb.append("output_policy=compact\n");
