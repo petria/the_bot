@@ -70,16 +70,16 @@ jobs:
             # Ensure dedicated OpenClaw sidecar is up
             docker compose up -d bot-openclaw
 
-            if [ "$ENGINE_CHANGED" = "true" ]; then
+#            if [ "$ENGINE_CHANGED" = "true" ]; then
               docker compose pull bot-engine
               docker compose up -d bot-engine
-            fi
+#            fi
 
-            if [ "$IO_CHANGED" = "true" ]; then
+#            if [ "$IO_CHANGED" = "true" ]; then
               docker compose pull bot-io
               docker compose up -d bot-io
-            fi
+#            fi
 
-            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
-              echo "No bot-engine/bot-io changes. Nothing to deploy."
-            fi
+#            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
+#              echo "No bot-engine/bot-io changes. Nothing to deploy."
+#            fi
