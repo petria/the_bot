@@ -16,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Locale;
-
 import java.net.MalformedURLException;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
@@ -57,57 +55,17 @@ public class AiCommandsHandlerService {
     CommandArgs args = new CommandArgs(message);
     String queryMessage = args.joinArgs(0);
 
-    String network = request.getEngineRequest().getNetwork();
-    String channel = request.getEngineRequest().getReplyTo();
-    String sentByNick = request.getEngineRequest().getFromSender();
-    String sentByRealName = request.getEngineRequest().getUser().getName();
+    OpenClawAiService.OpenClawAskResult askResult = openClawAiService.ask(request.getEngineRequest(), queryMessage);
 
-    String backendRaw = envValuesService.getKeyValueOrDefault("aiBackend", System.getenv("AI_BACKEND") == null ? "ollama" : System.getenv("AI_BACKEND"));
-    String backend = backendRaw.toLowerCase(Locale.ROOT);
-
-    String fallbackRaw = envValuesService.getKeyValueOrDefault("openclawFallbackToOllama", System.getenv("OPENCLAW_FALLBACK_TO_OLLAMA") == null ? "true" : System.getenv("OPENCLAW_FALLBACK_TO_OLLAMA"));
-    boolean fallbackToOllama = "true".equalsIgnoreCase(fallbackRaw);
-
-    String hostUrl = envValuesService.getKeyValueOrDefault("ollamaHost", "http://bot-ollama:11434");
-    String modelName = envValuesService.getKeyValueOrDefault("ollamaChatModel", "qwen2.5:14b");
-
-    String queryResponse;
-    if ("openclaw".equals(backend)) {
-      OpenClawAiService.OpenClawAskResult askResult = openClawAiService.ask(request.getEngineRequest(), queryMessage);
-      if (askResult.isCompleted()) {
-        queryResponse = askResult.getReply();
-      } else if (askResult.isAccepted()) {
-        String runId = askResult.getRunId() == null ? "n/a" : askResult.getRunId();
-        queryResponse = "OpenClaw accepted request (runId: " + runId + ").";
-      } else if (fallbackToOllama) {
-        log.warn("OpenClaw backend failed ({}), falling back to Ollama", askResult.getError());
-        queryResponse = ollamaAiService.ask(
-            request.getEngineRequest(),
-            hostUrl,
-            modelName,
-            queryMessage,
-            network,
-            channel,
-            sentByNick,
-            sentByRealName
-        );
-      } else {
-        queryResponse = "OpenClaw unavailable: " + askResult.getError();
-      }
+    if (askResult.isCompleted()) {
+      aiResponse.setResult(askResult.getReply());
+    } else if (askResult.isAccepted()) {
+      String runId = askResult.getRunId() == null ? "n/a" : askResult.getRunId();
+      aiResponse.setResult("OpenClaw accepted request (runId: " + runId + ").");
     } else {
-      queryResponse = ollamaAiService.ask(
-          request.getEngineRequest(),
-          hostUrl,
-          modelName,
-          queryMessage,
-          network,
-          channel,
-          sentByNick,
-          sentByRealName
-      );
+      log.warn("OpenClaw backend failed: {}", askResult.getError());
+      aiResponse.setResult("failed!");
     }
-
-    aiResponse.setResult(queryResponse);
     return aiResponse;
   }
 
