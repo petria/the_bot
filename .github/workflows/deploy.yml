@@ -61,8 +61,12 @@ jobs:
             echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env
             echo "OPENCLAW_HOST_PORT=${OPENCLAW_HOST_PORT:-18890}" >> .env
             echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}" >> .env
+            echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-$OPENCLAW_HOOKS_TOKEN}" >> .env
             echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
             echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
+            echo "AI_BACKEND=${AI_BACKEND:-openclaw}" >> .env
+            echo "OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-false}" >> .env
+            echo "OPENCLAW_MODE=${OPENCLAW_MODE:-hooks}" >> .env
             echo "OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}" >> .env
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
@@ -70,16 +74,16 @@ jobs:
             # Ensure dedicated OpenClaw sidecar is up
             docker compose up -d bot-openclaw
 
-#            if [ "$ENGINE_CHANGED" = "true" ]; then
+            if [ "$ENGINE_CHANGED" = "true" ]; then
               docker compose pull bot-engine
               docker compose up -d bot-engine
-#            fi
+            fi
 
-#            if [ "$IO_CHANGED" = "true" ]; then
+            if [ "$IO_CHANGED" = "true" ]; then
               docker compose pull bot-io
               docker compose up -d bot-io
-#            fi
+            fi
 
-#            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
-#              echo "No bot-engine/bot-io changes. Nothing to deploy."
-#            fi
+            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
+              echo "No bot-engine/bot-io changes. Nothing to deploy."
+            fi
