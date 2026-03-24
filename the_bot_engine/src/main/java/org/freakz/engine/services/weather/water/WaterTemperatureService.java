@@ -90,7 +90,7 @@ public class WaterTemperatureService {
 
   }
 
-  @PostConstruct
+//  @PostConstruct TODO
   public void scanWaterMeasurementSites() {
     initializerService.initialize(this);
   }

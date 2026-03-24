@@ -2,7 +2,7 @@ package org.freakz.engine.services.api;
 
 public enum ServiceRequestType {
   AiService,
-  AiCtrlService,
+
 
   BuildInfoQuery,
   ConnectionControlService,

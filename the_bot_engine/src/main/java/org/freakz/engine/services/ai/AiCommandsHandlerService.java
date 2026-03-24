@@ -69,14 +69,6 @@ public class AiCommandsHandlerService {
     return aiResponse;
   }
 
-  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.AiCtrlService)
-  public AiCtrlResponse handleAiCtlServiceRequest(
-      ServiceRequest request) {
-    AiCtrlResponse aiResponse = AiCtrlResponse.builder().build();
-    aiResponse.setStatus("OK: AiCtl!");
-    return aiResponse;
-  }
-
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WaterTemperatureService)
   public WaterTemperatureResponse handleWaterTemperatureServiceRequest(ServiceRequest request) {
 
