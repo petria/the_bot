@@ -35,11 +35,13 @@ jobs:
           IO_CHANGED: ${{ env.IO_CHANGED }}
           OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
           OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          PUID: ${{ vars.PUID }}
+          PGID: ${{ vars.PGID }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN
+          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,PUID,PGID
           script: |
             cd /home/hokan/the_bot
 
@@ -58,6 +60,8 @@ jobs:
             echo "SPRING_PROFILES_ACTIVE=prod" > .env
             echo "HOKAN_RUNTIME_PROFILE=PROD" >> .env
             echo "HOKAN_DATA_DIR=${HOKAN_DATA_DIR:-/home/hokan/the_bot}" >> .env
+            echo "PUID=${PUID:-1002}" >> .env
+            echo "PGID=${PGID:-1002}" >> .env
             echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" >> .env
             echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
             echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env
