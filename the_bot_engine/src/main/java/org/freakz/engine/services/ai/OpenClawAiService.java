@@ -2,9 +2,11 @@ package org.freakz.engine.services.ai;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -35,22 +37,26 @@ public class OpenClawAiService {
   private final EnvValuesService envValuesService;
   private final JsonMapper objectMapper;
   private final HttpClient httpClient;
+  private final BotEngine botEngine;
 
-  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper) {
+  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper, BotEngine botEngine) {
     this.envValuesService = envValuesService;
     this.objectMapper = objectMapper;
+    this.botEngine = botEngine;
     this.httpClient = HttpClient.newBuilder().build();
   }
 
-  public OpenClawAskResult ask(EngineRequest engineRequest, String queryMessage) {
+  @Async
+  public void ask(EngineRequest engineRequest, String queryMessage) {
 
     String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent").trim();
     String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "").trim();
-    int requestTimeoutSeconds = parseIntConfig("openclawRequestTimeoutSeconds", "OPENCLAW_REQUEST_TIMEOUT_SECONDS", 15);
-    int waitReplyTimeoutSeconds = parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 25);
+
+    int requestTimeoutSeconds = 300; //parseIntConfig("openclawRequestTimeoutSeconds", "OPENCLAW_REQUEST_TIMEOUT_SECONDS", 15);
+    int waitReplyTimeoutSeconds = 300; //parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 25);
 
     if (hooksToken.isBlank()) {
-      return OpenClawAskResult.failure("OpenClaw hooks token is missing (env key: openclawHooksToken).");
+      log.error("OpenClawAiService hooksToken is blank");
     }
 
     String sessionKey = buildSessionKey(engineRequest);
@@ -80,7 +86,7 @@ public class OpenClawAiService {
 
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
         log.warn("OpenClaw hook non-2xx: status={} body={}", response.statusCode(), response.body());
-        return OpenClawAskResult.failure("OpenClaw hook failed with HTTP " + response.statusCode() + " body: " + response.body());
+//        return "NOK: OpenClaw hook failed with HTTP " + response.statusCode() + " body: " + response.body();
       }
 
       JsonNode responseNode = objectMapper.readTree(response.body());
@@ -88,21 +94,28 @@ public class OpenClawAiService {
       String runId = responseNode.path("runId").asText("");
 
       if (!ok) {
-        return OpenClawAskResult.failure("OpenClaw returned non-ok response");
+        log.error("NOK: OpenClaw returned non-ok response");
       }
 
       String reply = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
       if (reply != null && !reply.isBlank()) {
-        return OpenClawAskResult.completed(runId, reply);
+        processReply(engineRequest, reply);
+//        return "OK: "  + runId;
+//        return OpenClawAskResult.completed(runId, reply);
       }
 
-      return OpenClawAskResult.accepted(runId);
+
 
     } catch (Exception e) {
       log.error("OpenClaw ask failed: {}", e.getMessage(), e);
-      return OpenClawAskResult.failure("OpenClaw request failed: " + e.getMessage());
+//      return "NOK: OpenClaw request failed: " + e.getMessage();
     }
   }
+
+  private void processReply(EngineRequest eRequest, String reply) {
+    botEngine.sendReplyMessage(eRequest, reply);
+  }
+
 
   private String waitForReplyText(String sessionKey, long startMillis, int timeoutSeconds) {
     long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
@@ -372,53 +385,6 @@ public class OpenClawAiService {
     }
   }
 
-  public static class OpenClawAskResult {
-    private final boolean accepted;
-    private final boolean completed;
-    private final String runId;
-    private final String reply;
-    private final String error;
-
-    private OpenClawAskResult(boolean accepted, boolean completed, String runId, String reply, String error) {
-      this.accepted = accepted;
-      this.completed = completed;
-      this.runId = runId;
-      this.reply = reply;
-      this.error = error;
-    }
-
-    public static OpenClawAskResult accepted(String runId) {
-      return new OpenClawAskResult(true, false, runId, null, null);
-    }
-
-    public static OpenClawAskResult completed(String runId, String reply) {
-      return new OpenClawAskResult(true, true, runId, reply, null);
-    }
-
-    public static OpenClawAskResult failure(String error) {
-      return new OpenClawAskResult(false, false, null, null, error);
-    }
-
-    public boolean isAccepted() {
-      return accepted;
-    }
-
-    public boolean isCompleted() {
-      return completed;
-    }
-
-    public String getRunId() {
-      return runId;
-    }
-
-    public String getReply() {
-      return reply;
-    }
-
-    public String getError() {
-      return error;
-    }
-  }
 
   private final class SessionLogTail {
     private final Path path;

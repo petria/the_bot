@@ -55,17 +55,8 @@ public class AiCommandsHandlerService {
     CommandArgs args = new CommandArgs(message);
     String queryMessage = args.joinArgs(0);
 
-    OpenClawAiService.OpenClawAskResult askResult = openClawAiService.ask(request.getEngineRequest(), queryMessage);
+    openClawAiService.ask(request.getEngineRequest(), queryMessage);
 
-    if (askResult.isCompleted()) {
-      aiResponse.setResult(askResult.getReply());
-    } else if (askResult.isAccepted()) {
-      String runId = askResult.getRunId() == null ? "n/a" : askResult.getRunId();
-      aiResponse.setResult("OpenClaw accepted request (runId: " + runId + ").");
-    } else {
-      log.warn("OpenClaw backend failed: {}", askResult.getError());
-      aiResponse.setResult("failed!");
-    }
     return aiResponse;
   }
 
