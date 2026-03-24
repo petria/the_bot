@@ -329,10 +329,10 @@ public class OpenClawAiService {
     if ("irc".equals(protocol)) {
       sb.append("output_policy=compact\n");
       if ("channel".equals(chatType)) {
-        sb.append("output_max_lines=4\n");
+        sb.append("output_max_lines=2\n");
         sb.append("output_max_chars=380\n");
       } else {
-        sb.append("output_max_lines=8\n");
+        sb.append("output_max_lines=4\n");
         sb.append("output_max_chars=380\n");
       }
       sb.append("output_prefer_single_message=true\n");
