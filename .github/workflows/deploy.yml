@@ -33,11 +33,13 @@ jobs:
           DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
           ENGINE_CHANGED: ${{ env.ENGINE_CHANGED }}
           IO_CHANGED: ${{ env.IO_CHANGED }}
+          OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED
+          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN
           script: |
             cd /home/hokan/the_bot
 
@@ -60,8 +62,11 @@ jobs:
             echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
             echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env
             echo "OPENCLAW_HOST_PORT=${OPENCLAW_HOST_PORT:-18890}" >> .env
-            echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}" >> .env
-            echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-$OPENCLAW_HOOKS_TOKEN}" >> .env
+            EXISTING_OPENCLAW_HOOKS_TOKEN="$OPENCLAW_HOOKS_TOKEN"
+            EXISTING_OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN"
+
+            echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-$EXISTING_OPENCLAW_HOOKS_TOKEN}" >> .env
+            echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${EXISTING_OPENCLAW_GATEWAY_TOKEN:-$EXISTING_OPENCLAW_HOOKS_TOKEN}}" >> .env
             echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
             echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
             echo "AI_BACKEND=${AI_BACKEND:-openclaw}" >> .env

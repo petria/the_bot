@@ -2,6 +2,7 @@ services:
   # Hokan dedicated OpenClaw container
   bot-openclaw:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/openclaw/state:/state
       - ${HOKAN_DATA_DIR:-.}/openclaw/workspace:/workspace
@@ -21,6 +22,7 @@ services:
   # Hokan the Bot engine container
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
+    user: "${PUID}:${PGID}"
     depends_on:
       - bot-openclaw
     volumes:
@@ -45,6 +47,7 @@ services:
   # Hokan the Bot io container
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
+    user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
