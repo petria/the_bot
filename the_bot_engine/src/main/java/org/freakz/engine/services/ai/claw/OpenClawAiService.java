@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ai;
+package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
