@@ -274,8 +274,8 @@ public class OpenClawWsGatewayService {
       throw new IOException("missing publicKey for device " + deviceId);
     }
 
-    String clientId = normalizeOperatorClientId(getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "cli"));
-    String clientMode = normalizeOperatorClientMode(getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "operator"));
+    String clientId = normalizeOperatorClientId(getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "gateway-client"));
+    String clientMode = normalizeOperatorClientMode(getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "backend"));
     String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asText("linux"));
 
     List<String> scopes = new ArrayList<>();
@@ -314,25 +314,25 @@ public class OpenClawWsGatewayService {
   private String normalizeOperatorClientId(String value) {
     String normalized = value == null ? "" : value.trim();
     if (normalized.isBlank()) {
-      return "cli";
+      return "gateway-client";
     }
-    if ("cli".equalsIgnoreCase(normalized)) {
-      return "cli";
+    if ("gateway-client".equalsIgnoreCase(normalized)) {
+      return "gateway-client";
     }
-    log.warn("OpenClaw WS client id '{}' is not supported for operator connect, using 'cli'", normalized);
-    return "cli";
+    log.warn("OpenClaw WS client id '{}' is not supported for backend operator connect, using 'gateway-client'", normalized);
+    return "gateway-client";
   }
 
   private String normalizeOperatorClientMode(String value) {
     String normalized = value == null ? "" : value.trim();
     if (normalized.isBlank()) {
-      return "operator";
+      return "backend";
     }
-    if ("operator".equalsIgnoreCase(normalized)) {
-      return "operator";
+    if ("backend".equalsIgnoreCase(normalized)) {
+      return "backend";
     }
-    log.warn("OpenClaw WS client mode '{}' is not supported for operator connect, using 'operator'", normalized);
-    return "operator";
+    log.warn("OpenClaw WS client mode '{}' is not supported for backend operator connect, using 'backend'", normalized);
+    return "backend";
   }
 
   private JsonNode readJsonFile(Path path) throws IOException {
