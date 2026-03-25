@@ -83,6 +83,7 @@ public class OpenClawWsGatewayService {
 
     AtomicReference<String> challengeNonce = new AtomicReference<>("");
     AtomicReference<String> latestChatReply = new AtomicReference<>("");
+    AtomicReference<String> latestRunId = new AtomicReference<>("");
     AtomicReference<Boolean> connectSent = new AtomicReference<>(false);
     AtomicReference<Boolean> agentSent = new AtomicReference<>(false);
 
@@ -93,8 +94,11 @@ public class OpenClawWsGatewayService {
             try {
               JsonNode node = objectMapper.readTree(payload);
               String type = node.path("type").asText("");
+              String event = node.path("event").asText("");
 
-              if ("event".equals(type) && "connect.challenge".equals(node.path("event").asText(""))) {
+              logFrameSummary(type, event, node.path("id").asText(""), node.path("payload"));
+
+              if ("event".equals(type) && "connect.challenge".equals(event)) {
                 challengeNonce.set(node.path("payload").path("nonce").asText(""));
                 if (!connectSent.get()) {
                   connectSent.set(true);
@@ -104,16 +108,21 @@ public class OpenClawWsGatewayService {
                 return;
               }
 
-              if ("event".equals(type) && "chat".equals(node.path("event").asText(""))) {
+              if ("event".equals(type) && "chat".equals(event)) {
                 JsonNode payloadNode = node.path("payload");
-                if (!sessionKey.equals(payloadNode.path("sessionKey").asText(""))) {
-                  return;
+                String chatRunId = findFirstText(payloadNode, "runId");
+                if (!chatRunId.isBlank()) {
+                  latestRunId.set(chatRunId);
                 }
 
-                String state = payloadNode.path("state").asText("");
-                String reply = extractReplyText(payloadNode.path("message"));
+                String state = findChatState(payloadNode);
+                String reply = findReplyText(payloadNode);
                 if (!reply.isBlank()) {
                   latestChatReply.set(reply);
+                  log.debug("OpenClaw WS captured chat reply state={} runId={} reply={}",
+                      state,
+                      abbreviate(chatRunId),
+                      abbreviate(reply));
                 }
 
                 if ("final".equalsIgnoreCase(state)) {
@@ -155,6 +164,10 @@ public class OpenClawWsGatewayService {
 
                 JsonNode payloadNode = node.path("payload");
                 String status = payloadNode.path("status").asText("");
+                String runId = findFirstText(payloadNode, "runId");
+                if (!runId.isBlank()) {
+                  latestRunId.set(runId);
+                }
 
                 // Ignore early accepted ack and wait for a completed payload.
                 if ("accepted".equalsIgnoreCase(status)) {
@@ -167,7 +180,7 @@ public class OpenClawWsGatewayService {
                 }
 
                 if (reply.isBlank()) {
-                  resultSink.tryEmitValue(WsAskResult.accepted(payloadNode.path("runId").asText(agentReqId)));
+                  resultSink.tryEmitValue(WsAskResult.accepted(latestRunId.get().isBlank() ? agentReqId : latestRunId.get()));
                 } else {
                   resultSink.tryEmitValue(WsAskResult.completed(reply));
                 }
@@ -284,6 +297,106 @@ public class OpenClawWsGatewayService {
     return latest;
   }
 
+  private String findReplyText(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return "";
+    }
+
+    String direct = extractReplyText(node.path("message"));
+    if (!direct.isBlank()) {
+      return direct;
+    }
+
+    direct = extractReplyText(node);
+    if (!direct.isBlank()) {
+      return direct;
+    }
+
+    for (String field : List.of("text", "reply", "content", "messageText", "body")) {
+      String value = extractTextValue(node.path(field));
+      if (!isLifecycleMarker(value)) {
+        return value;
+      }
+    }
+
+    if (node.isArray()) {
+      for (JsonNode item : node) {
+        String nested = findReplyText(item);
+        if (!nested.isBlank()) {
+          return nested;
+        }
+      }
+      return "";
+    }
+
+    for (String fieldName : List.of("payload", "data", "delta", "final", "chat", "event")) {
+      String nested = findReplyText(node.findValue(fieldName));
+      if (!nested.isBlank()) {
+        return nested;
+      }
+    }
+
+    return "";
+  }
+
+  private String extractTextValue(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return "";
+    }
+
+    if (node.isTextual()) {
+      return node.asText("").trim();
+    }
+
+    if (node.isArray()) {
+      String latest = "";
+      for (JsonNode item : node) {
+        String text = extractTextValue(item);
+        if (!text.isBlank()) {
+          latest = text;
+        }
+      }
+      return latest;
+    }
+
+    return "";
+  }
+
+  private String findChatState(JsonNode node) {
+    String state = findFirstText(node, "state");
+    if (!state.isBlank()) {
+      return state;
+    }
+    return findFirstText(node, "status");
+  }
+
+  private String findFirstText(JsonNode node, String fieldName) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return "";
+    }
+
+    JsonNode direct = node.path(fieldName);
+    if (direct.isTextual()) {
+      return direct.asText("").trim();
+    }
+
+    if (node.isArray()) {
+      for (JsonNode item : node) {
+        String nested = findFirstText(item, fieldName);
+        if (!nested.isBlank()) {
+          return nested;
+        }
+      }
+      return "";
+    }
+
+    JsonNode found = node.findValue(fieldName);
+    if (found != null && found.isTextual()) {
+      return found.asText("").trim();
+    }
+    return "";
+  }
+
   private String normalizeAgentReply(JsonNode payloadNode) {
     String reply = payloadNode.path("reply").asText("").trim();
     if (isLifecycleMarker(reply)) {
@@ -313,7 +426,46 @@ public class OpenClawWsGatewayService {
         || "done".equals(normalized)
         || "success".equals(normalized)
         || "error".equals(normalized)
-        || "failed".equals(normalized);
+        || "failed".equals(normalized)
+        || "final".equals(normalized)
+        || "delta".equals(normalized);
+  }
+
+  private void logFrameSummary(String type, String event, String id, JsonNode payload) {
+    if (!log.isDebugEnabled()) {
+      return;
+    }
+
+    String state = findChatState(payload);
+    String runId = findFirstText(payload, "runId");
+    String sessionKey = findFirstText(payload, "sessionKey");
+    String reply = findReplyText(payload);
+
+    if ("chat".equals(event) || "agent".equals(event) || !"".equals(id)) {
+      log.debug("OpenClaw WS frame type={} event={} id={} state={} runId={} sessionKey={} reply={}",
+          blankToDash(type),
+          blankToDash(event),
+          abbreviate(id),
+          blankToDash(state),
+          abbreviate(runId),
+          abbreviate(sessionKey),
+          abbreviate(reply));
+    }
+  }
+
+  private String blankToDash(String value) {
+    return value == null || value.isBlank() ? "-" : value;
+  }
+
+  private String abbreviate(String value) {
+    if (value == null) {
+      return "null";
+    }
+    String normalized = value.replaceAll("\\s+", " ").trim();
+    if (normalized.length() <= 140) {
+      return normalized;
+    }
+    return normalized.substring(0, 137) + "...";
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
