@@ -193,11 +193,22 @@ public class OpenClawWsGatewayService {
     ObjectNode auth = params.putObject("auth");
     auth.put("token", wsIdentity.operatorToken());
 
+    long signedAt = System.currentTimeMillis();
     ObjectNode device = params.putObject("device");
     device.put("id", wsIdentity.deviceId());
     device.put("publicKey", wsIdentity.publicKey());
-    device.put("signature", signNonce(wsIdentity.privateKey(), nonce));
-    device.put("signedAt", System.currentTimeMillis());
+    device.put("signature", signDevicePayload(
+        wsIdentity.privateKey(),
+        wsIdentity.deviceId(),
+        wsIdentity.clientId(),
+        wsIdentity.clientMode(),
+        "operator",
+        wsIdentity.scopes(),
+        signedAt,
+        wsIdentity.operatorToken(),
+        nonce
+    ));
+    device.put("signedAt", signedAt);
     device.put("nonce", nonce == null ? "" : nonce);
 
     return root.toString();
@@ -360,15 +371,54 @@ public class OpenClawWsGatewayService {
     }
   }
 
-  private String signNonce(PrivateKey privateKey, String nonce) {
+  private String signDevicePayload(
+      PrivateKey privateKey,
+      String deviceId,
+      String clientId,
+      String clientMode,
+      String role,
+      List<String> scopes,
+      long signedAtMs,
+      String token,
+      String nonce
+  ) {
     try {
+      String payload = buildDeviceSignaturePayload(deviceId, clientId, clientMode, role, scopes, signedAtMs, token, nonce);
       Signature signature = Signature.getInstance("Ed25519");
       signature.initSign(privateKey);
-      signature.update((nonce == null ? "" : nonce).getBytes(StandardCharsets.UTF_8));
+      signature.update(payload.getBytes(StandardCharsets.UTF_8));
       return Base64.getUrlEncoder().withoutPadding().encodeToString(signature.sign());
     } catch (Exception e) {
-      throw new IllegalStateException("failed to sign OpenClaw WS nonce", e);
+      throw new IllegalStateException("failed to sign OpenClaw WS device payload", e);
     }
+  }
+
+  private String buildDeviceSignaturePayload(
+      String deviceId,
+      String clientId,
+      String clientMode,
+      String role,
+      List<String> scopes,
+      long signedAtMs,
+      String token,
+      String nonce
+  ) {
+    String joinedScopes = scopes == null || scopes.isEmpty() ? "" : String.join(",", scopes);
+    return String.join("|",
+        "v2",
+        nullToEmpty(deviceId),
+        nullToEmpty(clientId),
+        nullToEmpty(clientMode),
+        nullToEmpty(role),
+        joinedScopes,
+        Long.toString(signedAtMs),
+        nullToEmpty(token),
+        nullToEmpty(nonce)
+    );
+  }
+
+  private String nullToEmpty(String value) {
+    return value == null ? "" : value;
   }
 
   private String extractRawPublicKey(String publicKeyPem) throws IOException {
