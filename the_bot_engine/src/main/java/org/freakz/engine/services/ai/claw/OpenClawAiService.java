@@ -52,6 +52,8 @@ public class OpenClawAiService {
   public void ask(EngineRequest engineRequest, String queryMessage) {
     String sessionKey = buildSessionKey(engineRequest);
     String envelope = buildHookEnvelope(engineRequest, sessionKey, queryMessage);
+    long startMillis = System.currentTimeMillis();
+    int waitReplyTimeoutSeconds = parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 45);
 
     log.debug("OpenClawAiService.ask({})", sessionKey);
 
@@ -65,13 +67,20 @@ public class OpenClawAiService {
             return;
           }
 
+          String replyFromState = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
+          if (replyFromState != null && !replyFromState.isBlank()) {
+            processReply(engineRequest, replyFromState);
+            return;
+          }
+
           if (!result.isAccepted()) {
             log.warn("OpenClaw WS failed: {}", result.getError());
           }
-          processReply(engineRequest, "failed!");
+          processReply(engineRequest, result.isCompleted() ? "completed" : "failed!");
         }, err -> {
           log.error("OpenClaw WS ask error: {}", err.getMessage(), err);
-          processReply(engineRequest, "failed!");
+          String replyFromState = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
+          processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : "failed!");
         });
 
   }

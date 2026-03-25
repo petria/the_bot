@@ -554,5 +554,27 @@ public class OpenClawWsGatewayService {
     public String getError() {
       return error;
     }
+
+    @Override
+    public String toString() {
+      return "WsAskResult{" +
+          "accepted=" + accepted +
+          ", completed=" + completed +
+          ", runId='" + abbreviate(runId) + '\'' +
+          ", reply='" + abbreviate(reply) + '\'' +
+          ", error='" + abbreviate(error) + '\'' +
+          '}';
+    }
+
+    private String abbreviate(String value) {
+      if (value == null) {
+        return "null";
+      }
+      String normalized = value.replaceAll("\\s+", " ").trim();
+      if (normalized.length() <= 160) {
+        return normalized;
+      }
+      return normalized.substring(0, 157) + "...";
+    }
   }
 }
