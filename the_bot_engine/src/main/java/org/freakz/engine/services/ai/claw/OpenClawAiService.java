@@ -167,7 +167,26 @@ public class OpenClawAiService {
   }
 
   private void processReply(EngineRequest eRequest, String reply) {
-    botEngine.sendReplyMessage(eRequest, reply);
+    botEngine.sendReplyMessage(eRequest, formatReplyForTarget(eRequest, reply));
+  }
+
+  private String formatReplyForTarget(EngineRequest request, String reply) {
+    if (reply == null || reply.isBlank()) {
+      return reply;
+    }
+
+    String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
+    if (!"irc".equals(protocol) || request.isPrivateChannel()) {
+      return reply;
+    }
+
+    String senderNick = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
+    String prefix = senderNick + ": ";
+    if (reply.startsWith(prefix)) {
+      return reply;
+    }
+
+    return prefix + reply;
   }
 
 
