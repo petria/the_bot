@@ -413,6 +413,13 @@ public class OpenClawAiService {
       sb.append("output_no_code_blocks=true\n");
     }
 
+    sb.append("final_reply_must_contain_result_or_explicit_failure=true\n");
+    sb.append("final_reply_must_not_be_placeholder_progress=true\n");
+    sb.append("final_reply_must_not_only_promise_future_action=true\n");
+    sb.append("final_reply_forbid_phrases=checking now|looking it up now|i will check|let me check|hold on while i check\n");
+    sb.append("tool_usage_rule=if you decide to check, fetch, inspect, open, search, read, or verify something, do that work first and only then send the final user-visible reply\n");
+    sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
+
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");
     sb.append("recent_messages:\n");
