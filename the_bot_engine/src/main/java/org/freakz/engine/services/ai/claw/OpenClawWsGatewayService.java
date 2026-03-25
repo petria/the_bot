@@ -118,7 +118,7 @@ public class OpenClawWsGatewayService {
 
                 if (!agentSent.get()) {
                   agentSent.set(true);
-                  String agentJson = buildAgentRequest(agentReqId, message, sessionKey, timeoutSeconds);
+                  String agentJson = buildAgentRequest(agentReqId, message, sessionKey);
                   session.send(Mono.just(session.textMessage(agentJson))).subscribe();
                 }
                 return;
@@ -214,7 +214,7 @@ public class OpenClawWsGatewayService {
     return root.toString();
   }
 
-  private String buildAgentRequest(String reqId, String message, String sessionKey, int timeoutSeconds) {
+  private String buildAgentRequest(String reqId, String message, String sessionKey) {
     ObjectNode root = objectMapper.createObjectNode();
     root.put("type", "req");
     root.put("id", reqId);
@@ -223,7 +223,7 @@ public class OpenClawWsGatewayService {
     ObjectNode params = root.putObject("params");
     params.put("sessionKey", sessionKey);
     params.put("message", message);
-    params.put("timeoutSeconds", timeoutSeconds);
+    params.put("idempotencyKey", reqId);
     return root.toString();
   }
 
