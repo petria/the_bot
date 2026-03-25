@@ -161,10 +161,7 @@ public class OpenClawWsGatewayService {
                   return;
                 }
 
-                String reply = payloadNode.path("reply").asText("");
-                if (reply.isBlank()) {
-                  reply = payloadNode.path("summary").asText("");
-                }
+                String reply = normalizeAgentReply(payloadNode);
                 if (reply.isBlank()) {
                   reply = latestChatReply.get();
                 }
@@ -285,6 +282,38 @@ public class OpenClawWsGatewayService {
       }
     }
     return latest;
+  }
+
+  private String normalizeAgentReply(JsonNode payloadNode) {
+    String reply = payloadNode.path("reply").asText("").trim();
+    if (isLifecycleMarker(reply)) {
+      reply = "";
+    }
+
+    if (reply.isBlank()) {
+      String summary = payloadNode.path("summary").asText("").trim();
+      if (!isLifecycleMarker(summary) && !summary.equalsIgnoreCase(payloadNode.path("status").asText("").trim())) {
+        reply = summary;
+      }
+    }
+
+    return reply;
+  }
+
+  private boolean isLifecycleMarker(String value) {
+    if (value == null) {
+      return true;
+    }
+    String normalized = value.trim().toLowerCase();
+    return normalized.isBlank()
+        || "accepted".equals(normalized)
+        || "completed".equals(normalized)
+        || "complete".equals(normalized)
+        || "ok".equals(normalized)
+        || "done".equals(normalized)
+        || "success".equals(normalized)
+        || "error".equals(normalized)
+        || "failed".equals(normalized);
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {

@@ -62,7 +62,7 @@ public class OpenClawAiService {
 
           log.debug("Handle result {}", result);
 
-          if (result.isCompleted() && result.getReply() != null && !result.getReply().isBlank()) {
+          if (result.isCompleted() && hasRealReply(result.getReply())) {
             processReply(engineRequest, result.getReply());
             return;
           }
@@ -83,6 +83,22 @@ public class OpenClawAiService {
           processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : "failed!");
         });
 
+  }
+
+  private boolean hasRealReply(String reply) {
+    if (reply == null) {
+      return false;
+    }
+    String normalized = reply.trim().toLowerCase();
+    return !normalized.isBlank()
+        && !"accepted".equals(normalized)
+        && !"completed".equals(normalized)
+        && !"complete".equals(normalized)
+        && !"ok".equals(normalized)
+        && !"done".equals(normalized)
+        && !"success".equals(normalized)
+        && !"error".equals(normalized)
+        && !"failed".equals(normalized);
   }
 
   @Async
