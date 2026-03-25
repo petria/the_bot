@@ -53,7 +53,7 @@ public class OpenClawAiService {
     String sessionKey = buildSessionKey(engineRequest);
     String envelope = buildHookEnvelope(engineRequest, sessionKey, queryMessage);
 
-    log.debug("OpenClawAiService.ask({}, {})", sessionKey, envelope);
+    log.debug("OpenClawAiService.ask({})", sessionKey);
 
     openClawWsGatewayService.ask(envelope, sessionKey)
         .subscribe(result -> {

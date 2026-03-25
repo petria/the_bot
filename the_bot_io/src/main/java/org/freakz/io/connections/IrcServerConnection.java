@@ -322,5 +322,10 @@ public class IrcServerConnection extends BotConnection {
 
   }
 
+  @Override
+  public String toString() {
+    return "IrcServerConnection{botNick: " + botNick + ", config: " + config + "}";
+  }
+
 
 }

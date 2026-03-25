@@ -43,6 +43,9 @@ public class OpenClawWsGatewayService {
   }
 
   public Mono<WsAskResult> ask(String message, String sessionKey) {
+
+    log.debug("Entering OpenClawWsGatewayService.ask()");
+
     String wsUrl = getConfigValue("openclawGatewayWsUrl", "OPENCLAW_GATEWAY_WS_URL", "ws://localhost:18890");
     String token = getConfigValue("openclawGatewayToken", "OPENCLAW_GATEWAY_TOKEN", "");
     int timeoutSeconds = parseIntConfig("openclawWsTimeoutSeconds", "OPENCLAW_WS_TIMEOUT_SECONDS", 40);
