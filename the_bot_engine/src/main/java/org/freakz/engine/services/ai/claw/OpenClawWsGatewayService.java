@@ -82,6 +82,7 @@ public class OpenClawWsGatewayService {
     final String agentReqId = "agent-" + UUID.randomUUID();
 
     AtomicReference<String> challengeNonce = new AtomicReference<>("");
+    AtomicReference<String> latestChatReply = new AtomicReference<>("");
     AtomicReference<Boolean> connectSent = new AtomicReference<>(false);
     AtomicReference<Boolean> agentSent = new AtomicReference<>(false);
 
@@ -99,6 +100,27 @@ public class OpenClawWsGatewayService {
                   connectSent.set(true);
                   String connectJson = buildConnectRequest(connectReqId, wsIdentity, challengeNonce.get());
                   session.send(Mono.just(session.textMessage(connectJson))).subscribe();
+                }
+                return;
+              }
+
+              if ("event".equals(type) && "chat".equals(node.path("event").asText(""))) {
+                JsonNode payloadNode = node.path("payload");
+                if (!sessionKey.equals(payloadNode.path("sessionKey").asText(""))) {
+                  return;
+                }
+
+                String state = payloadNode.path("state").asText("");
+                String reply = extractReplyText(payloadNode.path("message"));
+                if (!reply.isBlank()) {
+                  latestChatReply.set(reply);
+                }
+
+                if ("final".equalsIgnoreCase(state)) {
+                  String finalReply = latestChatReply.get();
+                  if (finalReply != null && !finalReply.isBlank()) {
+                    resultSink.tryEmitValue(WsAskResult.completed(finalReply));
+                  }
                 }
                 return;
               }
@@ -142,6 +164,9 @@ public class OpenClawWsGatewayService {
                 String reply = payloadNode.path("reply").asText("");
                 if (reply.isBlank()) {
                   reply = payloadNode.path("summary").asText("");
+                }
+                if (reply.isBlank()) {
+                  reply = latestChatReply.get();
                 }
 
                 if (reply.isBlank()) {
@@ -233,6 +258,33 @@ public class OpenClawWsGatewayService {
     }
     String sep = url.contains("?") ? "&" : "?";
     return url + sep + "token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+  }
+
+  private String extractReplyText(JsonNode messageNode) {
+    if (messageNode == null || messageNode.isMissingNode() || messageNode.isNull()) {
+      return "";
+    }
+
+    if (messageNode.path("text").isTextual()) {
+      return messageNode.path("text").asText("").trim();
+    }
+
+    JsonNode contentNode = messageNode.path("content");
+    if (!contentNode.isArray()) {
+      return "";
+    }
+
+    String latest = "";
+    for (JsonNode item : contentNode) {
+      if (!"text".equals(item.path("type").asText(""))) {
+        continue;
+      }
+      String text = item.path("text").asText("").trim();
+      if (!text.isBlank()) {
+        latest = text;
+      }
+    }
+    return latest;
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
