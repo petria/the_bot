@@ -160,9 +160,9 @@ public class OpenClawWsGatewayService {
     params.put("maxProtocol", 3);
 
     ObjectNode client = params.putObject("client");
-    client.put("id", getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "cli"));
-    client.put("mode", getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "operator"));
-    client.put("platform", getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", "linux"));
+    client.put("id", getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "gateway-client"));
+    client.put("mode", getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "backend"));
+    client.put("platform", getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", "node"));
     client.put("version", "1.0.0");
 
     params.put("role", "operator");
