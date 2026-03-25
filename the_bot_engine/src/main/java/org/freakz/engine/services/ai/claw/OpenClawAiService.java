@@ -38,16 +38,46 @@ public class OpenClawAiService {
   private final JsonMapper objectMapper;
   private final HttpClient httpClient;
   private final BotEngine botEngine;
+  private final OpenClawWsGatewayService openClawWsGatewayService;
 
-  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper, BotEngine botEngine) {
+  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper, BotEngine botEngine, OpenClawWsGatewayService openClawWsGatewayService) {
     this.envValuesService = envValuesService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
+    this.openClawWsGatewayService = openClawWsGatewayService;
     this.httpClient = HttpClient.newBuilder().build();
   }
 
   @Async
   public void ask(EngineRequest engineRequest, String queryMessage) {
+    String sessionKey = buildSessionKey(engineRequest);
+    String envelope = buildHookEnvelope(engineRequest, sessionKey, queryMessage);
+
+    log.debug("OpenClawAiService.ask({}, {})", sessionKey, envelope);
+
+    openClawWsGatewayService.ask(envelope, sessionKey)
+        .subscribe(result -> {
+
+          log.debug("Handle result {}", result);
+
+          if (result.isCompleted() && result.getReply() != null && !result.getReply().isBlank()) {
+            processReply(engineRequest, result.getReply());
+            return;
+          }
+
+          if (!result.isAccepted()) {
+            log.warn("OpenClaw WS failed: {}", result.getError());
+          }
+          processReply(engineRequest, "failed!");
+        }, err -> {
+          log.error("OpenClaw WS ask error: {}", err.getMessage(), err);
+          processReply(engineRequest, "failed!");
+        });
+
+  }
+
+  @Async
+  public void ask_OLD(EngineRequest engineRequest, String queryMessage) {
 
     String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent").trim();
     String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "").trim();
@@ -103,7 +133,6 @@ public class OpenClawAiService {
 //        return "OK: "  + runId;
 //        return OpenClawAskResult.completed(runId, reply);
       }
-
 
 
     } catch (Exception e) {

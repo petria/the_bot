@@ -35,13 +35,15 @@ jobs:
           IO_CHANGED: ${{ env.IO_CHANGED }}
           OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
           OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          OPENCLAW_WS_DEVICE_PUBLIC_KEY: ${{ secrets.OPENCLAW_WS_DEVICE_PUBLIC_KEY }}
+          OPENCLAW_WS_DEVICE_SIGNATURE: ${{ secrets.OPENCLAW_WS_DEVICE_SIGNATURE }}
           PUID: ${{ vars.PUID }}
           PGID: ${{ vars.PGID }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,PUID,PGID
+          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_WS_DEVICE_PUBLIC_KEY,OPENCLAW_WS_DEVICE_SIGNATURE,PUID,PGID
           script: |
             cd /home/hokan/the_bot
 
@@ -73,9 +75,16 @@ jobs:
             echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${EXISTING_OPENCLAW_GATEWAY_TOKEN:-$EXISTING_OPENCLAW_HOOKS_TOKEN}}" >> .env
             echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
             echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
+            echo "OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}" >> .env
+            echo "OPENCLAW_WS_TIMEOUT_SECONDS=${OPENCLAW_WS_TIMEOUT_SECONDS:-40}" >> .env
+            echo "OPENCLAW_WS_CLIENT_ID=${OPENCLAW_WS_CLIENT_ID:-hokan-engine}" >> .env
+            echo "OPENCLAW_WS_CLIENT_MODE=${OPENCLAW_WS_CLIENT_MODE:-operator}" >> .env
+            echo "OPENCLAW_WS_DEVICE_ID=${OPENCLAW_WS_DEVICE_ID:-hokan-engine}" >> .env
+            echo "OPENCLAW_WS_DEVICE_PUBLIC_KEY=${OPENCLAW_WS_DEVICE_PUBLIC_KEY:-}" >> .env
+            echo "OPENCLAW_WS_DEVICE_SIGNATURE=${OPENCLAW_WS_DEVICE_SIGNATURE:-}" >> .env
             echo "AI_BACKEND=${AI_BACKEND:-openclaw}" >> .env
             echo "OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-false}" >> .env
-            echo "OPENCLAW_MODE=${OPENCLAW_MODE:-hooks}" >> .env
+            echo "OPENCLAW_MODE=${OPENCLAW_MODE:-ws}" >> .env
             echo "OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}" >> .env
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
