@@ -57,7 +57,7 @@ public class OpenClawWsGatewayService {
     log.debug("Entering OpenClawWsGatewayService.ask()");
 
     String wsUrl = getConfigValue("openclawGatewayWsUrl", "OPENCLAW_GATEWAY_WS_URL", "ws://localhost:18890");
-    int timeoutSeconds = parseIntConfig("openclawWsTimeoutSeconds", "OPENCLAW_WS_TIMEOUT_SECONDS", 40);
+    int timeoutSeconds = parseIntConfig("openclawWsTimeoutSeconds", "OPENCLAW_WS_TIMEOUT_SECONDS", 300);
     WsIdentity wsIdentity;
 
     try {
@@ -120,10 +120,11 @@ public class OpenClawWsGatewayService {
                 String reply = findReplyText(payloadNode);
                 if (!reply.isBlank()) {
                   latestChatReply.set(reply);
-                  log.debug("OpenClaw WS captured chat reply state={} runId={} reply={}",
-                      state,
-                      abbreviate(chatRunId),
-                      abbreviate(reply));
+                  if ("final".equalsIgnoreCase(state)) {
+                    log.debug("OpenClaw WS captured final chat reply runId={} reply={}",
+                        abbreviate(chatRunId),
+                        abbreviate(reply));
+                  }
                 }
 
                 if ("final".equalsIgnoreCase(state)) {
@@ -455,7 +456,9 @@ public class OpenClawWsGatewayService {
     String sessionKey = findFirstText(payload, "sessionKey");
     String reply = findReplyText(payload);
 
-    if ("chat".equals(event) || "agent".equals(event) || !"".equals(id)) {
+    boolean logChatFinal = "chat".equals(event) && "final".equalsIgnoreCase(state);
+    boolean logResponse = "res".equals(type) && !blankToDash(id).equals("-");
+    if (logChatFinal || logResponse) {
       log.debug("OpenClaw WS frame type={} event={} id={} state={} runId={} sessionKey={} reply={}",
           blankToDash(type),
           blankToDash(event),
