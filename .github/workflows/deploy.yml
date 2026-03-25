@@ -76,7 +76,7 @@ jobs:
             echo "OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}" >> .env
             echo "OPENCLAW_WS_TIMEOUT_SECONDS=${OPENCLAW_WS_TIMEOUT_SECONDS:-40}" >> .env
             echo "OPENCLAW_WS_CLIENT_ID=${OPENCLAW_WS_CLIENT_ID:-cli}" >> .env
-            echo "OPENCLAW_WS_CLIENT_MODE=${OPENCLAW_WS_CLIENT_MODE:-cli}" >> .env
+            echo "OPENCLAW_WS_CLIENT_MODE=${OPENCLAW_WS_CLIENT_MODE:-operator}" >> .env
             echo "OPENCLAW_WS_CLIENT_PLATFORM=${OPENCLAW_WS_CLIENT_PLATFORM:-linux}" >> .env
             echo "AI_BACKEND=${AI_BACKEND:-openclaw}" >> .env
             echo "OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-false}" >> .env

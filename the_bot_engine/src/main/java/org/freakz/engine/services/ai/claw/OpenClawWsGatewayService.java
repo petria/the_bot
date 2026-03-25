@@ -274,8 +274,8 @@ public class OpenClawWsGatewayService {
       throw new IOException("missing publicKey for device " + deviceId);
     }
 
-    String clientId = getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", pairedNode.path("clientId").asText("cli"));
-    String clientMode = getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", pairedNode.path("clientMode").asText("cli"));
+    String clientId = normalizeOperatorClientId(getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "cli"));
+    String clientMode = normalizeOperatorClientMode(getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "operator"));
     String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asText("linux"));
 
     List<String> scopes = new ArrayList<>();
@@ -309,6 +309,30 @@ public class OpenClawWsGatewayService {
   private Path getStateDirPath() {
     String configured = getConfigValue("openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
     return Path.of(configured);
+  }
+
+  private String normalizeOperatorClientId(String value) {
+    String normalized = value == null ? "" : value.trim();
+    if (normalized.isBlank()) {
+      return "cli";
+    }
+    if ("cli".equalsIgnoreCase(normalized)) {
+      return "cli";
+    }
+    log.warn("OpenClaw WS client id '{}' is not supported for operator connect, using 'cli'", normalized);
+    return "cli";
+  }
+
+  private String normalizeOperatorClientMode(String value) {
+    String normalized = value == null ? "" : value.trim();
+    if (normalized.isBlank()) {
+      return "operator";
+    }
+    if ("operator".equalsIgnoreCase(normalized)) {
+      return "operator";
+    }
+    log.warn("OpenClaw WS client mode '{}' is not supported for operator connect, using 'operator'", normalized);
+    return "operator";
   }
 
   private JsonNode readJsonFile(Path path) throws IOException {
