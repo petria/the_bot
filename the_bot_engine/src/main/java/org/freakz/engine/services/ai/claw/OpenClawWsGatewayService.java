@@ -86,6 +86,7 @@ public class OpenClawWsGatewayService {
     AtomicReference<String> latestRunId = new AtomicReference<>("");
     AtomicReference<Boolean> connectSent = new AtomicReference<>(false);
     AtomicReference<Boolean> agentSent = new AtomicReference<>(false);
+    AtomicReference<Boolean> finished = new AtomicReference<>(false);
 
     Mono<Void> execute = webSocketClient.execute(URI.create(urlWithToken), new HttpHeaders(), session -> {
       Mono<Void> receive = session.receive()
@@ -128,7 +129,7 @@ public class OpenClawWsGatewayService {
                 if ("final".equalsIgnoreCase(state)) {
                   String finalReply = latestChatReply.get();
                   if (finalReply != null && !finalReply.isBlank()) {
-                    resultSink.tryEmitValue(WsAskResult.completed(finalReply));
+                    emitTerminalResult(resultSink, session, finished, WsAskResult.completed(finalReply));
                   }
                 }
                 return;
@@ -143,7 +144,7 @@ public class OpenClawWsGatewayService {
               if (connectReqId.equals(id)) {
                 boolean ok = node.path("ok").asBoolean(false);
                 if (!ok) {
-                  resultSink.tryEmitValue(WsAskResult.failed("OpenClaw WS connect failed: " + node.path("error")));
+                  emitTerminalResult(resultSink, session, finished, WsAskResult.failed("OpenClaw WS connect failed: " + node.path("error")));
                   return;
                 }
 
@@ -158,7 +159,7 @@ public class OpenClawWsGatewayService {
               if (agentReqId.equals(id)) {
                 boolean ok = node.path("ok").asBoolean(false);
                 if (!ok) {
-                  resultSink.tryEmitValue(WsAskResult.failed("OpenClaw WS agent failed: " + node.path("error")));
+                  emitTerminalResult(resultSink, session, finished, WsAskResult.failed("OpenClaw WS agent failed: " + node.path("error")));
                   return;
                 }
 
@@ -182,7 +183,7 @@ public class OpenClawWsGatewayService {
                 if (reply.isBlank()) {
                   resultSink.tryEmitValue(WsAskResult.accepted(latestRunId.get().isBlank() ? agentReqId : latestRunId.get()));
                 } else {
-                  resultSink.tryEmitValue(WsAskResult.completed(reply));
+                  emitTerminalResult(resultSink, session, finished, WsAskResult.completed(reply));
                 }
               }
             } catch (Exception e) {
@@ -202,6 +203,19 @@ public class OpenClawWsGatewayService {
         })
         .then(resultSink.asMono().timeout(Duration.ofSeconds(timeoutSeconds)))
         .onErrorResume(ex -> Mono.just(WsAskResult.failed("OpenClaw WS timeout/error: " + ex.getMessage())));
+  }
+
+  private void emitTerminalResult(
+      Sinks.One<WsAskResult> resultSink,
+      org.springframework.web.reactive.socket.WebSocketSession session,
+      AtomicReference<Boolean> finished,
+      WsAskResult result
+  ) {
+    if (finished.getAndSet(true)) {
+      return;
+    }
+    resultSink.tryEmitValue(result);
+    session.close().subscribe();
   }
 
   private String buildConnectRequest(String reqId, WsIdentity wsIdentity, String nonce) {
