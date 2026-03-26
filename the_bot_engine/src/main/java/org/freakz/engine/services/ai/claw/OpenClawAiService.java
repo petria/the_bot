@@ -26,8 +26,11 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 @Service
 public class OpenClawAiService {
@@ -370,7 +373,10 @@ public class OpenClawAiService {
         : senderNick;
 
     String runtimeLogRoot = getConfigValue("openclawRuntimeLogRoot", "OPENCLAW_RUNTIME_LOG_ROOT", "/workspace/runtime/logs");
-    String logFile = runtimeLogRoot + "/" + protocol + "/" + network + "/" + chatType + "/" + chatTarget + "/" + LocalDate.now(ZoneId.of("Europe/Helsinki")) + ".log";
+    String runtimeLogRootLocal = getConfigValue("openclawRuntimeLogRootLocal", "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL", "/runtime/logs");
+    String logDir = runtimeLogRoot + "/" + protocol + "/" + network + "/" + chatType + "/" + chatTarget;
+    String logFile = logDir + "/" + LocalDate.now(ZoneId.of("Europe/Helsinki")) + ".log";
+    List<String> availableLogFiles = listAvailableLogFiles(Path.of(runtimeLogRootLocal), protocol, network, chatType, chatTarget);
 
     StringBuilder sb = new StringBuilder();
     sb.append("[HOKAN_CONTEXT v1]\n");
@@ -387,12 +393,19 @@ public class OpenClawAiService {
     sb.append("session_key=").append(sessionKey).append("\n");
     sb.append("chat_id=").append(chatId).append("\n");
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
+    sb.append("log_dir=").append(logDir).append("\n");
     sb.append("log_file=").append(logFile).append("\n");
+    sb.append("log_file_name_format=yyyy-mm-dd.log\n");
+    sb.append("log_file_name_date_meaning=each log filename date is the chat day in Europe/Helsinki\n");
+    if (!availableLogFiles.isEmpty()) {
+      sb.append("log_dir_files=").append(String.join(",", availableLogFiles)).append("\n");
+      sb.append("log_dir_file_count=").append(availableLogFiles.size()).append("\n");
+    }
     sb.append("log_hint_lines=80\n");
     sb.append("local_file_access_allowed=true\n");
     sb.append("log_file_may_be_read_directly=true\n");
-    sb.append("log_directory_may_be_scanned=true\n");
-    sb.append("preferred_local_tools=read|glob|ls|stat\n");
+    sb.append("log_directory_may_be_inspected_when_supported=true\n");
+    sb.append("preferred_local_tools=read\n");
 
     if (!isAdmin) {
       sb.append("assistant_identity=the_bot\n");
@@ -424,7 +437,7 @@ public class OpenClawAiService {
     sb.append("tool_usage_rule=if you decide to check, fetch, inspect, open, search, read, or verify something, do that work first and only then send the final user-visible reply\n");
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
     sb.append("log_access_rule=when log_file is provided, you may use local file tools to inspect that file or its parent directory directly\n");
-    sb.append("directory_scan_rule=when asked what log files exist, prefer glob or ls on the log directory instead of claiming lack of access\n");
+    sb.append("directory_scan_rule=when asked what log files exist, do not claim lack of access if a supported local tool can inspect the provided path\n");
 
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");
@@ -438,6 +451,27 @@ public class OpenClawAiService {
     sb.append("[/USER_PROMPT]");
 
     return sb.toString();
+  }
+
+  private List<String> listAvailableLogFiles(Path runtimeLogRootLocal, String protocol, String network, String chatType, String chatTarget) {
+    try {
+      Path logDir = runtimeLogRootLocal.resolve(Path.of(protocol, network, chatType, chatTarget));
+      if (!Files.isDirectory(logDir)) {
+        return List.of();
+      }
+
+      try (Stream<Path> stream = Files.list(logDir)) {
+        return stream
+            .filter(Files::isRegularFile)
+            .map(path -> path.getFileName().toString())
+            .sorted(Comparator.reverseOrder())
+            .limit(60)
+            .toList();
+      }
+    } catch (Exception e) {
+      log.debug("Failed to list channel log files: {}", e.getMessage());
+      return List.of();
+    }
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
