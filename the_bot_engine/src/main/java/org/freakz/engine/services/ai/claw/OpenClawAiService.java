@@ -389,6 +389,10 @@ public class OpenClawAiService {
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
     sb.append("log_file=").append(logFile).append("\n");
     sb.append("log_hint_lines=80\n");
+    sb.append("local_file_access_allowed=true\n");
+    sb.append("log_file_may_be_read_directly=true\n");
+    sb.append("log_directory_may_be_scanned=true\n");
+    sb.append("preferred_local_tools=read|glob|ls|stat\n");
 
     if (!isAdmin) {
       sb.append("assistant_identity=the_bot\n");
@@ -419,6 +423,8 @@ public class OpenClawAiService {
     sb.append("final_reply_forbid_phrases=checking now|looking it up now|i will check|let me check|hold on while i check\n");
     sb.append("tool_usage_rule=if you decide to check, fetch, inspect, open, search, read, or verify something, do that work first and only then send the final user-visible reply\n");
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
+    sb.append("log_access_rule=when log_file is provided, you may use local file tools to inspect that file or its parent directory directly\n");
+    sb.append("directory_scan_rule=when asked what log files exist, prefer glob or ls on the log directory instead of claiming lack of access\n");
 
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");
