@@ -8,13 +8,13 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.dto.SendMessageByTargetResponse;
+import org.freakz.engine.dto.SendMessageByEchoToAliasResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_TARGET_ALIAS;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ECHO_TO_ALIAS;
 
 @HokanCommandHandler
 @HokanAdminCommand
@@ -25,9 +25,9 @@ public class MessageCmd extends AbstractCmd {
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-    jsap.setHelp("Send message to connection/channel by channel targetAlias tag.");
+    jsap.setHelp("Send message to connection/channel by channel echoToAlias tag.");
 
-    UnflaggedOption opt = new UnflaggedOption(ARG_TARGET_ALIAS).setRequired(true).setGreedy(false);
+    UnflaggedOption opt = new UnflaggedOption(ARG_ECHO_TO_ALIAS).setRequired(true).setGreedy(false);
     jsap.registerParameter(opt);
 
     opt = new UnflaggedOption(ARG_MESSAGE).setRequired(true).setGreedy(false);
@@ -37,8 +37,8 @@ public class MessageCmd extends AbstractCmd {
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
 
-    SendMessageByTargetResponse response =
-        doServiceRequest(request, results, ServiceRequestType.SendMessageByTargetAlias);
+    SendMessageByEchoToAliasResponse response =
+        doServiceRequest(request, results, ServiceRequestType.SendMessageByEchoToAlias);
     if (response.getSendTo().startsWith("NOK: ")) {
       return "Could not send message: " + response.getSendTo();
 

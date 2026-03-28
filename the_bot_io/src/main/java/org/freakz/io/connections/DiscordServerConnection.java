@@ -1,7 +1,7 @@
 package org.freakz.io.connections;
 
 import org.freakz.common.exception.BotIOException;
-import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.DiscordConfig;
 import org.freakz.common.model.feed.Message;
 import org.javacord.api.DiscordApi;
@@ -194,9 +194,9 @@ public class DiscordServerConnection extends BotConnection {
               if (!message.startsWith("!")) {
                 //                                    String msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
                 String msg = String.format("<%s@Dicord>: %s", actorName, message);
-                connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
               }
-            } catch (InvalidTargetAliasException e) {
+            } catch (InvalidEchoToAliasException e) {
               log.error("Can not echo message to: {}", echoToAlias);
             }
           }

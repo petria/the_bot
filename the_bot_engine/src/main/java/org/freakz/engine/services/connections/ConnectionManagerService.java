@@ -33,45 +33,32 @@ public class ConnectionManagerService {
     return connectionMap;
   }
 
-  public SendMessageByTargetAliasResponse sendMessageByTargetAlias(String message, String targetAlias) {
+  public SendMessageByEchoToAliasResponse sendMessageByEchoToAlias(String message, String echoToAlias) {
 //        log.debug("Send!");
-    SendMessageByTargetAliasRequest request
-        = SendMessageByTargetAliasRequest.builder()
+    SendMessageByEchoToAliasRequest request
+        = SendMessageByEchoToAliasRequest.builder()
         .message(message)
-        .targetAlias(targetAlias)
+        .echoToAlias(echoToAlias)
         .build();
 
-    ResponseEntity<SendMessageByTargetAliasResponse> response = messageSendClient.sendMessageByTargetAlias(request);
-//    Response response = messageSendClient.sendMessageByTargetAlias(request);
-//    Optional<SendMessageByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendMessageByTargetAliasResponse.class, objectMapper);
+    ResponseEntity<SendMessageByEchoToAliasResponse> response = messageSendClient.sendMessageByEchoToAlias(request);
+//    Response response = messageSendClient.sendMessageByEchoToAlias(request);
+//    Optional<SendMessageByEchoToAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendMessageByEchoToAliasResponse.class, objectMapper);
     //  return responseBody.get();
     return response.getBody();
   }
 
-  public SendIrcRawMessageByTargetAliasResponse sendIrcRawMessageByTargetAlias(String message, String targetAlias) {
-    SendIrcRawMessageByTargetAliasRequest request
-        = SendIrcRawMessageByTargetAliasRequest.builder()
-        .message(message)
-        .targetAlias(targetAlias)
+
+  public ChannelUsersByEchoToAliasResponse getChannelUsersByEchoToAlias(String echoToAlias) {
+    ChannelUsersByEchoToAliasRequest request
+        = ChannelUsersByEchoToAliasRequest.builder()
+        .echoToAlias(echoToAlias)
         .build();
 
-    ResponseEntity<SendIrcRawMessageByTargetAliasResponse> response = messageSendClient.sendIrcRawMessageByTargetAlias(request);
-//    Response response = messageSendClient.sendIrcRawMessageByTargetAlias(request);
-//    Optional<SendIrcRawMessageByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendIrcRawMessageByTargetAliasResponse.class, objectMapper);
-//    return responseBody.get();
-    return response.getBody();
-  }
+    ResponseEntity<ChannelUsersByEchoToAliasResponse> response = connectionManagerClient.getChannelUsersByEchoToAlias(request);
 
-  public ChannelUsersByTargetAliasResponse getChannelUsersByTargetAlias(String targetAlias) {
-    ChannelUsersByTargetAliasRequest request
-        = ChannelUsersByTargetAliasRequest.builder()
-        .targetAlias(targetAlias)
-        .build();
-
-    ResponseEntity<ChannelUsersByTargetAliasResponse> response = connectionManagerClient.getChannelUsersByTargetAlias(request);
-
-//    Response response = connectionManagerClient.getChannelUsersByTargetAlias(request);
-//    Optional<ChannelUsersByTargetAliasResponse> responseBody = FeignUtils.getResponseBody(response, ChannelUsersByTargetAliasResponse.class, objectMapper);
+//    Response response = connectionManagerClient.getChannelUsersByEchoToAlias(request);
+//    Optional<ChannelUsersByEchoToAliasResponse> responseBody = FeignUtils.getResponseBody(response, ChannelUsersByEchoToAliasResponse.class, objectMapper);
 //    return responseBody.get();
 
     return response.getBody();

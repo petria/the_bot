@@ -26,7 +26,7 @@ public enum ServiceRequestType {
 
   ReloadConfig,
 
-  SendMessageByTargetAlias,
+  SendMessageByEchoToAlias,
 
   SystemStatus,
 

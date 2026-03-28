@@ -1,6 +1,6 @@
 package org.freakz.io.connections;
 
-import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.TelegramConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
@@ -33,8 +33,8 @@ public class TelegramConnection extends BotConnection {
   }
 
   @Override
-  public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
-    log.debug("Get user for: {}", targetAlias);
+  public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias, BotConnectionChannel channel) {
+    log.debug("Get user for: {}", echoToAlias);
     List<ChannelUser> channelUsers = new ArrayList<>();
     return channelUsers;
   }
@@ -168,9 +168,9 @@ public class TelegramConnection extends BotConnection {
               log.debug("Echo to: {}", echoToAlias);
               try {
                 if (!message.startsWith("!")) {
-                  connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
+                  connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
                 }
-              } catch (InvalidTargetAliasException e) {
+              } catch (InvalidEchoToAliasException e) {
                 log.error("Can not echo message to: {}", echoToAlias);
               }
             }

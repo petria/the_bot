@@ -2,8 +2,8 @@ package org.freakz.io.connections;
 
 
 import org.freakz.common.exception.InvalidChannelIdException;
-import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.exception.TargetAliasNotIrcChannelException;
+import org.freakz.common.exception.EchoToAliasNotIrcChannelException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
@@ -168,8 +168,8 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
 
-  public void sendMessageByTargetAlias(String messageText, String targetAlias) throws InvalidTargetAliasException {
-    Dual dual = findChannelByTargetAlias(targetAlias);
+  public void sendMessageByEchoToAlias(String messageText, String echoToAlias) throws InvalidEchoToAliasException {
+    Dual dual = findChannelByEchoToAlias(echoToAlias);
     if (dual != null) {
       BotConnectionChannel channel = dual.channel;
       BotConnection connection = dual.connection;
@@ -184,19 +184,19 @@ public class ConnectionManager implements CommandLineRunner {
       connection.sendMessageTo(message);
 
     } else {
-      throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
+      throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
 
   }
 
-  public String sendIrcRawMessageByTargetAlias(String rawCommand, String targetAlias) throws InvalidTargetAliasException, TargetAliasNotIrcChannelException {
-    Dual dual = findChannelByTargetAlias(targetAlias);
+  public String sendIrcRawMessageByEchoToAlias(String rawCommand, String echoToAlias) throws InvalidEchoToAliasException, EchoToAliasNotIrcChannelException {
+    Dual dual = findChannelByEchoToAlias(echoToAlias);
     if (dual != null) {
       BotConnectionChannel channel = dual.channel;
       BotConnection connection = dual.connection;
 
       if (!channel.getType().equals(BotConnectionType.IRC_CONNECTION.name())) {
-        throw new TargetAliasNotIrcChannelException("Target channel is not IRC channel type, can not send Raw Irc Message!");
+        throw new EchoToAliasNotIrcChannelException("Target channel is not IRC channel type, can not send Raw Irc Message!");
       }
 
 
@@ -220,24 +220,24 @@ public class ConnectionManager implements CommandLineRunner {
 
 
     } else {
-      throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
+      throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
 
     return null;
   }
 
-  public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias) throws InvalidTargetAliasException {
-    Dual dual = findChannelByTargetAlias(targetAlias);
+  public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias) throws InvalidEchoToAliasException {
+    Dual dual = findChannelByEchoToAlias(echoToAlias);
     if (dual == null) {
-      throw new InvalidTargetAliasException("No channel found with targetAlias: " + targetAlias);
+      throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
-    List<ChannelUser> users = dual.connection.getChannelUsersByTargetAlias(targetAlias, dual.channel);
+    List<ChannelUser> users = dual.connection.getChannelUsersByEchoToAlias(echoToAlias, dual.channel);
 
     return users;
   }
 
-  private Dual findChannelByTargetAlias(String targetAlias) {
-    JoinedChannelContainer container = this.joinedChannelsMap.get(targetAlias.toUpperCase());
+  private Dual findChannelByEchoToAlias(String echoToAlias) {
+    JoinedChannelContainer container = this.joinedChannelsMap.get(echoToAlias.toUpperCase());
     if (container != null) {
       Dual r = new Dual();
       r.connection = container.connection;

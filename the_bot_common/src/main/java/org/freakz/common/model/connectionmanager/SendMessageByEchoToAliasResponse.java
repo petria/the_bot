@@ -2,11 +2,11 @@ package org.freakz.common.model.connectionmanager;
 
 import java.util.Objects;
 
-public class SendMessageByTargetAliasResponse {
+public class SendMessageByEchoToAliasResponse {
 
   private String sentTo;
 
-  public SendMessageByTargetAliasResponse() {
+  public SendMessageByEchoToAliasResponse() {
   }
 
   public String getSentTo() {
@@ -21,7 +21,7 @@ public class SendMessageByTargetAliasResponse {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SendMessageByTargetAliasResponse that = (SendMessageByTargetAliasResponse) o;
+    SendMessageByEchoToAliasResponse that = (SendMessageByEchoToAliasResponse) o;
     return Objects.equals(sentTo, that.sentTo);
   }
 
@@ -32,7 +32,7 @@ public class SendMessageByTargetAliasResponse {
 
   @Override
   public String toString() {
-    return "SendMessageByTargetAliasResponse{" +
+    return "SendMessageByEchoToAliasResponse{" +
         "sentTo='" + sentTo + '\'' +
         '}';
   }

@@ -2,12 +2,12 @@ package org.freakz.common.model.connectionmanager;
 
 import java.util.Objects;
 
-public class SendIrcRawMessageByTargetAliasResponse {
+public class SendIrcRawMessageByEchoToAliasResponse {
 
   private String sentTo;
   private String serverResponse;
 
-  public SendIrcRawMessageByTargetAliasResponse() {
+  public SendIrcRawMessageByEchoToAliasResponse() {
   }
 
   public String getSentTo() {
@@ -30,7 +30,7 @@ public class SendIrcRawMessageByTargetAliasResponse {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SendIrcRawMessageByTargetAliasResponse that = (SendIrcRawMessageByTargetAliasResponse) o;
+    SendIrcRawMessageByEchoToAliasResponse that = (SendIrcRawMessageByEchoToAliasResponse) o;
     return Objects.equals(sentTo, that.sentTo) && Objects.equals(serverResponse, that.serverResponse);
   }
 
@@ -41,7 +41,7 @@ public class SendIrcRawMessageByTargetAliasResponse {
 
   @Override
   public String toString() {
-    return "SendIrcRawMessageByTargetAliasResponse{" +
+    return "SendIrcRawMessageByEchoToAliasResponse{" +
         "sentTo='" + sentTo + '\'' +
         ", serverResponse='" + serverResponse + '\'' +
         '}';

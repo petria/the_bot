@@ -3,14 +3,14 @@ package org.freakz.common.model.connectionmanager;
 import java.util.List;
 import java.util.Objects;
 
-public class ChannelUsersByTargetAliasResponse {
+public class ChannelUsersByEchoToAliasResponse {
 
   private List<ChannelUser> channelUsers;
 
-  public ChannelUsersByTargetAliasResponse() {
+  public ChannelUsersByEchoToAliasResponse() {
   }
 
-  public ChannelUsersByTargetAliasResponse(List<ChannelUser> channelUsers) {
+  public ChannelUsersByEchoToAliasResponse(List<ChannelUser> channelUsers) {
     this.channelUsers = channelUsers;
   }
 
@@ -30,7 +30,7 @@ public class ChannelUsersByTargetAliasResponse {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ChannelUsersByTargetAliasResponse that = (ChannelUsersByTargetAliasResponse) o;
+    ChannelUsersByEchoToAliasResponse that = (ChannelUsersByEchoToAliasResponse) o;
     return Objects.equals(channelUsers, that.channelUsers);
   }
 
@@ -41,7 +41,7 @@ public class ChannelUsersByTargetAliasResponse {
 
   @Override
   public String toString() {
-    return "ChannelUsersByTargetAliasResponse{" +
+    return "ChannelUsersByEchoToAliasResponse{" +
         "channelUsers=" + channelUsers +
         '}';
   }
@@ -54,8 +54,8 @@ public class ChannelUsersByTargetAliasResponse {
       return this;
     }
 
-    public ChannelUsersByTargetAliasResponse build() {
-      return new ChannelUsersByTargetAliasResponse(channelUsers);
+    public ChannelUsersByEchoToAliasResponse build() {
+      return new ChannelUsersByEchoToAliasResponse(channelUsers);
     }
   }
 }

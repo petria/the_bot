@@ -1,9 +1,9 @@
 package org.freakz.common.spring.rest;
 
-import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,23 +34,23 @@ public class RestMessageSendClient {
     }
   }
 
-  public ResponseEntity<SendMessageByTargetAliasResponse> sendMessageByTargetAlias(SendMessageByTargetAliasRequest request) {
-    String url = BASE_URL + "/send_message_by_target_alias";
+  public ResponseEntity<SendMessageByEchoToAliasResponse> sendMessageByEchoToAlias(SendMessageByEchoToAliasRequest request) {
+    String url = BASE_URL + "/send_message_by_echo_to_alias";
     try {
-      return restTemplate.postForEntity(url, request, SendMessageByTargetAliasResponse.class);
+      return restTemplate.postForEntity(url, request, SendMessageByEchoToAliasResponse.class);
     } catch (Exception e) {
-      log.error("Error sending message by target alias: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(new SendMessageByTargetAliasResponse());
+      log.error("Error sending message by echoToAlias: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(new SendMessageByEchoToAliasResponse());
     }
   }
 
-  public ResponseEntity<SendIrcRawMessageByTargetAliasResponse> sendIrcRawMessageByTargetAlias(SendIrcRawMessageByTargetAliasRequest request) {
-    String url = BASE_URL + "/send_irc_raw_message_by_target_alias";
+  public ResponseEntity<SendIrcRawMessageByEchoToAliasResponse> sendIrcRawMessageByEchoToAlias(SendIrcRawMessageByEchoToAliasRequest request) {
+    String url = BASE_URL + "/send_irc_raw_message_by_echo_to_alias";
     try {
-      return restTemplate.postForEntity(url, request, SendIrcRawMessageByTargetAliasResponse.class);
+      return restTemplate.postForEntity(url, request, SendIrcRawMessageByEchoToAliasResponse.class);
     } catch (Exception e) {
-      log.error("Error sending irc raw message by target alias: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(new SendIrcRawMessageByTargetAliasResponse());
+      log.error("Error sending irc raw message by echoToAlias: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(new SendIrcRawMessageByEchoToAliasResponse());
     }
   }
 }

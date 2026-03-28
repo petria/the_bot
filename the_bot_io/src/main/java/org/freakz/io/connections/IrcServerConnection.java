@@ -3,7 +3,7 @@ package org.freakz.io.connections;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.exception.BotIOException;
-import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
@@ -158,8 +158,8 @@ public class IrcServerConnection extends BotConnection {
             log.debug("Echo to: {}", echoToAlias);
             try {
               String msg = String.format("<%s@IRC>: %s", actorName, message);
-              connectionManager.sendMessageByTargetAlias(msg, echoToAlias);
-            } catch (InvalidTargetAliasException e) {
+              connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
+            } catch (InvalidEchoToAliasException e) {
               log.error("Can not echo message to: {}", echoToAlias);
             }
           }
@@ -264,7 +264,7 @@ public class IrcServerConnection extends BotConnection {
   }
 
   @Override
-  public List<ChannelUser> getChannelUsersByTargetAlias(String targetAlias, BotConnectionChannel channel) {
+  public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias, BotConnectionChannel channel) {
 //        List<String> userList = new ArrayList<>();
     List<ChannelUser> channelUsers = new ArrayList<>();
     Optional<Channel> optional = client.getChannel(channel.getName());

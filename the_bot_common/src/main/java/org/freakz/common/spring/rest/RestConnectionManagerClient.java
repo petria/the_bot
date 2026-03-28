@@ -1,7 +1,7 @@
 package org.freakz.common.spring.rest;
 
-import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,13 +34,13 @@ public class RestConnectionManagerClient {
 
   }
 
-  public ResponseEntity<ChannelUsersByTargetAliasResponse> getChannelUsersByTargetAlias(@RequestBody ChannelUsersByTargetAliasRequest request) {
-    String url = BASE_URL + "/get_channel_users_by_target_alias";
+  public ResponseEntity<ChannelUsersByEchoToAliasResponse> getChannelUsersByEchoToAlias(@RequestBody ChannelUsersByEchoToAliasRequest request) {
+    String url = BASE_URL + "/get_channel_users_by_echo_to_alias";
     try {
-      return restTemplate.postForEntity(url, request, ChannelUsersByTargetAliasResponse.class);
+      return restTemplate.postForEntity(url, request, ChannelUsersByEchoToAliasResponse.class);
     } catch (Exception e) {
-      log.error("Error sending getChannelUsersByTargetAlias message: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(new ChannelUsersByTargetAliasResponse());
+      log.error("Error sending getChannelUsersByEchoToAlias message: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(new ChannelUsersByEchoToAliasResponse());
     }
   }
 

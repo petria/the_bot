@@ -1,9 +1,9 @@
 package org.freakz.io.contoller;
 
-import org.freakz.common.exception.InvalidTargetAliasException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.connectionmanager.ChannelUser;
-import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.ChannelUsersByTargetAliasResponse;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
@@ -49,13 +49,13 @@ public class ConnectionManagerController {
     return ResponseEntity.ok(joinedChannelsMap);
   }
 
-  @PostMapping("/get_channel_users_by_target_alias")
-  public ResponseEntity<?> getChannelUsersByTargetAlias(
-      @RequestBody ChannelUsersByTargetAliasRequest request) throws InvalidTargetAliasException {
-    ChannelUsersByTargetAliasResponse response = new ChannelUsersByTargetAliasResponse();
+  @PostMapping("/get_channel_users_by_echo_to_alias")
+  public ResponseEntity<?> getChannelUsersByEchoToAlias(
+      @RequestBody ChannelUsersByEchoToAliasRequest request) throws InvalidEchoToAliasException {
+    ChannelUsersByEchoToAliasResponse response = new ChannelUsersByEchoToAliasResponse();
 
     List<ChannelUser> users =
-        connectionManager.getChannelUsersByTargetAlias(request.getTargetAlias());
+        connectionManager.getChannelUsersByEchoToAlias(request.getEchoToAlias());
     response.setChannelUsers(users);
     //        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
     return ResponseEntity.ok(response);

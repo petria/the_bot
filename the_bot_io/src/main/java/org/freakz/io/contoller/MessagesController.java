@@ -1,12 +1,12 @@
 package org.freakz.io.contoller;
 
 
-import org.freakz.common.exception.InvalidTargetAliasException;
-import org.freakz.common.exception.TargetAliasNotIrcChannelException;
-import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.SendIrcRawMessageByTargetAliasResponse;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasRequest;
-import org.freakz.common.model.connectionmanager.SendMessageByTargetAliasResponse;
+import org.freakz.common.exception.EchoToAliasNotIrcChannelException;
+import org.freakz.common.exception.InvalidEchoToAliasException;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.io.connections.ConnectionManager;
 import org.slf4j.Logger;
@@ -52,35 +52,35 @@ public class MessagesController {
     }
   }
 
-  @PostMapping("/send_message_by_target_alias")
-  public ResponseEntity<?> sendByTargetAlias(@RequestBody SendMessageByTargetAliasRequest request) {
+  @PostMapping("/send_message_by_echo_to_alias")
+  public ResponseEntity<?> sendByEchoToAlias(@RequestBody SendMessageByEchoToAliasRequest request) {
     log.debug("Request: {}", request);
-    SendMessageByTargetAliasResponse response = new SendMessageByTargetAliasResponse();
+    SendMessageByEchoToAliasResponse response = new SendMessageByEchoToAliasResponse();
     try {
-      connectionManager.sendMessageByTargetAlias(request.getMessage(), request.getTargetAlias());
-      response.setSentTo(request.getTargetAlias());
+      connectionManager.sendMessageByEchoToAlias(request.getMessage(), request.getEchoToAlias());
+      response.setSentTo(request.getEchoToAlias());
 
-    } catch (InvalidTargetAliasException e) {
+    } catch (InvalidEchoToAliasException e) {
       response.setSentTo("NOK:  " + e.getMessage());
     }
     return ResponseEntity.ok(response);
   }
 
-  @PostMapping("/send_irc_raw_message_by_target_alias")
-  public ResponseEntity<?> sendIrcRawByTargetAlias(
-      @RequestBody SendIrcRawMessageByTargetAliasRequest request) {
+  @PostMapping("/send_irc_raw_message_by_echo_to_alias")
+  public ResponseEntity<?> sendIrcRawByEchoToAlias(
+      @RequestBody SendIrcRawMessageByEchoToAliasRequest request) {
     log.debug("Request: {}", request);
-    SendIrcRawMessageByTargetAliasResponse response = new SendIrcRawMessageByTargetAliasResponse();
+    SendIrcRawMessageByEchoToAliasResponse response = new SendIrcRawMessageByEchoToAliasResponse();
 
     try {
 
       String serverResponse =
-          connectionManager.sendIrcRawMessageByTargetAlias(
-              request.getMessage(), request.getTargetAlias());
-      response.setSentTo("OK: " + request.getTargetAlias());
+          connectionManager.sendIrcRawMessageByEchoToAlias(
+              request.getMessage(), request.getEchoToAlias());
+      response.setSentTo("OK: " + request.getEchoToAlias());
       response.setServerResponse(serverResponse);
 
-    } catch (InvalidTargetAliasException | TargetAliasNotIrcChannelException e) {
+    } catch (InvalidEchoToAliasException | EchoToAliasNotIrcChannelException e) {
       response.setSentTo("NOK:  " + e.getMessage());
     }
     return ResponseEntity.ok(response);
