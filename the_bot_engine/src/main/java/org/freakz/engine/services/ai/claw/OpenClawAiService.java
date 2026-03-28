@@ -183,8 +183,7 @@ public class OpenClawAiService {
       return reply;
     }
 
-    String senderNick = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
-    String prefix = senderNick + ": ";
+    String prefix = request.getFromSender() + ": ";
     if (reply.startsWith(prefix)) {
       return reply;
     }

@@ -10,7 +10,7 @@ services:
       - ${HOKAN_DATA_DIR:-.}/openclaw/logs:/logs
       - ${HOKAN_DATA_DIR:-.}/runtime:/workspace/runtime
     ports:
-      - "127.0.0.1:${OPENCLAW_HOST_PORT:-18890}:18889"
+      - "127.0.0.1:${OPENCLAW_HOST_PORT:-18899}:18889"
     environment:
       - TZ=Europe/Helsinki
       - OPENCLAW_STATE_DIR=/state
