@@ -1,5 +1,6 @@
 package org.freakz.common.model.engine;
 
+import org.freakz.common.chat.ChatIdentity;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.users.User;
 
@@ -29,11 +30,9 @@ public class EngineRequest {
 
   private User user;
   private TheBotConfig botConfig;
+  private ChatIdentity chatIdentity;
 
-  public EngineRequest() {
-  }
-
-  public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, boolean isFromAdmin, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig) {
+  public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, boolean isFromAdmin, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig, ChatIdentity chatIdentity) {
     this.timestamp = timestamp;
     this.command = command;
     this.replyTo = replyTo;
@@ -50,6 +49,7 @@ public class EngineRequest {
     this.echoToAlias = echoToAlias;
     this.user = user;
     this.botConfig = botConfig;
+    this.chatIdentity = chatIdentity;
   }
 
   public static Builder builder() {
@@ -176,6 +176,14 @@ public class EngineRequest {
     this.botConfig = botConfig;
   }
 
+  public ChatIdentity getChatIdentity() {
+    return chatIdentity;
+  }
+
+  public void setChatIdentity(ChatIdentity chatIdentity) {
+    this.chatIdentity = chatIdentity;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -223,6 +231,7 @@ public class EngineRequest {
     isPrivateChannel = privateChannel;
   }
 
+
   public static class Builder {
     private long timestamp;
     private String command;
@@ -240,6 +249,7 @@ public class EngineRequest {
     private String echoToAlias;
     private User user;
     private TheBotConfig botConfig;
+    private ChatIdentity chatIdentity;
 
     public Builder timestamp(long timestamp) {
       this.timestamp = timestamp;
@@ -321,8 +331,14 @@ public class EngineRequest {
       return this;
     }
 
-    public EngineRequest build() {
-      return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, isFromAdmin, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
+    public Builder chatIdentity(ChatIdentity chatIdentity) {
+      this.chatIdentity = chatIdentity;
+      return this;
     }
+
+    public EngineRequest build() {
+      return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, isFromAdmin, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
+    }
+
   }
 }

@@ -12,24 +12,18 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
@@ -54,7 +48,7 @@ public class OpenClawAiService {
   @Async
   public void ask(EngineRequest engineRequest, String queryMessage) {
     String sessionKey = buildSessionKey(engineRequest);
-    String envelope = buildHookEnvelope(engineRequest, sessionKey, queryMessage);
+    String envelope = buildOpenClawEnvelope(engineRequest, sessionKey, queryMessage);
     long startMillis = System.currentTimeMillis();
     int waitReplyTimeoutSeconds = parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 45);
 
@@ -102,71 +96,6 @@ public class OpenClawAiService {
         && !"success".equals(normalized)
         && !"error".equals(normalized)
         && !"failed".equals(normalized);
-  }
-
-  @Async
-  public void ask_OLD(EngineRequest engineRequest, String queryMessage) {
-
-    String hooksUrl = getConfigValue("openclawHooksUrl", "HOKAN_OPENCLAW_HOOKS_URL", "http://bot-openclaw:18889/hooks/agent").trim();
-    String hooksToken = getConfigValue("openclawHooksToken", "OPENCLAW_HOOKS_TOKEN", "").trim();
-
-    int requestTimeoutSeconds = 300; //parseIntConfig("openclawRequestTimeoutSeconds", "OPENCLAW_REQUEST_TIMEOUT_SECONDS", 15);
-    int waitReplyTimeoutSeconds = 300; //parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 25);
-
-    if (hooksToken.isBlank()) {
-      log.error("OpenClawAiService hooksToken is blank");
-    }
-
-    String sessionKey = buildSessionKey(engineRequest);
-    long startMillis = System.currentTimeMillis();
-
-    try {
-      Map<String, Object> payload = new LinkedHashMap<>();
-      payload.put("message", buildHookEnvelope(engineRequest, sessionKey, queryMessage));
-      payload.put("name", "Hokan");
-      payload.put("sessionKey", sessionKey);
-      payload.put("wakeMode", "now");
-      payload.put("deliver", false);
-
-      String json = objectMapper.writeValueAsString(payload);
-
-      HttpRequest request = HttpRequest.newBuilder()
-          .uri(URI.create(hooksUrl))
-          .timeout(Duration.ofSeconds(requestTimeoutSeconds))
-          .version(HttpClient.Version.HTTP_1_1)
-          .header("Authorization", "Bearer " + hooksToken)
-          .header("Content-Type", "application/json")
-          .POST(HttpRequest.BodyPublishers.ofString(json))
-          .build();
-
-      log.debug("OpenClaw request: method={} url={} sessionKey={}", request.method(), hooksUrl, sessionKey);
-      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        log.warn("OpenClaw hook non-2xx: status={} body={}", response.statusCode(), response.body());
-//        return "NOK: OpenClaw hook failed with HTTP " + response.statusCode() + " body: " + response.body();
-      }
-
-      JsonNode responseNode = objectMapper.readTree(response.body());
-      boolean ok = responseNode.path("ok").asBoolean(false);
-      String runId = responseNode.path("runId").asText("");
-
-      if (!ok) {
-        log.error("NOK: OpenClaw returned non-ok response");
-      }
-
-      String reply = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
-      if (reply != null && !reply.isBlank()) {
-        processReply(engineRequest, reply);
-//        return "OK: "  + runId;
-//        return OpenClawAskResult.completed(runId, reply);
-      }
-
-
-    } catch (Exception e) {
-      log.error("OpenClaw ask failed: {}", e.getMessage(), e);
-//      return "NOK: OpenClaw request failed: " + e.getMessage();
-    }
   }
 
   private void processReply(EngineRequest eRequest, String reply) {
@@ -351,7 +280,7 @@ public class OpenClawAiService {
     return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + nick;
   }
 
-  private String buildHookEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
+  private String buildOpenClawEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
     String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
     String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
     String chatType = ChatIdentityUtil.sanitize(request.getChatType(), request.isPrivateChannel() ? "dm" : "channel");

@@ -57,13 +57,15 @@ public class EventPublisherService implements EventPublisher {
       String replyTo,
       Long channelId,
       String senderId,
-      String echoToAlias) {
-    boolean isPrivateChannel = false;
+      String echoToAlias,
+      boolean isPrivateChannel) {
+
+/*    boolean isPrivateChannel = false;
     if (echoToAlias != null && echoToAlias.startsWith("PRIVATE-")) {
       isPrivateChannel = true;
-    }
+    }*/
 
-    ChatIdentity identity = buildChatIdentity(connection, replyTo, senderId, sender, isPrivateChannel);
+    ChatIdentity chatIdentity = buildChatIdentity(connection, replyTo, senderId, sender, isPrivateChannel);
 
     EngineRequest request =
         EngineRequest.builder()
@@ -76,9 +78,10 @@ public class EventPublisherService implements EventPublisher {
             .fromSender(sender)
             .fromSenderId(senderId)
             .network(connection.getNetwork())
-            .chatProtocol(identity.getProtocol())
-            .chatType(identity.getChatType())
-            .chatId(identity.getChatId())
+            .chatIdentity(chatIdentity)
+            .chatProtocol(chatIdentity.getProtocol())
+            .chatType(chatIdentity.getChatType())
+            .chatId(chatIdentity.getChatId())
             .echoToAlias(echoToAlias)
             .build();
     try {
@@ -148,10 +151,11 @@ public class EventPublisherService implements EventPublisher {
       String replyTo,
       Long channelId,
       String senderId,
-      String echoToAlias) {
+      String echoToAlias,
+      boolean isPrivateChannel) {
     taskExecutor.execute(() -> {
       log.debug("send async");
-      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias);
+      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias, isPrivateChannel);
       log.debug("send DONE");
     });
   }
@@ -175,7 +179,8 @@ public class EventPublisherService implements EventPublisher {
         msg.getTarget(),
         null,
         msg.getSender(),
-        echoToAlias);
+        echoToAlias,
+        true);
 
     return new org.freakz.common.model.users.User();
   }
@@ -202,14 +207,19 @@ public class EventPublisherService implements EventPublisher {
         msg.getTarget(),
         null,
         msg.getSender(),
-        echoToAlias);
+        echoToAlias,
+        false);
 
     return new org.freakz.common.model.users.User();
   }
 
   private org.freakz.common.model.users.User publishTelegramEvent(
       BotConnection connection, Update update, String echoToAlias) {
-    log.debug("Publish TELEGRAM event: {}", update);
+
+    String type = update.getMessage().getChat().getType();
+    boolean isPrivate = "private".equals(type);
+
+    log.debug("Publish TELEGRAM event: {} - isPrivate: {}", update, isPrivate);
 
     User from = update.getMessage().getFrom();
 
@@ -222,7 +232,9 @@ public class EventPublisherService implements EventPublisher {
             .message(update.getMessage().getText())
             .build();
 
-    ChatIdentity identity = buildChatIdentity(connection, msg.getTarget(), String.valueOf(update.getMessage().getFrom().getId()), msg.getSender(), false);
+
+    ChatIdentity identity = buildChatIdentity(connection, msg.getTarget(), String.valueOf(update.getMessage().getFrom().getId()), msg.getSender(), isPrivate);
+
     logMessageForIdentity(identity, msg.getSender(), msg.getMessage());
     long userId = update.getMessage().getFrom().getId();
 
@@ -233,7 +245,8 @@ public class EventPublisherService implements EventPublisher {
         msg.getTarget(),
         null,
         String.valueOf(userId),
-        echoToAlias);
+        echoToAlias,
+        isPrivate);
   }
 
   private org.freakz.common.model.users.User publishSlackEvent(
@@ -261,7 +274,8 @@ public class EventPublisherService implements EventPublisher {
         msg.getTarget(),
         channelId,
         senderId,
-        echoToAlias);
+        echoToAlias,
+        false);
     return new org.freakz.common.model.users.User();
   }
 
@@ -305,6 +319,7 @@ public class EventPublisherService implements EventPublisher {
     /*
     Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
      */
+    boolean isPrivate = !event.getServer().isPresent();
 
     publishToEngineAsync(
         connection,
@@ -313,7 +328,8 @@ public class EventPublisherService implements EventPublisher {
         replyTo,
         id,
         String.valueOf(userId),
-        echoToAlias);
+        echoToAlias,
+        isPrivate);
     return new org.freakz.common.model.users.User();
   }
 

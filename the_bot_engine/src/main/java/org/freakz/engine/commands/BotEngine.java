@@ -83,7 +83,9 @@ public class BotEngine {
       wholeLine = handleWholeLineTriggers(request);
     }
 
-    this.urlMetadataService.handleEngineRequest(request, this);
+    if (!request.getCommand().startsWith(this.botName)) {
+      this.urlMetadataService.handleEngineRequest(request, this);
+    }
 
     String replyMessage = null;
     if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {

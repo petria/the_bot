@@ -25,8 +25,6 @@ public class TelegramConnection extends BotConnection {
 
   private final EventPublisher publisher;
   private ConnectionManager connectionManager;
-
-//    private TelegramBot telegramBot;
   private HokanTelegram bot;
 
   public TelegramConnection(EventPublisher eventPublisher) {
@@ -39,18 +37,6 @@ public class TelegramConnection extends BotConnection {
     log.debug("Get user for: {}", targetAlias);
     List<ChannelUser> channelUsers = new ArrayList<>();
     return channelUsers;
-        /*
-                    try {
-//                getMe();
-                BotApiMethod<? extends Serializable> method= new GetChat("-907862942");
-
-                Serializable serializable = sendApiMethod(method);
-                int foo = 0;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-         */
   }
 
   @Override
@@ -68,12 +54,6 @@ public class TelegramConnection extends BotConnection {
     } else {
       sendMessage.setChatId(message.getTarget());
     }
-//        String boxed = String.format("```%s```", message.getMessage());
-//        String txt = message.getMessage().replaceAll("<", "").replaceAll(">", "").replaceAll("&", "");
-//        String boxed = String.format("%s", txt);
-//        sendMessage.enableMarkdown(true);
-//        sendMessage.enableHtml(true);
-//        sendMessage.enableMarkdownV2(true);
     sendMessage.setText(message.getMessage());
     try {
       if (this.connectionManager != null) {
@@ -81,19 +61,16 @@ public class TelegramConnection extends BotConnection {
       }
       this.bot.execute(sendMessage);
     } catch (TelegramApiException e) {
-      e.printStackTrace();
+      log.error("Telegram error", e);
       throw new RuntimeException(e);
     }
 
   }
 
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
-//        telegramBot = new TelegramBot(telegramConfig.getToken());
-//        telegramBot.
     this.connectionManager = connectionManager;
     this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
     TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-    //botsApi.
     botsApi.registerBot(bot);
 
   }
@@ -119,8 +96,6 @@ public class TelegramConnection extends BotConnection {
       this.connection = connection;
       this.config = config;
       this.connectionManager = connectionManager;
-
-
     }
 
     private String downloadPhoto(PhotoSize photoSize) {
@@ -132,21 +107,11 @@ public class TelegramConnection extends BotConnection {
         String fileUrl = file.getFileUrl(config.getToken());
         log.debug("fileUrl: {}", fileUrl);
         return fileUrl;
-/*                URL url = new URL(fileUrl);
-                InputStream in = url.openStream();
-                File tempFile = File.createTempFile("photo_", ".jpg");
-                FileOutputStream out = new FileOutputStream(tempFile);
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = in.read(buffer)) > 0) {
-                    out.write(buffer, 0, len);
-                }
-                in.close();
-                out.close();*/
       } catch (TelegramApiException e) {
         e.printStackTrace();
         return null;
       }
+
     }
 
     @Override
@@ -170,7 +135,6 @@ public class TelegramConnection extends BotConnection {
 
         this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
         String echoToAlias = null;
-
 
         User user = publisher.publishEvent(this.connection, update, echoToAlias); // TODO
 
@@ -196,10 +160,10 @@ public class TelegramConnection extends BotConnection {
       }
 
 
-      String name = channelName; //event.getChannel().getName();
+      String name = channelName;
       config.getChannelList().forEach(ch -> {
         if (ch.getName().equalsIgnoreCase(name)) {
-          if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
+          if (ch.getEchoToAliases() != null && !ch.getEchoToAliases().isEmpty()) {
             for (String echoToAlias : ch.getEchoToAliases()) {
               log.debug("Echo to: {}", echoToAlias);
               try {
@@ -214,7 +178,6 @@ public class TelegramConnection extends BotConnection {
         }
       });
     }
-
 
     @Override
     public String getBotUsername() {
@@ -233,7 +196,7 @@ public class TelegramConnection extends BotConnection {
         channel.setEchoToAlias(ch.getEchoToAlias());
         this.connectionManager.updateJoinedChannelsMap(BotConnectionType.TELEGRAM_CONNECTION, this.connection, channel);
       });
-
     }
   }
+
 }
