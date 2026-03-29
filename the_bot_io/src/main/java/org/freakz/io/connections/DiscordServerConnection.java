@@ -147,12 +147,29 @@ public class DiscordServerConnection extends BotConnection {
   private void messageListener(MessageCreateEvent event) {
 
     log.debug("Discord msg: {}", event.toString());
+    MessageAuthor messageAuthor = event.getMessageAuthor();
+    if (messageAuthor.asUser().isPresent()
+        && messageAuthor.asUser().get().getId() == this.config.getTheBotUserId()) {
+      log.debug("Ignore own Discord message");
+      return;
+    }
+
+    boolean isPrivate = !event.getServer().isPresent();
     String echoToAlias = null;
     org.freakz.common.model.botconfig.Channel configuredChannel = resolveConfiguredChannel(event);
     if (configuredChannel != null) {
       echoToAlias = configuredChannel.getEchoToAlias();
+    } else if (isPrivate && messageAuthor.asUser().isPresent()) {
+      echoToAlias = "PRIVATE-DISCORD-" + messageAuthor.asUser().get().getIdAsString();
     }
-    this.connectionManager.markMessageReceived(echoToAlias, event.getMessageAuthor().getName(), "Discord");
+    this.connectionManager.markMessageReceived(
+        echoToAlias,
+        event.getMessageAuthor().getName(),
+        "Discord",
+        getType().toString(),
+        getNetwork(),
+        isPrivate ? "Discord DM " + event.getMessageAuthor().getName() : null
+    );
     publisher.publishEvent(this, event, echoToAlias);
 
     try {
@@ -170,19 +187,16 @@ public class DiscordServerConnection extends BotConnection {
     String channelName = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]", "");
     log.debug("replyTo: '{}'", channelName);
 
-    MessageAuthor messageAuthor = event.getMessageAuthor();
     if (messageAuthor.asUser().isPresent()) {
-      if (messageAuthor.asUser().get().getId() != this.config.getTheBotUserId()) { // dont echo back own messages
-        StringBuilder messageTxt = new StringBuilder(event.getMessage().getContent());
-        if (!event.getMessage().getAttachments().isEmpty()) {
-          for (MessageAttachment attachment : event.getMessageAttachments()) {
-            messageTxt.append(" [");
-            messageTxt.append(attachment.getUrl().toString());
-            messageTxt.append("]");
-          }
+      StringBuilder messageTxt = new StringBuilder(event.getMessage().getContent());
+      if (!event.getMessage().getAttachments().isEmpty()) {
+        for (MessageAttachment attachment : event.getMessageAttachments()) {
+          messageTxt.append(" [");
+          messageTxt.append(attachment.getUrl().toString());
+          messageTxt.append("]");
         }
-        checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
       }
+      checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
     }
   }
 

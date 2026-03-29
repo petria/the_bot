@@ -67,10 +67,22 @@ public class SlackConnection extends BotConnection {
       return;
     }
     if (this.publisher != null) {
+      boolean isPrivate = "im".equalsIgnoreCase(event.getEvent().getChannelType());
       Channel channel = resolveSlackChannel(event);
-      if (channel != null) {
-        this.connectionManager.markMessageReceived(channel.getEchoToAlias(), event.getEvent().getUser(), "Slack");
-        this.publisher.publishEvent(this, event, channel.getEchoToAlias());
+      String echoToAlias = channel == null ? null : channel.getEchoToAlias();
+      if (echoToAlias == null && isPrivate) {
+        echoToAlias = "PRIVATE-SLACK-" + event.getEvent().getUser();
+      }
+      if (echoToAlias != null) {
+        this.connectionManager.markMessageReceived(
+            echoToAlias,
+            event.getEvent().getUser(),
+            "Slack",
+            getType().toString(),
+            getNetwork(),
+            isPrivate ? "Slack DM " + event.getEvent().getUser() : null
+        );
+        this.publisher.publishEvent(this, event, echoToAlias);
       } else {
         log.warn("Could not publish event to Slack, no configured channel for event!");
       }

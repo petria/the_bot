@@ -14,6 +14,7 @@ import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
@@ -40,13 +41,16 @@ public class BotEngine {
   private final UrlMetadataService urlMetadataService;
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
+  private final PrivateChatAlertService privateChatAlertService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
       AccessService accessService,
       HokanServices hokanServices,
       ConfigService configService,
-      UrlMetadataService urlMetadataService, RestMessageSendClient restMessageSendClient)
+      UrlMetadataService urlMetadataService,
+      RestMessageSendClient restMessageSendClient,
+      PrivateChatAlertService privateChatAlertService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -54,6 +58,7 @@ public class BotEngine {
 //    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
+    this.privateChatAlertService = privateChatAlertService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -77,18 +82,28 @@ public class BotEngine {
 
     User user = accessService.getUser(request);
     log.debug("User: {}", user);
+    privateChatAlertService.notifyUnknownPrivateChatIfNeeded(request, user);
+
+    String originalCommand = request.getCommand();
+    boolean explicitCommand =
+        originalCommand.startsWith("!") || originalCommand.startsWith(this.botName);
+    boolean implicitPrivateOpenClawChat =
+        request.isPrivateChannel() && !explicitCommand;
 
     String wholeLine = null;
     if (doWholeLineTriggerCheck) {
       wholeLine = handleWholeLineTriggers(request);
     }
 
-    if (!request.getCommand().startsWith(this.botName)) {
+    if (!request.getCommand().startsWith(this.botName) && !implicitPrivateOpenClawChat) {
       this.urlMetadataService.handleEngineRequest(request, this);
     }
 
     String replyMessage = null;
-    if (request.getCommand().startsWith("!") || request.getCommand().startsWith(this.botName)) {
+    if (implicitPrivateOpenClawChat) {
+      request.setCommand("!hokan " + originalCommand);
+      replyMessage = parseAndExecute(request, user);
+    } else if (explicitCommand) {
       replyMessage = parseAndExecute(request, user);
     }
     if (wholeLine != null) {

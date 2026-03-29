@@ -135,7 +135,19 @@ public class TelegramConnection extends BotConnection {
 
         this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
         String echoToAlias = resolveEchoToAlias(update);
-        this.connectionManager.markMessageReceived(echoToAlias, resolveActorName(update), "Telegram");
+        if (echoToAlias == null && update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
+          echoToAlias = "PRIVATE-TELEGRAM-" + update.getMessage().getFrom().getId();
+        }
+        this.connectionManager.markMessageReceived(
+            echoToAlias,
+            resolveActorName(update),
+            "Telegram",
+            connection.getType().toString(),
+            connection.getNetwork(),
+            (update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat())
+                ? "Telegram DM " + resolveActorName(update)
+                : null
+        );
 
         User user = publisher.publishEvent(this.connection, update, echoToAlias); // TODO
 

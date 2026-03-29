@@ -74,18 +74,28 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   public void markMessageReceived(String echoToAlias, String actor, String source) {
+    markMessageReceived(echoToAlias, actor, source, null, null, null);
+  }
+
+  public void markMessageReceived(
+      String echoToAlias,
+      String actor,
+      String source,
+      String type,
+      String network,
+      String name) {
     String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
     if (normalizedEchoToAlias == null) {
       return;
     }
     lastReceivedMessageByEchoToAlias.put(
         normalizedEchoToAlias,
-        new LastChannelActivity(System.currentTimeMillis(), actor, source)
+        new LastChannelActivity(System.currentTimeMillis(), actor, source, type, network, name)
     );
   }
 
   public List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> getChannelActivity() {
-    List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> channels = new ArrayList<>();
+    Map<String, org.freakz.common.model.connectionmanager.ChannelActivityResponse> channels = new HashMap<>();
     for (Map.Entry<String, JoinedChannelContainer> entry : joinedChannelsMap.entrySet()) {
       JoinedChannelContainer container = entry.getValue();
       if (container == null || container.channel == null || container.channel.getEchoToAlias() == null) {
@@ -93,7 +103,7 @@ public class ConnectionManager implements CommandLineRunner {
       }
       String normalizedEchoToAlias = normalizeEchoToAlias(container.channel.getEchoToAlias());
       LastChannelActivity activity = lastReceivedMessageByEchoToAlias.get(normalizedEchoToAlias);
-      channels.add(org.freakz.common.model.connectionmanager.ChannelActivityResponse.builder()
+      channels.put(normalizedEchoToAlias, org.freakz.common.model.connectionmanager.ChannelActivityResponse.builder()
           .echoToAlias(container.channel.getEchoToAlias())
           .type(container.channel.getType())
           .network(container.channel.getNetwork())
@@ -103,7 +113,22 @@ public class ConnectionManager implements CommandLineRunner {
           .lastReceivedMessageSource(activity == null ? null : activity.source())
           .build());
     }
-    return channels;
+    for (Map.Entry<String, LastChannelActivity> entry : lastReceivedMessageByEchoToAlias.entrySet()) {
+      if (channels.containsKey(entry.getKey())) {
+        continue;
+      }
+      LastChannelActivity activity = entry.getValue();
+      channels.put(entry.getKey(), org.freakz.common.model.connectionmanager.ChannelActivityResponse.builder()
+          .echoToAlias(entry.getKey())
+          .type(activity.type())
+          .network(activity.network())
+          .name(activity.name() == null || activity.name().isBlank() ? entry.getKey() : activity.name())
+          .lastReceivedMessageAt(activity.timestamp())
+          .lastReceivedMessageBy(activity.actor())
+          .lastReceivedMessageSource(activity.source())
+          .build());
+    }
+    return new ArrayList<>(channels.values());
   }
 
   public void addConnection(BotConnection connection) {
@@ -317,7 +342,13 @@ public class ConnectionManager implements CommandLineRunner {
     return trimmed.toUpperCase();
   }
 
-  private record LastChannelActivity(long timestamp, String actor, String source) {
+  private record LastChannelActivity(
+      long timestamp,
+      String actor,
+      String source,
+      String type,
+      String network,
+      String name) {
   }
 
   public void sendMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {
