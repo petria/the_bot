@@ -1,6 +1,9 @@
 package org.freakz.engine.commands.handlers.ai;
 
-import com.martiansoftware.jsap.*;
+import com.martiansoftware.jsap.JSAP;
+import com.martiansoftware.jsap.JSAPException;
+import com.martiansoftware.jsap.JSAPResult;
+import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
@@ -13,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.*;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 
 //@HokanDEVCommand
 @HokanCommandHandler

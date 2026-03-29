@@ -7,8 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ECHO_TO_ALIAS;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.SendMessageByEchoToAlias)
 public class SendMessagesToConnectionsService extends AbstractService {

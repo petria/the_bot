@@ -2,11 +2,11 @@ package org.freakz.engine.services.ai;
 
 import com.martiansoftware.jsap.IDMap;
 import com.martiansoftware.jsap.JSAPResult;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.CommandHandlerLoader;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
-import org.freakz.common.model.engine.EngineRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -16,7 +16,7 @@ import java.util.Iterator;
 
 /**
  * Spring AI tool bridge that exposes classic Hokan commands as a single generic tool.
- *
+ * <p>
  * The LLM can call this to execute an existing !command.
  */
 public class CommandToolCallBackFunctions {
@@ -33,7 +33,7 @@ public class CommandToolCallBackFunctions {
 
   @Tool(
       description = "Execute a classic bot command as if the user had typed !<commandName> <args>. " +
-                    "Command name must be without leading '!'."
+          "Command name must be without leading '!'."
   )
   public String executeCommand(
       @ToolParam(description = "Command name without leading '!'. Example: 'help', 'weather', 'quiz'.")

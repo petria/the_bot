@@ -13,7 +13,6 @@ import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
-import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,7 +163,7 @@ public class DiscordServerConnection extends BotConnection {
     String channelStr = event.getChannel().toString();
     // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
     int idx1 = channelStr.indexOf("name: ");
-    String channelName = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]","");
+    String channelName = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]", "");
     log.debug("replyTo: '{}'", channelName);
 
     MessageAuthor messageAuthor = event.getMessageAuthor();

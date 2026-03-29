@@ -1,6 +1,5 @@
 package org.freakz.engine.services.weather.water;
 
-import jakarta.annotation.PostConstruct;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -90,7 +89,7 @@ public class WaterTemperatureService {
 
   }
 
-//  @PostConstruct TODO
+  //  @PostConstruct TODO
   public void scanWaterMeasurementSites() {
     initializerService.initialize(this);
   }

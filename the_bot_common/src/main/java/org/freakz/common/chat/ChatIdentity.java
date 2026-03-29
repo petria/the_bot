@@ -2,11 +2,11 @@ package org.freakz.common.chat;
 
 public class ChatIdentity {
 
-  private  String protocol;
-  private  String chatType;
-  private  String chatId;
-  private  String network;
-  private  String target;
+  private String protocol;
+  private String chatType;
+  private String chatId;
+  private String network;
+  private String target;
 
   public ChatIdentity() {
   }

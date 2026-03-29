@@ -13,8 +13,8 @@ import org.freakz.engine.services.api.ServiceRequestType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ECHO_TO_ALIAS;
+import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_MESSAGE;
 
 @HokanCommandHandler
 @HokanAdminCommand

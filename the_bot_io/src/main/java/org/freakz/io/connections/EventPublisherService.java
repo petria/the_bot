@@ -11,9 +11,7 @@ import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.slack.Event;
 import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.common.spring.rest.RestEngineClient;
-import org.freakz.io.config.ConfigService;
 import org.freakz.io.config.TheBotProperties;
-import org.freakz.io.service.MessageFeederService;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
@@ -37,11 +35,9 @@ public class EventPublisherService implements EventPublisher {
   private static final Logger log = LoggerFactory.getLogger(EventPublisherService.class);
   private final TheBotProperties theBotProperties;
   private final LogService logService;
-
+  private final Executor taskExecutor;
   @Autowired
   private RestEngineClient engineClient;
-
-  private final Executor taskExecutor;
 
   @Autowired
   public EventPublisherService(TheBotProperties theBotProperties, @Qualifier("taskExecutor") Executor taskExecutor) {
@@ -286,7 +282,7 @@ public class EventPublisherService implements EventPublisher {
 
     String channelStr = event.getChannel().toString();
     int idx1 = channelStr.indexOf("name: ");
-    String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]","");
+    String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]", "");
 
     log.debug("replyTo: '{}'", replyTo);
 

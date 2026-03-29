@@ -1,8 +1,8 @@
 package org.freakz.io.connections;
 
 
-import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.exception.EchoToAliasNotIrcChannelException;
+import org.freakz.common.exception.InvalidChannelIdException;
 import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
