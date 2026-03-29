@@ -54,14 +54,30 @@ public class MessagesController {
 
   @PostMapping("/send_message_by_echo_to_alias")
   public ResponseEntity<?> sendByEchoToAlias(@RequestBody SendMessageByEchoToAliasRequest request) {
-    log.debug("Request: {}", request);
+    long startedAt = System.currentTimeMillis();
+    log.debug(
+        "sendByEchoToAlias start echoToAlias={} messageLength={}",
+        request.getEchoToAlias(),
+        request.getMessage() == null ? 0 : request.getMessage().length()
+    );
     SendMessageByEchoToAliasResponse response = new SendMessageByEchoToAliasResponse();
     try {
       connectionManager.sendMessageByEchoToAlias(request.getMessage(), request.getEchoToAlias());
       response.setSentTo(request.getEchoToAlias());
+      log.debug(
+          "sendByEchoToAlias success echoToAlias={} durationMs={}",
+          request.getEchoToAlias(),
+          System.currentTimeMillis() - startedAt
+      );
 
     } catch (InvalidEchoToAliasException e) {
       response.setSentTo("NOK:  " + e.getMessage());
+      log.warn(
+          "sendByEchoToAlias invalid echoToAlias={} durationMs={} error={}",
+          request.getEchoToAlias(),
+          System.currentTimeMillis() - startedAt,
+          e.getMessage()
+      );
     }
     return ResponseEntity.ok(response);
   }

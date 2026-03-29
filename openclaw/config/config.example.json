@@ -23,6 +23,13 @@
   },
   "tools": {
     "profile": "full",
+    "allow": [
+      "browser",
+      "nodes",
+      "read",
+      "web_fetch",
+      "web_search"
+    ],
     "web": {
       "search": {
         "enabled": true,
@@ -63,6 +70,11 @@
     "port": 18889,
     "mode": "local",
     "bind": "lan",
+    "nodes": {
+      "allowCommands": [
+        "hokan.send_message_by_echo_to_alias"
+      ]
+    },
     "controlUi": {
       "allowedOrigins": [
         "http://localhost:18789",

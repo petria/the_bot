@@ -2,6 +2,7 @@ package org.freakz.engine.controller;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.status.StatusReportRequest;
 import org.freakz.common.model.engine.status.StatusReportResponse;
 import org.freakz.common.model.users.GetUsersResponse;
@@ -9,10 +10,13 @@ import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.data.service.UsersService;
+import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.status.StatusReportService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,11 +35,14 @@ public class EngineController {
 
   private final StatusReportService statusReportService;
 
-  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, StatusReportService statusReportService) {
+  private final ConnectionManagerService connectionManagerService;
+
+  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, StatusReportService statusReportService, ConnectionManagerService connectionManagerService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
     this.statusReportService = statusReportService;
+    this.connectionManagerService = connectionManagerService;
   }
 
   @PostMapping("/handle_request")
@@ -56,6 +63,34 @@ public class EngineController {
   @PostMapping("/handle_status_report")
   public ResponseEntity<?> handleStatusReport(@RequestBody StatusReportRequest request) {
     StatusReportResponse response = statusReportService.handleStatusReport(request);
+    return ResponseEntity.ok(response);
+  }
+
+  @PostMapping(
+      path = "/openclaw/send_message_by_echo_to_alias",
+      consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE
+  )
+  public ResponseEntity<?> sendMessageByEchoToAliasForOpenClaw(
+      @RequestParam String echoToAlias,
+      @RequestParam String message,
+      @RequestHeader(value = "X-OpenClaw-Token", required = false) String openClawToken
+  ) {
+    String expectedToken = System.getenv("OPENCLAW_HOOKS_TOKEN");
+    if (expectedToken != null && !expectedToken.isBlank() && !expectedToken.equals(openClawToken)) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid OpenClaw token");
+    }
+
+    SendMessageByEchoToAliasResponse response =
+        connectionManagerService.sendMessageByEchoToAlias(message, echoToAlias);
+
+    if (response == null || response.getSentTo() == null) {
+      return ResponseEntity.internalServerError().body("send_message_by_echo_to_alias failed");
+    }
+
+    if (response.getSentTo().startsWith("NOK:")) {
+      return ResponseEntity.badRequest().body(response);
+    }
+
     return ResponseEntity.ok(response);
   }
 

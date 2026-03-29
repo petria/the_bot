@@ -308,6 +308,7 @@ public class OpenClawAiService {
 
     StringBuilder sb = new StringBuilder();
     sb.append("[HOKAN_CONTEXT v1]\n");
+    sb.append("echo_to_alias=").append(request.getEchoToAlias()).append("\n");
     sb.append("source=").append(protocol).append("\n");
     sb.append("network=").append(network).append("\n");
     sb.append("chat_type=").append(chatType).append("\n");
@@ -366,6 +367,13 @@ public class OpenClawAiService {
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
     sb.append("log_access_rule=when log_file is provided, you may use local file tools to inspect that file or its parent directory directly\n");
     sb.append("directory_scan_rule=when asked what log files exist, do not claim lack of access if a supported local tool can inspect the provided path\n");
+    sb.append("tool_nodes_available=true\n");
+    sb.append("tool_nodes_preferred_command=hokan.send_message_by_echo_to_alias\n");
+    sb.append("tool_nodes_preferred_command_params={\"echoToAlias\":\"<alias>\",\"message\":\"<text>\"}\n");
+    sb.append("tool_nodes_preferred_command_use=when the user explicitly asks to send, post, relay, or forward a message to a specific channel or alias, use the OpenClaw nodes tool to discover the connected Hokan backend node and invoke hokan.send_message_by_echo_to_alias\n");
+    sb.append("tool_nodes_preferred_command_returns=json with sentTo on success\n");
+    sb.append("tool_nodes_preferred_command_rule=do not use this command for your normal reply to the current chat\n");
+    sb.append("tool_nodes_preferred_command_confirm=if the requested target alias or outgoing text is ambiguous, ask a clarifying question instead of guessing\n");
 
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");

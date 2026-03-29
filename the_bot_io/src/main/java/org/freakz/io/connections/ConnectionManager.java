@@ -169,6 +169,12 @@ public class ConnectionManager implements CommandLineRunner {
 
 
   public void sendMessageByEchoToAlias(String messageText, String echoToAlias) throws InvalidEchoToAliasException {
+    long startedAt = System.currentTimeMillis();
+    log.debug(
+        "ConnectionManager.sendMessageByEchoToAlias start echoToAlias={} messageLength={}",
+        echoToAlias,
+        messageText == null ? 0 : messageText.length()
+    );
     Dual dual = findChannelByEchoToAlias(echoToAlias);
     if (dual != null) {
       BotConnectionChannel channel = dual.channel;
@@ -181,9 +187,26 @@ public class ConnectionManager implements CommandLineRunner {
           .target(channel.getName())
           .build();
 
+      log.debug(
+          "ConnectionManager.sendMessageByEchoToAlias target resolved echoToAlias={} connectionId={} channel={} connectionType={}",
+          echoToAlias,
+          connection.getId(),
+          channel.getName(),
+          connection.getClass().getSimpleName()
+      );
       connection.sendMessageTo(message);
+      log.debug(
+          "ConnectionManager.sendMessageByEchoToAlias sent echoToAlias={} durationMs={}",
+          echoToAlias,
+          System.currentTimeMillis() - startedAt
+      );
 
     } else {
+      log.warn(
+          "ConnectionManager.sendMessageByEchoToAlias no channel echoToAlias={} durationMs={}",
+          echoToAlias,
+          System.currentTimeMillis() - startedAt
+      );
       throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
 

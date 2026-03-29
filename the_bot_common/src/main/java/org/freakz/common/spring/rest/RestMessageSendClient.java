@@ -29,7 +29,7 @@ public class RestMessageSendClient {
     try {
       return restTemplate.postForEntity(url, message, String.class);
     } catch (Exception e) {
-      log.error("Error sending message: {}", e.getMessage());
+      log.error("Error sending message", e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
   }

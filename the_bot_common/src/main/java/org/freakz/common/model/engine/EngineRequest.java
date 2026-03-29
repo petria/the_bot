@@ -32,6 +32,10 @@ public class EngineRequest {
   private TheBotConfig botConfig;
   private ChatIdentity chatIdentity;
 
+  public EngineRequest() {
+
+  }
+
   public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, boolean isFromAdmin, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig, ChatIdentity chatIdentity) {
     this.timestamp = timestamp;
     this.command = command;

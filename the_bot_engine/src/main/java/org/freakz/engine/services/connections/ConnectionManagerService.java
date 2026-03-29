@@ -34,7 +34,12 @@ public class ConnectionManagerService {
   }
 
   public SendMessageByEchoToAliasResponse sendMessageByEchoToAlias(String message, String echoToAlias) {
-//        log.debug("Send!");
+    long startedAt = System.currentTimeMillis();
+    log.debug(
+        "ConnectionManagerService.sendMessageByEchoToAlias start echoToAlias={} messageLength={}",
+        echoToAlias,
+        message == null ? 0 : message.length()
+    );
     SendMessageByEchoToAliasRequest request
         = SendMessageByEchoToAliasRequest.builder()
         .message(message)
@@ -42,9 +47,15 @@ public class ConnectionManagerService {
         .build();
 
     ResponseEntity<SendMessageByEchoToAliasResponse> response = messageSendClient.sendMessageByEchoToAlias(request);
-//    Response response = messageSendClient.sendMessageByEchoToAlias(request);
-//    Optional<SendMessageByEchoToAliasResponse> responseBody = FeignUtils.getResponseBody(response, SendMessageByEchoToAliasResponse.class, objectMapper);
-    //  return responseBody.get();
+    long durationMs = System.currentTimeMillis() - startedAt;
+    SendMessageByEchoToAliasResponse body = response.getBody();
+    log.debug(
+        "ConnectionManagerService.sendMessageByEchoToAlias done echoToAlias={} durationMs={} status={} sentTo={}",
+        echoToAlias,
+        durationMs,
+        response.getStatusCode(),
+        body == null ? null : body.getSentTo()
+    );
     return response.getBody();
   }
 
