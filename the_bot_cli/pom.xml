@@ -11,6 +11,7 @@
     <name>the_bot_cli</name>
     <artifactId>the_bot_cli</artifactId>
 
+
     <dependencies>
 
         <dependency>

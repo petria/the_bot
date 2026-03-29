@@ -12,6 +12,7 @@
     <artifactId>the_bot_io</artifactId>
     <name>the_bot_io</name>
 
+
     <properties>
         <org.kitteh.irc.version>9.0.0</org.kitteh.irc.version>
         <org.javacord.version>3.8.0</org.javacord.version>
