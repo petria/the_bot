@@ -14,36 +14,53 @@ jobs:
       packages: write
 
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       REGISTRY: ghcr.io
       IMAGE_ENGINE: ghcr.io/${{ github.repository }}-engine
       IMAGE_IO: ghcr.io/${{ github.repository }}-io
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Detect component changes
         id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            engine:
-              - 'the_bot_engine/**'
-              - 'the_bot_common/**'
-              - 'pom.xml'
-              - 'docker-compose.yml'
-              - 'env/**'
-              - '.github/workflows/**'
-            io:
-              - 'the_bot_io/**'
-              - 'the_bot_common/**'
-              - 'pom.xml'
-              - 'docker-compose.yml'
-              - 'env/**'
-              - '.github/workflows/**'
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+          fi
+
+          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          echo "$CHANGED_FILES"
+
+          engine_changed=false
+          io_changed=false
+
+          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+            engine_changed=true
+          fi
+
+          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_io/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+            io_changed=true
+          fi
+
+          echo "engine=$engine_changed" >> "$GITHUB_OUTPUT"
+          echo "io=$io_changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
