@@ -5,6 +5,7 @@ public enum ServiceRequestType {
 
 
   BuildInfoQuery,
+  ConnectionActivityService,
   ConnectionControlService,
 
   DataSaverList,

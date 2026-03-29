@@ -22,9 +22,11 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ConnectionManager implements CommandLineRunner {
@@ -40,6 +42,7 @@ public class ConnectionManager implements CommandLineRunner {
   private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
   private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
+  private final Map<String, LastChannelActivity> lastReceivedMessageByEchoToAlias = new ConcurrentHashMap<>();
 
   public Map<String, ChannelMessageCounters> getCountersMap() {
     return countersMap;
@@ -70,6 +73,38 @@ public class ConnectionManager implements CommandLineRunner {
     return this.joinedChannelsMap;
   }
 
+  public void markMessageReceived(String echoToAlias, String actor, String source) {
+    String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
+    if (normalizedEchoToAlias == null) {
+      return;
+    }
+    lastReceivedMessageByEchoToAlias.put(
+        normalizedEchoToAlias,
+        new LastChannelActivity(System.currentTimeMillis(), actor, source)
+    );
+  }
+
+  public List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> getChannelActivity() {
+    List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> channels = new ArrayList<>();
+    for (Map.Entry<String, JoinedChannelContainer> entry : joinedChannelsMap.entrySet()) {
+      JoinedChannelContainer container = entry.getValue();
+      if (container == null || container.channel == null || container.channel.getEchoToAlias() == null) {
+        continue;
+      }
+      String normalizedEchoToAlias = normalizeEchoToAlias(container.channel.getEchoToAlias());
+      LastChannelActivity activity = lastReceivedMessageByEchoToAlias.get(normalizedEchoToAlias);
+      channels.add(org.freakz.common.model.connectionmanager.ChannelActivityResponse.builder()
+          .echoToAlias(container.channel.getEchoToAlias())
+          .type(container.channel.getType())
+          .network(container.channel.getNetwork())
+          .name(container.channel.getName())
+          .lastReceivedMessageAt(activity == null ? null : activity.timestamp())
+          .lastReceivedMessageBy(activity == null ? null : activity.actor())
+          .lastReceivedMessageSource(activity == null ? null : activity.source())
+          .build());
+    }
+    return channels;
+  }
 
   public void addConnection(BotConnection connection) {
     this.connectionMap.put(connection.getId(), connection);
@@ -269,6 +304,20 @@ public class ConnectionManager implements CommandLineRunner {
 
     }
     return null;
+  }
+
+  private String normalizeEchoToAlias(String echoToAlias) {
+    if (echoToAlias == null) {
+      return null;
+    }
+    String trimmed = echoToAlias.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.toUpperCase();
+  }
+
+  private record LastChannelActivity(long timestamp, String actor, String source) {
   }
 
   public void sendMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {

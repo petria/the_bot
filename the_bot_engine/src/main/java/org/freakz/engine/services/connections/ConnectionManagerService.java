@@ -30,6 +30,10 @@ public class ConnectionManagerService {
     return connectionMap;
   }
 
+  public GetChannelActivityResponse getChannelActivity() {
+    return connectionManagerClient.getChannelActivity();
+  }
+
   public SendMessageByEchoToAliasResponse sendMessageByEchoToAlias(String message, String echoToAlias) {
     long startedAt = System.currentTimeMillis();
     log.debug(

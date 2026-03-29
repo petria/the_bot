@@ -132,6 +132,7 @@ public class IrcServerConnection extends BotConnection {
   public void onPrivateMessageEvent(PrivateMessageEvent event) {
     log.debug("Got private msg: {}", event.getMessage());
     String echoToAlias = "PRIVATE-" + event.getActor().getNick();
+    this.connectionManager.markMessageReceived(echoToAlias, event.getActor().getNick(), "IRC");
     publisher.publishEvent(this, event, echoToAlias);
   }
 
@@ -144,6 +145,7 @@ public class IrcServerConnection extends BotConnection {
     if (channel != null) {
       echoToAlias = channel.getEchoToAlias();
     }
+    this.connectionManager.markMessageReceived(echoToAlias, event.getActor().getNick(), "IRC");
     publisher.publishEvent(this, event, echoToAlias);
     updateChannelMap(event.getChannel().getName());
     checkEchoTo(this.config, this.connectionManager, event.getChannel().getName(), event.getActor().getNick(), event.getMessage());

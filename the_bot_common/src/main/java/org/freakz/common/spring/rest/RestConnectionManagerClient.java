@@ -3,6 +3,7 @@ package org.freakz.common.spring.rest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.GetChannelActivityResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,16 @@ public class RestConnectionManagerClient {
     } catch (Exception e) {
       log.error("Error sending getChannelUsersByEchoToAlias message: {}", e.getMessage());
       return ResponseEntity.internalServerError().body(new ChannelUsersByEchoToAliasResponse());
+    }
+  }
+
+  public GetChannelActivityResponse getChannelActivity() {
+    String url = BASE_URL + "/get_channel_activity";
+    try {
+      return restTemplate.getForObject(url, GetChannelActivityResponse.class);
+    } catch (Exception e) {
+      log.error("Error sending getChannelActivity message: {}", e.getMessage());
+      return new GetChannelActivityResponse();
     }
   }
 

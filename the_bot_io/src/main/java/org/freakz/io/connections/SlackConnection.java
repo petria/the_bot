@@ -69,6 +69,7 @@ public class SlackConnection extends BotConnection {
     if (this.publisher != null) {
       Channel channel = resolveSlackChannel(event);
       if (channel != null) {
+        this.connectionManager.markMessageReceived(channel.getEchoToAlias(), event.getEvent().getUser(), "Slack");
         this.publisher.publishEvent(this, event, channel.getEchoToAlias());
       } else {
         log.warn("Could not publish event to Slack, no configured channel for event!");

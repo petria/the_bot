@@ -148,7 +148,11 @@ public class DiscordServerConnection extends BotConnection {
 
     log.debug("Discord msg: {}", event.toString());
     String echoToAlias = null;
-    //resolveByEchoTo()
+    org.freakz.common.model.botconfig.Channel configuredChannel = resolveConfiguredChannel(event);
+    if (configuredChannel != null) {
+      echoToAlias = configuredChannel.getEchoToAlias();
+    }
+    this.connectionManager.markMessageReceived(echoToAlias, event.getMessageAuthor().getName(), "Discord");
     publisher.publishEvent(this, event, echoToAlias);
 
     try {
@@ -180,6 +184,21 @@ public class DiscordServerConnection extends BotConnection {
         checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
       }
     }
+  }
+
+  private org.freakz.common.model.botconfig.Channel resolveConfiguredChannel(MessageCreateEvent event) {
+    String channelName = event.getChannel().asServerChannel()
+        .map(serverChannel -> serverChannel.getName())
+        .orElseGet(() -> event.getChannel().asPrivateChannel().isPresent() ? event.getChannel().asPrivateChannel().get().getIdAsString() : null);
+    if (channelName == null) {
+      return null;
+    }
+    for (org.freakz.common.model.botconfig.Channel channel : config.getChannelList()) {
+      if (channelName.equalsIgnoreCase(channel.getName())) {
+        return channel;
+      }
+    }
+    return null;
   }
 
   protected void checkEchoTo(DiscordConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {

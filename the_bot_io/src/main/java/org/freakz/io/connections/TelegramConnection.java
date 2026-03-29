@@ -134,7 +134,8 @@ public class TelegramConnection extends BotConnection {
 //                log.debug("telegram update: {}", update);
 
         this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
-        String echoToAlias = null;
+        String echoToAlias = resolveEchoToAlias(update);
+        this.connectionManager.markMessageReceived(echoToAlias, resolveActorName(update), "Telegram");
 
         User user = publisher.publishEvent(this.connection, update, echoToAlias); // TODO
 
@@ -148,6 +149,35 @@ public class TelegramConnection extends BotConnection {
         checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText(), user);
       }
 
+    }
+
+    private String resolveEchoToAlias(Update update) {
+      if (!update.hasMessage() || update.getMessage().getChat() == null) {
+        return null;
+      }
+      String chatTitle = update.getMessage().getChat().getTitle();
+      if (chatTitle == null || chatTitle.isBlank()) {
+        return null;
+      }
+      for (org.freakz.common.model.botconfig.Channel channel : config.getChannelList()) {
+        if (chatTitle.equalsIgnoreCase(channel.getName())) {
+          return channel.getEchoToAlias();
+        }
+      }
+      return null;
+    }
+
+    private String resolveActorName(Update update) {
+      if (!update.hasMessage() || update.getMessage().getFrom() == null) {
+        return null;
+      }
+      if (update.getMessage().getFrom().getUserName() != null && !update.getMessage().getFrom().getUserName().isBlank()) {
+        return update.getMessage().getFrom().getUserName();
+      }
+      String firstName = update.getMessage().getFrom().getFirstName();
+      String lastName = update.getMessage().getFrom().getLastName();
+      String fullName = ((firstName == null ? "" : firstName) + " " + (lastName == null ? "" : lastName)).trim();
+      return fullName.isBlank() ? null : fullName;
     }
 
 

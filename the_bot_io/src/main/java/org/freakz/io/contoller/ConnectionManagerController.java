@@ -2,6 +2,7 @@ package org.freakz.io.contoller;
 
 import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.connectionmanager.GetChannelActivityResponse;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
@@ -47,6 +48,14 @@ public class ConnectionManagerController {
         connectionManager.getJoinedChannelsMap();
     //        GetConnectionMapResponse response = mapper.toGetConnectionMapResponse(connectionMap);
     return ResponseEntity.ok(joinedChannelsMap);
+  }
+
+  @GetMapping("/get_channel_activity")
+  public ResponseEntity<?> getChannelActivity() {
+    GetChannelActivityResponse response = GetChannelActivityResponse.builder()
+        .channels(connectionManager.getChannelActivity())
+        .build();
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/get_channel_users_by_echo_to_alias")
