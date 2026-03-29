@@ -36,12 +36,20 @@ public class OpenClawAiService {
   private final HttpClient httpClient;
   private final BotEngine botEngine;
   private final OpenClawWsGatewayService openClawWsGatewayService;
+  private final HokanNodeContextTokenService hokanNodeContextTokenService;
 
-  public OpenClawAiService(EnvValuesService envValuesService, JsonMapper objectMapper, BotEngine botEngine, OpenClawWsGatewayService openClawWsGatewayService) {
+  public OpenClawAiService(
+      EnvValuesService envValuesService,
+      JsonMapper objectMapper,
+      BotEngine botEngine,
+      OpenClawWsGatewayService openClawWsGatewayService,
+      HokanNodeContextTokenService hokanNodeContextTokenService
+  ) {
     this.envValuesService = envValuesService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.openClawWsGatewayService = openClawWsGatewayService;
+    this.hokanNodeContextTokenService = hokanNodeContextTokenService;
     this.httpClient = HttpClient.newBuilder().build();
   }
 
@@ -305,6 +313,13 @@ public class OpenClawAiService {
     String logDir = runtimeLogRoot + "/" + protocol + "/" + network + "/" + chatType + "/" + chatTarget;
     String logFile = logDir + "/" + LocalDate.now(ZoneId.of("Europe/Helsinki")) + ".log";
     List<String> availableLogFiles = listAvailableLogFiles(Path.of(runtimeLogRootLocal), protocol, network, chatType, chatTarget);
+    String hokanContextToken = hokanNodeContextTokenService.createToken(request, sessionKey);
+    String requestedByUsername = request.getUser() == null ? "" : safePromptValue(request.getUser().getUsername());
+    String requestedByRealName = request.getUser() == null ? "" : safePromptValue(request.getUser().getName());
+    String requestedByIrcNick = request.getUser() == null ? "" : safePromptValue(request.getUser().getIrcNick());
+    String requestedByTelegramId = request.getUser() == null ? "" : safePromptValue(request.getUser().getTelegramId());
+    String requestedByDiscordId = request.getUser() == null ? "" : safePromptValue(request.getUser().getDiscordId());
+    String requestedBySlackId = request.getUser() == null ? "" : safePromptValue(request.getUser().getSlackId());
 
     StringBuilder sb = new StringBuilder();
     sb.append("[HOKAN_CONTEXT v1]\n");
@@ -319,6 +334,12 @@ public class OpenClawAiService {
     sb.append("sender_name=").append(senderName).append("\n");
     boolean isAdmin = request.isFromAdmin();
     sb.append("is_admin=").append(isAdmin).append("\n");
+    sb.append("requested_by_username=").append(requestedByUsername).append("\n");
+    sb.append("requested_by_name=").append(requestedByRealName).append("\n");
+    sb.append("requested_by_irc_nick=").append(requestedByIrcNick).append("\n");
+    sb.append("requested_by_telegram_id=").append(requestedByTelegramId).append("\n");
+    sb.append("requested_by_discord_id=").append(requestedByDiscordId).append("\n");
+    sb.append("requested_by_slack_id=").append(requestedBySlackId).append("\n");
     sb.append("session_key=").append(sessionKey).append("\n");
     sb.append("chat_id=").append(chatId).append("\n");
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
@@ -369,11 +390,16 @@ public class OpenClawAiService {
     sb.append("directory_scan_rule=when asked what log files exist, do not claim lack of access if a supported local tool can inspect the provided path\n");
     sb.append("tool_nodes_available=true\n");
     sb.append("tool_nodes_preferred_command=hokan.send_message_by_echo_to_alias\n");
-    sb.append("tool_nodes_preferred_command_params={\"echoToAlias\":\"<alias>\",\"message\":\"<text>\"}\n");
+    sb.append("tool_nodes_preferred_command_params={\"echoToAlias\":\"<alias>\",\"message\":\"<text>\",\"hokanContextToken\":\"")
+        .append(hokanContextToken)
+        .append("\"}\n");
     sb.append("tool_nodes_preferred_command_use=when the user explicitly asks to send, post, relay, or forward a message to a specific channel or alias, use the OpenClaw nodes tool to discover the connected Hokan backend node and invoke hokan.send_message_by_echo_to_alias\n");
     sb.append("tool_nodes_preferred_command_returns=json with sentTo on success\n");
     sb.append("tool_nodes_preferred_command_rule=do not use this command for your normal reply to the current chat\n");
     sb.append("tool_nodes_preferred_command_confirm=if the requested target alias or outgoing text is ambiguous, ask a clarifying question instead of guessing\n");
+    sb.append("tool_nodes_context_token=").append(hokanContextToken).append("\n");
+    sb.append("tool_nodes_context_token_rule=when invoking hokan.send_message_by_echo_to_alias, include hokanContextToken exactly as provided here without modification\n");
+    sb.append("tool_nodes_auth_rule=do not invent or alter requester identity fields; the backend validates the signed hokanContextToken\n");
 
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");
@@ -439,6 +465,13 @@ public class OpenClawAiService {
     } catch (InterruptedException ie) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  private String safePromptValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    return value.replaceAll("[\\r\\n]+", " ").trim();
   }
 
 

@@ -44,6 +44,7 @@ public class OpenClawNodeGatewayService {
   private final EnvValuesService envValuesService;
   private final JsonMapper objectMapper;
   private final ConnectionManagerService connectionManagerService;
+  private final HokanNodeContextTokenService hokanNodeContextTokenService;
   private final WebSocketClient webSocketClient;
 
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -52,11 +53,13 @@ public class OpenClawNodeGatewayService {
   public OpenClawNodeGatewayService(
       EnvValuesService envValuesService,
       JsonMapper objectMapper,
-      ConnectionManagerService connectionManagerService
+      ConnectionManagerService connectionManagerService,
+      HokanNodeContextTokenService hokanNodeContextTokenService
   ) {
     this.envValuesService = envValuesService;
     this.objectMapper = objectMapper;
     this.connectionManagerService = connectionManagerService;
+    this.hokanNodeContextTokenService = hokanNodeContextTokenService;
     this.webSocketClient = new ReactorNettyWebSocketClient();
   }
 
@@ -232,6 +235,7 @@ public class OpenClawNodeGatewayService {
 
     String echoToAlias = commandParams.path("echoToAlias").asText("").trim();
     String message = commandParams.path("message").asText("").trim();
+    String hokanContextToken = commandParams.path("hokanContextToken").asText("").trim();
     long startedAt = System.currentTimeMillis();
 
     if (echoToAlias.isBlank()) {
@@ -250,14 +254,47 @@ public class OpenClawNodeGatewayService {
       ))).subscribe();
       return;
     }
+    if (hokanContextToken.isBlank()) {
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeErrorEvent(reqId, nodeId, "missing hokanContextToken")
+              : buildErrorResponse(reqId, "missing hokanContextToken")
+      ))).subscribe();
+      return;
+    }
 
     try {
+      HokanNodeContextTokenService.VerifiedNodeContext verifiedContext =
+          hokanNodeContextTokenService.verifyToken(hokanContextToken);
+
+      if (!verifiedContext.requestedByAdmin()) {
+        String sourceEchoToAlias = verifiedContext.sourceEchoToAlias();
+        if (sourceEchoToAlias == null || sourceEchoToAlias.isBlank() || !sourceEchoToAlias.equalsIgnoreCase(echoToAlias)) {
+          String error = "permission denied for cross-alias send to " + echoToAlias;
+          log.warn(
+              "OpenClaw node invoke denied reqId={} requestedBy={} sourceEchoToAlias={} targetEchoToAlias={}",
+              reqId,
+              verifiedContext.requestedByUsername(),
+              sourceEchoToAlias,
+              echoToAlias
+          );
+          session.send(Mono.just(session.textMessage(
+              eventProtocol
+                  ? buildNodeInvokeErrorEvent(reqId, nodeId, error)
+                  : buildErrorResponse(reqId, error)
+          ))).subscribe();
+          return;
+        }
+      }
+
       log.debug(
-          "OpenClaw node invoke start reqId={} command={} echoToAlias={} messageLength={}",
+          "OpenClaw node invoke start reqId={} command={} echoToAlias={} messageLength={} requestedBy={} requestedByAdmin={}",
           reqId,
           command,
           echoToAlias,
-          message.length()
+          message.length(),
+          verifiedContext.requestedByUsername(),
+          verifiedContext.requestedByAdmin()
       );
       SendMessageByEchoToAliasResponse response =
           connectionManagerService.sendMessageByEchoToAlias(message, echoToAlias);
@@ -266,10 +303,11 @@ public class OpenClawNodeGatewayService {
       if (response == null || response.getSentTo() == null || response.getSentTo().startsWith("NOK:")) {
         String error = response == null ? "send failed" : response.getSentTo();
         log.warn(
-            "OpenClaw node invoke failed reqId={} echoToAlias={} durationMs={} error={}",
+            "OpenClaw node invoke failed reqId={} echoToAlias={} durationMs={} requestedBy={} error={}",
             reqId,
             echoToAlias,
             durationMs,
+            verifiedContext.requestedByUsername(),
             error
         );
         session.send(Mono.just(session.textMessage(
@@ -281,10 +319,11 @@ public class OpenClawNodeGatewayService {
       }
 
       log.info(
-          "OpenClaw node invoke success reqId={} echoToAlias={} durationMs={} sentTo={}",
+          "OpenClaw node invoke success reqId={} echoToAlias={} durationMs={} requestedBy={} sentTo={}",
           reqId,
           echoToAlias,
           durationMs,
+          verifiedContext.requestedByUsername(),
           response.getSentTo()
       );
       session.send(Mono.just(session.textMessage(
