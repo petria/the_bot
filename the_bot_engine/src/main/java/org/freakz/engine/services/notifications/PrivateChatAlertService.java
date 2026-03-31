@@ -60,13 +60,22 @@ public class PrivateChatAlertService {
         abbreviate(request.getCommand(), 180)
     );
 
+    sendAlertToConfiguredTargets(alert, targets);
+  }
+
+  public Set<String> sendAlertToConfiguredTargets(String message) {
+    return sendAlertToConfiguredTargets(message, resolveAlertTargets());
+  }
+
+  public Set<String> sendAlertToConfiguredTargets(String message, Set<String> targets) {
     for (String target : targets) {
       try {
-        connectionManagerService.sendMessageByEchoToAlias(alert, target);
+        connectionManagerService.sendMessageByEchoToAlias(message, target);
       } catch (Exception e) {
-        log.error("Failed to send unknown private chat alert to {}: {}", target, e.getMessage());
+        log.error("Failed to send alert to {}: {}", target, e.getMessage());
       }
     }
+    return targets;
   }
 
   private boolean isUnknownUser(User user) {
