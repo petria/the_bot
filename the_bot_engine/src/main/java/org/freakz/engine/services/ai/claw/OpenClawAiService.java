@@ -269,7 +269,10 @@ public class OpenClawAiService {
   private String buildSessionKey(EngineRequest request) {
     String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
     String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
-    String nick = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
+    String senderKey = ChatIdentityUtil.sanitize(request.getFromSenderId(), null);
+    if (senderKey == null || senderKey.isBlank()) {
+      senderKey = ChatIdentityUtil.sanitize(request.getFromSender(), "unknown");
+    }
 
     String chatType = ChatIdentityUtil.sanitize(request.getChatType(), request.isPrivateChannel() ? "dm" : "channel");
     String chatTarget;
@@ -282,10 +285,10 @@ public class OpenClawAiService {
     }
 
     if ("dm".equals(chatType)) {
-      return protocol + ":" + network + ":dm:" + nick;
+      return protocol + ":" + network + ":dm:" + senderKey;
     }
 
-    return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + nick;
+    return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + senderKey;
   }
 
   private String buildOpenClawEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
@@ -400,6 +403,14 @@ public class OpenClawAiService {
     sb.append("tool_nodes_context_token=").append(hokanContextToken).append("\n");
     sb.append("tool_nodes_context_token_rule=when invoking hokan.send_message_by_echo_to_alias, include hokanContextToken exactly as provided here without modification\n");
     sb.append("tool_nodes_auth_rule=do not invent or alter requester identity fields; the backend validates the signed hokanContextToken\n");
+
+    if ("channel".equals(chatType)) {
+      sb.append("public_channel_participation=true\n");
+      sb.append("public_channel_reply_rule=reply only when you add clear value to the ongoing public conversation\n");
+      sb.append("public_channel_silence_allowed=true\n");
+      sb.append("public_channel_avoid_interrupting=true\n");
+      sb.append("public_channel_prefer_brief_replies=true\n");
+    }
 
     sb.append("\n");
     sb.append("recent_messages_source=log_file\n");

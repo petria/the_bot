@@ -13,6 +13,7 @@ import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.data.service.EnvValuesService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Iterator;
 
 @Service
@@ -38,6 +40,7 @@ public class BotEngine {
   private final CommandHandlerLoader commandHandlerLoader;
   private final HokanServices hokanServices;
   private final ConfigService configService;
+  private final EnvValuesService envValuesService;
   private final UrlMetadataService urlMetadataService;
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
@@ -48,6 +51,7 @@ public class BotEngine {
       AccessService accessService,
       HokanServices hokanServices,
       ConfigService configService,
+      EnvValuesService envValuesService,
       UrlMetadataService urlMetadataService,
       RestMessageSendClient restMessageSendClient,
       PrivateChatAlertService privateChatAlertService)
@@ -55,6 +59,7 @@ public class BotEngine {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
+    this.envValuesService = envValuesService;
 //    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
@@ -89,18 +94,21 @@ public class BotEngine {
         originalCommand.startsWith("!") || originalCommand.startsWith(this.botName);
     boolean implicitPrivateOpenClawChat =
         request.isPrivateChannel() && !explicitCommand;
+    boolean implicitPublicOpenClawChat =
+        !request.isPrivateChannel() && !explicitCommand && shouldHandlePublicAiChat(request);
+    boolean implicitOpenClawChat = implicitPrivateOpenClawChat || implicitPublicOpenClawChat;
 
     String wholeLine = null;
     if (doWholeLineTriggerCheck) {
       wholeLine = handleWholeLineTriggers(request);
     }
 
-    if (!request.getCommand().startsWith(this.botName) && !implicitPrivateOpenClawChat) {
+    if (!request.getCommand().startsWith(this.botName) && !implicitOpenClawChat) {
       this.urlMetadataService.handleEngineRequest(request, this);
     }
 
     String replyMessage = null;
-    if (implicitPrivateOpenClawChat) {
+    if (implicitOpenClawChat) {
       request.setCommand("!hokan " + originalCommand);
       replyMessage = parseAndExecute(request, user);
     } else if (explicitCommand) {
@@ -114,6 +122,47 @@ public class BotEngine {
 
   public String handleWholeLineTriggers(EngineRequest request) {
     return wholeLineTriggers.checkWholeLineTrigger(request);
+  }
+
+  private boolean shouldHandlePublicAiChat(EngineRequest request) {
+    String echoToAlias = request.getEchoToAlias();
+    if (echoToAlias == null || echoToAlias.isBlank()) {
+      return false;
+    }
+
+    String configured = envValuesService.getKeyValueOrDefault("channel.do.public.ai", null);
+    if (configured == null || configured.isBlank()) {
+      return false;
+    }
+
+    boolean allowlisted = Arrays.stream(configured.split(","))
+        .map(String::trim)
+        .filter(value -> !value.isBlank())
+        .anyMatch(value -> value.equalsIgnoreCase(echoToAlias));
+
+    if (!allowlisted) {
+      return false;
+    }
+
+    String message = request.getMessage();
+    if (message == null || message.isBlank()) {
+      return false;
+    }
+
+    return message.contains("?") || containsBotMention(message);
+  }
+
+  private boolean containsBotMention(String message) {
+    if (message == null || message.isBlank() || botName == null || botName.isBlank()) {
+      return false;
+    }
+
+    String messageLower = message.toLowerCase();
+    String botNameLower = botName.toLowerCase();
+
+    return messageLower.contains(botNameLower)
+        || messageLower.contains(botNameLower + ":")
+        || messageLower.contains("@" + botNameLower);
   }
 
   private String parseAndExecute(EngineRequest request, User user) throws Exception {
