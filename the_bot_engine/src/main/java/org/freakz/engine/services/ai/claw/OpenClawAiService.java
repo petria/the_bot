@@ -155,7 +155,7 @@ public class OpenClawAiService {
       return false;
     }
 
-    String botName = request.getBotConfig() != null ? request.getBotConfig().getBotName() : null;
+    String botName = request.getBotConfig() != null ? request.getBotConfig().getBotConfig().getBotName() : null;
     return !matchesNick(addressedNick, botName)
         && !matchesNick(addressedNick, "Hokan")
         && !matchesNick(addressedNick, "openclaw");
