@@ -55,6 +55,11 @@ public class OpenClawAiService {
 
   @Async
   public void ask(EngineRequest engineRequest, String queryMessage) {
+    if (shouldIgnoreIrcChannelMessage(engineRequest, queryMessage)) {
+      log.debug("Ignoring IRC channel message addressed to another nick: {}", queryMessage);
+      return;
+    }
+
     String sessionKey = buildSessionKey(engineRequest);
     String envelope = buildOpenClawEnvelope(engineRequest, sessionKey, queryMessage);
     long startMillis = System.currentTimeMillis();
@@ -128,6 +133,37 @@ public class OpenClawAiService {
     return prefix + reply;
   }
 
+
+  private boolean shouldIgnoreIrcChannelMessage(EngineRequest request, String queryMessage) {
+    if (queryMessage == null || queryMessage.isBlank()) {
+      return false;
+    }
+
+    String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
+    if (!"irc".equals(protocol) || request.isPrivateChannel()) {
+      return false;
+    }
+
+    String trimmed = queryMessage.trim();
+    int colonIndex = trimmed.indexOf(':');
+    if (colonIndex <= 0) {
+      return false;
+    }
+
+    String addressedNick = trimmed.substring(0, colonIndex).trim();
+    if (addressedNick.isBlank() || addressedNick.contains(" ")) {
+      return false;
+    }
+
+    String botName = request.getBotConfig() != null ? request.getBotConfig().getBotName() : null;
+    return !matchesNick(addressedNick, botName)
+        && !matchesNick(addressedNick, "Hokan")
+        && !matchesNick(addressedNick, "openclaw");
+  }
+
+  private boolean matchesNick(String value, String expected) {
+    return expected != null && !expected.isBlank() && value.equalsIgnoreCase(expected.trim());
+  }
 
   private String waitForReplyText(String sessionKey, long startMillis, int timeoutSeconds) {
     long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
