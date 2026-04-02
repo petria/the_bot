@@ -91,7 +91,7 @@ public class OpenClawNodeGatewayService {
       try {
         connectNodeOnce();
       } catch (Exception e) {
-        log.warn("OpenClaw node WS bridge disconnected: {}", e.getMessage());
+//        log.warn("OpenClaw node WS bridge disconnected: {}", e.getMessage());
       }
 
       if (!running.get()) {
@@ -153,7 +153,7 @@ public class OpenClawNodeGatewayService {
                   if (!deviceToken.isBlank()) {
                     persistNodeToken(deviceToken);
                   }
-                  log.info("OpenClaw node connected, command exposed: {}", NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
+                  //log.info("OpenClaw node connected, command exposed: {}", NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
                   return;
                 }
 

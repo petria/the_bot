@@ -86,13 +86,26 @@ public class OpenClawAiService {
           if (!result.isAccepted()) {
             log.warn("OpenClaw WS failed: {}", result.getError());
           }
-          processReply(engineRequest, result.isCompleted() ? "completed" : "failed!");
+          processReply(engineRequest, result.isCompleted() ? "completed" : fallbackFailureReply(result.getError()));
         }, err -> {
           log.error("OpenClaw WS ask error: {}", err.getMessage(), err);
           String replyFromState = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
-          processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : "failed!");
+          processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : fallbackFailureReply(err.getMessage()));
         });
 
+  }
+
+  private String fallbackFailureReply(String errorMessage) {
+    if (errorMessage != null) {
+      String normalized = errorMessage.toLowerCase();
+      if (normalized.contains("auth failed")
+          || normalized.contains("oauth")
+          || normalized.contains("re-authenticate")
+          || normalized.contains("re-login")) {
+        return "failed: auth failed, re-login needed!";
+      }
+    }
+    return "failed!";
   }
 
   private boolean hasRealReply(String reply) {
