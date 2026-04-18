@@ -121,11 +121,11 @@ public class OpenClawNodeGatewayService {
             .doOnNext(payload -> {
               try {
                 JsonNode node = objectMapper.readTree(payload);
-                String type = node.path("type").asText("");
-                String event = node.path("event").asText("");
+                String type = node.path("type").asString("");
+                String event = node.path("event").asString("");
 
                 if ("event".equals(type) && "connect.challenge".equals(event)) {
-                  String nonce = node.path("payload").path("nonce").asText("");
+                  String nonce = node.path("payload").path("nonce").asString("");
                   if (!connectSent.getAndSet(true)) {
                     String connectJson = buildNodeConnectRequest("connect-node", identity, nonce);
                     session.send(Mono.just(session.textMessage(connectJson))).subscribe();
@@ -142,14 +142,14 @@ public class OpenClawNodeGatewayService {
                   return;
                 }
 
-                if ("res".equals(type) && "connect-node".equals(node.path("id").asText(""))) {
+                if ("res".equals(type) && "connect-node".equals(node.path("id").asString(""))) {
                   if (!node.path("ok").asBoolean(false)) {
-                    log.warn("OpenClaw node connect failed: {}", node.path("error").asText(""));
+                    log.warn("OpenClaw node connect failed: {}", node.path("error").asString(""));
                     return;
                   }
 
                   String deviceToken =
-                      node.path("payload").path("auth").path("deviceToken").asText("").trim();
+                      node.path("payload").path("auth").path("deviceToken").asString("").trim();
                   if (!deviceToken.isBlank()) {
                     persistNodeToken(deviceToken);
                   }
@@ -173,10 +173,10 @@ public class OpenClawNodeGatewayService {
       JsonNode eventNode
   ) {
     JsonNode payloadNode = eventNode.path("payload");
-    String reqId = payloadNode.path("id").asText("");
-    String nodeId = payloadNode.path("nodeId").asText("").trim();
-    String command = payloadNode.path("command").asText("").trim();
-    String paramsJson = payloadNode.path("paramsJSON").asText("").trim();
+    String reqId = payloadNode.path("id").asString("");
+    String nodeId = payloadNode.path("nodeId").asString("").trim();
+    String command = payloadNode.path("command").asString("").trim();
+    String paramsJson = payloadNode.path("paramsJSON").asString("").trim();
 
     JsonNode commandParams = objectMapper.createObjectNode();
     if (!paramsJson.isBlank()) {
@@ -197,8 +197,8 @@ public class OpenClawNodeGatewayService {
       org.springframework.web.reactive.socket.WebSocketSession session,
       JsonNode requestNode
   ) {
-    String reqId = requestNode.path("id").asText("");
-    String method = requestNode.path("method").asText("");
+    String reqId = requestNode.path("id").asString("");
+    String method = requestNode.path("method").asString("");
 
     if (!"node.invoke".equals(method) && !"invoke".equals(method)) {
       if (!reqId.isBlank()) {
@@ -208,9 +208,9 @@ public class OpenClawNodeGatewayService {
     }
 
     JsonNode paramsNode = requestNode.path("params");
-    String command = paramsNode.path("command").asText("").trim();
+    String command = paramsNode.path("command").asString("").trim();
     JsonNode commandParams = paramsNode.path("params");
-    String nodeId = paramsNode.path("nodeId").asText("").trim();
+    String nodeId = paramsNode.path("nodeId").asString("").trim();
     handleNodeInvoke(session, reqId, nodeId, command, commandParams, false);
   }
 
@@ -232,9 +232,9 @@ public class OpenClawNodeGatewayService {
       return;
     }
 
-    String echoToAlias = commandParams.path("echoToAlias").asText("").trim();
-    String message = commandParams.path("message").asText("").trim();
-    String hokanContextToken = commandParams.path("hokanContextToken").asText("").trim();
+    String echoToAlias = commandParams.path("echoToAlias").asString("").trim();
+    String message = commandParams.path("message").asString("").trim();
+    String hokanContextToken = commandParams.path("hokanContextToken").asString("").trim();
     long startedAt = System.currentTimeMillis();
 
     if (echoToAlias.isBlank()) {
@@ -464,18 +464,18 @@ public class OpenClawNodeGatewayService {
         ? readJsonFile(pairedDevicesPath)
         : objectMapper.createObjectNode();
 
-    String deviceId = identityNode.path("deviceId").asText("").trim();
+    String deviceId = identityNode.path("deviceId").asString("").trim();
     if (deviceId.isBlank()) {
       throw new IOException("missing deviceId in " + identityPath);
     }
 
     String gatewayToken = getConfigValue("openclawGatewayToken", "OPENCLAW_GATEWAY_TOKEN", "").trim();
-    String nodeToken = deviceAuthNode.path("tokens").path("node").path("token").asText("").trim();
+    String nodeToken = deviceAuthNode.path("tokens").path("node").path("token").asString("").trim();
     JsonNode pairedNode = pairedDevicesNode.path(deviceId);
 
-    String publicKey = pairedNode.path("publicKey").asText("").trim();
+    String publicKey = pairedNode.path("publicKey").asString("").trim();
     if (publicKey.isBlank()) {
-      publicKey = extractRawPublicKey(identityNode.path("publicKeyPem").asText(""));
+      publicKey = extractRawPublicKey(identityNode.path("publicKeyPem").asString(""));
     }
     if (publicKey.isBlank()) {
       throw new IOException("missing publicKey for device " + deviceId);
@@ -484,7 +484,7 @@ public class OpenClawNodeGatewayService {
     String clientId = normalizeNodeClientId(
         getConfigValue("openclawNodeClientId", "OPENCLAW_NODE_CLIENT_ID", "node-host")
     );
-    String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asText("linux"));
+    String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asString("linux"));
     String connectToken = !nodeToken.isBlank() ? nodeToken : gatewayToken;
 
     return new NodeWsIdentity(
@@ -492,7 +492,7 @@ public class OpenClawNodeGatewayService {
         connectToken,
         deviceId,
         publicKey,
-        parsePrivateKey(identityNode.path("privateKeyPem").asText("")),
+        parsePrivateKey(identityNode.path("privateKeyPem").asString("")),
         clientId,
         "node",
         platform

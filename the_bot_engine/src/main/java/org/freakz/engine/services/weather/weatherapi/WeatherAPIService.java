@@ -2,6 +2,7 @@ package org.freakz.engine.services.weather.weatherapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.*;
 import org.freakz.engine.services.weather.weatherapi.model.AstronomyResponse;
@@ -12,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_ASTRONOMY;
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
@@ -45,15 +49,19 @@ public class WeatherAPIService {
     return r;
   }
 
+  private ForecastResponse getForecastData(String query) {
+    return restClient.get()
+        .uri("/forecast.json?key={key}&aqi=yes&days=2&alerts=yes&q={q}", weatherApiKey, query)
+        .retrieve()
+        .body(ForecastResponse.class);
+  }
+
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WeatherAPIService)
   public <T extends ServiceResponse> WeatherAPIResponse handleWeatherCmdServiceRequest(ServiceRequest request) {
 
     String query = request.getResults().getString(ARG_PLACE).toLowerCase();
     try {
-      ForecastResponse r = restClient.get()
-          .uri("/forecast.json?key={key}&aqi=yes&days=2&alerts=yes&q={q}", weatherApiKey, query)
-          .retrieve()
-          .body(ForecastResponse.class);
+      ForecastResponse r = getForecastData(query);
 
       WeatherAPIResponse weatherAPIResponse = WeatherAPIResponse.builder().forecastResponseModel(r).build();
       if (request.getResults().getBoolean(ARG_ASTRONOMY)) {
@@ -71,6 +79,31 @@ public class WeatherAPIService {
       return weatherAPIResponse;
     }
 
+  }
+
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.CmpWeatherService)
+  public <T extends ServiceResponse> CmpWeatherResponse handleCmpWeatherServiceRequest(ServiceRequest request) {
+    CmpWeatherResponse response = CmpWeatherResponse.builder().build();
+    List<ForecastResponse> forecastResponses = new ArrayList<>();
+    response.setForecastResponses(forecastResponses);
+
+    String[] places = request.getResults().getStringArray(ARG_PLACE);
+    for (String place : places) {
+      try {
+        forecastResponses.add(getForecastData(place.toLowerCase()));
+      } catch (Exception e) {
+        ErrorResponse error = getErrorFromException(e);
+        if (error.error() != null && Integer.valueOf(1006).equals(error.error().code())) {
+          log.debug("Skipping unknown weather place '{}': {}", place, error.error().message());
+          continue;
+        }
+        response.setStatus("NOK: fetching weather failed");
+        return response;
+      }
+    }
+
+    response.setStatus("OK: data size " + forecastResponses.size());
+    return response;
   }
 
   private ErrorResponse getErrorFromException(Exception e) {

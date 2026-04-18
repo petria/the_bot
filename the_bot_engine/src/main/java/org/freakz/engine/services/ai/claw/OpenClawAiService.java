@@ -237,7 +237,7 @@ public class OpenClawAiService {
   }
 
   private Path resolveSessionFilePath(JsonNode sessionNode) {
-    String sessionFile = sessionNode.path("sessionFile").asText("").trim();
+    String sessionFile = sessionNode.path("sessionFile").asString("").trim();
     if (!sessionFile.isBlank()) {
       Path configuredPath = Path.of(sessionFile);
       if (Files.exists(configuredPath)) {
@@ -252,7 +252,7 @@ public class OpenClawAiService {
       }
     }
 
-    String sessionId = sessionNode.path("sessionId").asText("").trim();
+    String sessionId = sessionNode.path("sessionId").asString("").trim();
     if (!sessionId.isBlank()) {
       Path sessionIdPath = getSessionsDirPath().resolve(sessionId + ".jsonl");
       if (Files.exists(sessionIdPath)) {
@@ -283,12 +283,12 @@ public class OpenClawAiService {
       return null;
     }
 
-    if (!"message".equals(node.path("type").asText(""))) {
+    if (!"message".equals(node.path("type").asString(""))) {
       return null;
     }
 
     JsonNode messageNode = node.path("message");
-    if (!"assistant".equals(messageNode.path("role").asText(""))) {
+    if (!"assistant".equals(messageNode.path("role").asString(""))) {
       return null;
     }
 
@@ -304,8 +304,8 @@ public class OpenClawAiService {
     }
 
     for (JsonNode item : contentArr) {
-      if ("text".equals(item.path("type").asText(""))) {
-        String text = normalizeAssistantReply(item.path("text").asText(""));
+      if ("text".equals(item.path("type").asString(""))) {
+        String text = normalizeAssistantReply(item.path("text").asString(""));
         if (!text.isBlank()) {
           latest = text;
         }

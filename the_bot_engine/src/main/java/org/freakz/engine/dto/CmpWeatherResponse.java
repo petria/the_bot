@@ -1,31 +1,31 @@
 package org.freakz.engine.dto;
 
-import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.engine.services.api.ServiceResponse;
+import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 
 import java.util.List;
 
 public class CmpWeatherResponse extends ServiceResponse {
 
-  private List<ForecaData> forecaDataList;
+  private List<ForecastResponse> forecastResponses;
 
   public CmpWeatherResponse() {
   }
 
-  public CmpWeatherResponse(List<ForecaData> forecaDataList) {
-    this.forecaDataList = forecaDataList;
+  public CmpWeatherResponse(List<ForecastResponse> forecastResponses) {
+    this.forecastResponses = forecastResponses;
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  public List<ForecaData> getForecaDataList() {
-    return forecaDataList;
+  public List<ForecastResponse> getForecastResponses() {
+    return forecastResponses;
   }
 
-  public void setForecaDataList(List<ForecaData> forecaDataList) {
-    this.forecaDataList = forecaDataList;
+  public void setForecastResponses(List<ForecastResponse> forecastResponses) {
+    this.forecastResponses = forecastResponses;
   }
 
   @Override
@@ -35,34 +35,34 @@ public class CmpWeatherResponse extends ServiceResponse {
 
     CmpWeatherResponse that = (CmpWeatherResponse) o;
 
-    return forecaDataList != null ? forecaDataList.equals(that.forecaDataList) : that.forecaDataList == null;
+    return forecastResponses != null ? forecastResponses.equals(that.forecastResponses) : that.forecastResponses == null;
   }
 
   @Override
   public int hashCode() {
-    return forecaDataList != null ? forecaDataList.hashCode() : 0;
+    return forecastResponses != null ? forecastResponses.hashCode() : 0;
   }
 
   @Override
   public String toString() {
     return "CmpWeatherResponse{" +
-        "forecaDataList=" + forecaDataList +
+        "forecastResponses=" + forecastResponses +
         '}';
   }
 
   public static class Builder {
-    private List<ForecaData> forecaDataList;
+    private List<ForecastResponse> forecastResponses;
 
     Builder() {
     }
 
-    public Builder forecaDataList(List<ForecaData> forecaDataList) {
-      this.forecaDataList = forecaDataList;
+    public Builder forecastResponses(List<ForecastResponse> forecastResponses) {
+      this.forecastResponses = forecastResponses;
       return this;
     }
 
     public CmpWeatherResponse build() {
-      return new CmpWeatherResponse(forecaDataList);
+      return new CmpWeatherResponse(forecastResponses);
     }
   }
 }

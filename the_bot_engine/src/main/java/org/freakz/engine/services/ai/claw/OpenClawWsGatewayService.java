@@ -94,13 +94,13 @@ public class OpenClawWsGatewayService {
           .doOnNext(payload -> {
             try {
               JsonNode node = objectMapper.readTree(payload);
-              String type = node.path("type").asText("");
-              String event = node.path("event").asText("");
+              String type = node.path("type").asString("");
+              String event = node.path("event").asString("");
 
-              logFrameSummary(type, event, node.path("id").asText(""), node.path("payload"));
+              logFrameSummary(type, event, node.path("id").asString(""), node.path("payload"));
 
               if ("event".equals(type) && "connect.challenge".equals(event)) {
-                challengeNonce.set(node.path("payload").path("nonce").asText(""));
+                challengeNonce.set(node.path("payload").path("nonce").asString(""));
                 if (!connectSent.get()) {
                   connectSent.set(true);
                   String connectJson = buildConnectRequest(connectReqId, wsIdentity, challengeNonce.get());
@@ -140,7 +140,7 @@ public class OpenClawWsGatewayService {
                 return;
               }
 
-              String id = node.path("id").asText("");
+              String id = node.path("id").asString("");
 
               if (connectReqId.equals(id)) {
                 boolean ok = node.path("ok").asBoolean(false);
@@ -165,7 +165,7 @@ public class OpenClawWsGatewayService {
                 }
 
                 JsonNode payloadNode = node.path("payload");
-                String status = payloadNode.path("status").asText("");
+                String status = payloadNode.path("status").asString("");
                 String runId = findFirstText(payloadNode, "runId");
                 if (!runId.isBlank()) {
                   latestRunId.set(runId);
@@ -290,8 +290,8 @@ public class OpenClawWsGatewayService {
       return "";
     }
 
-    if (messageNode.path("text").isTextual()) {
-      return messageNode.path("text").asText("").trim();
+    if (messageNode.path("text").isString()) {
+      return messageNode.path("text").asString("").trim();
     }
 
     JsonNode contentNode = messageNode.path("content");
@@ -301,10 +301,10 @@ public class OpenClawWsGatewayService {
 
     String latest = "";
     for (JsonNode item : contentNode) {
-      if (!"text".equals(item.path("type").asText(""))) {
+      if (!"text".equals(item.path("type").asString(""))) {
         continue;
       }
-      String text = item.path("text").asText("").trim();
+      String text = item.path("text").asString("").trim();
       if (!text.isBlank()) {
         latest = text;
       }
@@ -359,8 +359,8 @@ public class OpenClawWsGatewayService {
       return "";
     }
 
-    if (node.isTextual()) {
-      return node.asText("").trim();
+    if (node.isString()) {
+      return node.asString("").trim();
     }
 
     if (node.isArray()) {
@@ -391,8 +391,8 @@ public class OpenClawWsGatewayService {
     }
 
     JsonNode direct = node.path(fieldName);
-    if (direct.isTextual()) {
-      return direct.asText("").trim();
+    if (direct.isString()) {
+      return direct.asString("").trim();
     }
 
     if (node.isArray()) {
@@ -406,21 +406,21 @@ public class OpenClawWsGatewayService {
     }
 
     JsonNode found = node.findValue(fieldName);
-    if (found != null && found.isTextual()) {
-      return found.asText("").trim();
+    if (found != null && found.isString()) {
+      return found.asString("").trim();
     }
     return "";
   }
 
   private String normalizeAgentReply(JsonNode payloadNode) {
-    String reply = payloadNode.path("reply").asText("").trim();
+    String reply = payloadNode.path("reply").asString("").trim();
     if (isLifecycleMarker(reply)) {
       reply = "";
     }
 
     if (reply.isBlank()) {
-      String summary = payloadNode.path("summary").asText("").trim();
-      if (!isLifecycleMarker(summary) && !summary.equalsIgnoreCase(payloadNode.path("status").asText("").trim())) {
+      String summary = payloadNode.path("summary").asString("").trim();
+      if (!isLifecycleMarker(summary) && !summary.equalsIgnoreCase(payloadNode.path("status").asString("").trim())) {
         reply = summary;
       }
     }
@@ -518,18 +518,18 @@ public class OpenClawWsGatewayService {
     JsonNode deviceAuthNode = readJsonFile(deviceAuthPath);
     JsonNode pairedDevicesNode = Files.exists(pairedDevicesPath) ? readJsonFile(pairedDevicesPath) : objectMapper.createObjectNode();
 
-    String deviceId = identityNode.path("deviceId").asText("").trim();
+    String deviceId = identityNode.path("deviceId").asString("").trim();
     if (deviceId.isBlank()) {
       throw new IOException("missing deviceId in " + identityPath);
     }
 
     String gatewayToken = getConfigValue("openclawGatewayToken", "OPENCLAW_GATEWAY_TOKEN", "").trim();
-    String operatorToken = deviceAuthNode.path("tokens").path("operator").path("token").asText("").trim();
+    String operatorToken = deviceAuthNode.path("tokens").path("operator").path("token").asString("").trim();
     JsonNode pairedNode = pairedDevicesNode.path(deviceId);
 
-    String publicKey = pairedNode.path("publicKey").asText("").trim();
+    String publicKey = pairedNode.path("publicKey").asString("").trim();
     if (publicKey.isBlank()) {
-      publicKey = extractRawPublicKey(identityNode.path("publicKeyPem").asText(""));
+      publicKey = extractRawPublicKey(identityNode.path("publicKeyPem").asString(""));
     }
     if (publicKey.isBlank()) {
       throw new IOException("missing publicKey for device " + deviceId);
@@ -537,13 +537,13 @@ public class OpenClawWsGatewayService {
 
     String clientId = normalizeOperatorClientId(getConfigValue("openclawWsClientId", "OPENCLAW_WS_CLIENT_ID", "gateway-client"));
     String clientMode = normalizeOperatorClientMode(getConfigValue("openclawWsClientMode", "OPENCLAW_WS_CLIENT_MODE", "backend"));
-    String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asText("linux"));
+    String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asString("linux"));
 
     List<String> scopes = new ArrayList<>();
     JsonNode tokenScopes = deviceAuthNode.path("tokens").path("operator").path("scopes");
     if (tokenScopes.isArray()) {
       tokenScopes.forEach(scope -> {
-        String value = scope.asText("").trim();
+        String value = scope.asString("").trim();
         if (!value.isBlank()) {
           scopes.add(value);
         }
@@ -559,7 +559,7 @@ public class OpenClawWsGatewayService {
         operatorToken,
         deviceId,
         publicKey,
-        parsePrivateKey(identityNode.path("privateKeyPem").asText("")),
+        parsePrivateKey(identityNode.path("privateKeyPem").asString("")),
         clientId,
         clientMode,
         platform,

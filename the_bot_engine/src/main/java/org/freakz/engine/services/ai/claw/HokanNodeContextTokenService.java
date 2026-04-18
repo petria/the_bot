@@ -84,18 +84,18 @@ public class HokanNodeContextTokenService {
 
       JsonNode user = payload.path("user");
       return new VerifiedNodeContext(
-          payload.path("sessionKey").asText(""),
-          payload.path("sourceEchoToAlias").asText(""),
-          payload.path("chatProtocol").asText(""),
-          payload.path("chatId").asText(""),
+          payload.path("sessionKey").asString(""),
+          payload.path("sourceEchoToAlias").asString(""),
+          payload.path("chatProtocol").asString(""),
+          payload.path("chatId").asString(""),
           payload.path("fromConnectionId").asInt(0),
           payload.path("requestedByAdmin").asBoolean(false),
-          user.path("username").asText(""),
-          user.path("name").asText(""),
-          user.path("ircNick").asText(""),
-          user.path("telegramId").asText(""),
-          user.path("discordId").asText(""),
-          user.path("slackId").asText("")
+          user.path("username").asString(""),
+          user.path("name").asString(""),
+          user.path("ircNick").asString(""),
+          user.path("telegramId").asString(""),
+          user.path("discordId").asString(""),
+          user.path("slackId").asString("")
       );
     } catch (IllegalArgumentException e) {
       throw e;
