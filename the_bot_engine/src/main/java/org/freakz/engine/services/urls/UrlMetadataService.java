@@ -1,9 +1,8 @@
 package org.freakz.engine.services.urls;
 
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -24,10 +23,10 @@ public class UrlMetadataService {
 
   private static final Logger log = LoggerFactory.getLogger(UrlMetadataService.class);
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
 
-  public UrlMetadataService(EnvValuesService envValuesService) {
-    this.envValuesService = envValuesService;
+  public UrlMetadataService(ConfigService configService) {
+    this.configService = configService;
   }
 
   @Async
@@ -43,9 +42,9 @@ public class UrlMetadataService {
     }
     StringBuilder sb = new StringBuilder();
     if (!urlStrings.isEmpty()) {
-      SysEnvValue envValue = envValuesService.findFirstByKey("channel.do.url.topic");
-      if (envValue != null) {
-        String[] split = envValue.getValue().split(",");
+      String configured = configService.getConfigValue("channel.do.url.topic", null, null);
+      if (configured != null && !configured.isBlank()) {
+        String[] split = configured.split(",");
         for (String alias : split) {
           if (alias.equals(request.getEchoToAlias())) {
             String title = doGetUrlTitles(request, alias, urlStrings, engine);

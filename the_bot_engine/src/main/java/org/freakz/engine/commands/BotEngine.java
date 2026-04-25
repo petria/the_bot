@@ -13,7 +13,6 @@ import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.data.service.EnvValuesService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
@@ -40,7 +39,6 @@ public class BotEngine {
   private final CommandHandlerLoader commandHandlerLoader;
   private final HokanServices hokanServices;
   private final ConfigService configService;
-  private final EnvValuesService envValuesService;
   private final UrlMetadataService urlMetadataService;
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
@@ -51,7 +49,6 @@ public class BotEngine {
       AccessService accessService,
       HokanServices hokanServices,
       ConfigService configService,
-      EnvValuesService envValuesService,
       UrlMetadataService urlMetadataService,
       RestMessageSendClient restMessageSendClient,
       PrivateChatAlertService privateChatAlertService)
@@ -59,7 +56,6 @@ public class BotEngine {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
-    this.envValuesService = envValuesService;
 //    this.countInterceptor = countInterceptor;
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
@@ -130,7 +126,7 @@ public class BotEngine {
       return false;
     }
 
-    String configured = envValuesService.getKeyValueOrDefault("channel.do.public.ai", null);
+    String configured = configService.getConfigValue("channel.do.public.ai", null, null);
     if (configured == null || configured.isBlank()) {
       return false;
     }

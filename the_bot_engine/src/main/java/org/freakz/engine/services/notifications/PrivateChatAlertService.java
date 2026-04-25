@@ -2,7 +2,7 @@ package org.freakz.engine.services.notifications;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.slf4j.Logger;
@@ -20,16 +20,16 @@ public class PrivateChatAlertService {
   private static final Logger log = LoggerFactory.getLogger(PrivateChatAlertService.class);
   private static final String ALERT_TARGETS_KEY = "channel.do.sys.notify";
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
   private final UsersService usersService;
   private final ConnectionManagerService connectionManagerService;
   private final Set<String> notifiedChatIds = ConcurrentHashMap.newKeySet();
 
   public PrivateChatAlertService(
-      EnvValuesService envValuesService,
+      ConfigService configService,
       UsersService usersService,
       ConnectionManagerService connectionManagerService) {
-    this.envValuesService = envValuesService;
+    this.configService = configService;
     this.usersService = usersService;
     this.connectionManagerService = connectionManagerService;
   }
@@ -86,7 +86,7 @@ public class PrivateChatAlertService {
   }
 
   private Set<String> resolveAlertTargets() {
-    String raw = envValuesService.getKeyValueOrDefault(ALERT_TARGETS_KEY, null);
+    String raw = configService.getConfigValue(ALERT_TARGETS_KEY, null, null);
     if (raw == null || raw.isBlank()) {
       return Set.of();
     }

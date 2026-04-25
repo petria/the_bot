@@ -2,7 +2,7 @@ package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -19,11 +19,13 @@ public class HokanNodeContextTokenService {
 
   private static final String HMAC_ALGO = "HmacSHA256";
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
   private final JsonMapper objectMapper;
 
-  public HokanNodeContextTokenService(EnvValuesService envValuesService, JsonMapper objectMapper) {
-    this.envValuesService = envValuesService;
+  public HokanNodeContextTokenService(
+      ConfigService configService,
+      JsonMapper objectMapper) {
+    this.configService = configService;
     this.objectMapper = objectMapper;
   }
 
@@ -113,12 +115,9 @@ public class HokanNodeContextTokenService {
   private String resolveSecret() {
     String configured =
         firstNonBlank(
-            envValuesService.getKeyValueOrDefault("openclawNodeContextSecret", null),
-            System.getenv("OPENCLAW_NODE_CONTEXT_SECRET"),
-            envValuesService.getKeyValueOrDefault("openclawHooksToken", null),
-            System.getenv("OPENCLAW_HOOKS_TOKEN"),
-            envValuesService.getKeyValueOrDefault("openclawGatewayToken", null),
-            System.getenv("OPENCLAW_GATEWAY_TOKEN")
+            configService.getConfigValue("openclaw.node-context-secret", "OPENCLAW_NODE_CONTEXT_SECRET", null),
+            configService.getConfigValue("hokan.ai.openclaw.hooks.token", "OPENCLAW_HOOKS_TOKEN", null),
+            configService.getConfigValue("openclaw.gateway-token", "OPENCLAW_GATEWAY_TOKEN", null)
         );
     if (configured == null || configured.isBlank()) {
       throw new IllegalStateException("missing secret for Hokan node context token");
@@ -136,7 +135,7 @@ public class HokanNodeContextTokenService {
   }
 
   private long parseLongConfig(String key, String envKey, long defaultValue) {
-    String value = envValuesService.getKeyValueOrDefault(key, System.getenv(envKey));
+    String value = configService.getConfigValue(toBootstrapPropertyKey(key), envKey, null);
     if (value == null || value.isBlank()) {
       return defaultValue;
     }
@@ -149,6 +148,15 @@ public class HokanNodeContextTokenService {
 
   private String base64Url(byte[] bytes) {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+  }
+
+  private String toBootstrapPropertyKey(String key) {
+    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
+    if (normalized.isBlank()) {
+      return "openclaw";
+    }
+    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
+    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
   }
 
   private boolean constantTimeEquals(String a, String b) {

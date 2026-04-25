@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "the.bot")
 public class TheBotProperties {
 
+  private String configFile;
   private String dataDir;
   private String runtimeDir;
 
@@ -16,11 +17,20 @@ public class TheBotProperties {
   public TheBotProperties() {
   }
 
-  public TheBotProperties(String dataDir, String runtimeDir, String secretPropertiesFile, String logDir) {
+  public TheBotProperties(String configFile, String dataDir, String runtimeDir, String secretPropertiesFile, String logDir) {
+    this.configFile = configFile;
     this.dataDir = dataDir;
     this.runtimeDir = runtimeDir;
     this.secretPropertiesFile = secretPropertiesFile;
     this.logDir = logDir;
+  }
+
+  public String getConfigFile() {
+    return configFile;
+  }
+
+  public void setConfigFile(String configFile) {
+    this.configFile = configFile;
   }
 
   public String getDataDir() {
@@ -58,7 +68,8 @@ public class TheBotProperties {
   @Override
   public String toString() {
     return "TheBotProperties{" +
-        "dataDir='" + dataDir + "'" +
+        "configFile='" + configFile + "'" +
+        ", dataDir='" + dataDir + "'" +
         ", runtimeDir='" + runtimeDir + "'" +
         ", secretPropertiesFile='" + secretPropertiesFile + "'" +
         ", logDir='" + logDir + "'" +

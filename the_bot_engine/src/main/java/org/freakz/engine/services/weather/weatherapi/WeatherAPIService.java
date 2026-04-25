@@ -33,10 +33,12 @@ public class WeatherAPIService {
   private final String weatherApiKey;
 
 
-  public WeatherAPIService(ConfigService configService, WeatherConfigProperties properties) {
+  public WeatherAPIService(ConfigService configService) {
     this.configService = configService;
-    this.weatherApiUrl = properties.apiUrl();
-    this.weatherApiKey = properties.apiKey();
+    this.weatherApiUrl =
+        configService.getRequiredConfigValue("weather.api-url", "WEATHER_API_URL");
+    this.weatherApiKey =
+        configService.getRequiredConfigValue("weather.api-key", "WEATHER_API_KEY");
     this.restClient = RestClient.create(this.weatherApiUrl);
   }
 

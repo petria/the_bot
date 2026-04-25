@@ -1,8 +1,7 @@
 package org.freakz.engine.services.ai;
 
-import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.commands.util.CommandArgs;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.dto.weather.WaterTemperatureResponse;
 import org.freakz.engine.services.ai.claw.OpenClawAiService;
@@ -26,7 +25,7 @@ public class AiCommandsHandlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AiCommandsHandlerService.class);
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
 
   private final OllamaAiService ollamaAiService;
 
@@ -37,8 +36,8 @@ public class AiCommandsHandlerService {
   private final WaterTemperatureService waterTemperatureService;
 
 
-  public AiCommandsHandlerService(EnvValuesService envValuesService, OllamaAiService ollamaAiService, OpenAiService openAiService, OpenClawAiService openClawAiService, WaterTemperatureService waterTemperatureService) {
-    this.envValuesService = envValuesService;
+  public AiCommandsHandlerService(ConfigService configService, OllamaAiService ollamaAiService, OpenAiService openAiService, OpenClawAiService openClawAiService, WaterTemperatureService waterTemperatureService) {
+    this.configService = configService;
     this.ollamaAiService = ollamaAiService;
     this.openAiService = openAiService;
     this.openClawAiService = openClawAiService;
@@ -63,9 +62,6 @@ public class AiCommandsHandlerService {
   @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.WaterTemperatureService)
   public WaterTemperatureResponse handleWaterTemperatureServiceRequest(ServiceRequest request) {
 
-
-    SysEnvValue envValue = envValuesService.findFirstByKey("ollamaWaterHost");
-
     WaterTemperatureResponse response = WaterTemperatureResponse.builder().build();
 
     String network = request.getEngineRequest().getNetwork();
@@ -82,12 +78,14 @@ public class AiCommandsHandlerService {
         String imageUrl = data.getWaterTemperatureChartImageUrl();
         try {
 
-          String ollamaWaterHost = envValuesService.getKeyValueOrDefault("ollamaWaterHost", "http://bot-ollama:11434");
-          String ollamaWaterModel = envValuesService.getKeyValueOrDefault("ollamaWaterModel", "qwen3-vl:235b-cloud");
+          String ollamaWaterHost =
+              configService.getConfigValue("ollama.water.host", null, "http://bot-ollama:11434");
+          String ollamaWaterModel =
+              configService.getConfigValue("ollama.water.model", null, "qwen3-vl:235b-cloud");
 
           String promptMessage = "What is the current measured water temperature. Answer nothing else but XXX°C  where XXX is temperature.";
           String queryResponse;
-          if (envValuesService.getKeyValueBooleanOrDefault("waterUseOllama", false)) {
+          if (configService.getConfigBooleanValue("water.use.ollama", null, false)) {
             log.debug("Using OLLAMA to resolve water temperature");
             queryResponse = ollamaAiService.describeImageFromUrl(request.getEngineRequest(), ollamaWaterHost, ollamaWaterModel, promptMessage, imageUrl, network, channel, sentByNick, sentByRealName);
           } else {

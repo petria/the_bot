@@ -3,7 +3,7 @@ package org.freakz.engine.services.ai.claw;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -31,7 +31,7 @@ public class OpenClawAiService {
 
   private static final Logger log = LoggerFactory.getLogger(OpenClawAiService.class);
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
   private final JsonMapper objectMapper;
   private final HttpClient httpClient;
   private final BotEngine botEngine;
@@ -39,13 +39,13 @@ public class OpenClawAiService {
   private final HokanNodeContextTokenService hokanNodeContextTokenService;
 
   public OpenClawAiService(
-      EnvValuesService envValuesService,
+      ConfigService configService,
       JsonMapper objectMapper,
       BotEngine botEngine,
       OpenClawWsGatewayService openClawWsGatewayService,
       HokanNodeContextTokenService hokanNodeContextTokenService
   ) {
-    this.envValuesService = envValuesService;
+    this.configService = configService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.openClawWsGatewayService = openClawWsGatewayService;
@@ -497,17 +497,7 @@ public class OpenClawAiService {
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
-    String fromStore = envValuesService.getKeyValueOrDefault(key, null);
-    if (fromStore != null && !fromStore.isBlank()) {
-      return fromStore;
-    }
-
-    String fromEnv = System.getenv(envKey);
-    if (fromEnv != null && !fromEnv.isBlank()) {
-      return fromEnv;
-    }
-
-    return defaultValue;
+    return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
   }
 
   private int parseIntConfig(String key, String envKey, int defaultValue) {
@@ -532,6 +522,15 @@ public class OpenClawAiService {
       return "";
     }
     return value.replaceAll("[\\r\\n]+", " ").trim();
+  }
+
+  private String toBootstrapPropertyKey(String key) {
+    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
+    if (normalized.isBlank()) {
+      return "openclaw";
+    }
+    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
+    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
   }
 
 

@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "the.bot")
 public class TheBotProperties {
 
+  private String configFile;
   private String dataDir;
   private String runtimeDir;
 
@@ -15,6 +16,14 @@ public class TheBotProperties {
   private String logDir;
 
   public TheBotProperties() {
+  }
+
+  public String getConfigFile() {
+    return configFile;
+  }
+
+  public void setConfigFile(String configFile) {
+    this.configFile = configFile;
   }
 
   public String getDataDir() {
@@ -56,6 +65,7 @@ public class TheBotProperties {
 
     TheBotProperties that = (TheBotProperties) o;
 
+    if (configFile != null ? !configFile.equals(that.configFile) : that.configFile != null) return false;
     if (dataDir != null ? !dataDir.equals(that.dataDir) : that.dataDir != null) return false;
     if (runtimeDir != null ? !runtimeDir.equals(that.runtimeDir) : that.runtimeDir != null) return false;
     if (secretPropertiesFile != null ? !secretPropertiesFile.equals(that.secretPropertiesFile) : that.secretPropertiesFile != null)
@@ -65,7 +75,8 @@ public class TheBotProperties {
 
   @Override
   public int hashCode() {
-    int result = dataDir != null ? dataDir.hashCode() : 0;
+    int result = configFile != null ? configFile.hashCode() : 0;
+    result = 31 * result + (dataDir != null ? dataDir.hashCode() : 0);
     result = 31 * result + (runtimeDir != null ? runtimeDir.hashCode() : 0);
     result = 31 * result + (secretPropertiesFile != null ? secretPropertiesFile.hashCode() : 0);
     result = 31 * result + (logDir != null ? logDir.hashCode() : 0);
@@ -75,7 +86,8 @@ public class TheBotProperties {
   @Override
   public String toString() {
     return "TheBotProperties{" +
-        "dataDir='" + dataDir + '\'' +
+        "configFile='" + configFile + '\'' +
+        ", dataDir='" + dataDir + '\'' +
         ", runtimeDir='" + runtimeDir + '\'' +
         ", secretPropertiesFile='" + secretPropertiesFile + '\'' +
         ", logDir='" + logDir + '\'' +
