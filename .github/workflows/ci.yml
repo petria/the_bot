@@ -12,6 +12,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      engine_changed: ${{ steps.changes.outputs.engine }}
+      io_changed: ${{ steps.changes.outputs.io }}
 
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -99,22 +102,245 @@ jobs:
             ${{ env.IMAGE_IO }}:${{ github.sha }}
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_IO) || format('{0}:develop', env.IMAGE_IO) }}
 
-      - name: Write deploy metadata
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
-        run: |
-          cat > deploy-meta.json << 'EOF'
-          {
-            "sha": "${{ github.sha }}",
-            "branch": "${{ github.ref_name }}",
-            "engine_changed": "${{ steps.changes.outputs.engine }}",
-            "io_changed": "${{ steps.changes.outputs.io }}"
-          }
-          EOF
+  deploy:
+    name: Deploy to VM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) }}
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
 
-      - name: Upload deploy metadata artifact
-        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
-        uses: actions/upload-artifact@v4
+    steps:
+      - name: Validate deploy target
+        env:
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_TARGET_BRANCH: ${{ vars.DEPLOY_TARGET_BRANCH }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          if [ -z "$VM_HOST" ] || [ -z "$VM_USER" ] || [ -z "$VM_SSH_KEY" ]; then
+            echo "Missing VM_HOST, VM_USER or VM_SSH_KEY for deploy environment."
+            exit 1
+          fi
+
+          if [ -n "$DEPLOY_TARGET_BRANCH" ] && [ "$DEPLOY_TARGET_BRANCH" != "$DEPLOY_BRANCH" ]; then
+            echo "Refusing deploy because DEPLOY_TARGET_BRANCH=$DEPLOY_TARGET_BRANCH does not match $DEPLOY_BRANCH."
+            exit 1
+          fi
+
+          if [ "$DEPLOY_BRANCH" = "develop" ] && [ -z "$DEPLOY_TARGET_BRANCH" ]; then
+            echo "Refusing develop deploy because DEPLOY_TARGET_BRANCH is not set in the deploy environment."
+            exit 1
+          fi
+
+      - name: Deploy changed services to VM
+        uses: appleboy/ssh-action@master
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          ENGINE_CHANGED: ${{ needs.build-and-push.outputs.engine_changed }}
+          IO_CHANGED: ${{ needs.build-and-push.outputs.io_changed }}
+          OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          OPENCLAW_NODE_CONTEXT_SECRET: ${{ secrets.OPENCLAW_NODE_CONTEXT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          SLACK_TOKEN_SECRET: ${{ secrets.SLACK_TOKEN_SECRET }}
+          DISCORD_SECRET: ${{ secrets.DISCORD_SECRET }}
+          TELEGRAM_SECRET: ${{ secrets.TELEGRAM_SECRET }}
+          PUID: ${{ vars.PUID }}
+          PGID: ${{ vars.PGID }}
+          DEPLOY_WORKDIR: ${{ vars.DEPLOY_WORKDIR }}
+          HOKAN_DATA_DIR: ${{ vars.HOKAN_DATA_DIR }}
+          OPENCLAW_IMAGE: ${{ vars.OPENCLAW_IMAGE }}
+          OPENCLAW_HOST_PORT: ${{ vars.OPENCLAW_HOST_PORT }}
+          HOKAN_OPENCLAW_HOOKS_URL: ${{ vars.HOKAN_OPENCLAW_HOOKS_URL }}
+          HOKAN_OPENCLAW_WAKE_URL: ${{ vars.HOKAN_OPENCLAW_WAKE_URL }}
+          OPENCLAW_GATEWAY_WS_URL: ${{ vars.OPENCLAW_GATEWAY_WS_URL }}
+          OPENCLAW_WS_TIMEOUT_SECONDS: ${{ vars.OPENCLAW_WS_TIMEOUT_SECONDS }}
+          OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS: ${{ vars.OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS }}
+          OPENCLAW_STATE_DIR_HOST: ${{ vars.OPENCLAW_STATE_DIR_HOST }}
+          OPENCLAW_RUNTIME_LOG_ROOT: ${{ vars.OPENCLAW_RUNTIME_LOG_ROOT }}
+          OPENCLAW_RUNTIME_LOG_ROOT_LOCAL: ${{ vars.OPENCLAW_RUNTIME_LOG_ROOT_LOCAL }}
+          OPENCLAW_NODE_BRIDGE_ENABLED: ${{ vars.OPENCLAW_NODE_BRIDGE_ENABLED }}
+          WEATHER_API_URL: ${{ vars.WEATHER_API_URL }}
         with:
-          name: deploy-meta-${{ github.sha }}
-          path: deploy-meta.json
-          retention-days: 7
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_NODE_CONTEXT_SECRET,OPENAI_API_KEY,WEATHER_API_KEY,SLACK_TOKEN_SECRET,DISCORD_SECRET,TELEGRAM_SECRET,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,OPENCLAW_IMAGE,OPENCLAW_HOST_PORT,HOKAN_OPENCLAW_HOOKS_URL,HOKAN_OPENCLAW_WAKE_URL,OPENCLAW_GATEWAY_WS_URL,OPENCLAW_WS_TIMEOUT_SECONDS,OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS,OPENCLAW_STATE_DIR_HOST,OPENCLAW_RUNTIME_LOG_ROOT,OPENCLAW_RUNTIME_LOG_ROOT_LOCAL,OPENCLAW_NODE_BRIDGE_ENABLED,WEATHER_API_URL
+          script: |
+            cd "${DEPLOY_WORKDIR:-/home/hokan/the_bot}"
+
+            case "$DEPLOY_BRANCH" in
+              main)
+                SPRING_PROFILES_ACTIVE="prod"
+                HOKAN_RUNTIME_PROFILE="PROD"
+                RUNTIME_PROPERTIES_FILE="prod.properties"
+                DEFAULT_OPENCLAW_HOST_PORT="18890"
+                DEFAULT_IMAGE_TAG="latest"
+                ;;
+              develop)
+                SPRING_PROFILES_ACTIVE="dev"
+                HOKAN_RUNTIME_PROFILE="DEV"
+                RUNTIME_PROPERTIES_FILE="dev.properties"
+                DEFAULT_OPENCLAW_HOST_PORT="18899"
+                DEFAULT_IMAGE_TAG="develop"
+                ;;
+              *)
+                echo "Unsupported deploy branch: $DEPLOY_BRANCH"
+                exit 1
+                ;;
+            esac
+
+            CI_OPENCLAW_HOOKS_TOKEN="$OPENCLAW_HOOKS_TOKEN"
+            CI_OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN"
+            CI_OPENCLAW_NODE_CONTEXT_SECRET="$OPENCLAW_NODE_CONTEXT_SECRET"
+            CI_OPENAI_API_KEY="$OPENAI_API_KEY"
+            CI_WEATHER_API_KEY="$WEATHER_API_KEY"
+            CI_SLACK_TOKEN_SECRET="$SLACK_TOKEN_SECRET"
+            CI_DISCORD_SECRET="$DISCORD_SECRET"
+            CI_TELEGRAM_SECRET="$TELEGRAM_SECRET"
+            CI_PUID="$PUID"
+            CI_PGID="$PGID"
+            CI_HOKAN_DATA_DIR="$HOKAN_DATA_DIR"
+            CI_OPENCLAW_IMAGE="$OPENCLAW_IMAGE"
+            CI_OPENCLAW_HOST_PORT="$OPENCLAW_HOST_PORT"
+            CI_HOKAN_OPENCLAW_HOOKS_URL="$HOKAN_OPENCLAW_HOOKS_URL"
+            CI_HOKAN_OPENCLAW_WAKE_URL="$HOKAN_OPENCLAW_WAKE_URL"
+            CI_OPENCLAW_GATEWAY_WS_URL="$OPENCLAW_GATEWAY_WS_URL"
+            CI_OPENCLAW_WS_TIMEOUT_SECONDS="$OPENCLAW_WS_TIMEOUT_SECONDS"
+            CI_OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS="$OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS"
+            CI_OPENCLAW_STATE_DIR_HOST="$OPENCLAW_STATE_DIR_HOST"
+            CI_OPENCLAW_RUNTIME_LOG_ROOT="$OPENCLAW_RUNTIME_LOG_ROOT"
+            CI_OPENCLAW_RUNTIME_LOG_ROOT_LOCAL="$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL"
+            CI_OPENCLAW_NODE_BRIDGE_ENABLED="$OPENCLAW_NODE_BRIDGE_ENABLED"
+            CI_WEATHER_API_URL="$WEATHER_API_URL"
+
+            if [ -f .env ]; then
+              set -a
+              . ./.env
+              set +a
+            fi
+
+            HOKAN_DATA_DIR="${CI_HOKAN_DATA_DIR:-${HOKAN_DATA_DIR:-/home/hokan/the_bot}}"
+            BOT_CONFIG_FILE="/runtime/$RUNTIME_PROPERTIES_FILE"
+            PUID="${CI_PUID:-${PUID:-1002}}"
+            PGID="${CI_PGID:-${PGID:-1002}}"
+
+            if [ "$ENGINE_CHANGED" = "true" ]; then
+              ENGINE_IMAGE_TAG="$DEPLOY_SHA"
+            fi
+
+            if [ "$IO_CHANGED" = "true" ]; then
+              IO_IMAGE_TAG="$DEPLOY_SHA"
+            fi
+
+            ENGINE_IMAGE_TAG="${ENGINE_IMAGE_TAG:-$DEFAULT_IMAGE_TAG}"
+            IO_IMAGE_TAG="${IO_IMAGE_TAG:-$DEFAULT_IMAGE_TAG}"
+            OPENCLAW_IMAGE="${CI_OPENCLAW_IMAGE:-${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}}"
+            OPENCLAW_HOST_PORT="${CI_OPENCLAW_HOST_PORT:-${OPENCLAW_HOST_PORT:-$DEFAULT_OPENCLAW_HOST_PORT}}"
+            OPENCLAW_HOOKS_TOKEN="${CI_OPENCLAW_HOOKS_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}"
+            OPENCLAW_GATEWAY_TOKEN="${CI_OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_GATEWAY_TOKEN:-$OPENCLAW_HOOKS_TOKEN}}"
+            OPENCLAW_NODE_CONTEXT_SECRET="${CI_OPENCLAW_NODE_CONTEXT_SECRET:-${OPENCLAW_NODE_CONTEXT_SECRET:-}}"
+            OPENAI_API_KEY="${CI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
+            WEATHER_API_KEY="${CI_WEATHER_API_KEY:-${WEATHER_API_KEY:-}}"
+            SLACK_TOKEN_SECRET="${CI_SLACK_TOKEN_SECRET:-${SLACK_TOKEN_SECRET:-}}"
+            DISCORD_SECRET="${CI_DISCORD_SECRET:-${DISCORD_SECRET:-}}"
+            TELEGRAM_SECRET="${CI_TELEGRAM_SECRET:-${TELEGRAM_SECRET:-}}"
+            HOKAN_OPENCLAW_HOOKS_URL="${CI_HOKAN_OPENCLAW_HOOKS_URL:-${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}}"
+            HOKAN_OPENCLAW_WAKE_URL="${CI_HOKAN_OPENCLAW_WAKE_URL:-${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}}"
+            OPENCLAW_GATEWAY_WS_URL="${CI_OPENCLAW_GATEWAY_WS_URL:-${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}}"
+            OPENCLAW_WS_TIMEOUT_SECONDS="${CI_OPENCLAW_WS_TIMEOUT_SECONDS:-${OPENCLAW_WS_TIMEOUT_SECONDS:-300}}"
+            OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS="${CI_OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS:-${OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS:-45}}"
+            OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}}"
+            OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-${OPENCLAW_RUNTIME_LOG_ROOT:-/workspace/runtime/logs}}"
+            OPENCLAW_RUNTIME_LOG_ROOT_LOCAL="${CI_OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}}"
+            OPENCLAW_NODE_BRIDGE_ENABLED="${CI_OPENCLAW_NODE_BRIDGE_ENABLED:-${OPENCLAW_NODE_BRIDGE_ENABLED:-true}}"
+            WEATHER_API_URL="${CI_WEATHER_API_URL:-${WEATHER_API_URL:-http://api.weatherapi.com/v1}}"
+
+            {
+              echo "SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE"
+              echo "HOKAN_RUNTIME_PROFILE=$HOKAN_RUNTIME_PROFILE"
+              echo "BOT_CONFIG_FILE=$BOT_CONFIG_FILE"
+              echo "HOKAN_DATA_DIR=$HOKAN_DATA_DIR"
+              echo "PUID=$PUID"
+              echo "PGID=$PGID"
+              echo "ENGINE_IMAGE_TAG=$ENGINE_IMAGE_TAG"
+              echo "IO_IMAGE_TAG=$IO_IMAGE_TAG"
+              echo "OPENCLAW_IMAGE=$OPENCLAW_IMAGE"
+              echo "OPENCLAW_HOST_PORT=$OPENCLAW_HOST_PORT"
+              echo "OPENCLAW_HOOKS_TOKEN=$OPENCLAW_HOOKS_TOKEN"
+              echo "OPENCLAW_GATEWAY_TOKEN=$OPENCLAW_GATEWAY_TOKEN"
+              echo "OPENCLAW_NODE_CONTEXT_SECRET=$OPENCLAW_NODE_CONTEXT_SECRET"
+              echo "OPENAI_API_KEY=$OPENAI_API_KEY"
+              echo "WEATHER_API_KEY=$WEATHER_API_KEY"
+              echo "WEATHER_API_URL=$WEATHER_API_URL"
+              echo "SLACK_TOKEN_SECRET=$SLACK_TOKEN_SECRET"
+              echo "DISCORD_SECRET=$DISCORD_SECRET"
+              echo "TELEGRAM_SECRET=$TELEGRAM_SECRET"
+              echo "HOKAN_OPENCLAW_HOOKS_URL=$HOKAN_OPENCLAW_HOOKS_URL"
+              echo "HOKAN_OPENCLAW_WAKE_URL=$HOKAN_OPENCLAW_WAKE_URL"
+              echo "OPENCLAW_GATEWAY_WS_URL=$OPENCLAW_GATEWAY_WS_URL"
+              echo "OPENCLAW_WS_TIMEOUT_SECONDS=$OPENCLAW_WS_TIMEOUT_SECONDS"
+              echo "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS=$OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS"
+              echo "OPENCLAW_STATE_DIR_HOST=$OPENCLAW_STATE_DIR_HOST"
+              echo "OPENCLAW_RUNTIME_LOG_ROOT=$OPENCLAW_RUNTIME_LOG_ROOT"
+              echo "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL"
+              echo "OPENCLAW_NODE_BRIDGE_ENABLED=$OPENCLAW_NODE_BRIDGE_ENABLED"
+            } > .env
+
+            mkdir -p "$HOKAN_DATA_DIR/runtime"
+            cat > "$HOKAN_DATA_DIR/runtime/$RUNTIME_PROPERTIES_FILE" <<EOF
+            hokan.runtime.profile=$HOKAN_RUNTIME_PROFILE
+            the.bot.runtimeDir=./
+            the.bot.dataDir=./data/
+            the.bot.logDir=./logs/
+            the.bot.runtimeConfigFile=./$HOKAN_RUNTIME_PROFILE.the_bot_config.json
+            hokan.ai.openclaw.hooks.url=$HOKAN_OPENCLAW_HOOKS_URL
+            hokan.ai.openclaw.wake.url=$HOKAN_OPENCLAW_WAKE_URL
+            hokan.ai.openclaw.hooks.token=\${OPENCLAW_HOOKS_TOKEN}
+            openclaw.gateway-token=\${OPENCLAW_GATEWAY_TOKEN:}
+            openclaw.gateway-ws-url=$OPENCLAW_GATEWAY_WS_URL
+            openclaw.ws-timeout-seconds=$OPENCLAW_WS_TIMEOUT_SECONDS
+            openclaw.wait-reply-timeout-seconds=$OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS
+            openclaw.ws-client-id=gateway-client
+            openclaw.ws-client-mode=backend
+            openclaw.ws-client-platform=linux
+            openclaw.state-dir-host=$OPENCLAW_STATE_DIR_HOST
+            openclaw.node-context-secret=\${OPENCLAW_NODE_CONTEXT_SECRET:}
+            openclaw.node-bridge-enabled=$OPENCLAW_NODE_BRIDGE_ENABLED
+            openclaw.runtime-log-root=$OPENCLAW_RUNTIME_LOG_ROOT
+            openclaw.runtime-log-root-local=$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL
+            spring.ai.openai.api-key=\${OPENAI_API_KEY}
+            weather.api-key=\${WEATHER_API_KEY}
+            weather.api-url=$WEATHER_API_URL
+            channel.do.public.ai=
+            channel.do.url.topic=
+            channel.do.sys.notify=
+            ollama.water.host=http://bot-ollama:11434
+            ollama.water.model=qwen3-vl:235b-cloud
+            water.use.ollama=false
+            EOF
+
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
+
+            docker compose up -d bot-openclaw
+
+            if [ "$ENGINE_CHANGED" = "true" ]; then
+              docker compose pull bot-engine
+              docker compose up -d bot-engine
+            fi
+
+            if [ "$IO_CHANGED" = "true" ]; then
+              docker compose pull bot-io
+              docker compose up -d bot-io
+            fi
+
+            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
+              echo "No bot-engine/bot-io changes. Nothing to deploy."
+            fi
