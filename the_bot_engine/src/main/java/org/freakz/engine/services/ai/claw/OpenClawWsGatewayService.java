@@ -90,7 +90,7 @@ public class OpenClawWsGatewayService {
     AtomicReference<Boolean> agentSent = new AtomicReference<>(false);
     AtomicReference<Boolean> finished = new AtomicReference<>(false);
 
-    Mono<Void> execute = webSocketClient.execute(URI.create(urlWithToken), new HttpHeaders(), session -> {
+    Mono<Void> execute = webSocketClient.execute(URI.create(urlWithToken), createWebSocketHeaders(), session -> {
       Mono<Void> receive = session.receive()
           .map(WebSocketMessage::getPayloadAsText)
           .doOnNext(payload -> {
@@ -489,6 +489,15 @@ public class OpenClawWsGatewayService {
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
     return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
+  }
+
+  private HttpHeaders createWebSocketHeaders() {
+    HttpHeaders headers = new HttpHeaders();
+    String origin = getConfigValue("openclawGatewayWsOrigin", "OPENCLAW_GATEWAY_WS_ORIGIN", "null");
+    if (origin != null && !origin.isBlank() && !"none".equalsIgnoreCase(origin.trim())) {
+      headers.setOrigin(origin.trim());
+    }
+    return headers;
   }
 
   private int parseIntConfig(String key, String envKey, int defaultValue) {

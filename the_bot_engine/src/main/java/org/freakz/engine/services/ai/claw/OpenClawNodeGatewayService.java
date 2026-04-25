@@ -115,7 +115,7 @@ public class OpenClawNodeGatewayService {
 
     AtomicBoolean connectSent = new AtomicBoolean(false);
 
-    webSocketClient.execute(URI.create(urlWithToken), new HttpHeaders(), session ->
+    webSocketClient.execute(URI.create(urlWithToken), createWebSocketHeaders(), session ->
         session.receive()
             .map(WebSocketMessage::getPayloadAsText)
             .doOnNext(payload -> {
@@ -534,6 +534,15 @@ public class OpenClawNodeGatewayService {
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
     return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
+  }
+
+  private HttpHeaders createWebSocketHeaders() {
+    HttpHeaders headers = new HttpHeaders();
+    String origin = getConfigValue("openclawGatewayWsOrigin", "OPENCLAW_GATEWAY_WS_ORIGIN", "null");
+    if (origin != null && !origin.isBlank() && !"none".equalsIgnoreCase(origin.trim())) {
+      headers.setOrigin(origin.trim());
+    }
+    return headers;
   }
 
   private int parseIntConfig(String key, String envKey, int defaultValue) {
