@@ -32,7 +32,7 @@ services:
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
-      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/openclaw-state:ro
+      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/openclaw-state
     ports:
       - "127.0.0.1:8100:8100"
     environment:
