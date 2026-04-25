@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 public class BotRuntimeBootstrapLoader {
 
   public static final String DEFAULT_PROFILE = "DEV";
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)}");
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)(?::([^}]*))?}");
 
   public BotRuntimeBootstrapConfig load(
       Environment environment,
@@ -39,10 +39,12 @@ public class BotRuntimeBootstrapLoader {
         );
     String runtimeConfigFile = null;
     Path configFile = null;
+    Path configBaseDir = null;
     Properties properties = new Properties();
 
     if (configFileName != null && !configFileName.isBlank()) {
       configFile = Path.of(configFileName);
+      configBaseDir = configFile.getParent();
       if (!Files.exists(configFile)) {
         throw new IOException("Missing bot config bootstrap file: " + configFile.toAbsolutePath());
       }
@@ -51,15 +53,18 @@ public class BotRuntimeBootstrapLoader {
         properties.load(input);
       }
 
-      runtimeDir = propertyOrDefault(properties, "the.bot.runtimeDir", runtimeDir);
-      dataDir = propertyOrDefault(properties, "the.bot.dataDir", dataDir);
-      logDir = propertyOrDefault(properties, "the.bot.logDir", logDir);
+      runtimeDir = pathPropertyOrDefault(properties, "the.bot.runtimeDir", runtimeDir, configBaseDir);
+      dataDir = pathPropertyOrDefault(properties, "the.bot.dataDir", dataDir, configBaseDir);
+      logDir = pathPropertyOrDefault(properties, "the.bot.logDir", logDir, configBaseDir);
       profile = propertyOrDefault(properties, "hokan.runtime.profile", profile);
       runtimeConfigFile =
-          firstNonBlank(
-              propertyOrDefault(properties, "the.bot.runtimeConfigFile", null),
-              propertyOrDefault(properties, "the.bot.runtime-config-file", null)
-          );
+          pathValueOrDefault(
+              firstNonBlank(
+                  propertyOrDefault(properties, "the.bot.runtimeConfigFile", null),
+                  propertyOrDefault(properties, "the.bot.runtime-config-file", null)
+              ),
+              null,
+              configBaseDir);
     }
 
     runtimeDir = ensureTrailingSlash(runtimeDir);
@@ -85,6 +90,28 @@ public class BotRuntimeBootstrapLoader {
     return resolvePlaceholders(value.trim());
   }
 
+  private String pathPropertyOrDefault(Properties properties, String key, String defaultValue, Path baseDir) {
+    String value = properties.getProperty(key);
+    if (value == null || value.isBlank()) {
+      return defaultValue;
+    }
+    return pathValueOrDefault(resolvePlaceholders(value.trim()), defaultValue, baseDir);
+  }
+
+  private String pathValueOrDefault(String value, String defaultValue, Path baseDir) {
+    if (value == null || value.isBlank()) {
+      return defaultValue;
+    }
+    if (baseDir == null) {
+      return value;
+    }
+    Path path = Path.of(value);
+    if (path.isAbsolute()) {
+      return path.normalize().toString();
+    }
+    return baseDir.resolve(path).normalize().toString();
+  }
+
   private String ensureTrailingSlash(String value) {
     if (value == null || value.isBlank()) {
       return value;
@@ -107,9 +134,14 @@ public class BotRuntimeBootstrapLoader {
 
     while (matcher.find()) {
       String key = matcher.group(1);
+      String defaultValue = matcher.group(2);
       String replacement = firstNonBlank(System.getenv(key), System.getProperty(key));
       if (replacement == null) {
-        throw new IllegalStateException("Missing environment variable for bootstrap property placeholder: " + key);
+        if (defaultValue != null) {
+          replacement = defaultValue;
+        } else {
+          throw new IllegalStateException("Missing environment variable for bootstrap property placeholder: " + key);
+        }
       }
       matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
     }

@@ -19,7 +19,7 @@ import static org.freakz.common.config.ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
 public class RuntimeConfigReader {
 
   private static final Logger log = LoggerFactory.getLogger(RuntimeConfigReader.class);
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)}");
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)(?::([^}]*))?}");
 
   public TheBotConfig readBotConfig(
       JsonMapper mapper, BotRuntimeBootstrapConfig bootstrapConfig)
@@ -53,10 +53,15 @@ public class RuntimeConfigReader {
 
     while (matcher.find()) {
       String key = matcher.group(1);
+      String defaultValue = matcher.group(2);
       String value = firstNonBlank(System.getenv(key), System.getProperty(key));
       if (value == null) {
-        missingKeys.add(key);
-        continue;
+        if (defaultValue != null) {
+          value = defaultValue;
+        } else {
+          missingKeys.add(key);
+          continue;
+        }
       }
       matcher.appendReplacement(result, Matcher.quoteReplacement(value));
     }

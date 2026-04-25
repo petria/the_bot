@@ -35,19 +35,43 @@ jobs:
           IO_CHANGED: ${{ env.IO_CHANGED }}
           OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
           OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          OPENCLAW_NODE_CONTEXT_SECRET: ${{ secrets.OPENCLAW_NODE_CONTEXT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          SLACK_TOKEN_SECRET: ${{ secrets.SLACK_TOKEN_SECRET }}
+          DISCORD_SECRET: ${{ secrets.DISCORD_SECRET }}
+          TELEGRAM_SECRET: ${{ secrets.TELEGRAM_SECRET }}
           PUID: ${{ vars.PUID }}
           PGID: ${{ vars.PGID }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,PUID,PGID
+          envs: DEPLOY_SHA,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_NODE_CONTEXT_SECRET,OPENAI_API_KEY,WEATHER_API_KEY,SLACK_TOKEN_SECRET,DISCORD_SECRET,TELEGRAM_SECRET,PUID,PGID
           script: |
             cd /home/hokan/the_bot
 
+            CI_OPENCLAW_HOOKS_TOKEN="$OPENCLAW_HOOKS_TOKEN"
+            CI_OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN"
+            CI_OPENCLAW_NODE_CONTEXT_SECRET="$OPENCLAW_NODE_CONTEXT_SECRET"
+            CI_OPENAI_API_KEY="$OPENAI_API_KEY"
+            CI_WEATHER_API_KEY="$WEATHER_API_KEY"
+            CI_SLACK_TOKEN_SECRET="$SLACK_TOKEN_SECRET"
+            CI_DISCORD_SECRET="$DISCORD_SECRET"
+            CI_TELEGRAM_SECRET="$TELEGRAM_SECRET"
+            CI_PUID="$PUID"
+            CI_PGID="$PGID"
+
             if [ -f .env ]; then
-              source .env
+              set -a
+              . ./.env
+              set +a
             fi
+
+            HOKAN_DATA_DIR="${HOKAN_DATA_DIR:-/home/hokan/the_bot}"
+            BOT_CONFIG_FILE="/runtime/prod.properties"
+            PUID="${CI_PUID:-${PUID:-1002}}"
+            PGID="${CI_PGID:-${PGID:-1002}}"
 
             if [ "$ENGINE_CHANGED" = "true" ]; then
               ENGINE_IMAGE_TAG="$DEPLOY_SHA"
@@ -57,31 +81,91 @@ jobs:
               IO_IMAGE_TAG="$DEPLOY_SHA"
             fi
 
-            echo "SPRING_PROFILES_ACTIVE=prod" > .env
-            echo "HOKAN_RUNTIME_PROFILE=PROD" >> .env
-            echo "HOKAN_DATA_DIR=${HOKAN_DATA_DIR:-/home/hokan/the_bot}" >> .env
-            echo "PUID=${PUID:-1002}" >> .env
-            echo "PGID=${PGID:-1002}" >> .env
-            echo "ENGINE_IMAGE_TAG=${ENGINE_IMAGE_TAG:-latest}" >> .env
-            echo "IO_IMAGE_TAG=${IO_IMAGE_TAG:-latest}" >> .env
-            echo "OPENCLAW_IMAGE=${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}" >> .env
-            echo "OPENCLAW_HOST_PORT=${OPENCLAW_HOST_PORT:-18890}" >> .env
-            EXISTING_OPENCLAW_HOOKS_TOKEN="$OPENCLAW_HOOKS_TOKEN"
-            EXISTING_OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN"
+            ENGINE_IMAGE_TAG="${ENGINE_IMAGE_TAG:-latest}"
+            IO_IMAGE_TAG="${IO_IMAGE_TAG:-latest}"
+            OPENCLAW_IMAGE="${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}"
+            OPENCLAW_HOST_PORT="${OPENCLAW_HOST_PORT:-18890}"
+            OPENCLAW_HOOKS_TOKEN="${CI_OPENCLAW_HOOKS_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}"
+            OPENCLAW_GATEWAY_TOKEN="${CI_OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_GATEWAY_TOKEN:-$OPENCLAW_HOOKS_TOKEN}}"
+            OPENCLAW_NODE_CONTEXT_SECRET="${CI_OPENCLAW_NODE_CONTEXT_SECRET:-${OPENCLAW_NODE_CONTEXT_SECRET:-}}"
+            OPENAI_API_KEY="${CI_OPENAI_API_KEY:-${OPENAI_API_KEY:-}}"
+            WEATHER_API_KEY="${CI_WEATHER_API_KEY:-${WEATHER_API_KEY:-}}"
+            SLACK_TOKEN_SECRET="${CI_SLACK_TOKEN_SECRET:-${SLACK_TOKEN_SECRET:-}}"
+            DISCORD_SECRET="${CI_DISCORD_SECRET:-${DISCORD_SECRET:-}}"
+            TELEGRAM_SECRET="${CI_TELEGRAM_SECRET:-${TELEGRAM_SECRET:-}}"
+            HOKAN_OPENCLAW_HOOKS_URL="${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}"
+            HOKAN_OPENCLAW_WAKE_URL="${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}"
+            OPENCLAW_GATEWAY_WS_URL="${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}"
+            OPENCLAW_WS_TIMEOUT_SECONDS="${OPENCLAW_WS_TIMEOUT_SECONDS:-300}"
+            OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS="${OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS:-45}"
+            OPENCLAW_STATE_DIR_HOST="${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}"
+            OPENCLAW_RUNTIME_LOG_ROOT="${OPENCLAW_RUNTIME_LOG_ROOT:-/workspace/runtime/logs}"
+            OPENCLAW_RUNTIME_LOG_ROOT_LOCAL="${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}"
+            OPENCLAW_NODE_BRIDGE_ENABLED="${OPENCLAW_NODE_BRIDGE_ENABLED:-true}"
+            WEATHER_API_URL="${WEATHER_API_URL:-http://api.weatherapi.com/v1}"
 
-            echo "OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-$EXISTING_OPENCLAW_HOOKS_TOKEN}" >> .env
-            echo "OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${EXISTING_OPENCLAW_GATEWAY_TOKEN:-$EXISTING_OPENCLAW_HOOKS_TOKEN}}" >> .env
-            echo "HOKAN_OPENCLAW_HOOKS_URL=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}" >> .env
-            echo "HOKAN_OPENCLAW_WAKE_URL=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}" >> .env
-            echo "OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}" >> .env
-            echo "OPENCLAW_WS_TIMEOUT_SECONDS=${OPENCLAW_WS_TIMEOUT_SECONDS:-300}" >> .env
-            echo "OPENCLAW_WS_CLIENT_ID=${OPENCLAW_WS_CLIENT_ID:-gateway-client}" >> .env
-            echo "OPENCLAW_WS_CLIENT_MODE=${OPENCLAW_WS_CLIENT_MODE:-backend}" >> .env
-            echo "OPENCLAW_WS_CLIENT_PLATFORM=${OPENCLAW_WS_CLIENT_PLATFORM:-linux}" >> .env
-            echo "AI_BACKEND=${AI_BACKEND:-openclaw}" >> .env
-            echo "OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-false}" >> .env
-            echo "OPENCLAW_MODE=${OPENCLAW_MODE:-ws}" >> .env
-            echo "OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}" >> .env
+            {
+              echo "SPRING_PROFILES_ACTIVE=prod"
+              echo "BOT_CONFIG_FILE=$BOT_CONFIG_FILE"
+              echo "HOKAN_DATA_DIR=$HOKAN_DATA_DIR"
+              echo "PUID=$PUID"
+              echo "PGID=$PGID"
+              echo "ENGINE_IMAGE_TAG=$ENGINE_IMAGE_TAG"
+              echo "IO_IMAGE_TAG=$IO_IMAGE_TAG"
+              echo "OPENCLAW_IMAGE=$OPENCLAW_IMAGE"
+              echo "OPENCLAW_HOST_PORT=$OPENCLAW_HOST_PORT"
+              echo "OPENCLAW_HOOKS_TOKEN=$OPENCLAW_HOOKS_TOKEN"
+              echo "OPENCLAW_GATEWAY_TOKEN=$OPENCLAW_GATEWAY_TOKEN"
+              echo "OPENCLAW_NODE_CONTEXT_SECRET=$OPENCLAW_NODE_CONTEXT_SECRET"
+              echo "OPENAI_API_KEY=$OPENAI_API_KEY"
+              echo "WEATHER_API_KEY=$WEATHER_API_KEY"
+              echo "WEATHER_API_URL=$WEATHER_API_URL"
+              echo "SLACK_TOKEN_SECRET=$SLACK_TOKEN_SECRET"
+              echo "DISCORD_SECRET=$DISCORD_SECRET"
+              echo "TELEGRAM_SECRET=$TELEGRAM_SECRET"
+              echo "HOKAN_OPENCLAW_HOOKS_URL=$HOKAN_OPENCLAW_HOOKS_URL"
+              echo "HOKAN_OPENCLAW_WAKE_URL=$HOKAN_OPENCLAW_WAKE_URL"
+              echo "OPENCLAW_GATEWAY_WS_URL=$OPENCLAW_GATEWAY_WS_URL"
+              echo "OPENCLAW_WS_TIMEOUT_SECONDS=$OPENCLAW_WS_TIMEOUT_SECONDS"
+              echo "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS=$OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS"
+              echo "OPENCLAW_STATE_DIR_HOST=$OPENCLAW_STATE_DIR_HOST"
+              echo "OPENCLAW_RUNTIME_LOG_ROOT=$OPENCLAW_RUNTIME_LOG_ROOT"
+              echo "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL"
+              echo "OPENCLAW_NODE_BRIDGE_ENABLED=$OPENCLAW_NODE_BRIDGE_ENABLED"
+            } > .env
+
+            mkdir -p "$HOKAN_DATA_DIR/runtime"
+            cat > "$HOKAN_DATA_DIR/runtime/prod.properties" <<EOF
+            hokan.runtime.profile=PROD
+            the.bot.runtimeDir=./
+            the.bot.dataDir=./data/
+            the.bot.logDir=./logs/
+            the.bot.runtimeConfigFile=./PROD.the_bot_config.json
+            hokan.ai.openclaw.hooks.url=$HOKAN_OPENCLAW_HOOKS_URL
+            hokan.ai.openclaw.wake.url=$HOKAN_OPENCLAW_WAKE_URL
+            hokan.ai.openclaw.hooks.token=\${OPENCLAW_HOOKS_TOKEN}
+            openclaw.gateway-token=\${OPENCLAW_GATEWAY_TOKEN:}
+            openclaw.gateway-ws-url=$OPENCLAW_GATEWAY_WS_URL
+            openclaw.ws-timeout-seconds=$OPENCLAW_WS_TIMEOUT_SECONDS
+            openclaw.wait-reply-timeout-seconds=$OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS
+            openclaw.ws-client-id=gateway-client
+            openclaw.ws-client-mode=backend
+            openclaw.ws-client-platform=linux
+            openclaw.state-dir-host=$OPENCLAW_STATE_DIR_HOST
+            openclaw.node-context-secret=\${OPENCLAW_NODE_CONTEXT_SECRET:}
+            openclaw.node-bridge-enabled=$OPENCLAW_NODE_BRIDGE_ENABLED
+            openclaw.runtime-log-root=$OPENCLAW_RUNTIME_LOG_ROOT
+            openclaw.runtime-log-root-local=$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL
+            spring.ai.openai.api-key=\${OPENAI_API_KEY}
+            weather.api-key=\${WEATHER_API_KEY}
+            weather.api-url=$WEATHER_API_URL
+            channel.do.public.ai=
+            channel.do.url.topic=
+            channel.do.sys.notify=
+            ollama.water.host=http://bot-ollama:11434
+            ollama.water.model=qwen3-vl:235b-cloud
+            water.use.ollama=false
+            EOF
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 

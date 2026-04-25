@@ -23,7 +23,7 @@ public class ConfigService {
   private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
   private static RuntimeConfigReader configReader = new RuntimeConfigReader();
   private static final BotRuntimeBootstrapLoader bootstrapLoader = new BotRuntimeBootstrapLoader();
-  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)}");
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)(?::([^}]*))?}");
   @Autowired
   private TheBotProperties botProperties;
   @Autowired
@@ -184,12 +184,17 @@ public class ConfigService {
     StringBuffer result = new StringBuffer();
     while (matcher.find()) {
       String key = matcher.group(1);
+      String defaultValue = matcher.group(2);
       String replacement = firstNonBlank(
           environment.getProperty(key),
           System.getenv(key),
           System.getProperty(key));
       if (replacement == null) {
-        throw new IllegalStateException("Missing environment variable for config placeholder: " + key);
+        if (defaultValue != null) {
+          replacement = defaultValue;
+        } else {
+          throw new IllegalStateException("Missing environment variable for config placeholder: " + key);
+        }
       }
       matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
     }

@@ -16,7 +16,7 @@ services:
       - OPENCLAW_STATE_DIR=/state
       - OPENCLAW_WORKSPACE_DIR=/workspace
       - OPENCLAW_CONFIG_PATH=/config/config.json
-      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
     container_name: bot-openclaw
 
   # Hokan the Bot engine container
@@ -34,20 +34,18 @@ services:
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
-      - hokan.runtime.profile=${HOKAN_RUNTIME_PROFILE:-DEV}
-      - hokan.ai.openclaw.hooks.url=${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}
-      - hokan.ai.openclaw.wake.url=${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}
-      - hokan.ai.openclaw.hooks.token=${OPENCLAW_HOOKS_TOKEN}
-      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
       - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
-      - OPENCLAW_WS_TIMEOUT_SECONDS=${OPENCLAW_WS_TIMEOUT_SECONDS:-300}
-      - OPENCLAW_WS_CLIENT_ID=${OPENCLAW_WS_CLIENT_ID:-gateway-client}
-      - OPENCLAW_WS_CLIENT_MODE=${OPENCLAW_WS_CLIENT_MODE:-backend}
-      - OPENCLAW_WS_CLIENT_PLATFORM=${OPENCLAW_WS_CLIENT_PLATFORM:-linux}
       - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
-      - AI_BACKEND=${AI_BACKEND:-ollama}
-      - OPENCLAW_FALLBACK_TO_OLLAMA=${OPENCLAW_FALLBACK_TO_OLLAMA:-true}
+      - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
+      - OPENCLAW_NODE_CONTEXT_SECRET=${OPENCLAW_NODE_CONTEXT_SECRET:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+      - SLACK_TOKEN_SECRET=${SLACK_TOKEN_SECRET:-}
+      - DISCORD_SECRET=${DISCORD_SECRET:-}
+      - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
     container_name: bot-engine
 
   # Hokan the Bot io container
@@ -62,7 +60,18 @@ services:
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
-      - hokan.runtime.profile=${HOKAN_RUNTIME_PROFILE:-DEV}
+      - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
+      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-}
+      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
+      - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
+      - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
+      - OPENCLAW_NODE_CONTEXT_SECRET=${OPENCLAW_NODE_CONTEXT_SECRET:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+      - SLACK_TOKEN_SECRET=${SLACK_TOKEN_SECRET:-}
+      - DISCORD_SECRET=${DISCORD_SECRET:-}
+      - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
     container_name: bot-io
 
 networks:
