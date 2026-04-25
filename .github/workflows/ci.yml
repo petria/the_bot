@@ -2,9 +2,9 @@ name: CI - Build and Push Docker Images
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 jobs:
   build-and-push:
@@ -70,7 +70,7 @@ jobs:
         run: mvn -B package --file pom.xml -Dmaven.test.skip=true
 
       - name: Log in to the GitHub Container Registry
-        if: ${{ steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true' }}
+        if: ${{ github.event_name == 'push' && (steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true') }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -78,7 +78,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push bot-engine image
-        if: ${{ steps.changes.outputs.engine == 'true' }}
+        if: ${{ github.event_name == 'push' && steps.changes.outputs.engine == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_engine
@@ -86,10 +86,10 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_ENGINE }}:${{ github.sha }}
-            ${{ env.IMAGE_ENGINE }}:latest
+            ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_ENGINE) || format('{0}:develop', env.IMAGE_ENGINE) }}
 
       - name: Build and push bot-io image
-        if: ${{ steps.changes.outputs.io == 'true' }}
+        if: ${{ github.event_name == 'push' && steps.changes.outputs.io == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_io
@@ -97,21 +97,22 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_IO }}:${{ github.sha }}
-            ${{ env.IMAGE_IO }}:latest
+            ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_IO) || format('{0}:develop', env.IMAGE_IO) }}
 
       - name: Write deploy metadata
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
         run: |
           cat > deploy-meta.json << 'EOF'
           {
             "sha": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
             "engine_changed": "${{ steps.changes.outputs.engine }}",
             "io_changed": "${{ steps.changes.outputs.io }}"
           }
           EOF
 
       - name: Upload deploy metadata artifact
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') }}
         uses: actions/upload-artifact@v4
         with:
           name: deploy-meta-${{ github.sha }}

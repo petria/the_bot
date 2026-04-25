@@ -8,18 +8,17 @@ import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.beans.factory.annotation.Value;
+import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AiClientFactory {
 
 //  private final RetryTemplate retryTemplate;
+  private final ConfigService configService;
 
-  @Value("${spring.ai.openai.api-key}")
-  private String openApiKey;
-
-  public AiClientFactory() {
+  public AiClientFactory(ConfigService configService) {
+    this.configService = configService;
 /*    this.retryTemplate = RetryTemplate.builder()
         
         .maxAttempts(2)
@@ -28,6 +27,8 @@ public class AiClientFactory {
   }
 
   public ChatClient openAiChatClient(String modelName) {
+    String openApiKey =
+        configService.getRequiredConfigValue("spring.ai.openai.api-key", "OPENAI_API_KEY");
     OpenAiApi openAiApi = OpenAiApi.builder().apiKey(openApiKey).build();
 
 //    org.springframework.core.retry.RetryTemplate retryTemplate;

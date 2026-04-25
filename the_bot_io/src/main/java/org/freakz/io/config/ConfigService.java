@@ -1,5 +1,7 @@
 package org.freakz.io.config;
 
+import org.freakz.common.config.BotRuntimeBootstrapConfig;
+import org.freakz.common.config.BotRuntimeBootstrapLoader;
 import org.freakz.common.config.RuntimeConfigReader;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.slf4j.Logger;
@@ -19,6 +21,7 @@ public class ConfigService {
 
   private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
   private static RuntimeConfigReader configReader = new RuntimeConfigReader();
+  private static final BotRuntimeBootstrapLoader bootstrapLoader = new BotRuntimeBootstrapLoader();
   @Autowired
   private TheBotProperties botProperties;
   @Autowired
@@ -26,6 +29,7 @@ public class ConfigService {
   @Autowired
   private JsonMapper objectMapper;
   private TheBotConfig theBotConfig = null;
+  private BotRuntimeBootstrapConfig bootstrapConfig;
 
   public TheBotConfig readBotConfig() throws IOException {
     if (theBotConfig == null) {
@@ -36,30 +40,39 @@ public class ConfigService {
 
 
   public void reloadConfig() throws IOException {
-    String activeProfile = environment.getProperty("hokan.runtime.profile");
-    if (activeProfile == null) {
-      activeProfile = "DEV";
-//            log.warn("hokan.runtime.profile ENV not set, forcing to: {}", activeProfile);
-    }
-    theBotConfig = configReader.readBotConfig(objectMapper, botProperties.getRuntimeDir(), botProperties.getSecretPropertiesFile(), activeProfile);
+    bootstrapConfig =
+        bootstrapLoader.load(
+            environment,
+            botProperties.getConfigFile(),
+            botProperties.getRuntimeDir(),
+            botProperties.getDataDir(),
+            botProperties.getLogDir());
+    theBotConfig = configReader.readBotConfig(objectMapper, bootstrapConfig);
   }
 
   public File getRuntimeDirFile(String fileName) {
-    File file = new File(botProperties.getRuntimeDir() + fileName);
+    File file = new File(getRuntimeDir() + fileName);
     return file;
   }
 
   public File getRuntimeDataFile(String fileName) {
-    File file = new File(botProperties.getDataDir() + fileName);
+    File file = new File(getDataDir() + fileName);
     return file;
   }
 
   public String getRuntimeDirFileName(String fileName) {
-    return botProperties.getRuntimeDir() + fileName;
+    return getRuntimeDir() + fileName;
   }
 
   public String getRuntimeDataFileName(String fileName) {
-    return botProperties.getDataDir() + fileName;
+    return getDataDir() + fileName;
   }
 
+  private String getRuntimeDir() {
+    return bootstrapConfig == null ? botProperties.getRuntimeDir() : bootstrapConfig.runtimeDir();
+  }
+
+  private String getDataDir() {
+    return bootstrapConfig == null ? botProperties.getDataDir() : bootstrapConfig.dataDir();
+  }
 }

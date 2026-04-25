@@ -3,7 +3,7 @@ package org.freakz.engine.services.ai.claw;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -31,7 +31,7 @@ public class OpenClawAiService {
 
   private static final Logger log = LoggerFactory.getLogger(OpenClawAiService.class);
 
-  private final EnvValuesService envValuesService;
+  private final ConfigService configService;
   private final JsonMapper objectMapper;
   private final HttpClient httpClient;
   private final BotEngine botEngine;
@@ -39,13 +39,13 @@ public class OpenClawAiService {
   private final HokanNodeContextTokenService hokanNodeContextTokenService;
 
   public OpenClawAiService(
-      EnvValuesService envValuesService,
+      ConfigService configService,
       JsonMapper objectMapper,
       BotEngine botEngine,
       OpenClawWsGatewayService openClawWsGatewayService,
       HokanNodeContextTokenService hokanNodeContextTokenService
   ) {
-    this.envValuesService = envValuesService;
+    this.configService = configService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.openClawWsGatewayService = openClawWsGatewayService;
@@ -86,13 +86,26 @@ public class OpenClawAiService {
           if (!result.isAccepted()) {
             log.warn("OpenClaw WS failed: {}", result.getError());
           }
-          processReply(engineRequest, result.isCompleted() ? "completed" : "failed!");
+          processReply(engineRequest, result.isCompleted() ? "completed" : fallbackFailureReply(result.getError()));
         }, err -> {
           log.error("OpenClaw WS ask error: {}", err.getMessage(), err);
           String replyFromState = waitForReplyText(sessionKey, startMillis, waitReplyTimeoutSeconds);
-          processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : "failed!");
+          processReply(engineRequest, replyFromState != null && !replyFromState.isBlank() ? replyFromState : fallbackFailureReply(err.getMessage()));
         });
 
+  }
+
+  private String fallbackFailureReply(String errorMessage) {
+    if (errorMessage != null) {
+      String normalized = errorMessage.toLowerCase();
+      if (normalized.contains("auth failed")
+          || normalized.contains("oauth")
+          || normalized.contains("re-authenticate")
+          || normalized.contains("re-login")) {
+        return "failed: auth failed, re-login needed!";
+      }
+    }
+    return "failed!";
   }
 
   private boolean hasRealReply(String reply) {
@@ -155,7 +168,7 @@ public class OpenClawAiService {
       return false;
     }
 
-    String botName = request.getBotConfig() != null ? request.getBotConfig().getBotName() : null;
+    String botName = request.getBotConfig() != null ? request.getBotConfig().getBotConfig().getBotName() : null;
     return !matchesNick(addressedNick, botName)
         && !matchesNick(addressedNick, "Hokan")
         && !matchesNick(addressedNick, "openclaw");
@@ -224,7 +237,7 @@ public class OpenClawAiService {
   }
 
   private Path resolveSessionFilePath(JsonNode sessionNode) {
-    String sessionFile = sessionNode.path("sessionFile").asText("").trim();
+    String sessionFile = sessionNode.path("sessionFile").asString("").trim();
     if (!sessionFile.isBlank()) {
       Path configuredPath = Path.of(sessionFile);
       if (Files.exists(configuredPath)) {
@@ -239,7 +252,7 @@ public class OpenClawAiService {
       }
     }
 
-    String sessionId = sessionNode.path("sessionId").asText("").trim();
+    String sessionId = sessionNode.path("sessionId").asString("").trim();
     if (!sessionId.isBlank()) {
       Path sessionIdPath = getSessionsDirPath().resolve(sessionId + ".jsonl");
       if (Files.exists(sessionIdPath)) {
@@ -270,12 +283,12 @@ public class OpenClawAiService {
       return null;
     }
 
-    if (!"message".equals(node.path("type").asText(""))) {
+    if (!"message".equals(node.path("type").asString(""))) {
       return null;
     }
 
     JsonNode messageNode = node.path("message");
-    if (!"assistant".equals(messageNode.path("role").asText(""))) {
+    if (!"assistant".equals(messageNode.path("role").asString(""))) {
       return null;
     }
 
@@ -291,8 +304,8 @@ public class OpenClawAiService {
     }
 
     for (JsonNode item : contentArr) {
-      if ("text".equals(item.path("type").asText(""))) {
-        String text = normalizeAssistantReply(item.path("text").asText(""));
+      if ("text".equals(item.path("type").asString(""))) {
+        String text = normalizeAssistantReply(item.path("text").asString(""));
         if (!text.isBlank()) {
           latest = text;
         }
@@ -484,17 +497,7 @@ public class OpenClawAiService {
   }
 
   private String getConfigValue(String key, String envKey, String defaultValue) {
-    String fromStore = envValuesService.getKeyValueOrDefault(key, null);
-    if (fromStore != null && !fromStore.isBlank()) {
-      return fromStore;
-    }
-
-    String fromEnv = System.getenv(envKey);
-    if (fromEnv != null && !fromEnv.isBlank()) {
-      return fromEnv;
-    }
-
-    return defaultValue;
+    return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
   }
 
   private int parseIntConfig(String key, String envKey, int defaultValue) {
@@ -519,6 +522,15 @@ public class OpenClawAiService {
       return "";
     }
     return value.replaceAll("[\\r\\n]+", " ").trim();
+  }
+
+  private String toBootstrapPropertyKey(String key) {
+    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
+    if (normalized.isBlank()) {
+      return "openclaw";
+    }
+    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
+    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
   }
 
 

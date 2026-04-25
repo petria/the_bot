@@ -9,6 +9,7 @@ import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.util.UserAndReply;
+import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.status.StatusReportService;
@@ -36,13 +37,15 @@ public class EngineController {
   private final StatusReportService statusReportService;
 
   private final ConnectionManagerService connectionManagerService;
+  private final ConfigService configService;
 
-  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, StatusReportService statusReportService, ConnectionManagerService connectionManagerService) {
+  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, StatusReportService statusReportService, ConnectionManagerService connectionManagerService, ConfigService configService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
     this.statusReportService = statusReportService;
     this.connectionManagerService = connectionManagerService;
+    this.configService = configService;
   }
 
   @PostMapping("/handle_request")
@@ -75,7 +78,8 @@ public class EngineController {
       @RequestParam String message,
       @RequestHeader(value = "X-OpenClaw-Token", required = false) String openClawToken
   ) {
-    String expectedToken = System.getenv("OPENCLAW_HOOKS_TOKEN");
+    String expectedToken =
+        configService.getConfigValue("hokan.ai.openclaw.hooks.token", "OPENCLAW_HOOKS_TOKEN", null);
     if (expectedToken != null && !expectedToken.isBlank() && !expectedToken.equals(openClawToken)) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid OpenClaw token");
     }

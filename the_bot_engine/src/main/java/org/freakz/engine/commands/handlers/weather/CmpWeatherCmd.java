@@ -5,11 +5,11 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.common.model.foreca.ForecaData;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
+import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,17 +37,23 @@ public class CmpWeatherCmd extends AbstractCmd {
 
   }
 
-  private String formatWeather(ForecaData d, String diff, int longestCityName) {
+  private String formatWeather(ForecastResponse response, String diff, int longestCityName) {
 
     String template = "%-" + longestCityName + "s %s %s%6.1f°C - %s";
-    return String.format(template, d.getCityLink().city2, d.getWeatherData().getDate(), d.getWeatherData().getTime().replaceAll("\\.", ":"), d.getWeatherData().getTemp(), diff);
+    return String.format(
+        template,
+        response.location().name(),
+        response.location().localtime().toLocalDate(),
+        response.location().localtime().toLocalTime(),
+        Double.parseDouble(response.current().temp_c()),
+        diff);
   }
 
-  private int findLongestCityNameLength(List<ForecaData> forecaDataList) {
+  private int findLongestCityNameLength(List<ForecastResponse> forecastResponses) {
     int longest = Integer.MIN_VALUE;
-    for (ForecaData data : forecaDataList) {
-      if (data.getCityLink().getCity2().length() > longest) {
-        longest = data.getCityLink().getCity2().length();
+    for (ForecastResponse response : forecastResponses) {
+      if (response.location().name().length() > longest) {
+        longest = response.location().name().length();
       }
     }
     return longest;
@@ -68,30 +74,32 @@ public class CmpWeatherCmd extends AbstractCmd {
     if (data.getStatus().startsWith("OK")) {
       StringBuilder sb = new StringBuilder();
 
-      if (data.getForecaDataList().isEmpty()) {
-        sb.append("Check spelling, no Foreca data found with: ");
+      if (data.getForecastResponses().isEmpty()) {
+        sb.append("Check spelling, no weather data found with: ");
         for (String place : places) {
           sb.append(place).append(" ");
         }
       } else {
 
         int xx = 0;
-        List<ForecaData> forecaDataList = data.getForecaDataList();
+        List<ForecastResponse> forecastResponses = data.getForecastResponses();
 
-        int longestCityName = findLongestCityNameLength(forecaDataList);
+        int longestCityName = findLongestCityNameLength(forecastResponses);
 
-        forecaDataList.sort(Comparator.comparing(l -> ((ForecaData) (l)).getWeatherData().getTemp()).reversed());
-        double highestTemp = forecaDataList.get(0).getWeatherData().getTemp();
+        forecastResponses.sort(
+            Comparator.comparing((ForecastResponse response) -> Double.parseDouble(response.current().temp_c()))
+                .reversed());
+        double highestTemp = Double.parseDouble(forecastResponses.get(0).current().temp_c());
 
-        for (ForecaData forecaData : forecaDataList) {
+        for (ForecastResponse forecastResponse : forecastResponses) {
           String formatted;
           if (xx != 0) {
-            double diff = highestTemp - forecaData.getWeatherData().getTemp();
+            double diff = highestTemp - Double.parseDouble(forecastResponse.current().temp_c());
             String differenceStr = String.format("%.2f°C", diff);
-            formatted = formatWeather(forecaData, differenceStr, longestCityName);
+            formatted = formatWeather(forecastResponse, differenceStr, longestCityName);
             sb.append("\n");
           } else {
-            formatted = formatWeather(forecaData, "difference", longestCityName);
+            formatted = formatWeather(forecastResponse, "difference", longestCityName);
           }
           sb.append(formatted);
           xx++;

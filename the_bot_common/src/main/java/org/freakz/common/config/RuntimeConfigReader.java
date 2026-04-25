@@ -6,69 +6,81 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Properties;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.freakz.common.config.ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
 
 public class RuntimeConfigReader {
 
   private static final Logger log = LoggerFactory.getLogger(RuntimeConfigReader.class);
-  private Properties secretProperties;
-
-  private void readSecretsProperties(String secretPropertiesPath) {
-    log.debug("Loading secrets properties from: {}", secretPropertiesPath);
-    try (InputStream input = new FileInputStream(secretPropertiesPath)) {
-      Properties properties = new Properties();
-      properties.load(input);
-      this.secretProperties = properties;
-
-    } catch (Exception e) {
-      log.error("Can't load: {}", secretPropertiesPath, e);
-    }
-  }
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([A-Za-z0-9_.-]+)(?::([^}]*))?}");
 
   public TheBotConfig readBotConfig(
-      JsonMapper mapper, String runtimeDir, String secretPropertiesFile, String profile)
+      JsonMapper mapper, BotRuntimeBootstrapConfig bootstrapConfig)
       throws IOException {
+    String profile = bootstrapConfig.profile();
     log.debug("readBotConfig --->>> PROFILE: {}", profile);
-    String secretsFile;
     String cfgFile;
-    if (profile != null && profile.length() > 0) {
+    if (bootstrapConfig.runtimeConfigFile() != null && !bootstrapConfig.runtimeConfigFile().isBlank()) {
+      cfgFile = bootstrapConfig.runtimeConfigFile();
+    } else if (profile != null && profile.length() > 0) {
       log.debug("Prefixing profile to runtime config file: {}", profile);
-      cfgFile = runtimeDir + profile + "." + RUNTIME_CONFIG_FILE_NAME;
-      secretsFile =
-          secretPropertiesFile.replaceAll("secret\\.properties", profile + ".secret.properties");
+      cfgFile = bootstrapConfig.runtimeDir() + profile + "." + RUNTIME_CONFIG_FILE_NAME;
     } else {
-      cfgFile = runtimeDir + RUNTIME_CONFIG_FILE_NAME;
-      secretsFile = secretPropertiesFile;
+      cfgFile = bootstrapConfig.runtimeDir() + RUNTIME_CONFIG_FILE_NAME;
     }
-    readSecretsProperties(secretsFile);
 
     log.debug("Reading runtime config from: {}", cfgFile);
 
     Path path = Path.of(cfgFile);
     String json = Files.readString(path);
-
-    String[] temp = new String[1];
-    temp[0] = json;
-
-    this.secretProperties.forEach(
-        (key, value) -> {
-          String jsonReplaced = temp[0];
-          String toReplace = String.format("\\$\\{%s}", key);
-          String replaceValue = (String) this.secretProperties.get(key);
-          log.debug("Replacing with secret: key={} -> {}", key, toReplace);
-          temp[0] = jsonReplaced.replaceAll(toReplace, replaceValue);
-        });
-
-    String replacedJson = temp[0];
+    String replacedJson = replaceEnvPlaceholders(json);
 
     TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);
     return theConfig;
+  }
+
+  private String replaceEnvPlaceholders(String text) {
+    Matcher matcher = PLACEHOLDER_PATTERN.matcher(text);
+    StringBuffer result = new StringBuffer();
+    List<String> missingKeys = new ArrayList<>();
+
+    while (matcher.find()) {
+      String key = matcher.group(1);
+      String defaultValue = matcher.group(2);
+      String value = firstNonBlank(System.getenv(key), System.getProperty(key));
+      if (value == null) {
+        if (defaultValue != null) {
+          value = defaultValue;
+        } else {
+          missingKeys.add(key);
+          continue;
+        }
+      }
+      matcher.appendReplacement(result, Matcher.quoteReplacement(value));
+    }
+    matcher.appendTail(result);
+
+    if (!missingKeys.isEmpty()) {
+      throw new IllegalStateException(
+          "Missing environment variables for runtime config placeholders: " + String.join(", ", missingKeys));
+    }
+
+    return result.toString();
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value;
+      }
+    }
+    return null;
   }
 }
