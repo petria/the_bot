@@ -72,10 +72,6 @@ public class OpenClawWsGatewayService {
     if (wsIdentity.gatewayToken().isBlank()) {
       return Mono.just(WsAskResult.failed("OpenClaw WS gateway token missing"));
     }
-    if (wsIdentity.operatorToken().isBlank()) {
-      return Mono.just(WsAskResult.failed("OpenClaw WS operator token missing"));
-    }
-
     String urlWithToken = appendTokenToUrl(wsUrl, wsIdentity.gatewayToken());
 
     Sinks.One<WsAskResult> resultSink = Sinks.one();
@@ -242,8 +238,12 @@ public class OpenClawWsGatewayService {
       params.withArray("scopes").add(scope);
     }
 
+    String authToken = !wsIdentity.gatewayToken().isBlank()
+        ? wsIdentity.gatewayToken()
+        : wsIdentity.operatorToken();
+
     ObjectNode auth = params.putObject("auth");
-    auth.put("token", wsIdentity.operatorToken());
+    auth.put("token", authToken);
 
     long signedAt = System.currentTimeMillis();
     ObjectNode device = params.putObject("device");
@@ -257,7 +257,7 @@ public class OpenClawWsGatewayService {
         "operator",
         wsIdentity.scopes(),
         signedAt,
-        wsIdentity.operatorToken(),
+        authToken,
         nonce
     ));
     device.put("signedAt", signedAt);

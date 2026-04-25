@@ -485,7 +485,7 @@ public class OpenClawNodeGatewayService {
         getConfigValue("openclawNodeClientId", "OPENCLAW_NODE_CLIENT_ID", "node-host")
     );
     String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asString("linux"));
-    String connectToken = !nodeToken.isBlank() ? nodeToken : gatewayToken;
+    String connectToken = !gatewayToken.isBlank() ? gatewayToken : nodeToken;
 
     return new NodeWsIdentity(
         gatewayToken,
