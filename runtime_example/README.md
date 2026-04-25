@@ -31,6 +31,8 @@ Optional local overrides:
 `OPENCLAW_RUNTIME_LOG_ROOT`
 `OPENCLAW_RUNTIME_LOG_ROOT_LOCAL`
 
+`OPENCLAW_GATEWAY_WS_ORIGIN` must match one of OpenClaw's allowed control UI origins. Local dev defaults to `http://localhost:18899`.
+
 Docker Compose injects `BOT_CONFIG_FILE=/runtime/dev.properties` by default for `bot-io` and `bot-engine`. CI deploy writes `/runtime/prod.properties` and points both modules to that file.
 
 `prod.properties` is the container-oriented example of the same common config shape. It uses container paths such as `/runtime` and `/openclaw-state` after the file is mounted by Docker Compose.
