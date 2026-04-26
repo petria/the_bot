@@ -3,7 +3,10 @@ package org.freakz.engine.config;
 import org.freakz.common.config.BotConfigDefaults;
 import org.freakz.common.config.BotConfigService;
 import org.freakz.common.model.botconfig.TheBotConfig;
+import org.freakz.common.model.env.SysEnvValue;
+import org.freakz.engine.data.service.EnvValuesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
@@ -20,6 +23,8 @@ public class ConfigService {
   private Environment environment;
   @Autowired
   private JsonMapper objectMapper;
+  @Autowired
+  private ObjectProvider<EnvValuesService> envValuesServiceProvider;
 
   private BotConfigService delegate;
 
@@ -89,8 +94,32 @@ public class ConfigService {
                   botProperties.getConfigFile(),
                   botProperties.getRuntimeDir(),
                   botProperties.getDataDir(),
-                  botProperties.getLogDir()));
+                  botProperties.getLogDir()),
+              this::findRuntimeOverride);
     }
     return delegate;
+  }
+
+  private java.util.Optional<String> findRuntimeOverride(String propertyKey) {
+    if (!isRuntimeOverridable(propertyKey)) {
+      return java.util.Optional.empty();
+    }
+    try {
+      EnvValuesService envValuesService = envValuesServiceProvider.getIfAvailable();
+      if (envValuesService == null) {
+        return java.util.Optional.empty();
+      }
+      SysEnvValue value = envValuesService.findFirstByKey(propertyKey);
+      if (value == null) {
+        return java.util.Optional.empty();
+      }
+      return java.util.Optional.of(value.getValue() == null ? "" : value.getValue().trim());
+    } catch (RuntimeException e) {
+      return java.util.Optional.empty();
+    }
+  }
+
+  private boolean isRuntimeOverridable(String propertyKey) {
+    return propertyKey != null && propertyKey.startsWith("channel.");
   }
 }

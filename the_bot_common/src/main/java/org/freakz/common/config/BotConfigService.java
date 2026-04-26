@@ -6,6 +6,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,14 +20,24 @@ public class BotConfigService {
   private final Environment environment;
   private final JsonMapper objectMapper;
   private final BotConfigDefaults defaults;
+  private final BotConfigOverrideSource overrideSource;
 
   private TheBotConfig theBotConfig;
   private BotRuntimeBootstrapConfig bootstrapConfig;
 
   public BotConfigService(Environment environment, JsonMapper objectMapper, BotConfigDefaults defaults) {
+    this(environment, objectMapper, defaults, BotConfigOverrideSource.NONE);
+  }
+
+  public BotConfigService(
+      Environment environment,
+      JsonMapper objectMapper,
+      BotConfigDefaults defaults,
+      BotConfigOverrideSource overrideSource) {
     this.environment = environment;
     this.objectMapper = objectMapper;
     this.defaults = defaults;
+    this.overrideSource = overrideSource == null ? BotConfigOverrideSource.NONE : overrideSource;
   }
 
   public TheBotConfig readBotConfig() throws IOException {
@@ -82,6 +93,11 @@ public class BotConfigService {
   }
 
   public String getConfigValue(String propertyKey, String envKey, String defaultValue) {
+    Optional<String> override = overrideSource.findOverride(propertyKey);
+    if (override.isPresent()) {
+      return override.get();
+    }
+
     String fromFile = getBootstrapProperty(propertyKey);
     String fromEnv = firstNonBlank(
         envKey == null ? null : environment.getProperty(envKey),
