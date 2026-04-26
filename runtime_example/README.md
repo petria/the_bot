@@ -11,6 +11,27 @@ Path values in `dev.properties` are resolved relative to the properties file, so
 
 The same `dev.properties` file also carries engine runtime settings such as OpenClaw, weather and OpenAI config. Optional placeholders can use `${ENV_NAME:default}`. Required placeholders use `${ENV_NAME}` and fail fast when missing.
 
+## Runtime config precedence
+
+Most runtime values are resolved through the shared `org.freakz.common.config.BotConfigService`.
+
+Precedence is:
+
+1. Runtime override, only for explicitly allowed mutable keys.
+2. Bootstrap properties file selected by `BOT_CONFIG_FILE`.
+3. Explicit environment or system property key passed by the caller.
+4. Code default.
+
+Currently only `channel.*` keys are runtime-mutable through the bot env-value commands and persisted in `env_values.json`.
+
+Examples:
+
+`channel.do.public.ai`
+`channel.do.url.topic`
+`channel.do.sys.notify`
+
+Secrets and infrastructure values such as `OPENAI_API_KEY`, `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file.
+
 Minimum IDEA environment variables for local bot testing:
 
 `BOT_CONFIG_FILE=./runtime/dev.properties`

@@ -2,6 +2,7 @@ package org.freakz.engine.config;
 
 import org.freakz.common.config.BotConfigDefaults;
 import org.freakz.common.config.BotConfigService;
+import org.freakz.common.config.TheBotProperties;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.env.SysEnvValue;
 import org.freakz.engine.data.service.EnvValuesService;

@@ -11,7 +11,7 @@ import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.slack.Event;
 import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.common.spring.rest.RestEngineClient;
-import org.freakz.io.config.TheBotProperties;
+import org.freakz.common.config.TheBotProperties;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;

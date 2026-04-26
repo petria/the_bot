@@ -1,21 +1,25 @@
-package org.freakz.engine.config;
+package org.freakz.common.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
 @ConfigurationProperties(prefix = "the.bot")
 public class TheBotProperties {
 
   private String configFile;
   private String dataDir;
   private String runtimeDir;
-
   private String secretPropertiesFile;
-
   private String logDir;
 
   public TheBotProperties() {
+  }
+
+  public TheBotProperties(String configFile, String dataDir, String runtimeDir, String secretPropertiesFile, String logDir) {
+    this.configFile = configFile;
+    this.dataDir = dataDir;
+    this.runtimeDir = runtimeDir;
+    this.secretPropertiesFile = secretPropertiesFile;
+    this.logDir = logDir;
   }
 
   public String getConfigFile() {
@@ -59,31 +63,6 @@ public class TheBotProperties {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-
-    TheBotProperties that = (TheBotProperties) o;
-
-    if (configFile != null ? !configFile.equals(that.configFile) : that.configFile != null) return false;
-    if (dataDir != null ? !dataDir.equals(that.dataDir) : that.dataDir != null) return false;
-    if (runtimeDir != null ? !runtimeDir.equals(that.runtimeDir) : that.runtimeDir != null) return false;
-    if (secretPropertiesFile != null ? !secretPropertiesFile.equals(that.secretPropertiesFile) : that.secretPropertiesFile != null)
-      return false;
-    return logDir != null ? logDir.equals(that.logDir) : that.logDir == null;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = configFile != null ? configFile.hashCode() : 0;
-    result = 31 * result + (dataDir != null ? dataDir.hashCode() : 0);
-    result = 31 * result + (runtimeDir != null ? runtimeDir.hashCode() : 0);
-    result = 31 * result + (secretPropertiesFile != null ? secretPropertiesFile.hashCode() : 0);
-    result = 31 * result + (logDir != null ? logDir.hashCode() : 0);
-    return result;
-  }
-
-  @Override
   public String toString() {
     return "TheBotProperties{" +
         "configFile='" + configFile + '\'' +
@@ -93,5 +72,4 @@ public class TheBotProperties {
         ", logDir='" + logDir + '\'' +
         '}';
   }
-
 }
