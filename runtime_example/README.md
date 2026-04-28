@@ -22,7 +22,7 @@ Precedence is:
 3. Explicit environment or system property key passed by the caller.
 4. Code default.
 
-Currently only `channel.*` keys are runtime-mutable through the bot env-value commands and persisted in `env_values.json`.
+Currently only `channel.*` keys are runtime-mutable through the bot env-value commands and persisted in `runtime_overrides.json`. Existing `env_values.json` files are still read as a legacy fallback.
 
 Examples:
 
@@ -30,7 +30,7 @@ Examples:
 `channel.do.url.topic`
 `channel.do.sys.notify`
 
-Secrets and infrastructure values such as `OPENAI_API_KEY`, `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file.
+Secrets and infrastructure values such as `OPENAI_API_KEY`, `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file. Do not use `*.secret.properties` files for new config.
 
 Minimum IDEA environment variables for local bot testing:
 

@@ -8,17 +8,15 @@ public class TheBotProperties {
   private String configFile;
   private String dataDir;
   private String runtimeDir;
-  private String secretPropertiesFile;
   private String logDir;
 
   public TheBotProperties() {
   }
 
-  public TheBotProperties(String configFile, String dataDir, String runtimeDir, String secretPropertiesFile, String logDir) {
+  public TheBotProperties(String configFile, String dataDir, String runtimeDir, String logDir) {
     this.configFile = configFile;
     this.dataDir = dataDir;
     this.runtimeDir = runtimeDir;
-    this.secretPropertiesFile = secretPropertiesFile;
     this.logDir = logDir;
   }
 
@@ -46,14 +44,6 @@ public class TheBotProperties {
     this.runtimeDir = runtimeDir;
   }
 
-  public String getSecretPropertiesFile() {
-    return secretPropertiesFile;
-  }
-
-  public void setSecretPropertiesFile(String secretPropertiesFile) {
-    this.secretPropertiesFile = secretPropertiesFile;
-  }
-
   public String getLogDir() {
     return logDir;
   }
@@ -68,7 +58,6 @@ public class TheBotProperties {
         "configFile='" + configFile + '\'' +
         ", dataDir='" + dataDir + '\'' +
         ", runtimeDir='" + runtimeDir + '\'' +
-        ", secretPropertiesFile='" + secretPropertiesFile + '\'' +
         ", logDir='" + logDir + '\'' +
         '}';
   }

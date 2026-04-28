@@ -301,7 +301,6 @@ jobs:
               echo "OPENCLAW_GATEWAY_TOKEN=$OPENCLAW_GATEWAY_TOKEN"
               echo "OPENCLAW_NODE_CONTEXT_SECRET=$OPENCLAW_NODE_CONTEXT_SECRET"
               echo "OPENAI_API_KEY=$OPENAI_API_KEY"
-              echo "OPEN_AI_API_KEY_SECRET=$OPENAI_API_KEY"
               echo "WEATHER_API_KEY=$WEATHER_API_KEY"
               echo "WEATHER_API_URL=$WEATHER_API_URL"
               echo "SLACK_TOKEN_SECRET=$SLACK_TOKEN_SECRET"
@@ -320,6 +319,31 @@ jobs:
             } > .env
 
             mkdir -p "$HOKAN_DATA_DIR/runtime"
+            if [ -f "$HOKAN_DATA_DIR/openclaw/config/config.json" ]; then
+              python3 - <<'PY'
+            import json
+            import os
+            from pathlib import Path
+
+            config_path = Path(os.environ["HOKAN_DATA_DIR"]) / "openclaw" / "config" / "config.json"
+            data = json.loads(config_path.read_text())
+            control_ui = data.setdefault("gateway", {}).setdefault("controlUi", {})
+            allowed_origins = control_ui.setdefault("allowedOrigins", [])
+            origins = [
+                os.environ["OPENCLAW_GATEWAY_WS_ORIGIN"],
+                f"http://localhost:{os.environ['OPENCLAW_HOST_PORT']}",
+                f"http://127.0.0.1:{os.environ['OPENCLAW_HOST_PORT']}",
+                "http://bot-openclaw:18889",
+            ]
+            for origin in origins:
+                if origin and origin not in allowed_origins:
+                    allowed_origins.append(origin)
+            config_path.write_text(json.dumps(data, indent=2) + "\n")
+            PY
+            else
+              echo "OpenClaw config not found at $HOKAN_DATA_DIR/openclaw/config/config.json; skipping allowed origin sync."
+            fi
+
             cat > "$HOKAN_DATA_DIR/runtime/$RUNTIME_PROPERTIES_FILE" <<EOF
             hokan.runtime.profile=$HOKAN_RUNTIME_PROFILE
             the.bot.runtimeDir=./

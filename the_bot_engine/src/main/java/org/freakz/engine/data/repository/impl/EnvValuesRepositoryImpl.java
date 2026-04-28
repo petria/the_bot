@@ -25,7 +25,8 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl
 
   private static final Logger log = LoggerFactory.getLogger(EnvValuesRepositoryImpl.class);
 
-  private static final String ENV_VALUES_FILE_NAME = "env_values.json";
+  private static final String RUNTIME_OVERRIDES_FILE_NAME = "runtime_overrides.json";
+  private static final String LEGACY_ENV_VALUES_FILE_NAME = "env_values.json";
 
   public EnvValuesRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
     super(configService, jsonMapper);
@@ -33,7 +34,10 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl
   }
 
   public void initialize() throws Exception {
-    File dataFile = configService.getRuntimeDataFile(ENV_VALUES_FILE_NAME);
+    File dataFile = configService.getRuntimeDataFile(RUNTIME_OVERRIDES_FILE_NAME);
+    if (!dataFile.exists()) {
+      dataFile = configService.getRuntimeDataFile(LEGACY_ENV_VALUES_FILE_NAME);
+    }
     if (dataFile.exists()) {
       EnvValuesJsonContainer dataValuesJson =
           mapper.readValue(dataFile, EnvValuesJsonContainer.class);
@@ -54,7 +58,7 @@ public class EnvValuesRepositoryImpl extends RepositoryBaseImpl
 
   public void saveDataValues() throws IOException {
     synchronized (getDataValues()) {
-      String dataFileName = configService.getRuntimeDataFileName(ENV_VALUES_FILE_NAME);
+      String dataFileName = configService.getRuntimeDataFileName(RUNTIME_OVERRIDES_FILE_NAME);
       log.debug("synchronized start writing values: {}", dataFileName);
 
       DataJsonSaveContainer container =

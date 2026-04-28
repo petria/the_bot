@@ -1,7 +1,6 @@
 package org.freakz.engine;
 
 import org.freakz.common.config.TheBotProperties;
-import org.freakz.engine.services.weather.weatherapi.WeatherConfigProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,7 +14,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.TimeZone;
 import java.util.concurrent.Executor;
 
-@EnableConfigurationProperties({WeatherConfigProperties.class, TheBotProperties.class})
+@EnableConfigurationProperties(TheBotProperties.class)
 @SpringBootApplication
 @EnableAsync
 @EnableScheduling
