@@ -12,6 +12,8 @@ import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.event.channel.*;
+import org.kitteh.irc.client.library.event.client.ClientNegotiationCompleteEvent;
+import org.kitteh.irc.client.library.event.connection.ClientConnectionClosedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
 import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
@@ -173,21 +175,31 @@ public class IrcServerConnection extends BotConnection {
   @Handler
   public void handleConnectionEstablished(ClientConnectionEstablishedEvent event) {
     this.connectionManager.ircConnectionEstablished(this);
-    String toRemove = null;
-    for (JoinedChannelContainer container : this.connectionManager.getJoinedChannelsMap().values()) {
-      if (container.botConnectionType == BotConnectionType.IRC_CONNECTION) {
-        toRemove = container.channel.getEchoToAlias();
-        break;
-      }
-    }
-    if (toRemove != null) {
-      this.connectionManager.getJoinedChannelsMap().remove(toRemove);
-    }
+    this.connectionManager.removeConfiguredIrcJoinedChannels(this);
+  }
+
+  @Handler
+  public void handleNegotiationComplete(ClientNegotiationCompleteEvent event) {
+    joinConfiguredChannels();
   }
 
   @Handler
   public void handleConnectionEnded(ClientConnectionEndedEvent event) {
-    log.debug(">> ENDED, shutting down this client");
+    if (event instanceof ClientConnectionClosedEvent closedEvent) {
+      log.debug(
+          ">> ENDED, shutting down this client; canReconnect={}, willReconnect={}, lastMessage={}",
+          event.canAttemptReconnect(),
+          event.willAttemptReconnect(),
+          closedEvent.getLastMessage().orElse("")
+      );
+    } else {
+      log.debug(
+          ">> ENDED, shutting down this client; canReconnect={}, willReconnect={}, cause={}",
+          event.canAttemptReconnect(),
+          event.willAttemptReconnect(),
+          event.getCause().map(Throwable::toString).orElse("")
+      );
+    }
     event.setAttemptReconnect(false);
     this.connectionManager.ircConnectionEnded(this);
     this.client.shutdown();
@@ -201,15 +213,23 @@ public class IrcServerConnection extends BotConnection {
     client = Client.builder()
         .user("hokan")
         .nick(botNick)
-
         .server()
         .host(config.getIrcNetwork().getIrcServer().getHost())
         .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
         .then()
-        .buildAndConnect();
+        .listeners()
+        .input(line -> log.debug("IRC << {}", line))
+        .output(line -> log.debug("IRC >> {}", line))
+        .exception(e -> log.warn("IRC client exception", e))
+        .then()
+        .build();
 
     client.getEventManager().registerEventListener(this);
+    client.connect();
 
+  }
+
+  private void joinConfiguredChannels() {
     config.getChannelList().forEach(ch -> {
           if (ch.isJoinOnStart()) {
             log.debug("Join channel: {}", ch.getName());
@@ -219,7 +239,6 @@ public class IrcServerConnection extends BotConnection {
           }
         }
     );
-
   }
 
   @Override
