@@ -56,9 +56,6 @@ public class TelegramConnection extends BotConnection {
     }
     sendMessage.setText(message.getMessage());
     try {
-      if (this.connectionManager != null) {
-        this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
-      }
       this.bot.execute(sendMessage);
     } catch (TelegramApiException e) {
       log.error("Telegram error", e);
@@ -133,7 +130,6 @@ public class TelegramConnection extends BotConnection {
       if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
 
-        this.connectionManager.addMessageInOut(connection.getType().toString(), 0, 1);
         String echoToAlias = resolveEchoToAlias(update);
         if (echoToAlias == null && update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
           echoToAlias = "PRIVATE-TELEGRAM-" + update.getMessage().getFrom().getId();

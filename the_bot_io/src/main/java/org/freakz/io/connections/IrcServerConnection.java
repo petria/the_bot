@@ -140,7 +140,6 @@ public class IrcServerConnection extends BotConnection {
 
   @Handler
   public void onChannelMessageEvent(ChannelMessageEvent event) throws BotIOException {
-    this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
     log.debug("Got channel msg: {}", event.getMessage());
     org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
     String echoToAlias = null;
@@ -258,7 +257,6 @@ public class IrcServerConnection extends BotConnection {
           if (nick != null) {
             client.sendMessage(nick, splitLine);
           } else {
-            this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
             channel.get().sendMessage(splitLine);
             String protocol = "irc";
             String network = ChatIdentityUtil.sanitize(getNetwork(), "unknown");
@@ -280,7 +278,6 @@ public class IrcServerConnection extends BotConnection {
   @Override
   public void sendRawMessage(Message message) {
     log.debug("Send raw message: '{}'", message.getMessage());
-    this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
     client.sendRawLineImmediately(message.getMessage());
   }
 

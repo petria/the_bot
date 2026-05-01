@@ -3,8 +3,6 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
-import org.freakz.common.model.engine.status.StatusReportRequest;
-import org.freakz.common.model.engine.status.StatusReportResponse;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
@@ -12,7 +10,6 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
-import org.freakz.engine.services.status.StatusReportService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,16 +31,13 @@ public class EngineController {
 
   private final UsersService usersService;
 
-  private final StatusReportService statusReportService;
-
   private final ConnectionManagerService connectionManagerService;
   private final ConfigService configService;
 
-  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, StatusReportService statusReportService, ConnectionManagerService connectionManagerService, ConfigService configService) {
+  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, ConnectionManagerService connectionManagerService, ConfigService configService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
-    this.statusReportService = statusReportService;
     this.connectionManagerService = connectionManagerService;
     this.configService = configService;
   }
@@ -60,12 +54,6 @@ public class EngineController {
         .user(reply.getUser())
         .build();
 //        log.debug("<<<< handle done");
-    return ResponseEntity.ok(response);
-  }
-
-  @PostMapping("/handle_status_report")
-  public ResponseEntity<?> handleStatusReport(@RequestBody StatusReportRequest request) {
-    StatusReportResponse response = statusReportService.handleStatusReport(request);
     return ResponseEntity.ok(response);
   }
 

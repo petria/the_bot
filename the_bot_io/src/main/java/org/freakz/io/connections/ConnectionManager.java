@@ -7,7 +7,6 @@ import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
-import org.freakz.common.model.engine.status.ChannelMessageCounters;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
@@ -38,19 +37,7 @@ public class ConnectionManager implements CommandLineRunner {
   private EventPublisher eventPublisher;
   private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
-  private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
   private final Map<String, LastChannelActivity> lastReceivedMessageByEchoToAlias = new ConcurrentHashMap<>();
-
-  public Map<String, ChannelMessageCounters> getCountersMap() {
-    return countersMap;
-  }
-
-
-  public void addMessageInOut(String connectionType, int in, int out) {
-    ChannelMessageCounters counters = countersMap.computeIfAbsent(connectionType, k -> new ChannelMessageCounters());
-    counters.in += in;
-    counters.out += out;
-  }
 
   public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
     JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
