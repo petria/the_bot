@@ -34,6 +34,18 @@ public class ConnectionManagerService {
     return connectionManagerClient.getChannelActivity();
   }
 
+  public GetKnownChatChannelsResponse getKnownChannels() {
+    return connectionManagerClient.getKnownChannels();
+  }
+
+  public GetKnownChatUsersResponse getKnownUsers(String query) {
+    return connectionManagerClient.getKnownUsers(query);
+  }
+
+  public GetKnownUserTargetsResponse getKnownUserTargets(String query) {
+    return connectionManagerClient.getKnownUserTargets(query);
+  }
+
   public SendMessageByEchoToAliasResponse sendMessageByEchoToAlias(String message, String echoToAlias) {
     long startedAt = System.currentTimeMillis();
     log.debug(

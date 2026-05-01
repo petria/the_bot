@@ -4,6 +4,9 @@ import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasReques
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.common.model.connectionmanager.GetChannelActivityResponse;
+import org.freakz.common.model.connectionmanager.GetKnownChatChannelsResponse;
+import org.freakz.common.model.connectionmanager.GetKnownChatUsersResponse;
+import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class RestConnectionManagerClient {
@@ -53,6 +59,43 @@ public class RestConnectionManagerClient {
       log.error("Error sending getChannelActivity message: {}", e.getMessage());
       return new GetChannelActivityResponse();
     }
+  }
+
+  public GetKnownChatChannelsResponse getKnownChannels() {
+    String url = BASE_URL + "/get_known_channels";
+    try {
+      return restTemplate.getForObject(url, GetKnownChatChannelsResponse.class);
+    } catch (Exception e) {
+      log.error("Error sending getKnownChannels message: {}", e.getMessage());
+      return new GetKnownChatChannelsResponse();
+    }
+  }
+
+  public GetKnownChatUsersResponse getKnownUsers(String query) {
+    String url = withOptionalQuery(BASE_URL + "/get_known_users", query);
+    try {
+      return restTemplate.getForObject(url, GetKnownChatUsersResponse.class);
+    } catch (Exception e) {
+      log.error("Error sending getKnownUsers message: {}", e.getMessage());
+      return new GetKnownChatUsersResponse();
+    }
+  }
+
+  public GetKnownUserTargetsResponse getKnownUserTargets(String query) {
+    String url = withOptionalQuery(BASE_URL + "/get_known_user_targets", query);
+    try {
+      return restTemplate.getForObject(url, GetKnownUserTargetsResponse.class);
+    } catch (Exception e) {
+      log.error("Error sending getKnownUserTargets message: {}", e.getMessage());
+      return new GetKnownUserTargetsResponse();
+    }
+  }
+
+  private String withOptionalQuery(String url, String query) {
+    if (query == null || query.isBlank()) {
+      return url;
+    }
+    return url + "?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
   }
 
 }

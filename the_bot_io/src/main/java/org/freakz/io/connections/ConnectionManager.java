@@ -9,8 +9,11 @@ import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.KnownChatChannelResponse;
 import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
+import org.freakz.common.model.connectionmanager.KnownUserTargetResponse;
+import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
+import org.freakz.common.model.users.User;
 import org.freakz.io.config.ConfigService;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.slf4j.Logger;
@@ -19,13 +22,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -37,11 +44,16 @@ public class ConnectionManager implements CommandLineRunner {
   private ConfigService configService;
   @Autowired
   private EventPublisher eventPublisher;
+  @Autowired(required = false)
+  private JsonMapper objectMapper;
   private final Map<String, JoinedChannelContainer> joinedChannelsMap = new ConcurrentHashMap<>();
 
   private final Map<String, LastChannelActivity> lastReceivedMessageByEchoToAlias = new ConcurrentHashMap<>();
   private final Map<String, KnownChannel> knownChannelsByAlias = new ConcurrentHashMap<>();
   private final Map<String, KnownUserPresence> knownUsersByUserAndChannel = new ConcurrentHashMap<>();
+  private volatile List<User> configuredUsers = List.of();
+  private volatile long configuredUsersLastModified = -1L;
+  private volatile boolean configuredUsersInjectedForTesting = false;
 
   public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
     String normalizedEchoToAlias = normalizeEchoToAlias(channel == null ? null : channel.getEchoToAlias());
@@ -241,6 +253,26 @@ public class ConnectionManager implements CommandLineRunner {
         .sorted(Comparator.comparing(KnownUserPresence::sortKey))
         .map(KnownUserPresence::toResponse)
         .toList();
+  }
+
+  public List<KnownUserTargetResponse> getKnownUserTargets() {
+    return findKnownUserTargets(null);
+  }
+
+  public List<KnownUserTargetResponse> findKnownUserTargets(String query) {
+    String normalizedQuery = normalizeLookup(query);
+    List<User> users = readConfiguredUsers();
+    return knownUsersByUserAndChannel.values().stream()
+        .map(presence -> resolveKnownUserTarget(presence, users))
+        .filter(target -> normalizedQuery == null || target.matches(normalizedQuery))
+        .sorted(Comparator.comparing(KnownUserTarget::sortKey))
+        .map(KnownUserTarget::toResponse)
+        .toList();
+  }
+
+  void setConfiguredUsersForTesting(List<User> users) {
+    configuredUsers = users == null ? List.of() : new CopyOnWriteArrayList<>(users);
+    configuredUsersInjectedForTesting = true;
   }
 
   public void addConnection(BotConnection connection) {
@@ -492,6 +524,116 @@ public class ConnectionManager implements CommandLineRunner {
     return channel;
   }
 
+  private List<User> readConfiguredUsers() {
+    if (configuredUsersInjectedForTesting) {
+      return configuredUsers;
+    }
+    if (configService == null) {
+      return List.of();
+    }
+    try {
+      File usersFile = configService.getRuntimeDataFile("users.json");
+      if (!usersFile.exists()) {
+        configuredUsers = List.of();
+        configuredUsersLastModified = -1L;
+        return configuredUsers;
+      }
+      long lastModified = usersFile.lastModified();
+      if (lastModified == configuredUsersLastModified) {
+        return configuredUsers;
+      }
+      JsonMapper mapper = objectMapper == null ? JsonMapper.builder().build() : objectMapper;
+      UserValuesJsonContainer container = mapper.readValue(usersFile, UserValuesJsonContainer.class);
+      List<User> users = container.getData_values() == null ? List.of() : new ArrayList<>(container.getData_values());
+      configuredUsers = Collections.unmodifiableList(users);
+      configuredUsersLastModified = lastModified;
+      log.debug("Loaded configured users for target normalization: {}", configuredUsers.size());
+    } catch (Exception e) {
+      log.warn("Unable to load configured users for target normalization", e);
+      configuredUsers = List.of();
+      configuredUsersLastModified = -1L;
+    }
+    return configuredUsers;
+  }
+
+  private KnownUserTarget resolveKnownUserTarget(KnownUserPresence presence, List<User> users) {
+    UserMatch match = findConfiguredUser(presence, users);
+    User user = match == null ? null : match.user();
+    String logicalUserKey = user == null ? presence.userKey : "configured:" + user.getId();
+    return new KnownUserTarget(
+        logicalUserKey,
+        user == null ? null : user.getId(),
+        user == null ? null : user.getUsername(),
+        user == null ? null : user.getName(),
+        user != null,
+        match == null ? "OBSERVED_ONLY" : match.source(),
+        presence);
+  }
+
+  private UserMatch findConfiguredUser(KnownUserPresence presence, List<User> users) {
+    for (User user : users) {
+      UserMatch match = matchConfiguredUser(presence, user);
+      if (match != null) {
+        return match;
+      }
+    }
+    return null;
+  }
+
+  private UserMatch matchConfiguredUser(KnownUserPresence presence, User user) {
+    BotConnectionType connectionType = parseConnectionType(presence.connectionType);
+    if (connectionType == BotConnectionType.IRC_CONNECTION
+        && configuredValueMatchesObserved(user.getIrcNick(), presence.userId, presence.username)) {
+      return new UserMatch(user, "IRC_NICK");
+    }
+    if (connectionType == BotConnectionType.DISCORD_CONNECTION
+        && configuredValueMatchesObserved(user.getDiscordId(), presence.userId)) {
+      return new UserMatch(user, "DISCORD_ID");
+    }
+    if (connectionType == BotConnectionType.TELEGRAM_CONNECTION
+        && configuredValueMatchesObserved(user.getTelegramId(), presence.userId)) {
+      return new UserMatch(user, "TELEGRAM_ID");
+    }
+    if (configuredValueMatchesObserved(user.getUsername(), presence.username, presence.displayName)
+        || configuredValueMatchesObserved(user.getName(), presence.username, presence.displayName)) {
+      return new UserMatch(user, "NAME");
+    }
+    return null;
+  }
+
+  private BotConnectionType parseConnectionType(String connectionType) {
+    if (connectionType == null) {
+      return null;
+    }
+    try {
+      return BotConnectionType.valueOf(connectionType);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private boolean configuredValueMatchesObserved(String configuredValue, String... observedValues) {
+    String normalizedConfigured = normalizeComparable(configuredValue);
+    if (normalizedConfigured == null) {
+      return false;
+    }
+    for (String observedValue : observedValues) {
+      String normalizedObserved = normalizeComparable(observedValue);
+      if (normalizedObserved != null && normalizedConfigured.equals(normalizedObserved)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String normalizeComparable(String value) {
+    String normalized = normalizeLookup(value);
+    if (normalized == null || "none".equals(normalized) || "null".equals(normalized)) {
+      return null;
+    }
+    return normalized;
+  }
+
   private record LastChannelActivity(
       long timestamp,
       String actor,
@@ -607,6 +749,77 @@ public class ConnectionManager implements CommandLineRunner {
 
     String sortKey() {
       return String.join("|", safe(username), safe(displayName), safe(connectionType), safe(echoToAlias));
+    }
+  }
+
+  private record UserMatch(User user, String source) {
+  }
+
+  private static class KnownUserTarget {
+    private String logicalUserKey;
+    private Long configuredUserId;
+    private String configuredUsername;
+    private String configuredName;
+    private boolean matchedConfiguredUser;
+    private String matchSource;
+    private KnownUserPresence presence;
+
+    KnownUserTarget(
+        String logicalUserKey,
+        Long configuredUserId,
+        String configuredUsername,
+        String configuredName,
+        boolean matchedConfiguredUser,
+        String matchSource,
+        KnownUserPresence presence) {
+      this.logicalUserKey = logicalUserKey;
+      this.configuredUserId = configuredUserId;
+      this.configuredUsername = configuredUsername;
+      this.configuredName = configuredName;
+      this.matchedConfiguredUser = matchedConfiguredUser;
+      this.matchSource = matchSource;
+      this.presence = presence;
+    }
+
+    KnownUserTargetResponse toResponse() {
+      return new KnownUserTargetResponse(
+          logicalUserKey,
+          configuredUserId,
+          configuredUsername,
+          configuredName,
+          matchedConfiguredUser,
+          matchSource,
+          presence.userKey,
+          presence.userId,
+          presence.username,
+          presence.displayName,
+          presence.connectionId,
+          presence.connectionType,
+          presence.network,
+          presence.channelId,
+          presence.channelName,
+          presence.echoToAlias,
+          "CHANNEL",
+          presence.lastSeenAt,
+          presence.lastSeenSource);
+    }
+
+    boolean matches(String normalizedQuery) {
+      return contains(logicalUserKey, normalizedQuery)
+          || contains(configuredUserId == null ? null : String.valueOf(configuredUserId), normalizedQuery)
+          || contains(configuredUsername, normalizedQuery)
+          || contains(configuredName, normalizedQuery)
+          || presence.matches(normalizedQuery);
+    }
+
+    String sortKey() {
+      return String.join(
+          "|",
+          safe(configuredUsername),
+          safe(configuredName),
+          safe(presence.username),
+          safe(presence.connectionType),
+          safe(presence.echoToAlias));
     }
   }
 
