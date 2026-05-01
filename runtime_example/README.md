@@ -38,7 +38,6 @@ Minimum IDEA environment variables for local bot testing:
 `OPENCLAW_HOOKS_TOKEN`
 `OPENAI_API_KEY`
 `WEATHER_API_KEY`
-`SLACK_TOKEN_SECRET`
 `DISCORD_SECRET`
 `TELEGRAM_SECRET`
 
