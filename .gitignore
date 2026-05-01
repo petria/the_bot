@@ -6,6 +6,8 @@
 /the_bot_common/target/
 /the_bot_cli/target/
 /the_bot_web/target/
+/the_bot_web/frontend/node_modules/
+/the_bot_web/frontend/dist/
 secret.properties
 /runtime/
 !/runtime/
