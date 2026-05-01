@@ -182,6 +182,18 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void leavesSingleLineDiscordMentionsUnboxed() {
+    assertThat(DiscordServerConnection.formatOutgoingMessage("<@265828694445129728> test"))
+        .isEqualTo("<@265828694445129728> test");
+  }
+
+  @Test
+  void boxesMultilineDiscordStatusOutput() {
+    assertThat(DiscordServerConnection.formatOutgoingMessage("== Activity\nDISCORD-HOKANDEV 0s ago"))
+        .isEqualTo("```== Activity\nDISCORD-HOKANDEV 0s ago```");
+  }
+
+  @Test
   void mentionsTelegramUsernameWhenSendingToPublicTelegramChannel() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()

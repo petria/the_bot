@@ -124,15 +124,15 @@ public class DiscordServerConnection extends BotConnection {
       }
     }
     if (channel != null) {
-      String boxed = String.format("```%s```", message.getMessage());
+      String outgoingMessage = formatOutgoingMessage(message.getMessage());
       Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
       if (serverTextChannel.isPresent()) {
-        serverTextChannel.get().sendMessage(boxed);
+        serverTextChannel.get().sendMessage(outgoingMessage);
         return;
       }
       Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
       if (privateChannel.isPresent()) {
-        privateChannel.get().sendMessage(boxed);
+        privateChannel.get().sendMessage(outgoingMessage);
         return;
       }
       log.error("Could not send reply: {}", message);
@@ -140,6 +140,16 @@ public class DiscordServerConnection extends BotConnection {
       log.error("Can't send message to: {}", message.getTarget());
     }
 
+  }
+
+  static String formatOutgoingMessage(String message) {
+    if (message == null || message.isBlank()) {
+      return message;
+    }
+    if (message.lines().count() > 1) {
+      return String.format("```%s```", message);
+    }
+    return message;
   }
 
   private void messageListener(MessageCreateEvent event) {
