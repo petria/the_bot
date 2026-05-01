@@ -127,17 +127,17 @@ public class DiscordServerConnection extends BotConnection {
       String outgoingMessage = formatOutgoingMessage(message.getMessage());
       Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
       if (serverTextChannel.isPresent()) {
-        serverTextChannel.get().sendMessage(outgoingMessage);
+        serverTextChannel.get().sendMessage(outgoingMessage).join();
         return;
       }
       Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
       if (privateChannel.isPresent()) {
-        privateChannel.get().sendMessage(outgoingMessage);
+        privateChannel.get().sendMessage(outgoingMessage).join();
         return;
       }
-      log.error("Could not send reply: {}", message);
+      throw new RuntimeException("Could not send Discord message to unsupported channel: " + message.getTarget());
     } else {
-      log.error("Can't send message to: {}", message.getTarget());
+      throw new RuntimeException("Can't send Discord message to: " + message.getTarget());
     }
 
   }
@@ -220,7 +220,9 @@ public class DiscordServerConnection extends BotConnection {
         userId,
         username,
         displayName == null || displayName.isBlank() ? (isPrivate ? "Discord DM " + username : username) : displayName,
-        "DISCORD_MESSAGE");
+        "DISCORD_MESSAGE",
+        isPrivate ? event.getChannel().getIdAsString() : null,
+        isPrivate ? "Discord DM " + username : null);
   }
 
   private org.freakz.common.model.botconfig.Channel resolveConfiguredChannel(MessageCreateEvent event) {

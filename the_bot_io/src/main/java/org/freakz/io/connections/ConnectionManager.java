@@ -311,6 +311,10 @@ public class ConnectionManager implements CommandLineRunner {
       response.setStatus("NOK");
       response.setMessage(e.getMessage());
       return response;
+    } catch (RuntimeException e) {
+      response.setStatus("NOK");
+      response.setMessage(e.getMessage());
+      return response;
     }
   }
 

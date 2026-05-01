@@ -194,6 +194,48 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void sendsDiscordPrivateMessageToRealChannelId() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .discordId("265828694445129728")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection discordConnection = new CapturingBotConnection(BotConnectionType.DISCORD_CONNECTION, "Discord");
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.DISCORD_CONNECTION,
+        discordConnection,
+        new BotConnectionChannel("1033431599708123278", "DISCORD-HOKANDEV", BotConnectionType.DISCORD_CONNECTION.name(), "Discord", "hokandev"));
+    connectionManager.markUserSeen(discordConnection, "DISCORD-HOKANDEV", "265828694445129728", "petria", "Petri Airio", "DISCORD_MESSAGE");
+    connectionManager.markUserSeen(
+        discordConnection,
+        "PRIVATE-DISCORD-265828694445129728",
+        "265828694445129728",
+        "petria",
+        "Petri Airio",
+        "DISCORD_MESSAGE",
+        "1188556624216240148",
+        "Discord DM petria");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .connectionType("DISCORD_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-DISCORD-265828694445129728");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("1188556624216240148");
+    assertThat(discordConnection.lastMessage.getId()).isEqualTo("1188556624216240148");
+    assertThat(discordConnection.lastMessage.getTarget()).isEqualTo("Discord DM petria");
+    assertThat(discordConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
   void mentionsTelegramUsernameWhenSendingToPublicTelegramChannel() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()
