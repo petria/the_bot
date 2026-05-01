@@ -5,11 +5,17 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 @EnableConfigurationProperties(TheBotWebProperties.class)
-public class TheBotWebApplication {
+public class SpringApplicationBotWeb {
 
   public static void main(String[] args) {
-    SpringApplication.run(TheBotWebApplication.class, args);
+    String timezone = System.getProperty("TZ", "Europe/Helsinki");
+    System.out.printf("Setting default timezone: %s", timezone);
+    TimeZone.setDefault(TimeZone.getTimeZone(timezone));
+
+    SpringApplication.run(SpringApplicationBotWeb.class, args);
   }
 }
