@@ -2,8 +2,6 @@ package org.freakz.common.spring.rest;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
-import org.freakz.common.model.engine.status.StatusReportRequest;
-import org.freakz.common.model.engine.status.StatusReportResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,17 +31,6 @@ public class RestEngineClient {
     } catch (Exception e) {
       log.error("Error sending handleEngineRequest message: {}", e.getMessage());
       return ResponseEntity.internalServerError().body(new EngineResponse());
-    }
-  }
-
-  //  @PostMapping("/handle_status_report")
-  public ResponseEntity<StatusReportResponse> handleStatusReport(@RequestBody StatusReportRequest request) {
-    String url = BASE_URL + "/handle_status_report";
-    try {
-      return restTemplate.postForEntity(url, request, StatusReportResponse.class);
-    } catch (Exception e) {
-      log.error("Error sending handleStatusReport message: {}", e.getMessage());
-      return ResponseEntity.internalServerError().body(new StatusReportResponse());
     }
   }
 

@@ -127,13 +127,11 @@ public class DiscordServerConnection extends BotConnection {
       String boxed = String.format("```%s```", message.getMessage());
       Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
       if (serverTextChannel.isPresent()) {
-        this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
         serverTextChannel.get().sendMessage(boxed);
         return;
       }
       Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
       if (privateChannel.isPresent()) {
-        this.connectionManager.addMessageInOut(getType().toString(), 0, 1);
         privateChannel.get().sendMessage(boxed);
         return;
       }
@@ -173,7 +171,6 @@ public class DiscordServerConnection extends BotConnection {
     publisher.publishEvent(this, event, echoToAlias);
 
     try {
-      this.connectionManager.addMessageInOut(getType().toString(), 1, 0);
       updateChannelMap(event.getApi());
     } catch (BotIOException e) {
       throw new RuntimeException(e);

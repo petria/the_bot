@@ -1,15 +1,17 @@
 package org.freakz.common.model.botconfig;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
 import java.util.Objects;
 
 /*
 Structure of master config file
 */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TheBotConfig {
 
   private BotConfig botConfig;
-  private SlackConfig slackConfig;
   private DiscordConfig discordConfig;
   private TelegramConfig telegramConfig;
   private List<IrcServerConfig> ircServerConfigs;
@@ -17,9 +19,8 @@ public class TheBotConfig {
   public TheBotConfig() {
   }
 
-  public TheBotConfig(BotConfig botConfig, SlackConfig slackConfig, DiscordConfig discordConfig, TelegramConfig telegramConfig, List<IrcServerConfig> ircServerConfigs) {
+  public TheBotConfig(BotConfig botConfig, DiscordConfig discordConfig, TelegramConfig telegramConfig, List<IrcServerConfig> ircServerConfigs) {
     this.botConfig = botConfig;
-    this.slackConfig = slackConfig;
     this.discordConfig = discordConfig;
     this.telegramConfig = telegramConfig;
     this.ircServerConfigs = ircServerConfigs;
@@ -35,14 +36,6 @@ public class TheBotConfig {
 
   public void setBotConfig(BotConfig botConfig) {
     this.botConfig = botConfig;
-  }
-
-  public SlackConfig getSlackConfig() {
-    return slackConfig;
-  }
-
-  public void setSlackConfig(SlackConfig slackConfig) {
-    this.slackConfig = slackConfig;
   }
 
   public DiscordConfig getDiscordConfig() {
@@ -74,19 +67,18 @@ public class TheBotConfig {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TheBotConfig that = (TheBotConfig) o;
-    return Objects.equals(botConfig, that.botConfig) && Objects.equals(slackConfig, that.slackConfig) && Objects.equals(discordConfig, that.discordConfig) && Objects.equals(telegramConfig, that.telegramConfig) && Objects.equals(ircServerConfigs, that.ircServerConfigs);
+    return Objects.equals(botConfig, that.botConfig) && Objects.equals(discordConfig, that.discordConfig) && Objects.equals(telegramConfig, that.telegramConfig) && Objects.equals(ircServerConfigs, that.ircServerConfigs);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(botConfig, slackConfig, discordConfig, telegramConfig, ircServerConfigs);
+    return Objects.hash(botConfig, discordConfig, telegramConfig, ircServerConfigs);
   }
 
   @Override
   public String toString() {
     return "TheBotConfig{" +
         "botConfig=" + botConfig +
-        ", slackConfig=" + slackConfig +
         ", discordConfig=" + discordConfig +
         ", telegramConfig=" + telegramConfig +
         ", ircServerConfigs=" + ircServerConfigs +
@@ -95,18 +87,12 @@ public class TheBotConfig {
 
   public static class Builder {
     private BotConfig botConfig;
-    private SlackConfig slackConfig;
     private DiscordConfig discordConfig;
     private TelegramConfig telegramConfig;
     private List<IrcServerConfig> ircServerConfigs;
 
     public Builder botConfig(BotConfig botConfig) {
       this.botConfig = botConfig;
-      return this;
-    }
-
-    public Builder slackConfig(SlackConfig slackConfig) {
-      this.slackConfig = slackConfig;
       return this;
     }
 
@@ -126,7 +112,7 @@ public class TheBotConfig {
     }
 
     public TheBotConfig build() {
-      return new TheBotConfig(botConfig, slackConfig, discordConfig, telegramConfig, ircServerConfigs);
+      return new TheBotConfig(botConfig, discordConfig, telegramConfig, ircServerConfigs);
     }
   }
 }

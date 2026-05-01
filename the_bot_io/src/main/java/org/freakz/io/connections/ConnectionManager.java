@@ -7,11 +7,9 @@ import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
-import org.freakz.common.model.engine.status.ChannelMessageCounters;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
-import org.freakz.io.contoller.SlackEventsController;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,36 +35,44 @@ public class ConnectionManager implements CommandLineRunner {
   private ConfigService configService;
   @Autowired
   private EventPublisher eventPublisher;
-  @Autowired
-  private SlackEventsController slackEventsController;
   private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
-  private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
   private final Map<String, LastChannelActivity> lastReceivedMessageByEchoToAlias = new ConcurrentHashMap<>();
-
-  public Map<String, ChannelMessageCounters> getCountersMap() {
-    return countersMap;
-  }
-
-
-  public void addMessageInOut(String connectionType, int in, int out) {
-    ChannelMessageCounters counters = countersMap.computeIfAbsent(connectionType, k -> new ChannelMessageCounters());
-    counters.in += in;
-    counters.out += out;
-  }
 
   public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
     JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
     if (container == null) {
       container = new JoinedChannelContainer();
-      container.botConnectionType = botConnectionType;
-      container.channel = channel;
-      container.connection = connection;
     }
+    container.botConnectionType = botConnectionType;
+    container.channel = channel;
+    container.connection = connection;
     if (channel.getEchoToAlias() == null) {
       int foo = 0;
     }
     joinedChannelsMap.put(channel.getEchoToAlias(), container);
+  }
+
+  public void removeJoinedChannelsForConnection(BotConnection connection) {
+    joinedChannelsMap.entrySet().removeIf(entry -> entry.getValue() != null && entry.getValue().connection == connection);
+  }
+
+  public void removeConfiguredIrcJoinedChannels(IrcServerConnection connection) {
+    IrcServerConfig config = connection.getConfig();
+    if (config == null || config.getChannelList() == null) {
+      return;
+    }
+    for (org.freakz.common.model.botconfig.Channel channel : config.getChannelList()) {
+      if (channel.getEchoToAlias() == null) {
+        continue;
+      }
+      JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
+      if (container != null
+          && container.botConnectionType == BotConnectionType.IRC_CONNECTION
+          && container.connection != connection) {
+        joinedChannelsMap.remove(channel.getEchoToAlias());
+      }
+    }
   }
 
   public Map<String, JoinedChannelContainer> getJoinedChannelsMap() {
@@ -178,15 +184,6 @@ public class ConnectionManager implements CommandLineRunner {
     }
     log.debug(">> done!");
 
-    log.debug(">> Connecting SLACK");
-    if (theBotConfig.getSlackConfig().isConnectStartup()) {
-      SlackConnection slackConnection = new SlackConnection();
-      slackConnection.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getSlackConfig(), slackEventsController, eventPublisher);
-      addConnection(slackConnection);
-    } else {
-      log.warn("SLACK Startup connect disabled: {}", theBotConfig.getSlackConfig());
-    }
-
   }
 
 
@@ -218,6 +215,7 @@ public class ConnectionManager implements CommandLineRunner {
   public void ircConnectionEnded(IrcServerConnection connection) {
     log.debug("IRC connection ended: {}", connection.getId());
     IrcServerConnection remove = (IrcServerConnection) this.connectionMap.remove(connection.getId());
+    removeJoinedChannelsForConnection(connection);
     log.debug("End IrcConnectionEnded: {}", remove);
     reconnectIrcServer(connection.getConfig());
   }

@@ -30,8 +30,6 @@ public enum ServiceRequestType {
 
   SendMessageByEchoToAlias,
 
-  SystemStatus,
-
   TranslateService,
 
   TestService1,

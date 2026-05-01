@@ -25,9 +25,6 @@ public final class ChatIdentityUtil {
     if (n.contains("telegram")) {
       return "telegram";
     }
-    if (n.contains("slack")) {
-      return "slack";
-    }
     if (n.contains("irc")) {
       return "irc";
     }

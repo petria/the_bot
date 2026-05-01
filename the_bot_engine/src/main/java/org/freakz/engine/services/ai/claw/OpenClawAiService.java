@@ -371,7 +371,6 @@ public class OpenClawAiService {
     String requestedByIrcNick = request.getUser() == null ? "" : safePromptValue(request.getUser().getIrcNick());
     String requestedByTelegramId = request.getUser() == null ? "" : safePromptValue(request.getUser().getTelegramId());
     String requestedByDiscordId = request.getUser() == null ? "" : safePromptValue(request.getUser().getDiscordId());
-    String requestedBySlackId = request.getUser() == null ? "" : safePromptValue(request.getUser().getSlackId());
 
     StringBuilder sb = new StringBuilder();
     sb.append("[HOKAN_CONTEXT v1]\n");
@@ -391,7 +390,6 @@ public class OpenClawAiService {
     sb.append("requested_by_irc_nick=").append(requestedByIrcNick).append("\n");
     sb.append("requested_by_telegram_id=").append(requestedByTelegramId).append("\n");
     sb.append("requested_by_discord_id=").append(requestedByDiscordId).append("\n");
-    sb.append("requested_by_slack_id=").append(requestedBySlackId).append("\n");
     sb.append("session_key=").append(sessionKey).append("\n");
     sb.append("chat_id=").append(chatId).append("\n");
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");

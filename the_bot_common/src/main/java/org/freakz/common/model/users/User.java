@@ -27,13 +27,11 @@ public class User extends DataNodeBase {
   private String telegramId;
   @JsonProperty("discordId")
   private String discordId;
-  @JsonProperty("slackId")
-  private String slackId;
 
   public User() {
   }
 
-  public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId, String slackId) {
+  public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId) {
     this.isAdmin = isAdmin;
     this.canDoIrcOp = canDoIrcOp;
     this.username = username;
@@ -43,7 +41,6 @@ public class User extends DataNodeBase {
     this.ircNick = ircNick;
     this.telegramId = telegramId;
     this.discordId = discordId;
-    this.slackId = slackId;
   }
 
   public static Builder builder() {
@@ -122,25 +119,17 @@ public class User extends DataNodeBase {
     this.discordId = discordId;
   }
 
-  public String getSlackId() {
-    return slackId;
-  }
-
-  public void setSlackId(String slackId) {
-    this.slackId = slackId;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     User user = (User) o;
-    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(slackId, user.slackId);
+    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, slackId);
+    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
   }
 
   @Override
@@ -155,7 +144,6 @@ public class User extends DataNodeBase {
         ", ircNick='" + ircNick + '\'' +
         ", telegramId='" + telegramId + '\'' +
         ", discordId='" + discordId + '\'' +
-        ", slackId='" + slackId + '\'' +
         '}';
   }
 
@@ -169,7 +157,6 @@ public class User extends DataNodeBase {
     private String ircNick;
     private String telegramId;
     private String discordId;
-    private String slackId;
 
     public Builder isAdmin(boolean isAdmin) {
       this.isAdmin = isAdmin;
@@ -216,13 +203,8 @@ public class User extends DataNodeBase {
       return this;
     }
 
-    public Builder slackId(String slackId) {
-      this.slackId = slackId;
-      return this;
-    }
-
     public User build() {
-      return new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, slackId);
+      return new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
     }
   }
 }

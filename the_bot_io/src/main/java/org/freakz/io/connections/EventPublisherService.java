@@ -8,8 +8,6 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
-import org.freakz.common.model.slack.Event;
-import org.freakz.common.model.slack.SlackEvent;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.config.TheBotProperties;
 import org.javacord.api.entity.message.MessageAttachment;
@@ -119,7 +117,6 @@ public class EventPublisherService implements EventPublisher {
       case IRC_CONNECTION -> "irc";
       case DISCORD_CONNECTION -> "discord";
       case TELEGRAM_CONNECTION -> "telegram";
-      case SLACK_CONNECTION -> "slack";
     };
 
     String network = ChatIdentityUtil.sanitize(connection.getNetwork(), "unknown");
@@ -245,36 +242,6 @@ public class EventPublisherService implements EventPublisher {
         isPrivate);
   }
 
-  private org.freakz.common.model.users.User publishSlackEvent(
-      BotConnection connection, SlackEvent slackEvent, String echoToAlias) {
-    log.debug("Publish SLACK slackEvent: {}", slackEvent);
-
-    Event event = slackEvent.getEvent();
-    String message = event.getText();
-    Message msg =
-        Message.builder()
-            .id("" + event.getChannel())
-            .messageSource(MessageSource.DISCORD_MESSAGE)
-            .time(LocalDateTime.now())
-            .sender(event.getUser())
-            .target(event.getChannel())
-            .message(message)
-            .build();
-
-    Long channelId = -1L;
-    String senderId = msg.getSender();
-    publishToEngineAsync(
-        connection,
-        msg.getMessage(),
-        msg.getSender(),
-        msg.getTarget(),
-        channelId,
-        senderId,
-        echoToAlias,
-        false);
-    return new org.freakz.common.model.users.User();
-  }
-
   private org.freakz.common.model.users.User publishDiscordEvent(
       BotConnection connection, MessageCreateEvent event, String echoToAlias) {
     log.debug("Publish DISCORD event: {}", event);
@@ -342,8 +309,6 @@ public class EventPublisherService implements EventPublisher {
         return publishDiscordEvent(connection, (MessageCreateEvent) source, echoToAlias);
       case TELEGRAM_CONNECTION:
         return publishTelegramEvent(connection, (Update) source, echoToAlias);
-      case SLACK_CONNECTION:
-        return publishSlackEvent(connection, (SlackEvent) source, echoToAlias);
     }
     return null;
   }
