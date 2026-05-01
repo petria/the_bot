@@ -10,6 +10,8 @@ import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.KnownChatChannelResponse;
 import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
 import org.freakz.common.model.connectionmanager.KnownUserTargetResponse;
+import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
+import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
 import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
@@ -32,6 +34,9 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -270,9 +275,147 @@ public class ConnectionManager implements CommandLineRunner {
         .toList();
   }
 
+  public SendMessageToKnownUserResponse sendMessageToKnownUser(SendMessageToKnownUserRequest request) {
+    SendMessageToKnownUserResponse response = resolveKnownUserTarget(request);
+    if (!"OK".equals(response.getStatus())) {
+      return response;
+    }
+    try {
+      String message = formatKnownUserMessage(request.getMessage(), response.getSelectedTarget());
+      sendMessageByEchoToAlias(message, response.getSelectedTarget().getEchoToAlias());
+      response.setSentTo(response.getSelectedTarget().getEchoToAlias());
+      response.setMessage("Sent to " + response.getSelectedTarget().getEchoToAlias());
+      return response;
+    } catch (InvalidEchoToAliasException e) {
+      response.setStatus("NOK");
+      response.setMessage(e.getMessage());
+      return response;
+    }
+  }
+
+  public SendMessageToKnownUserResponse resolveKnownUserTarget(SendMessageToKnownUserRequest request) {
+    if (request == null) {
+      return sendToKnownUserResponse("NOK", "Missing request", null, List.of());
+    }
+    if (request.getQuery() == null || request.getQuery().isBlank()) {
+      return sendToKnownUserResponse("NOK", "Missing user query", null, List.of());
+    }
+    if (request.getMessage() == null || request.getMessage().isBlank()) {
+      return sendToKnownUserResponse("NOK", "Missing message", null, List.of());
+    }
+
+    List<KnownUserTargetResponse> candidates = filterKnownUserTargets(request);
+    if (candidates.isEmpty()) {
+      return sendToKnownUserResponse("NOK", "No known user target found for query: " + request.getQuery(), null, candidates);
+    }
+
+    List<KnownUserTargetResponse> configuredMatches = candidates.stream()
+        .filter(KnownUserTargetResponse::isMatchedConfiguredUser)
+        .toList();
+    List<KnownUserTargetResponse> identityCandidates = configuredMatches.isEmpty() ? candidates : configuredMatches;
+    Set<String> logicalUsers = identityCandidates.stream()
+        .map(KnownUserTargetResponse::getLogicalUserKey)
+        .collect(Collectors.toSet());
+    if (logicalUsers.size() > 1) {
+      return sendToKnownUserResponse("AMBIGUOUS", "Multiple users match query: " + request.getQuery(), null, identityCandidates);
+    }
+
+    Optional<KnownUserTargetResponse> selected = selectKnownUserTarget(identityCandidates, Boolean.TRUE.equals(request.getPreferPrivate()));
+    return selected
+        .map(target -> sendToKnownUserResponse("OK", "Resolved target", target, candidates))
+        .orElseGet(() -> sendToKnownUserResponse("NOK", "No sendable target found for query: " + request.getQuery(), null, candidates));
+  }
+
   void setConfiguredUsersForTesting(List<User> users) {
     configuredUsers = users == null ? List.of() : new CopyOnWriteArrayList<>(users);
     configuredUsersInjectedForTesting = true;
+  }
+
+  private List<KnownUserTargetResponse> filterKnownUserTargets(SendMessageToKnownUserRequest request) {
+    String normalizedConnectionType = normalizeLookup(request.getConnectionType());
+    String normalizedEchoToAlias = normalizeEchoToAlias(request.getEchoToAlias());
+    return findKnownUserTargets(request.getQuery()).stream()
+        .filter(target -> normalizedConnectionType == null
+            || normalizeLookup(target.getConnectionType()).equals(normalizedConnectionType))
+        .filter(target -> normalizedEchoToAlias == null
+            || normalizeEchoToAlias(target.getEchoToAlias()).equals(normalizedEchoToAlias))
+        .toList();
+  }
+
+  private Optional<KnownUserTargetResponse> selectKnownUserTarget(List<KnownUserTargetResponse> candidates, boolean preferPrivate) {
+    if (candidates.isEmpty()) {
+      return Optional.empty();
+    }
+    Comparator<KnownUserTargetResponse> newestFirst = Comparator
+        .comparing((KnownUserTargetResponse target) -> target.getLastSeenAt() == null ? Long.MIN_VALUE : target.getLastSeenAt())
+        .reversed();
+    if (preferPrivate) {
+      Optional<KnownUserTargetResponse> privateTarget = candidates.stream()
+          .filter(target -> isPrivateEchoToAlias(target.getEchoToAlias()))
+          .sorted(newestFirst)
+          .findFirst();
+      if (privateTarget.isPresent()) {
+        return privateTarget;
+      }
+    }
+    return candidates.stream()
+        .sorted(newestFirst)
+        .findFirst();
+  }
+
+  private boolean isPrivateEchoToAlias(String echoToAlias) {
+    String normalized = normalizeEchoToAlias(echoToAlias);
+    return normalized != null && normalized.startsWith("PRIVATE-");
+  }
+
+  private SendMessageToKnownUserResponse sendToKnownUserResponse(
+      String status,
+      String message,
+      KnownUserTargetResponse selectedTarget,
+      List<KnownUserTargetResponse> candidateTargets) {
+    SendMessageToKnownUserResponse response = new SendMessageToKnownUserResponse();
+    response.setStatus(status);
+    response.setMessage(message);
+    response.setSelectedTarget(selectedTarget);
+    response.setCandidateTargets(candidateTargets);
+    response.setSentTo(selectedTarget == null ? null : selectedTarget.getEchoToAlias());
+    return response;
+  }
+
+  private String formatKnownUserMessage(String message, KnownUserTargetResponse target) {
+    if (target == null || target.getConnectionType() == null || isPrivateEchoToAlias(target.getEchoToAlias())) {
+      return message;
+    }
+    BotConnectionType connectionType = parseConnectionType(target.getConnectionType());
+    return switch (connectionType) {
+      case IRC_CONNECTION -> formatIrcChannelMessage(message, target);
+      case DISCORD_CONNECTION -> formatDiscordChannelMessage(message, target);
+      case TELEGRAM_CONNECTION -> formatTelegramChannelMessage(message, target);
+      case null -> message;
+    };
+  }
+
+  private String formatIrcChannelMessage(String message, KnownUserTargetResponse target) {
+    String nick = firstNonBlank(target.getObservedUsername(), target.getObservedUserId());
+    return nick == null ? message : nick + ": " + message;
+  }
+
+  private String formatDiscordChannelMessage(String message, KnownUserTargetResponse target) {
+    String userId = firstNonBlank(target.getObservedUserId());
+    if (userId == null) {
+      return message;
+    }
+    return "<@" + userId + "> " + message;
+  }
+
+  private String formatTelegramChannelMessage(String message, KnownUserTargetResponse target) {
+    String username = firstNonBlank(target.getObservedUsername());
+    if (username != null) {
+      String cleanUsername = username.startsWith("@") ? username.substring(1) : username;
+      return "@" + cleanUsername + " " + message;
+    }
+    String displayName = firstNonBlank(target.getObservedDisplayName(), target.getObservedUserId());
+    return displayName == null ? message : displayName + ": " + message;
   }
 
   public void addConnection(BotConnection connection) {

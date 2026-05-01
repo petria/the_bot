@@ -4,6 +4,8 @@ import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasR
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
+import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
 import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,19 @@ public class RestMessageSendClient {
     } catch (Exception e) {
       log.error("Error sending irc raw message by echoToAlias: {}", e.getMessage());
       return ResponseEntity.internalServerError().body(new SendIrcRawMessageByEchoToAliasResponse());
+    }
+  }
+
+  public ResponseEntity<SendMessageToKnownUserResponse> sendMessageToKnownUser(SendMessageToKnownUserRequest request) {
+    String url = BASE_URL + "/send_message_to_known_user";
+    try {
+      return restTemplate.postForEntity(url, request, SendMessageToKnownUserResponse.class);
+    } catch (Exception e) {
+      log.error("Error sending message to known user: {}", e.getMessage());
+      SendMessageToKnownUserResponse response = new SendMessageToKnownUserResponse();
+      response.setStatus("NOK");
+      response.setMessage(e.getMessage());
+      return ResponseEntity.internalServerError().body(response);
     }
   }
 }

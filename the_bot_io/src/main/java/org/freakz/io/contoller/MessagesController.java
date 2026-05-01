@@ -7,6 +7,7 @@ import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasR
 import org.freakz.common.model.connectionmanager.SendIrcRawMessageByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.io.connections.ConnectionManager;
 import org.slf4j.Logger;
@@ -80,6 +81,19 @@ public class MessagesController {
       );
     }
     return ResponseEntity.ok(response);
+  }
+
+  @PostMapping("/send_message_to_known_user")
+  public ResponseEntity<?> sendMessageToKnownUser(@RequestBody SendMessageToKnownUserRequest request) {
+    log.debug(
+        "sendMessageToKnownUser start query={} preferPrivate={} connectionType={} echoToAlias={} messageLength={}",
+        request.getQuery(),
+        request.getPreferPrivate(),
+        request.getConnectionType(),
+        request.getEchoToAlias(),
+        request.getMessage() == null ? 0 : request.getMessage().length()
+    );
+    return ResponseEntity.ok(connectionManager.sendMessageToKnownUser(request));
   }
 
   @PostMapping("/send_irc_raw_message_by_echo_to_alias")

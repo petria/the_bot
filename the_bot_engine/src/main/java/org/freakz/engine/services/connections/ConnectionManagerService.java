@@ -72,6 +72,23 @@ public class ConnectionManagerService {
     return response.getBody();
   }
 
+  public SendMessageToKnownUserResponse sendMessageToKnownUser(
+      String query,
+      String message,
+      Boolean preferPrivate,
+      String connectionType,
+      String echoToAlias) {
+    SendMessageToKnownUserRequest request = SendMessageToKnownUserRequest.builder()
+        .query(query)
+        .message(message)
+        .preferPrivate(preferPrivate)
+        .connectionType(connectionType)
+        .echoToAlias(echoToAlias)
+        .build();
+    ResponseEntity<SendMessageToKnownUserResponse> response = messageSendClient.sendMessageToKnownUser(request);
+    return response.getBody();
+  }
+
 
   public ChannelUsersByEchoToAliasResponse getChannelUsersByEchoToAlias(String echoToAlias) {
     ChannelUsersByEchoToAliasRequest request
