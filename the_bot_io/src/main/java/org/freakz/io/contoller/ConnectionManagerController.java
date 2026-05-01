@@ -5,6 +5,8 @@ import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.GetChannelActivityResponse;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.GetKnownChatChannelsResponse;
+import org.freakz.common.model.connectionmanager.GetKnownChatUsersResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
@@ -56,6 +58,19 @@ public class ConnectionManagerController {
         .channels(connectionManager.getChannelActivity())
         .build();
     return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/get_known_channels")
+  public ResponseEntity<?> getKnownChannels() {
+    return ResponseEntity.ok(new GetKnownChatChannelsResponse(connectionManager.getKnownChannels()));
+  }
+
+  @GetMapping("/get_known_users")
+  public ResponseEntity<?> getKnownUsers(@RequestParam(required = false) String query) {
+    if (query == null || query.isBlank()) {
+      return ResponseEntity.ok(new GetKnownChatUsersResponse(connectionManager.getKnownUsers()));
+    }
+    return ResponseEntity.ok(new GetKnownChatUsersResponse(connectionManager.findKnownUsers(query)));
   }
 
   @PostMapping("/get_channel_users_by_echo_to_alias")

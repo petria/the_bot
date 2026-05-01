@@ -144,6 +144,7 @@ public class TelegramConnection extends BotConnection {
                 ? "Telegram DM " + resolveActorName(update)
                 : null
         );
+        markTelegramUserSeen(echoToAlias, update);
 
         User user = publisher.publishEvent(this.connection, update, echoToAlias); // TODO
 
@@ -157,6 +158,20 @@ public class TelegramConnection extends BotConnection {
         checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText(), user);
       }
 
+    }
+
+    private void markTelegramUserSeen(String echoToAlias, Update update) {
+      if (!update.hasMessage() || update.getMessage().getFrom() == null) {
+        return;
+      }
+      org.telegram.telegrambots.meta.api.objects.User from = update.getMessage().getFrom();
+      this.connectionManager.markUserSeen(
+          this.connection,
+          echoToAlias,
+          String.valueOf(from.getId()),
+          from.getUserName(),
+          resolveActorName(update),
+          "TELEGRAM_MESSAGE");
     }
 
     private String resolveEchoToAlias(Update update) {

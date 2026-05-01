@@ -74,7 +74,7 @@ public class DiscordServerConnection extends BotConnection {
           continue;
         }
 
-        JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(ch.getEchoToAlias());
+        JoinedChannelContainer container = this.connectionManager.getJoinedChannelContainer(ch.getEchoToAlias());
         BotConnectionChannel botConnectionChannel;
         if (container == null) {
           botConnectionChannel = new BotConnectionChannel();
@@ -168,6 +168,7 @@ public class DiscordServerConnection extends BotConnection {
         getNetwork(),
         isPrivate ? "Discord DM " + event.getMessageAuthor().getName() : null
     );
+    markDiscordUserSeen(echoToAlias, event, isPrivate);
     publisher.publishEvent(this, event, echoToAlias);
 
     try {
@@ -195,6 +196,21 @@ public class DiscordServerConnection extends BotConnection {
       }
       checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
     }
+  }
+
+  private void markDiscordUserSeen(String echoToAlias, MessageCreateEvent event, boolean isPrivate) {
+    String userId = event.getMessageAuthor().asUser()
+        .map(user -> user.getIdAsString())
+        .orElse(String.valueOf(event.getMessageAuthor().getId()));
+    String displayName = event.getMessageAuthor().getDisplayName();
+    String username = event.getMessageAuthor().getName();
+    this.connectionManager.markUserSeen(
+        this,
+        echoToAlias,
+        userId,
+        username,
+        displayName == null || displayName.isBlank() ? (isPrivate ? "Discord DM " + username : username) : displayName,
+        "DISCORD_MESSAGE");
   }
 
   private org.freakz.common.model.botconfig.Channel resolveConfiguredChannel(MessageCreateEvent event) {

@@ -7,6 +7,8 @@ import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.connectionmanager.KnownChatChannelResponse;
+import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
@@ -21,7 +23,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,31 +32,45 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConnectionManager implements CommandLineRunner {
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
-  private final Map<Integer, BotConnection> connectionMap = new HashMap<>();
+  private final Map<Integer, BotConnection> connectionMap = new ConcurrentHashMap<>();
   @Autowired
   private ConfigService configService;
   @Autowired
   private EventPublisher eventPublisher;
-  private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
+  private final Map<String, JoinedChannelContainer> joinedChannelsMap = new ConcurrentHashMap<>();
 
   private final Map<String, LastChannelActivity> lastReceivedMessageByEchoToAlias = new ConcurrentHashMap<>();
+  private final Map<String, KnownChannel> knownChannelsByAlias = new ConcurrentHashMap<>();
+  private final Map<String, KnownUserPresence> knownUsersByUserAndChannel = new ConcurrentHashMap<>();
 
   public void updateJoinedChannelsMap(BotConnectionType botConnectionType, BotConnection connection, BotConnectionChannel channel) {
-    JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
+    String normalizedEchoToAlias = normalizeEchoToAlias(channel == null ? null : channel.getEchoToAlias());
+    if (normalizedEchoToAlias == null) {
+      log.warn("Ignoring channel without echoToAlias: {}", channel);
+      return;
+    }
+    JoinedChannelContainer container = joinedChannelsMap.get(normalizedEchoToAlias);
     if (container == null) {
       container = new JoinedChannelContainer();
     }
     container.botConnectionType = botConnectionType;
     container.channel = channel;
     container.connection = connection;
-    if (channel.getEchoToAlias() == null) {
-      int foo = 0;
+    joinedChannelsMap.put(normalizedEchoToAlias, container);
+    KnownChannel previous = knownChannelsByAlias.get(normalizedEchoToAlias);
+    KnownChannel knownChannel = KnownChannel.from(botConnectionType, connection, channel);
+    if (previous != null) {
+      knownChannel.lastReceivedMessageAt = previous.lastReceivedMessageAt;
+      knownChannel.lastReceivedMessageBy = previous.lastReceivedMessageBy;
+      knownChannel.lastReceivedMessageSource = previous.lastReceivedMessageSource;
     }
-    joinedChannelsMap.put(channel.getEchoToAlias(), container);
+    knownChannelsByAlias.put(normalizedEchoToAlias, knownChannel);
   }
 
   public void removeJoinedChannelsForConnection(BotConnection connection) {
     joinedChannelsMap.entrySet().removeIf(entry -> entry.getValue() != null && entry.getValue().connection == connection);
+    knownChannelsByAlias.entrySet().removeIf(entry -> entry.getValue().connectionId == connection.getId());
+    knownUsersByUserAndChannel.entrySet().removeIf(entry -> entry.getValue().connectionId == connection.getId());
   }
 
   public void removeConfiguredIrcJoinedChannels(IrcServerConnection connection) {
@@ -66,17 +82,23 @@ public class ConnectionManager implements CommandLineRunner {
       if (channel.getEchoToAlias() == null) {
         continue;
       }
-      JoinedChannelContainer container = joinedChannelsMap.get(channel.getEchoToAlias());
+      JoinedChannelContainer container = joinedChannelsMap.get(normalizeEchoToAlias(channel.getEchoToAlias()));
       if (container != null
           && container.botConnectionType == BotConnectionType.IRC_CONNECTION
           && container.connection != connection) {
-        joinedChannelsMap.remove(channel.getEchoToAlias());
+        String normalizedEchoToAlias = normalizeEchoToAlias(channel.getEchoToAlias());
+        joinedChannelsMap.remove(normalizedEchoToAlias);
+        knownChannelsByAlias.remove(normalizedEchoToAlias);
       }
     }
   }
 
   public Map<String, JoinedChannelContainer> getJoinedChannelsMap() {
     return this.joinedChannelsMap;
+  }
+
+  public JoinedChannelContainer getJoinedChannelContainer(String echoToAlias) {
+    return joinedChannelsMap.get(normalizeEchoToAlias(echoToAlias));
   }
 
   public void markMessageReceived(String echoToAlias, String actor, String source) {
@@ -98,10 +120,68 @@ public class ConnectionManager implements CommandLineRunner {
         normalizedEchoToAlias,
         new LastChannelActivity(System.currentTimeMillis(), actor, source, type, network, name)
     );
+    KnownChannel channel = knownChannelsByAlias.get(normalizedEchoToAlias);
+    if (channel != null) {
+      channel.lastReceivedMessageAt = System.currentTimeMillis();
+      channel.lastReceivedMessageBy = actor;
+      channel.lastReceivedMessageSource = source;
+    }
+  }
+
+  public void markUserSeen(
+      BotConnection connection,
+      String echoToAlias,
+      String userId,
+      String username,
+      String displayName,
+      String source) {
+    String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
+    if (connection == null || normalizedEchoToAlias == null) {
+      return;
+    }
+
+    JoinedChannelContainer joinedChannel = joinedChannelsMap.get(normalizedEchoToAlias);
+    BotConnectionChannel channel = joinedChannel == null ? null : joinedChannel.channel;
+    if (channel == null) {
+      channel = syntheticChannel(connection, echoToAlias);
+      updateJoinedChannelsMap(connection.getType(), connection, channel);
+    }
+
+    String userKey = normalizeUserKey(connection.getType(), connection.getNetwork(), userId, username, displayName);
+    if (userKey == null) {
+      return;
+    }
+
+    knownUsersByUserAndChannel.put(
+        userKey + "|" + normalizedEchoToAlias,
+        KnownUserPresence.from(
+            userKey,
+            userId,
+            username,
+            displayName,
+            connection,
+            channel,
+            System.currentTimeMillis(),
+            source)
+    );
+  }
+
+  public void removeUserFromChannel(BotConnection connection, String echoToAlias, String userId, String username, String displayName) {
+    String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
+    String userKey = normalizeUserKey(
+        connection == null ? null : connection.getType(),
+        connection == null ? null : connection.getNetwork(),
+        userId,
+        username,
+        displayName);
+    if (normalizedEchoToAlias == null || userKey == null) {
+      return;
+    }
+    knownUsersByUserAndChannel.remove(userKey + "|" + normalizedEchoToAlias);
   }
 
   public List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> getChannelActivity() {
-    Map<String, org.freakz.common.model.connectionmanager.ChannelActivityResponse> channels = new HashMap<>();
+    Map<String, org.freakz.common.model.connectionmanager.ChannelActivityResponse> channels = new ConcurrentHashMap<>();
     for (Map.Entry<String, JoinedChannelContainer> entry : joinedChannelsMap.entrySet()) {
       JoinedChannelContainer container = entry.getValue();
       if (container == null || container.channel == null || container.channel.getEchoToAlias() == null) {
@@ -135,6 +215,32 @@ public class ConnectionManager implements CommandLineRunner {
           .build());
     }
     return new ArrayList<>(channels.values());
+  }
+
+  public List<KnownChatChannelResponse> getKnownChannels() {
+    return knownChannelsByAlias.values().stream()
+        .sorted(Comparator.comparing(KnownChannel::sortKey))
+        .map(KnownChannel::toResponse)
+        .toList();
+  }
+
+  public List<KnownChatUserResponse> getKnownUsers() {
+    return knownUsersByUserAndChannel.values().stream()
+        .sorted(Comparator.comparing(KnownUserPresence::sortKey))
+        .map(KnownUserPresence::toResponse)
+        .toList();
+  }
+
+  public List<KnownChatUserResponse> findKnownUsers(String query) {
+    String normalizedQuery = normalizeLookup(query);
+    if (normalizedQuery == null) {
+      return getKnownUsers();
+    }
+    return knownUsersByUserAndChannel.values().stream()
+        .filter(user -> user.matches(normalizedQuery))
+        .sorted(Comparator.comparing(KnownUserPresence::sortKey))
+        .map(KnownUserPresence::toResponse)
+        .toList();
   }
 
   public void addConnection(BotConnection connection) {
@@ -318,7 +424,7 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   private Dual findChannelByEchoToAlias(String echoToAlias) {
-    JoinedChannelContainer container = this.joinedChannelsMap.get(echoToAlias.toUpperCase());
+    JoinedChannelContainer container = this.joinedChannelsMap.get(normalizeEchoToAlias(echoToAlias));
     if (container != null) {
       Dual r = new Dual();
       r.connection = container.connection;
@@ -340,6 +446,52 @@ public class ConnectionManager implements CommandLineRunner {
     return trimmed.toUpperCase();
   }
 
+  private String normalizeLookup(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.toLowerCase();
+  }
+
+  private String normalizeUserKey(
+      BotConnectionType connectionType,
+      String network,
+      String userId,
+      String username,
+      String displayName) {
+    String normalizedId = normalizeLookup(userId);
+    String fallback = normalizeLookup(firstNonBlank(username, displayName));
+    if (connectionType == null || (normalizedId == null && fallback == null)) {
+      return null;
+    }
+    return connectionType.name() + "|"
+        + (normalizeLookup(network) == null ? "unknown" : normalizeLookup(network)) + "|"
+        + (normalizedId == null ? "name:" + fallback : "id:" + normalizedId);
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private BotConnectionChannel syntheticChannel(BotConnection connection, String echoToAlias) {
+    BotConnectionChannel channel = new BotConnectionChannel();
+    channel.setId(echoToAlias);
+    channel.setEchoToAlias(echoToAlias);
+    channel.setName(echoToAlias);
+    channel.setNetwork(connection.getNetwork());
+    channel.setType(connection.getType().name());
+    return channel;
+  }
+
   private record LastChannelActivity(
       long timestamp,
       String actor,
@@ -347,6 +499,123 @@ public class ConnectionManager implements CommandLineRunner {
       String type,
       String network,
       String name) {
+  }
+
+  private static class KnownChannel {
+    private int connectionId;
+    private String connectionType;
+    private String network;
+    private String channelId;
+    private String channelName;
+    private String echoToAlias;
+    private Long lastReceivedMessageAt;
+    private String lastReceivedMessageBy;
+    private String lastReceivedMessageSource;
+
+    static KnownChannel from(BotConnectionType connectionType, BotConnection connection, BotConnectionChannel channel) {
+      KnownChannel knownChannel = new KnownChannel();
+      knownChannel.connectionId = connection.getId();
+      knownChannel.connectionType = connectionType.name();
+      knownChannel.network = channel.getNetwork();
+      knownChannel.channelId = channel.getId();
+      knownChannel.channelName = channel.getName();
+      knownChannel.echoToAlias = channel.getEchoToAlias();
+      return knownChannel;
+    }
+
+    KnownChatChannelResponse toResponse() {
+      return new KnownChatChannelResponse(
+          connectionId,
+          connectionType,
+          network,
+          channelId,
+          channelName,
+          echoToAlias,
+          lastReceivedMessageAt,
+          lastReceivedMessageBy,
+          lastReceivedMessageSource);
+    }
+
+    String sortKey() {
+      return String.join("|", safe(connectionType), safe(network), safe(echoToAlias));
+    }
+  }
+
+  private static class KnownUserPresence {
+    private String userKey;
+    private String userId;
+    private String username;
+    private String displayName;
+    private int connectionId;
+    private String connectionType;
+    private String network;
+    private String channelId;
+    private String channelName;
+    private String echoToAlias;
+    private long lastSeenAt;
+    private String lastSeenSource;
+
+    static KnownUserPresence from(
+        String userKey,
+        String userId,
+        String username,
+        String displayName,
+        BotConnection connection,
+        BotConnectionChannel channel,
+        long lastSeenAt,
+        String lastSeenSource) {
+      KnownUserPresence presence = new KnownUserPresence();
+      presence.userKey = userKey;
+      presence.userId = userId;
+      presence.username = username;
+      presence.displayName = displayName;
+      presence.connectionId = connection.getId();
+      presence.connectionType = connection.getType().name();
+      presence.network = channel.getNetwork();
+      presence.channelId = channel.getId();
+      presence.channelName = channel.getName();
+      presence.echoToAlias = channel.getEchoToAlias();
+      presence.lastSeenAt = lastSeenAt;
+      presence.lastSeenSource = lastSeenSource;
+      return presence;
+    }
+
+    KnownChatUserResponse toResponse() {
+      return new KnownChatUserResponse(
+          userKey,
+          userId,
+          username,
+          displayName,
+          connectionId,
+          connectionType,
+          network,
+          channelId,
+          channelName,
+          echoToAlias,
+          lastSeenAt,
+          lastSeenSource);
+    }
+
+    boolean matches(String normalizedQuery) {
+      return contains(userKey, normalizedQuery)
+          || contains(userId, normalizedQuery)
+          || contains(username, normalizedQuery)
+          || contains(displayName, normalizedQuery)
+          || contains(echoToAlias, normalizedQuery)
+          || contains(channelName, normalizedQuery);
+    }
+
+    String sortKey() {
+      return String.join("|", safe(username), safe(displayName), safe(connectionType), safe(echoToAlias));
+    }
+  }
+
+  private static boolean contains(String value, String query) {
+    return value != null && value.toLowerCase().contains(query);
+  }
+
+  private static String safe(String value) {
+    return value == null ? "" : value;
   }
 
   public void sendMessageToConnection(int connectionId, Message message) throws InvalidChannelIdException {

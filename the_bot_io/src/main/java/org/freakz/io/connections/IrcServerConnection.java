@@ -62,6 +62,10 @@ public class IrcServerConnection extends BotConnection {
   @Handler
   public void onUserJoinChannel(ChannelJoinEvent event) throws BotIOException {
     updateChannelMap(event.getChannel().getName());
+    org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
+    if (channel != null) {
+      markIrcUserSeen(channel.getEchoToAlias(), event.getUser(), "IRC_JOIN");
+    }
     if (event.getClient().isUser(event.getUser())) { // It's me!
 //            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
       return;
@@ -72,9 +76,18 @@ public class IrcServerConnection extends BotConnection {
 
   @Handler
   public void onChannelPartEvent(ChannelPartEvent event) {
-    User user = event.getUser();
     if (event.getClient().isUser(event.getUser())) {
       log.debug("Parted: {}", event);
+      return;
+    }
+    org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
+    if (channel != null) {
+      this.connectionManager.removeUserFromChannel(
+          this,
+          channel.getEchoToAlias(),
+          event.getUser().getNick(),
+          event.getUser().getNick(),
+          event.getUser().getRealName().orElse(null));
     }
   }
 
@@ -91,8 +104,11 @@ public class IrcServerConnection extends BotConnection {
     List<User> users = event.getChannel().getUsers();
     for (User user : users) {
       log.debug("{} -> user -> {}", channelName, user.toString());
+      org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
+      if (channel != null) {
+        markIrcUserSeen(channel.getEchoToAlias(), user, "IRC_NAMES");
+      }
     }
-    int foo = 0;
   }
 
   private void updateChannelMap(String channelName) throws BotIOException {
@@ -102,7 +118,7 @@ public class IrcServerConnection extends BotConnection {
       throw new BotIOException("No Channel config found with: " + channelName);
     }
 
-    JoinedChannelContainer container = this.connectionManager.getJoinedChannelsMap().get(channel.getEchoToAlias());
+    JoinedChannelContainer container = this.connectionManager.getJoinedChannelContainer(channel.getEchoToAlias());
     BotConnectionChannel botConnectionChannel;
     if (container == null) {
       botConnectionChannel = new BotConnectionChannel();
@@ -135,6 +151,7 @@ public class IrcServerConnection extends BotConnection {
     log.debug("Got private msg: {}", event.getMessage());
     String echoToAlias = "PRIVATE-" + event.getActor().getNick();
     this.connectionManager.markMessageReceived(echoToAlias, event.getActor().getNick(), "IRC");
+    markIrcUserSeen(echoToAlias, event.getActor(), "IRC_PRIVATE_MESSAGE");
     publisher.publishEvent(this, event, echoToAlias);
   }
 
@@ -147,9 +164,23 @@ public class IrcServerConnection extends BotConnection {
       echoToAlias = channel.getEchoToAlias();
     }
     this.connectionManager.markMessageReceived(echoToAlias, event.getActor().getNick(), "IRC");
+    markIrcUserSeen(echoToAlias, event.getActor(), "IRC_MESSAGE");
     publisher.publishEvent(this, event, echoToAlias);
     updateChannelMap(event.getChannel().getName());
     checkEchoTo(this.config, this.connectionManager, event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
+  }
+
+  private void markIrcUserSeen(String echoToAlias, User user, String source) {
+    if (user == null) {
+      return;
+    }
+    this.connectionManager.markUserSeen(
+        this,
+        echoToAlias,
+        user.getNick(),
+        user.getNick(),
+        user.getRealName().orElse(null),
+        source);
   }
 
   protected void checkEchoTo(IrcServerConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
