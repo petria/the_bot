@@ -165,13 +165,20 @@ public class TelegramConnection extends BotConnection {
         return;
       }
       org.telegram.telegrambots.meta.api.objects.User from = update.getMessage().getFrom();
+      boolean privateChat = update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat();
+      String chatId = privateChat && update.getMessage().getChat().getId() != null
+          ? String.valueOf(update.getMessage().getChat().getId())
+          : null;
+      String channelName = privateChat ? "Telegram DM " + resolveActorName(update) : null;
       this.connectionManager.markUserSeen(
           this.connection,
           echoToAlias,
           String.valueOf(from.getId()),
           from.getUserName(),
           resolveActorName(update),
-          "TELEGRAM_MESSAGE");
+          "TELEGRAM_MESSAGE",
+          chatId,
+          channelName);
     }
 
     private String resolveEchoToAlias(Update update) {

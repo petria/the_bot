@@ -210,6 +210,47 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void sendsTelegramPrivateMessageToRealChatId() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .telegramId("138695441")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection telegramConnection = new CapturingBotConnection(BotConnectionType.TELEGRAM_CONNECTION, "TelegramNetwork");
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.TELEGRAM_CONNECTION,
+        telegramConnection,
+        new BotConnectionChannel("-907862942", "TELEGRAM-HOKANDEV", BotConnectionType.TELEGRAM_CONNECTION.name(), "TelegramNetwork", "HokanDEVGroup"));
+    connectionManager.markUserSeen(telegramConnection, "TELEGRAM-HOKANDEV", "138695441", "petria", "Petri Airio", "TELEGRAM_MESSAGE");
+    connectionManager.markUserSeen(
+        telegramConnection,
+        "PRIVATE-TELEGRAM-138695441",
+        "138695441",
+        "petria",
+        "Petri Airio",
+        "TELEGRAM_MESSAGE",
+        "138695441",
+        "Telegram DM petria");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-TELEGRAM-138695441");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getTarget()).isEqualTo("Telegram DM petria");
+    assertThat(telegramConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
   void usesTelegramDisplayNameFallbackWhenUsernameIsMissing() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()

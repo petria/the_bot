@@ -152,6 +152,18 @@ public class ConnectionManager implements CommandLineRunner {
       String username,
       String displayName,
       String source) {
+    markUserSeen(connection, echoToAlias, userId, username, displayName, source, null, null);
+  }
+
+  public void markUserSeen(
+      BotConnection connection,
+      String echoToAlias,
+      String userId,
+      String username,
+      String displayName,
+      String source,
+      String channelId,
+      String channelName) {
     String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
     if (connection == null || normalizedEchoToAlias == null) {
       return;
@@ -160,8 +172,17 @@ public class ConnectionManager implements CommandLineRunner {
     JoinedChannelContainer joinedChannel = joinedChannelsMap.get(normalizedEchoToAlias);
     BotConnectionChannel channel = joinedChannel == null ? null : joinedChannel.channel;
     if (channel == null) {
-      channel = syntheticChannel(connection, echoToAlias);
+      channel = syntheticChannel(connection, echoToAlias, channelId, channelName);
       updateJoinedChannelsMap(connection.getType(), connection, channel);
+    } else if (isPrivateEchoToAlias(echoToAlias)) {
+      String effectiveChannelId = firstNonBlank(channelId);
+      if (effectiveChannelId != null) {
+        channel.setId(effectiveChannelId);
+      }
+      String effectiveChannelName = firstNonBlank(channelName);
+      if (effectiveChannelName != null) {
+        channel.setName(effectiveChannelName);
+      }
     }
 
     String userKey = normalizeUserKey(connection.getType(), connection.getNetwork(), userId, username, displayName);
@@ -658,10 +679,14 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   private BotConnectionChannel syntheticChannel(BotConnection connection, String echoToAlias) {
+    return syntheticChannel(connection, echoToAlias, null, null);
+  }
+
+  private BotConnectionChannel syntheticChannel(BotConnection connection, String echoToAlias, String channelId, String channelName) {
     BotConnectionChannel channel = new BotConnectionChannel();
-    channel.setId(echoToAlias);
+    channel.setId(firstNonBlank(channelId, echoToAlias));
     channel.setEchoToAlias(echoToAlias);
-    channel.setName(echoToAlias);
+    channel.setName(firstNonBlank(channelName, echoToAlias));
     channel.setNetwork(connection.getNetwork());
     channel.setType(connection.getType().name());
     return channel;
