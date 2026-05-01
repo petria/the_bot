@@ -1,0 +1,11 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: the_bot_web
+
+the-bot-web:
+  users-file: ${THE_BOT_WEB_USERS_FILE:runtime/data/users.json}
+  bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
+  bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8081}
