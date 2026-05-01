@@ -52,7 +52,6 @@ public class HokanNodeContextTokenService {
       userNode.put("ircNick", user == null ? "" : nullToEmpty(user.getIrcNick()));
       userNode.put("telegramId", user == null ? "" : nullToEmpty(user.getTelegramId()));
       userNode.put("discordId", user == null ? "" : nullToEmpty(user.getDiscordId()));
-      userNode.put("slackId", user == null ? "" : nullToEmpty(user.getSlackId()));
 
       String payloadJson = objectMapper.writeValueAsString(payload);
       String payloadB64 = base64Url(payloadJson.getBytes(StandardCharsets.UTF_8));
@@ -96,8 +95,7 @@ public class HokanNodeContextTokenService {
           user.path("name").asString(""),
           user.path("ircNick").asString(""),
           user.path("telegramId").asString(""),
-          user.path("discordId").asString(""),
-          user.path("slackId").asString("")
+          user.path("discordId").asString("")
       );
     } catch (IllegalArgumentException e) {
       throw e;
@@ -185,8 +183,7 @@ public class HokanNodeContextTokenService {
       String requestedByName,
       String requestedByIrcNick,
       String requestedByTelegramId,
-      String requestedByDiscordId,
-      String requestedBySlackId
+      String requestedByDiscordId
   ) {
   }
 }

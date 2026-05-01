@@ -17,7 +17,6 @@
         <org.kitteh.irc.version>9.0.0</org.kitteh.irc.version>
         <org.javacord.version>3.8.0</org.javacord.version>
         <telegrambots.version>6.9.7.1</telegrambots.version>
-        <com.ullink.slack.version>1.4.0</com.ullink.slack.version>
     </properties>
 
     <dependencies>
@@ -27,25 +26,6 @@
             <artifactId>the_bot_common</artifactId>
             <version>${project.version}</version>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.ullink.slack/simpleslackapi -->
-        <dependency>
-            <groupId>com.ullink.slack</groupId>
-            <artifactId>simpleslackapi</artifactId>
-            <version>${com.ullink.slack.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.slack.api</groupId>
-            <artifactId>bolt-jakarta-servlet</artifactId>
-            <version>1.40.2</version>
-        </dependency>
-
 
         <dependency>
             <groupId>org.telegram</groupId>

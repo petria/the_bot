@@ -11,7 +11,6 @@ import org.freakz.common.model.engine.status.ChannelMessageCounters;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.io.config.ConfigService;
-import org.freakz.io.contoller.SlackEventsController;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +36,6 @@ public class ConnectionManager implements CommandLineRunner {
   private ConfigService configService;
   @Autowired
   private EventPublisher eventPublisher;
-  @Autowired
-  private SlackEventsController slackEventsController;
   private Map<String, JoinedChannelContainer> joinedChannelsMap = new HashMap<>();
 
   private Map<String, ChannelMessageCounters> countersMap = new HashMap<>();
@@ -199,15 +196,6 @@ public class ConnectionManager implements CommandLineRunner {
       log.warn("TELEGRAM Startup connect disabled: {}", theBotConfig.getTelegramConfig());
     }
     log.debug(">> done!");
-
-    log.debug(">> Connecting SLACK");
-    if (theBotConfig.getSlackConfig().isConnectStartup()) {
-      SlackConnection slackConnection = new SlackConnection();
-      slackConnection.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getSlackConfig(), slackEventsController, eventPublisher);
-      addConnection(slackConnection);
-    } else {
-      log.warn("SLACK Startup connect disabled: {}", theBotConfig.getSlackConfig());
-    }
 
   }
 
