@@ -9,6 +9,7 @@ export default defineConfig({
       '/api/web': 'http://localhost:8091',
       '/login': 'http://localhost:8091',
       '/logout': 'http://localhost:8091',
+      '/default-ui.css': 'http://localhost:8091',
     },
   },
 });
