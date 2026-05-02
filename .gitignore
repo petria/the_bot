@@ -8,6 +8,7 @@
 /the_bot_web/target/
 /the_bot_web/frontend/node_modules/
 /the_bot_web/frontend/dist/
+/the_bot_web/frontend/.vite/
 secret.properties
 /runtime/
 !/runtime/
