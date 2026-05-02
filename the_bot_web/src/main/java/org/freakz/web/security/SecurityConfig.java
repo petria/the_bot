@@ -25,9 +25,10 @@ public class SecurityConfig {
     http
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            .ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/logout"))
         )
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/assets/**", "/favicon.ico", "/index.html", "/default-ui.css", "/error").permitAll()
+            .requestMatchers("/assets/**", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/api/web/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/web/**").authenticated()
             .anyRequest().authenticated()

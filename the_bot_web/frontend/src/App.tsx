@@ -2,8 +2,9 @@ import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title
 import { useDisclosure } from '@mantine/hooks';
 import { Bot, ChevronDown, LogOut, RadioTower, Send, Settings, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { postForm } from './api/client';
+import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -25,6 +26,13 @@ export function App() {
     queryFn: getMe,
     retry: false,
   });
+  const authenticationRequired = meQuery.error instanceof ApiError && meQuery.error.authenticationRequired;
+
+  useEffect(() => {
+    if (authenticationRequired) {
+      window.location.replace('/login');
+    }
+  }, [authenticationRequired]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -34,8 +42,12 @@ export function App() {
   const handleLogout = async () => {
     await postForm('/logout');
     queryClient.clear();
-    window.location.href = '/login?logout';
+    window.location.replace('/login?logout');
   };
+
+  if (meQuery.isLoading || authenticationRequired) {
+    return null;
+  }
 
   return (
     <AppShell
