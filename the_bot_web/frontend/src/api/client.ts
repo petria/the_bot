@@ -23,15 +23,20 @@ export async function getJson<T>(path: string): Promise<T> {
 }
 
 export async function putJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
+  const request = async (refreshCsrf: boolean) => fetch(path, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      ...(await csrfHeader()),
+      ...(await csrfHeader(refreshCsrf)),
     },
     body: JSON.stringify(body),
     credentials: 'same-origin',
   });
+
+  let response = await request(false);
+  if (response.status === 403) {
+    response = await request(true);
+  }
 
   if (!response.ok) {
     throw new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
@@ -41,16 +46,21 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function postForm(path: string, form: URLSearchParams = new URLSearchParams()): Promise<Response> {
-  const response = await fetch(path, {
+  const request = async (refreshCsrf: boolean) => fetch(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      ...(await csrfHeader()),
+      ...(await csrfHeader(refreshCsrf)),
     },
     body: form,
     credentials: 'same-origin',
     redirect: 'manual',
   });
+
+  let response = await request(false);
+  if (response.status === 403) {
+    response = await request(true);
+  }
 
   if (!response.ok && response.status !== 0 && response.status !== 302) {
     throw new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
@@ -59,9 +69,9 @@ export async function postForm(path: string, form: URLSearchParams = new URLSear
   return response;
 }
 
-async function csrfHeader(): Promise<Record<string, string>> {
+async function csrfHeader(refresh = false): Promise<Record<string, string>> {
   const token = readCookie('XSRF-TOKEN');
-  if (token) {
+  if (token && !refresh) {
     return { 'X-XSRF-TOKEN': token };
   }
 
