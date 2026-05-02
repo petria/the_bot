@@ -89,7 +89,7 @@ services:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
-      - "127.0.0.1:8091:8091"
+      - "0.0.0.0:8091:8091"
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
