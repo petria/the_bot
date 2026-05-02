@@ -78,6 +78,26 @@ services:
       - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
     container_name: bot-io
 
+  # Hokan the Bot web UI container
+  bot-web:
+    image: ghcr.io/petria/the_bot-web:${WEB_IMAGE_TAG:-latest}
+    user: "${PUID}:${PGID}"
+    depends_on:
+      - bot-engine
+      - bot-io
+    volumes:
+      - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${HOKAN_DATA_DIR:-.}/config:/config
+    ports:
+      - "127.0.0.1:8091:8091"
+    environment:
+      - TZ=Europe/Helsinki
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - THE_BOT_WEB_USERS_FILE=${THE_BOT_WEB_USERS_FILE:-/runtime/data/users.json}
+      - THE_BOT_WEB_BOT_IO_BASE_URL=${THE_BOT_WEB_BOT_IO_BASE_URL:-http://bot-io:8090}
+      - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
+    container_name: bot-web
+
 networks:
   default:
     driver: bridge

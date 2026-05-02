@@ -15,12 +15,14 @@ jobs:
     outputs:
       engine_changed: ${{ steps.changes.outputs.engine }}
       io_changed: ${{ steps.changes.outputs.io }}
+      web_changed: ${{ steps.changes.outputs.web }}
 
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       REGISTRY: ghcr.io
       IMAGE_ENGINE: ghcr.io/${{ github.repository }}-engine
       IMAGE_IO: ghcr.io/${{ github.repository }}-io
+      IMAGE_WEB: ghcr.io/${{ github.repository }}-web
 
     steps:
       - name: Checkout repository
@@ -50,6 +52,7 @@ jobs:
 
           engine_changed=false
           io_changed=false
+          web_changed=false
 
           if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
             engine_changed=true
@@ -59,8 +62,13 @@ jobs:
             io_changed=true
           fi
 
+          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_web/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+            web_changed=true
+          fi
+
           echo "engine=$engine_changed" >> "$GITHUB_OUTPUT"
           echo "io=$io_changed" >> "$GITHUB_OUTPUT"
+          echo "web=$web_changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -73,7 +81,7 @@ jobs:
         run: mvn -B package --file pom.xml -Dmaven.test.skip=true
 
       - name: Log in to the GitHub Container Registry
-        if: ${{ github.event_name == 'push' && (steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true') }}
+        if: ${{ github.event_name == 'push' && (steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true' || steps.changes.outputs.web == 'true') }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -101,6 +109,17 @@ jobs:
           tags: |
             ${{ env.IMAGE_IO }}:${{ github.sha }}
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_IO) || format('{0}:develop', env.IMAGE_IO) }}
+
+      - name: Build and push bot-web image
+        if: ${{ github.event_name == 'push' && steps.changes.outputs.web == 'true' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./the_bot_web
+          file: ./the_bot_web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_WEB }}:${{ github.sha }}
+            ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_WEB) || format('{0}:develop', env.IMAGE_WEB) }}
 
   deploy:
     name: Deploy to VM
@@ -159,6 +178,7 @@ jobs:
           DEPLOY_BRANCH: ${{ github.ref_name }}
           ENGINE_CHANGED: ${{ needs.build-and-push.outputs.engine_changed }}
           IO_CHANGED: ${{ needs.build-and-push.outputs.io_changed }}
+          WEB_CHANGED: ${{ needs.build-and-push.outputs.web_changed }}
           OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
           OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
           OPENCLAW_NODE_CONTEXT_SECRET: ${{ secrets.OPENCLAW_NODE_CONTEXT_SECRET }}
@@ -187,7 +207,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_NODE_CONTEXT_SECRET,OPENAI_API_KEY,WEATHER_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,OPENCLAW_IMAGE,OPENCLAW_HOST_PORT,HOKAN_OPENCLAW_HOOKS_URL,HOKAN_OPENCLAW_WAKE_URL,OPENCLAW_GATEWAY_WS_URL,OPENCLAW_GATEWAY_WS_ORIGIN,OPENCLAW_WS_TIMEOUT_SECONDS,OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS,OPENCLAW_STATE_DIR_HOST,OPENCLAW_RUNTIME_LOG_ROOT,OPENCLAW_RUNTIME_LOG_ROOT_LOCAL,OPENCLAW_NODE_BRIDGE_ENABLED,WEATHER_API_URL
+          envs: DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,WEB_CHANGED,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_NODE_CONTEXT_SECRET,OPENAI_API_KEY,WEATHER_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,OPENCLAW_IMAGE,OPENCLAW_HOST_PORT,HOKAN_OPENCLAW_HOOKS_URL,HOKAN_OPENCLAW_WAKE_URL,OPENCLAW_GATEWAY_WS_URL,OPENCLAW_GATEWAY_WS_ORIGIN,OPENCLAW_WS_TIMEOUT_SECONDS,OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS,OPENCLAW_STATE_DIR_HOST,OPENCLAW_RUNTIME_LOG_ROOT,OPENCLAW_RUNTIME_LOG_ROOT_LOCAL,OPENCLAW_NODE_BRIDGE_ENABLED,WEATHER_API_URL
           script: |
             cd "${DEPLOY_WORKDIR:-/home/hokan/the_bot}"
 
@@ -255,8 +275,13 @@ jobs:
               IO_IMAGE_TAG="$DEPLOY_SHA"
             fi
 
+            if [ "$WEB_CHANGED" = "true" ]; then
+              WEB_IMAGE_TAG="$DEPLOY_SHA"
+            fi
+
             ENGINE_IMAGE_TAG="${ENGINE_IMAGE_TAG:-$DEFAULT_IMAGE_TAG}"
             IO_IMAGE_TAG="${IO_IMAGE_TAG:-$DEFAULT_IMAGE_TAG}"
+            WEB_IMAGE_TAG="${WEB_IMAGE_TAG:-$DEFAULT_IMAGE_TAG}"
             OPENCLAW_IMAGE="${CI_OPENCLAW_IMAGE:-${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}}"
             OPENCLAW_HOST_PORT="${CI_OPENCLAW_HOST_PORT:-${OPENCLAW_HOST_PORT:-$DEFAULT_OPENCLAW_HOST_PORT}}"
             OPENCLAW_HOOKS_TOKEN="${CI_OPENCLAW_HOOKS_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}"
@@ -292,6 +317,7 @@ jobs:
               echo "PGID=$PGID"
               echo "ENGINE_IMAGE_TAG=$ENGINE_IMAGE_TAG"
               echo "IO_IMAGE_TAG=$IO_IMAGE_TAG"
+              echo "WEB_IMAGE_TAG=$WEB_IMAGE_TAG"
               echo "OPENCLAW_IMAGE=$OPENCLAW_IMAGE"
               echo "OPENCLAW_HOST_PORT=$OPENCLAW_HOST_PORT"
               echo "OPENCLAW_HOOKS_TOKEN=$OPENCLAW_HOOKS_TOKEN"
@@ -387,6 +413,11 @@ jobs:
               docker compose up -d bot-io
             fi
 
-            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ]; then
-              echo "No bot-engine/bot-io changes. Nothing to deploy."
+            if [ "$WEB_CHANGED" = "true" ]; then
+              docker compose pull bot-web
+              docker compose up -d bot-web
+            fi
+
+            if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ] && [ "$WEB_CHANGED" != "true" ]; then
+              echo "No bot-engine/bot-io/bot-web changes. Nothing to deploy."
             fi
