@@ -1,5 +1,7 @@
-import { Badge, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
+import { LogIn } from 'lucide-react';
+import { ApiError } from '../api/client';
 import { getMe } from '../api/me';
 
 export function DashboardPage() {
@@ -13,10 +15,33 @@ export function DashboardPage() {
   }
 
   if (meQuery.isError) {
+    const error = meQuery.error;
+    if (error instanceof ApiError && error.authenticationRequired) {
+      return (
+        <Card withBorder radius="sm">
+          <Stack gap="sm">
+            <Title order={2}>Sign In</Title>
+            <Text c="dimmed">
+              Open the Spring Security login page, then return here after login.
+            </Text>
+            <Group>
+              <Button component="a" href="/login" leftSection={<LogIn size={18} />}>
+                Sign in
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
+      );
+    }
+
     return (
       <Card withBorder radius="sm">
         <Title order={2}>Session</Title>
         <Text c="red" mt="sm">Could not load logged-in user.</Text>
+        <Text c="dimmed" mt="xs">
+          Check that the Spring Boot app is running on{' '}
+          <Anchor href="http://localhost:8091" target="_blank">localhost:8091</Anchor>.
+        </Text>
       </Card>
     );
   }
