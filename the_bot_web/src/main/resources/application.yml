@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: the_bot_web
+  web:
+    resources:
+      static-locations:
+        - classpath:/static/
+        - file:the_bot_web/frontend/dist/
+        - file:frontend/dist/
 
 the-bot-web:
   users-file: ${THE_BOT_WEB_USERS_FILE:runtime/data/users.json}
