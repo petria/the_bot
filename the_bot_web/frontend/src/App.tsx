@@ -42,7 +42,7 @@ export function App() {
   const handleLogout = async () => {
     await postForm('/api/web/logout');
     queryClient.clear();
-    window.location.replace(`${window.location.origin}/login?logout`);
+    window.location.replace(`${window.location.origin}/login`);
   };
 
   if (meQuery.isLoading || authenticationRequired) {
