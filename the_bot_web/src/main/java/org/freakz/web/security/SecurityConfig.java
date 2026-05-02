@@ -13,6 +13,8 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import org.springframework.http.HttpStatus;
 import tools.jackson.databind.json.JsonMapper;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -32,15 +34,20 @@ public class SecurityConfig {
                 PathPatternRequestMatcher.pathPattern("/api/web/**"))
         )
         .formLogin(formLogin -> formLogin
-            .defaultSuccessUrl("/", false)
+            .successHandler((request, response, authentication) -> relativeRedirect(response, "/"))
             .permitAll()
         )
         .logout(logout -> logout
             .logoutUrl("/logout")
-            .logoutSuccessUrl("/login?logout")
+            .logoutSuccessHandler((request, response, authentication) -> relativeRedirect(response, "/login?logout"))
             .permitAll()
         );
     return http.build();
+  }
+
+  private void relativeRedirect(HttpServletResponse response, String location) {
+    response.setStatus(HttpServletResponse.SC_FOUND);
+    response.setHeader("Location", location);
   }
 
   @Bean
