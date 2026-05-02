@@ -8,3 +8,23 @@ body,
 .app-header {
   border-bottom: 1px solid var(--mantine-color-dark-4);
 }
+
+.page-frame {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.info-item {
+  min-width: 0;
+}
+
+.info-value {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 48em) {
+  .app-header h3 {
+    font-size: 1rem;
+  }
+}
