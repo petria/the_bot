@@ -1,4 +1,4 @@
-import { getJson } from './client';
+import { getJson, putJson } from './client';
 
 export interface MeResponse {
   id: number | null;
@@ -15,4 +15,16 @@ export interface MeResponse {
 
 export function getMe(): Promise<MeResponse> {
   return getJson<MeResponse>('/api/web/me');
+}
+
+export interface ProfileUpdateRequest {
+  name: string;
+  email: string;
+  ircNick: string;
+  telegramId: string;
+  discordId: string;
+}
+
+export function updateProfile(request: ProfileUpdateRequest): Promise<MeResponse> {
+  return putJson<MeResponse>('/api/web/me/profile', request);
 }

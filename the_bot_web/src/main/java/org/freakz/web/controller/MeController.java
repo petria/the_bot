@@ -1,8 +1,13 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.users.User;
 import org.freakz.web.security.BotUserPrincipal;
+import org.freakz.web.security.UsersJsonUserDetailsService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,9 +17,29 @@ import java.util.List;
 @RequestMapping("/api/web")
 public class MeController {
 
+  private final UsersJsonUserDetailsService usersService;
+
+  public MeController(UsersJsonUserDetailsService usersService) {
+    this.usersService = usersService;
+  }
+
   @GetMapping("/me")
   public MeResponse me(@AuthenticationPrincipal BotUserPrincipal principal) {
-    return MeResponse.from(principal);
+    return usersService.findByUsername(principal.getUsername())
+        .map(user -> MeResponse.from(principal, user))
+        .orElseGet(() -> MeResponse.from(principal));
+  }
+
+  @PutMapping("/me/profile")
+  public MeResponse updateProfile(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody UsersJsonUserDetailsService.ProfileUpdate update) {
+    return MeResponse.from(principal, usersService.updateProfile(principal.getUsername(), update));
+  }
+
+  @GetMapping("/csrf")
+  public CsrfResponse csrf(CsrfToken csrfToken) {
+    return new CsrfResponse(csrfToken.getParameterName(), csrfToken.getHeaderName(), csrfToken.getToken());
   }
 
   @GetMapping("/admin/check")
@@ -50,8 +75,28 @@ public class MeController {
               .sorted()
               .toList());
     }
+
+    static MeResponse from(BotUserPrincipal principal, User user) {
+      return new MeResponse(
+          user.getId(),
+          user.getUsername(),
+          user.getName(),
+          user.getEmail(),
+          user.getIrcNick(),
+          user.getTelegramId(),
+          user.getDiscordId(),
+          user.isAdmin(),
+          user.isCanDoIrcOp(),
+          principal.getAuthorities().stream()
+              .map(authority -> authority.getAuthority())
+              .sorted()
+              .toList());
+    }
   }
 
   public record AdminCheckResponse(boolean adminAccess, String username) {
+  }
+
+  public record CsrfResponse(String parameterName, String headerName, String token) {
   }
 }

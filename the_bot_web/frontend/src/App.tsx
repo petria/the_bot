@@ -1,8 +1,12 @@
-import { AppShell, Badge, Box, Burger, Group, NavLink, Text, Title } from '@mantine/core';
+import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, RadioTower, Send, Users } from 'lucide-react';
+import { Bot, ChevronDown, LogOut, RadioTower, Send, Settings, User, Users } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { postForm } from './api/client';
+import { getMe } from './api/me';
 import { DashboardPage } from './pages/DashboardPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 const navItems = [
   { label: 'Overview', path: '/', icon: Bot },
@@ -15,10 +19,22 @@ export function App() {
   const [opened, { close, toggle }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+    retry: false,
+  });
 
   const handleNavigate = (path: string) => {
     navigate(path);
     close();
+  };
+
+  const handleLogout = async () => {
+    await postForm('/logout');
+    queryClient.clear();
+    window.location.href = '/login?logout';
   };
 
   return (
@@ -38,7 +54,16 @@ export function App() {
             <Bot size={22} />
             <Title order={3}>the_bot</Title>
           </Group>
-          <Badge variant="light">web</Badge>
+          <Group gap="sm">
+            <Badge variant="light" visibleFrom="xs">web</Badge>
+            <UserMenu
+              username={meQuery.data?.username}
+              name={meQuery.data?.name}
+              admin={meQuery.data?.admin}
+              onProfile={() => handleNavigate('/profile')}
+              onLogout={handleLogout}
+            />
+          </Group>
         </Group>
       </AppShell.Header>
 
@@ -61,10 +86,61 @@ export function App() {
             <Route path="/users" element={<Placeholder title="Known Users" />} />
             <Route path="/send" element={<Placeholder title="Send Message" />} />
             <Route path="/connections" element={<Placeholder title="Connections" />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Routes>
         </Box>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+function UserMenu({
+  username,
+  name,
+  admin,
+  onProfile,
+  onLogout,
+}: {
+  username?: string;
+  name?: string | null;
+  admin?: boolean;
+  onProfile: () => void;
+  onLogout: () => void;
+}) {
+  if (!username) {
+    return null;
+  }
+
+  const initials = (name || username).trim().slice(0, 1).toUpperCase();
+
+  return (
+    <Menu position="bottom-end" width={220} shadow="md">
+      <Menu.Target>
+        <UnstyledButton className="user-menu-button">
+          <Group gap="xs" wrap="nowrap">
+            <Avatar size="sm" radius="xl">{initials}</Avatar>
+            <Box visibleFrom="sm" className="user-menu-label">
+              <Text size="sm" fw={600} truncate>{name || username}</Text>
+              <Text size="xs" c="dimmed" truncate>{admin ? 'Admin' : 'User'}</Text>
+            </Box>
+            <ChevronDown size={16} />
+          </Group>
+        </UnstyledButton>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>{username}</Menu.Label>
+        <Menu.Item leftSection={<User size={16} />} onClick={onProfile}>
+          Your profile
+        </Menu.Item>
+        <Menu.Item leftSection={<Settings size={16} />} disabled>
+          Account settings
+        </Menu.Item>
+        <Menu.Divider />
+        <Menu.Item leftSection={<LogOut size={16} />} color="red" onClick={onLogout}>
+          Sign out
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 

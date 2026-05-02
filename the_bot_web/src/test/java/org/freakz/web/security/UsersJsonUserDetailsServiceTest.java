@@ -80,6 +80,51 @@ class UsersJsonUserDetailsServiceTest {
         .isInstanceOf(UsernameNotFoundException.class);
   }
 
+  @Test
+  void updatesOwnProfileWithoutChangingLoginOrRoles() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 7,
+              "isAdmin": true,
+              "canDoIrcOp": true,
+              "username": "petria",
+              "password": "hash",
+              "name": "Old Name",
+              "email": "old@example.invalid",
+              "ircNick": "oldnick",
+              "telegramId": "111",
+              "discordId": "222"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    service.updateProfile("PETRIA", new UsersJsonUserDetailsService.ProfileUpdate(
+        "New Name",
+        "new@example.invalid",
+        "newnick",
+        "333",
+        "444"));
+
+    BotUserPrincipal updated = (BotUserPrincipal) service.loadUserByUsername("petria");
+    assertThat(updated.getId()).isEqualTo(7L);
+    assertThat(updated.getUsername()).isEqualTo("petria");
+    assertThat(updated.getPassword()).isEqualTo("hash");
+    assertThat(updated.isAdmin()).isTrue();
+    assertThat(updated.isCanDoIrcOp()).isTrue();
+    assertThat(updated.getName()).isEqualTo("New Name");
+    assertThat(updated.getEmail()).isEqualTo("new@example.invalid");
+    assertThat(updated.getIrcNick()).isEqualTo("newnick");
+    assertThat(updated.getTelegramId()).isEqualTo("333");
+    assertThat(updated.getDiscordId()).isEqualTo("444");
+    assertThat(Files.readString(usersFile)).contains("\"name\" : \"New Name\"");
+  }
+
   private UsersJsonUserDetailsService serviceFor(Path usersFile) {
     TheBotWebProperties properties = new TheBotWebProperties();
     properties.setUsersFile(usersFile.toString());

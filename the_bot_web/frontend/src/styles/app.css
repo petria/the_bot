@@ -23,8 +23,36 @@ body,
   overflow-wrap: anywhere;
 }
 
+.user-menu-button {
+  display: block;
+  max-width: min(42vw, 220px);
+  padding: 4px 6px;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.user-menu-button:hover {
+  background: var(--mantine-color-dark-6);
+}
+
+.user-menu-label {
+  min-width: 0;
+  max-width: 150px;
+}
+
+.profile-grid {
+  align-items: flex-start;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;
+  }
+
+  .profile-grid {
+    flex-direction: column;
+  }
+
+  .profile-grid > * {
+    width: 100%;
   }
 }
