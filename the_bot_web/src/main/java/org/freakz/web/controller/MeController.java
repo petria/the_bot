@@ -3,8 +3,11 @@ package org.freakz.web.controller;
 import org.freakz.common.model.users.User;
 import org.freakz.web.security.BotUserPrincipal;
 import org.freakz.web.security.UsersJsonUserDetailsService;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +38,18 @@ public class MeController {
       @AuthenticationPrincipal BotUserPrincipal principal,
       @RequestBody UsersJsonUserDetailsService.ProfileUpdate update) {
     return MeResponse.from(principal, usersService.updateProfile(principal.getUsername(), update));
+  }
+
+  @PutMapping("/me/password")
+  public PasswordChangeResponse changePassword(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody UsersJsonUserDetailsService.PasswordChange passwordChange) {
+    try {
+      usersService.changePassword(principal.getUsername(), passwordChange);
+    } catch (BadCredentialsException | IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not change password");
+    }
+    return new PasswordChangeResponse(true);
   }
 
   @GetMapping("/csrf")
@@ -98,5 +113,8 @@ public class MeController {
   }
 
   public record CsrfResponse(String parameterName, String headerName, String token) {
+  }
+
+  public record PasswordChangeResponse(boolean changed) {
   }
 }

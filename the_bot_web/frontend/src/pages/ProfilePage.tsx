@@ -1,9 +1,16 @@
-import { Alert, Button, Card, Group, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Card, Group, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save } from 'lucide-react';
+import { KeyRound, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
-import { getMe, updateProfile, type MeResponse, type ProfileUpdateRequest } from '../api/me';
+import {
+  changePassword,
+  getMe,
+  updateProfile,
+  type MeResponse,
+  type PasswordChangeRequest,
+  type ProfileUpdateRequest,
+} from '../api/me';
 
 const emptyProfile: ProfileUpdateRequest = {
   name: '',
@@ -13,6 +20,12 @@ const emptyProfile: ProfileUpdateRequest = {
   discordId: '',
 };
 
+const emptyPasswordChange: PasswordChangeRequest = {
+  currentPassword: '',
+  newPassword: '',
+  confirmNewPassword: '',
+};
+
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const meQuery = useQuery({
@@ -20,6 +33,8 @@ export function ProfilePage() {
     queryFn: getMe,
   });
   const [profile, setProfile] = useState<ProfileUpdateRequest>(emptyProfile);
+  const [passwordChange, setPasswordChange] = useState<PasswordChangeRequest>(emptyPasswordChange);
+  const [passwordValidationError, setPasswordValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (meQuery.data) {
@@ -34,8 +49,34 @@ export function ProfilePage() {
     },
   });
 
+  const passwordMutation = useMutation({
+    mutationFn: changePassword,
+    onSuccess: () => {
+      setPasswordChange(emptyPasswordChange);
+      setPasswordValidationError(null);
+    },
+  });
+
   const setField = (field: keyof ProfileUpdateRequest, value: string) => {
     setProfile((current) => ({ ...current, [field]: value }));
+  };
+
+  const setPasswordField = (field: keyof PasswordChangeRequest, value: string) => {
+    setPasswordValidationError(null);
+    passwordMutation.reset();
+    setPasswordChange((current) => ({ ...current, [field]: value }));
+  };
+
+  const submitPasswordChange = () => {
+    if (passwordChange.newPassword.length < 10) {
+      setPasswordValidationError('New password must be at least 10 characters.');
+      return;
+    }
+    if (passwordChange.newPassword !== passwordChange.confirmNewPassword) {
+      setPasswordValidationError('New passwords do not match.');
+      return;
+    }
+    passwordMutation.mutate(passwordChange);
   };
 
   if (meQuery.isError) {
@@ -103,6 +144,59 @@ export function ProfilePage() {
               onClick={() => updateMutation.mutate(profile)}
             >
               Save profile
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+
+      <Card withBorder radius="sm">
+        <Stack gap="md">
+          <div>
+            <Title order={3}>Change Password</Title>
+            <Text c="dimmed" size="sm">Update the password used for web login.</Text>
+          </div>
+
+          <Stack gap="sm">
+            <PasswordInput
+              label="Current password"
+              autoComplete="current-password"
+              value={passwordChange.currentPassword}
+              onChange={(event) => setPasswordField('currentPassword', event.currentTarget.value)}
+            />
+            <Group grow align="flex-start" className="profile-grid">
+              <PasswordInput
+                label="New password"
+                autoComplete="new-password"
+                value={passwordChange.newPassword}
+                onChange={(event) => setPasswordField('newPassword', event.currentTarget.value)}
+              />
+              <PasswordInput
+                label="Confirm new password"
+                autoComplete="new-password"
+                value={passwordChange.confirmNewPassword}
+                onChange={(event) => setPasswordField('confirmNewPassword', event.currentTarget.value)}
+              />
+            </Group>
+          </Stack>
+
+          {passwordValidationError && (
+            <Alert color="red" variant="light">{passwordValidationError}</Alert>
+          )}
+          {passwordMutation.isError && (
+            <Alert color="red" variant="light">Could not change password.</Alert>
+          )}
+          {passwordMutation.isSuccess && (
+            <Alert color="green" variant="light">Password changed.</Alert>
+          )}
+
+          <Group justify="flex-end">
+            <Button
+              leftSection={<KeyRound size={18} />}
+              loading={passwordMutation.isPending}
+              disabled={!passwordChange.currentPassword || !passwordChange.newPassword || !passwordChange.confirmNewPassword}
+              onClick={submitPasswordChange}
+            >
+              Change password
             </Button>
           </Group>
         </Stack>

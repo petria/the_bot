@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -27,16 +29,22 @@ import java.util.Optional;
 public class UsersJsonUserDetailsService implements UserDetailsService {
 
   private static final Logger log = LoggerFactory.getLogger(UsersJsonUserDetailsService.class);
+  private static final int MIN_PASSWORD_LENGTH = 10;
 
   private final TheBotWebProperties properties;
   private final JsonMapper jsonMapper;
+  private final PasswordEncoder passwordEncoder;
 
   private volatile long lastModified = Long.MIN_VALUE;
   private volatile List<User> users = List.of();
 
-  public UsersJsonUserDetailsService(TheBotWebProperties properties, JsonMapper jsonMapper) {
+  public UsersJsonUserDetailsService(
+      TheBotWebProperties properties,
+      JsonMapper jsonMapper,
+      PasswordEncoder passwordEncoder) {
     this.properties = properties;
     this.jsonMapper = jsonMapper;
+    this.passwordEncoder = passwordEncoder;
   }
 
   @Override
@@ -93,16 +101,48 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         throw new UsernameNotFoundException("No bot user found for username: " + username);
       }
 
-      try {
-        UserValuesJsonContainer container = new UserValuesJsonContainer(currentUsers);
-        String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
-        Files.writeString(Path.of(usersFile.toURI()), json, Charset.defaultCharset());
-        users = List.copyOf(currentUsers);
-        lastModified = usersFile.lastModified();
-        return copyUser(updated);
-      } catch (IOException | RuntimeException e) {
-        throw new IllegalStateException("Could not write bot users file: " + usersFile.getAbsolutePath(), e);
+      writeUsers(usersFile, currentUsers);
+      return copyUser(updated);
+    }
+  }
+
+  public void changePassword(String username, PasswordChange passwordChange) {
+    String normalizedUsername = normalize(username);
+    if (normalizedUsername == null) {
+      throw new UsernameNotFoundException("Missing username");
+    }
+    if (passwordChange == null) {
+      throw new IllegalArgumentException("Password change request is required");
+    }
+    validateNewPassword(passwordChange.newPassword(), passwordChange.confirmNewPassword());
+
+    File usersFile = new File(properties.getUsersFile());
+    synchronized (this) {
+      List<User> currentUsers = new ArrayList<>(readUsers());
+      User updated = null;
+      for (int i = 0; i < currentUsers.size(); i++) {
+        User current = currentUsers.get(i);
+        if (!Objects.equals(normalizedUsername, normalize(current.getUsername()))) {
+          continue;
+        }
+        if (isBlank(passwordChange.currentPassword())) {
+          throw new BadCredentialsException("Current password does not match");
+        }
+        if (!passwordEncoder.matches(passwordChange.currentPassword(), current.getPassword())) {
+          throw new BadCredentialsException("Current password does not match");
+        }
+
+        updated = copyUser(current);
+        updated.setPassword(passwordEncoder.encode(passwordChange.newPassword()));
+        currentUsers.set(i, updated);
+        break;
       }
+
+      if (updated == null) {
+        throw new UsernameNotFoundException("No bot user found for username: " + username);
+      }
+
+      writeUsers(usersFile, currentUsers);
     }
   }
 
@@ -162,6 +202,18 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     return copy;
   }
 
+  private void writeUsers(File usersFile, List<User> currentUsers) {
+    try {
+      UserValuesJsonContainer container = new UserValuesJsonContainer(currentUsers);
+      String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
+      Files.writeString(Path.of(usersFile.toURI()), json, Charset.defaultCharset());
+      users = List.copyOf(currentUsers);
+      lastModified = usersFile.lastModified();
+    } catch (IOException | RuntimeException e) {
+      throw new IllegalStateException("Could not write bot users file: " + usersFile.getAbsolutePath(), e);
+    }
+  }
+
   private String normalize(String value) {
     return isBlank(value) ? null : value.trim().toLowerCase();
   }
@@ -174,11 +226,29 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     return isBlank(value) ? null : value.trim();
   }
 
+  private void validateNewPassword(String newPassword, String confirmNewPassword) {
+    if (isBlank(newPassword)) {
+      throw new IllegalArgumentException("New password is required");
+    }
+    if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
+      throw new IllegalArgumentException("New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
+    }
+    if (!Objects.equals(newPassword, confirmNewPassword)) {
+      throw new IllegalArgumentException("New passwords do not match");
+    }
+  }
+
   public record ProfileUpdate(
       String name,
       String email,
       String ircNick,
       String telegramId,
       String discordId) {
+  }
+
+  public record PasswordChange(
+      String currentPassword,
+      String newPassword,
+      String confirmNewPassword) {
   }
 }

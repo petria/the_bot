@@ -3,7 +3,9 @@ package org.freakz.web.security;
 import org.freakz.web.config.TheBotWebProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
@@ -125,9 +127,99 @@ class UsersJsonUserDetailsServiceTest {
     assertThat(Files.readString(usersFile)).contains("\"name\" : \"New Name\"");
   }
 
+  @Test
+  void changesPasswordWhenCurrentPasswordMatches() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 7,
+              "isAdmin": true,
+              "canDoIrcOp": true,
+              "username": "petria",
+              "password": "%s",
+              "name": "Petri",
+              "email": "petri@example.invalid",
+              "ircNick": "petria",
+              "telegramId": "111",
+              "discordId": "222"
+            }
+          ]
+        }
+        """.formatted(passwordEncoder.encode("current-password")));
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    service.changePassword("petria", new UsersJsonUserDetailsService.PasswordChange(
+        "current-password",
+        "new-password-123",
+        "new-password-123"));
+
+    BotUserPrincipal updated = (BotUserPrincipal) service.loadUserByUsername("petria");
+    assertThat(updated.getName()).isEqualTo("Petri");
+    assertThat(passwordEncoder.matches("new-password-123", updated.getPassword())).isTrue();
+    assertThat(updated.getPassword()).doesNotContain("new-password-123");
+  }
+
+  @Test
+  void rejectsPasswordChangeWhenCurrentPasswordDoesNotMatch() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 7,
+              "isAdmin": false,
+              "canDoIrcOp": false,
+              "username": "petria",
+              "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+    String originalJson = Files.readString(usersFile);
+
+    assertThatThrownBy(() -> service.changePassword("petria", new UsersJsonUserDetailsService.PasswordChange(
+        "wrong-password",
+        "new-password-123",
+        "new-password-123")))
+        .isInstanceOf(BadCredentialsException.class);
+    assertThat(Files.readString(usersFile)).isEqualTo(originalJson);
+  }
+
+  @Test
+  void rejectsPasswordChangeWhenNewPasswordsDoNotMatch() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 7,
+              "isAdmin": false,
+              "canDoIrcOp": false,
+              "username": "petria",
+              "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    assertThatThrownBy(() -> service.changePassword("petria", new UsersJsonUserDetailsService.PasswordChange(
+        "password",
+        "new-password-123",
+        "different-password")))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
   private UsersJsonUserDetailsService serviceFor(Path usersFile) {
     TheBotWebProperties properties = new TheBotWebProperties();
     properties.setUsersFile(usersFile.toString());
-    return new UsersJsonUserDetailsService(properties, JsonMapper.builder().build());
+    return new UsersJsonUserDetailsService(properties, JsonMapper.builder().build(), new BCryptPasswordEncoder());
   }
 }

@@ -28,3 +28,17 @@ export interface ProfileUpdateRequest {
 export function updateProfile(request: ProfileUpdateRequest): Promise<MeResponse> {
   return putJson<MeResponse>('/api/web/me/profile', request);
 }
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+export interface PasswordChangeResponse {
+  changed: boolean;
+}
+
+export function changePassword(request: PasswordChangeRequest): Promise<PasswordChangeResponse> {
+  return putJson<PasswordChangeResponse>('/api/web/me/password', request);
+}
