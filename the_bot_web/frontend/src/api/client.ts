@@ -11,7 +11,7 @@ export async function getJson<T>(path: string): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
+    throw await apiErrorFromResponse(response);
   }
 
   const contentType = response.headers.get('content-type') || '';
@@ -39,7 +39,7 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
+    throw await apiErrorFromResponse(response);
   }
 
   return response.json() as Promise<T>;
@@ -63,7 +63,7 @@ export async function postForm(path: string, form: URLSearchParams = new URLSear
   }
 
   if (!response.ok && response.status !== 0 && response.status !== 302) {
-    throw new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
+    throw await apiErrorFromResponse(response);
   }
 
   return response;
@@ -95,11 +95,37 @@ function readCookie(name: string): string | null {
       ?.slice(prefix.length) ?? null;
 }
 
+async function apiErrorFromResponse(response: Response): Promise<ApiError> {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const body = await response.json() as {
+        message?: string;
+        detail?: string;
+        botIoBaseUrl?: string;
+      };
+      return new ApiError(
+          body.message || `${response.status} ${response.statusText}`,
+          response.status,
+          response.status === 401,
+          body.detail,
+          body.botIoBaseUrl,
+      );
+    } catch {
+      // Fall through to the generic status error.
+    }
+  }
+
+  return new ApiError(`${response.status} ${response.statusText}`, response.status, response.status === 401);
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
     public readonly authenticationRequired = false,
+    public readonly detail?: string,
+    public readonly backendUrl?: string,
   ) {
     super(message);
   }

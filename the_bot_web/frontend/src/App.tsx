@@ -7,6 +7,7 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { DashboardPage } from './pages/DashboardPage';
+import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 const navItems = [
@@ -95,7 +96,7 @@ export function App() {
         <Box className="page-frame">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/users" element={<Placeholder title="Known Users" />} />
+            <Route path="/users" element={<KnownUsersPage />} />
             <Route path="/send" element={<Placeholder title="Send Message" />} />
             <Route path="/connections" element={<Placeholder title="Connections" />} />
             <Route path="/profile" element={<ProfilePage />} />

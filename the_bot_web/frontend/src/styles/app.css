@@ -43,6 +43,27 @@ body,
   align-items: flex-start;
 }
 
+.known-users-search {
+  flex: 1 1 280px;
+  min-width: min(100%, 240px);
+}
+
+.known-users-cell {
+  max-width: 260px;
+}
+
+.known-users-group {
+  overflow: hidden;
+}
+
+.known-users-heading {
+  min-width: 0;
+}
+
+.known-users-cards {
+  display: none;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;
@@ -54,5 +75,13 @@ body,
 
   .profile-grid > * {
     width: 100%;
+  }
+
+  .known-users-table {
+    display: none;
+  }
+
+  .known-users-cards {
+    display: flex;
   }
 }
