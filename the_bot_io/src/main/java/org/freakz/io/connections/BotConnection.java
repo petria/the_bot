@@ -6,9 +6,9 @@ import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BotConnection {
 
@@ -18,7 +18,7 @@ public class BotConnection {
 
   private int id;
 
-  private Map<String, BotConnectionChannel> channelMap = new HashMap<>();
+  private Map<String, BotConnectionChannel> channelMap = new ConcurrentHashMap<>();
 
   private BotConnectionType type;
 
@@ -38,6 +38,24 @@ public class BotConnection {
 
   public Map<String, BotConnectionChannel> getChannelMap() {
     return channelMap;
+  }
+
+  public void updateChannel(BotConnectionChannel channel) {
+    if (channel == null || channel.getEchoToAlias() == null || channel.getEchoToAlias().isBlank()) {
+      return;
+    }
+    channelMap.put(channel.getEchoToAlias().trim().toUpperCase(), channel);
+  }
+
+  public void removeChannel(String echoToAlias) {
+    if (echoToAlias == null || echoToAlias.isBlank()) {
+      return;
+    }
+    channelMap.remove(echoToAlias.trim().toUpperCase());
+  }
+
+  public void clearChannels() {
+    channelMap.clear();
   }
 
   public BotConnectionType getType() {

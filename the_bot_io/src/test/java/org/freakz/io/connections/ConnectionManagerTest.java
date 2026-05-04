@@ -40,6 +40,8 @@ class ConnectionManagerTest {
     assertThat(channels).hasSize(1);
     assertThat(channels.getFirst().getEchoToAlias()).isEqualTo("IRC-HOKANDEV");
     assertThat(channels.getFirst().getLastReceivedMessageBy()).isEqualTo("petria");
+    assertThat(connection.getChannelMap())
+        .containsEntry("IRC-HOKANDEV", channel);
 
     List<KnownChatUserResponse> users = connectionManager.findKnownUsers("PETRIA");
     assertThat(users).hasSize(1);
@@ -50,6 +52,7 @@ class ConnectionManagerTest {
 
     assertThat(connectionManager.getKnownChannels()).isEmpty();
     assertThat(connectionManager.getKnownUsers()).isEmpty();
+    assertThat(connection.getChannelMap()).isEmpty();
   }
 
   @Test

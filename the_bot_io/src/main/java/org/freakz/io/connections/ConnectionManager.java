@@ -74,6 +74,7 @@ public class ConnectionManager implements CommandLineRunner {
     container.channel = channel;
     container.connection = connection;
     joinedChannelsMap.put(normalizedEchoToAlias, container);
+    connection.updateChannel(channel);
     KnownChannel previous = knownChannelsByAlias.get(normalizedEchoToAlias);
     KnownChannel knownChannel = KnownChannel.from(botConnectionType, connection, channel);
     if (previous != null) {
@@ -88,6 +89,7 @@ public class ConnectionManager implements CommandLineRunner {
     joinedChannelsMap.entrySet().removeIf(entry -> entry.getValue() != null && entry.getValue().connection == connection);
     knownChannelsByAlias.entrySet().removeIf(entry -> entry.getValue().connectionId == connection.getId());
     knownUsersByUserAndChannel.entrySet().removeIf(entry -> entry.getValue().connectionId == connection.getId());
+    connection.clearChannels();
   }
 
   public void removeConfiguredIrcJoinedChannels(IrcServerConnection connection) {
@@ -106,6 +108,7 @@ public class ConnectionManager implements CommandLineRunner {
         String normalizedEchoToAlias = normalizeEchoToAlias(channel.getEchoToAlias());
         joinedChannelsMap.remove(normalizedEchoToAlias);
         knownChannelsByAlias.remove(normalizedEchoToAlias);
+        container.connection.removeChannel(channel.getEchoToAlias());
       }
     }
   }
