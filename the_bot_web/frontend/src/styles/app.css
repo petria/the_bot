@@ -60,6 +60,17 @@ body,
   min-width: 0;
 }
 
+.known-users-sort {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  border-radius: var(--mantine-radius-xs);
+}
+
+.known-users-sort:hover {
+  color: var(--mantine-color-blue-4);
+}
+
 .known-users-cards {
   display: none;
 }

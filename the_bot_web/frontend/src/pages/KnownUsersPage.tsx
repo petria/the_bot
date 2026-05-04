@@ -13,16 +13,18 @@ import {
   TextInput,
   Title,
   Tooltip,
+  UnstyledButton,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw, Search, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown, RefreshCcw, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../api/client';
 import { getKnownUserTargets, KnownUserTarget } from '../api/knownUsers';
 
 export function KnownUsersPage() {
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<RowSort>({ column: 'user', direction: 'asc' });
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const targetsQuery = useQuery({
     queryKey: ['known-user-targets', debouncedSearch],
@@ -87,7 +89,11 @@ export function KnownUsersPage() {
           </Group>
         </Card>
       ) : (
-        <KnownUserGroups groups={groups} />
+        <KnownUserGroups
+          groups={groups}
+          sort={sort}
+          onSortChange={setSort}
+        />
       )}
     </Stack>
   );
@@ -111,7 +117,15 @@ function KnownUsersError({ error }: { error: Error }) {
   );
 }
 
-function KnownUserGroups({ groups }: { groups: ConnectionGroup[] }) {
+function KnownUserGroups({
+  groups,
+  sort,
+  onSortChange,
+}: {
+  groups: ConnectionGroup[];
+  sort: RowSort;
+  onSortChange: (sort: RowSort) => void;
+}) {
   return (
     <Stack gap="md">
       {groups.map((connection) => (
@@ -135,6 +149,8 @@ function KnownUserGroups({ groups }: { groups: ConnectionGroup[] }) {
                 <ChannelSection
                   key={channel.key}
                   channel={channel}
+                  sort={sort}
+                  onSortChange={onSortChange}
                   withDivider={index > 0}
                 />
               ))}
@@ -146,7 +162,19 @@ function KnownUserGroups({ groups }: { groups: ConnectionGroup[] }) {
   );
 }
 
-function ChannelSection({ channel, withDivider }: { channel: ChannelGroup; withDivider: boolean }) {
+function ChannelSection({
+  channel,
+  sort,
+  onSortChange,
+  withDivider,
+}: {
+  channel: ChannelGroup;
+  sort: RowSort;
+  onSortChange: (sort: RowSort) => void;
+  withDivider: boolean;
+}) {
+  const sortedTargets = sortTargets(channel.targets, sort);
+
   return (
     <Stack gap="sm">
       {withDivider && <Divider />}
@@ -160,22 +188,34 @@ function ChannelSection({ channel, withDivider }: { channel: ChannelGroup; withD
         </Stack>
         {channel.privateCount > 0 && <Badge>{channel.privateCount} private</Badge>}
       </Group>
-      <ChannelTargetsTable targets={channel.targets} />
-      <ChannelTargetsCards targets={channel.targets} />
+      <ChannelTargetsTable
+        targets={sortedTargets}
+        sort={sort}
+        onSortChange={onSortChange}
+      />
+      <ChannelTargetsCards targets={sortedTargets} />
     </Stack>
   );
 }
 
-function ChannelTargetsTable({ targets }: { targets: KnownUserTarget[] }) {
+function ChannelTargetsTable({
+  targets,
+  sort,
+  onSortChange,
+}: {
+  targets: KnownUserTarget[];
+  sort: RowSort;
+  onSortChange: (sort: RowSort) => void;
+}) {
   return (
     <Table.ScrollContainer minWidth={760} className="known-users-table">
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>User</Table.Th>
-            <Table.Th>Observed as</Table.Th>
-            <Table.Th>Target</Table.Th>
-            <Table.Th>Last seen</Table.Th>
+            <SortableHeader column="user" sort={sort} onSortChange={onSortChange}>User</SortableHeader>
+            <SortableHeader column="observed" sort={sort} onSortChange={onSortChange}>Observed as</SortableHeader>
+            <SortableHeader column="target" sort={sort} onSortChange={onSortChange}>Target</SortableHeader>
+            <SortableHeader column="lastSeen" sort={sort} onSortChange={onSortChange}>Last seen</SortableHeader>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -190,6 +230,49 @@ function ChannelTargetsTable({ targets }: { targets: KnownUserTarget[] }) {
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
+  );
+}
+
+function SortableHeader({
+  column,
+  sort,
+  onSortChange,
+  children,
+}: {
+  column: SortColumn;
+  sort: RowSort;
+  onSortChange: (sort: RowSort) => void;
+  children: string;
+}) {
+  const active = sort.column === column;
+  const Icon = active
+    ? sort.direction === 'asc' ? ArrowUp : ArrowDown
+    : ChevronsUpDown;
+
+  const handleClick = () => {
+    if (!active) {
+      onSortChange({
+        column,
+        direction: column === 'lastSeen' ? 'desc' : 'asc',
+      });
+      return;
+    }
+
+    onSortChange({
+      column,
+      direction: sort.direction === 'asc' ? 'desc' : 'asc',
+    });
+  };
+
+  return (
+    <Table.Th>
+      <UnstyledButton className="known-users-sort" onClick={handleClick}>
+        <Group gap={4} wrap="nowrap">
+          <Text size="sm" fw={700}>{children}</Text>
+          <Icon size={14} />
+        </Group>
+      </UnstyledButton>
+    </Table.Th>
   );
 }
 
@@ -268,10 +351,18 @@ function formatLastSeen(value: number | null) {
   if (!value) {
     return 'never';
   }
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'short',
-    timeStyle: 'medium',
-  }).format(new Date(value));
+  const date = new Date(value);
+  const day = padDatePart(date.getDate());
+  const month = padDatePart(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours = padDatePart(date.getHours());
+  const minutes = padDatePart(date.getMinutes());
+  const seconds = padDatePart(date.getSeconds());
+  return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
+}
+
+function padDatePart(value: number) {
+  return value.toString().padStart(2, '0');
 }
 
 function rowKey(target: KnownUserTarget) {
@@ -300,6 +391,14 @@ type ChannelGroup = {
   targets: KnownUserTarget[];
   targetCount: number;
   privateCount: number;
+};
+
+type SortColumn = 'user' | 'observed' | 'target' | 'lastSeen';
+type SortDirection = 'asc' | 'desc';
+
+type RowSort = {
+  column: SortColumn;
+  direction: SortDirection;
 };
 
 function groupTargets(targets: KnownUserTarget[]): ConnectionGroup[] {
@@ -359,17 +458,38 @@ function groupTargets(targets: KnownUserTarget[]): ConnectionGroup[] {
         channels: connection.channels
             .sort((left, right) => sortText(left.echoToAlias, right.echoToAlias)
                 || sortText(left.channelName, right.channelName))
-            .map((channel) => ({
-              ...channel,
-              targets: channel.targets.sort(compareTargets),
-            })),
+            .map((channel) => ({ ...channel })),
       }));
 }
 
-function compareTargets(left: KnownUserTarget, right: KnownUserTarget) {
-  return sortText(userSortName(left), userSortName(right))
-      || sortText(observedName(left), observedName(right))
-      || sortText(left.targetType || '', right.targetType || '');
+function sortTargets(targets: KnownUserTarget[], sort: RowSort) {
+  return [...targets].sort((left, right) => {
+    const result = compareTargets(left, right, sort.column);
+    return sort.direction === 'asc' ? result : -result;
+  });
+}
+
+function compareTargets(left: KnownUserTarget, right: KnownUserTarget, column: SortColumn) {
+  switch (column) {
+    case 'observed':
+      return sortText(observedName(left), observedName(right))
+          || sortText(userSortName(left), userSortName(right))
+          || sortNewestFirst(left, right);
+    case 'target':
+      return sortText(left.targetType || '', right.targetType || '')
+          || sortText(userSortName(left), userSortName(right))
+          || sortText(observedName(left), observedName(right));
+    case 'lastSeen':
+      return sortNewestFirst(left, right)
+          || sortText(userSortName(left), userSortName(right))
+          || sortText(observedName(left), observedName(right));
+    case 'user':
+    default:
+      return sortText(userSortName(left), userSortName(right))
+          || sortText(observedName(left), observedName(right))
+          || sortText(left.targetType || '', right.targetType || '')
+          || sortNewestFirst(left, right);
+  }
 }
 
 function userSortName(target: KnownUserTarget) {
@@ -378,4 +498,8 @@ function userSortName(target: KnownUserTarget) {
 
 function sortText(left: string, right: string) {
   return left.localeCompare(right, undefined, { sensitivity: 'base' });
+}
+
+function sortNewestFirst(left: KnownUserTarget, right: KnownUserTarget) {
+  return (right.lastSeenAt ?? Number.MIN_SAFE_INTEGER) - (left.lastSeenAt ?? Number.MIN_SAFE_INTEGER);
 }
