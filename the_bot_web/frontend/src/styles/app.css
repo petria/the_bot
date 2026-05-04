@@ -75,6 +75,22 @@ body,
   display: none;
 }
 
+.connections-card {
+  overflow: hidden;
+}
+
+.connections-heading {
+  min-width: 0;
+}
+
+.connections-cell {
+  max-width: 300px;
+}
+
+.connections-cards {
+  display: none;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;
@@ -93,6 +109,14 @@ body,
   }
 
   .known-users-cards {
+    display: flex;
+  }
+
+  .connections-table {
+    display: none;
+  }
+
+  .connections-cards {
     display: flex;
   }
 }

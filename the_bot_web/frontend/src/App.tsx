@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
+import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -98,7 +99,7 @@ export function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/users" element={<KnownUsersPage />} />
             <Route path="/send" element={<Placeholder title="Send Message" />} />
-            <Route path="/connections" element={<Placeholder title="Connections" />} />
+            <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Routes>
         </Box>

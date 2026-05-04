@@ -30,8 +30,9 @@ public class DataToDTOMapper {
     response.setNetwork(botConnection.getNetwork());
     response.setType(botConnection.getType().name());
 
-    // TODO
-    // botConnection.getChannelMap().values().stream().map(this::toBotConnectionChannelResponse).forEach(bc -> response.getChannels().add(bc));
+    botConnection.getChannelMap().values().stream()
+        .map(this::toBotConnectionChannelResponse)
+        .forEach(channel -> response.getChannels().add(channel));
 
     return response;
   }
