@@ -91,6 +91,15 @@ body,
   display: none;
 }
 
+.send-preview {
+  background: color-mix(in srgb, var(--mantine-color-dark-7), var(--mantine-color-dark-6) 35%);
+}
+
+.send-preview-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;

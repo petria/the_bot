@@ -10,6 +10,7 @@ import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SendPage } from './pages/SendPage';
 
 const navItems = [
   { label: 'Overview', path: '/', icon: Bot },
@@ -98,7 +99,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/users" element={<KnownUsersPage />} />
-            <Route path="/send" element={<Placeholder title="Send Message" />} />
+            <Route path="/send" element={<SendPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Routes>
@@ -155,14 +156,5 @@ function UserMenu({
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
-  );
-}
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <>
-      <Title order={2}>{title}</Title>
-      <Text c="dimmed" mt="xs">This page will be wired to bot APIs in the next step.</Text>
-    </>
   );
 }

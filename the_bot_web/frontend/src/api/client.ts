@@ -45,6 +45,34 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const request = async (refreshCsrf: boolean) => fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(await csrfHeader(refreshCsrf)),
+    },
+    body: JSON.stringify(body),
+    credentials: 'same-origin',
+  });
+
+  let response = await request(false);
+  if (response.status === 403) {
+    response = await request(true);
+  }
+
+  if (response.redirected || response.url.includes('/login')) {
+    throw new ApiError('Authentication required', response.status, true);
+  }
+
+  if (!response.ok) {
+    throw await apiErrorFromResponse(response);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function postForm(path: string, form: URLSearchParams = new URLSearchParams()): Promise<Response> {
   const request = async (refreshCsrf: boolean) => fetch(path, {
     method: 'POST',
