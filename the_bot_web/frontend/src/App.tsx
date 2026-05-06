@@ -1,6 +1,6 @@
 import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, ChevronDown, LogOut, RadioTower, Send, Settings, User, Users } from 'lucide-react';
+import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -11,9 +11,11 @@ import { DashboardPage } from './pages/DashboardPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
+import { SystemPage } from './pages/SystemPage';
 
 const navItems = [
-  { label: 'Overview', path: '/', icon: Bot },
+  { label: 'System', path: '/', icon: Server },
+  { label: 'Overview', path: '/overview', icon: Bot },
   { label: 'Known Users', path: '/users', icon: Users },
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Connections', path: '/connections', icon: RadioTower },
@@ -97,7 +99,8 @@ export function App() {
       <AppShell.Main>
         <Box className="page-frame">
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<SystemPage />} />
+            <Route path="/overview" element={<DashboardPage />} />
             <Route path="/users" element={<KnownUsersPage />} />
             <Route path="/send" element={<SendPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />

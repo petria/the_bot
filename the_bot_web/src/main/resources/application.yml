@@ -15,3 +15,18 @@ the-bot-web:
   users-file: ${THE_BOT_WEB_USERS_FILE:runtime/data/users.json}
   bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
   bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}
+
+the:
+  bot:
+    rest:
+      bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
+      bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

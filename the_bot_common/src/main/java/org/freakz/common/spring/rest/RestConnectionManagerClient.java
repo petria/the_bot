@@ -10,6 +10,7 @@ import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,17 +24,19 @@ public class RestConnectionManagerClient {
 
   private static final Logger log = LoggerFactory.getLogger(RestConnectionManagerClient.class);
   private final RestTemplate restTemplate;
-  private final String BASE_URL = "http://bot-io:8090/api/hokan/io/connection_manager";
+  private final String baseUrl;
 
   @Autowired
-  public RestConnectionManagerClient(RestTemplate restTemplate) {
+  public RestConnectionManagerClient(
+      RestTemplate restTemplate,
+      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl) {
     this.restTemplate = restTemplate;
+    this.baseUrl = trimTrailingSlash(botIoBaseUrl) + "/api/hokan/io/connection_manager";
   }
 
   public GetConnectionMapResponse getConnectionMap() {
-    String url = BASE_URL + "/get_connection_map";
     try {
-      return restTemplate.getForObject(url, GetConnectionMapResponse.class);
+      return getConnectionMapRequired();
     } catch (Exception e) {
       log.error("Error sending getConnectionMap message: {}", e.getMessage());
       return new GetConnectionMapResponse();
@@ -41,8 +44,12 @@ public class RestConnectionManagerClient {
 
   }
 
+  public GetConnectionMapResponse getConnectionMapRequired() {
+    return restTemplate.getForObject(baseUrl + "/get_connection_map", GetConnectionMapResponse.class);
+  }
+
   public ResponseEntity<ChannelUsersByEchoToAliasResponse> getChannelUsersByEchoToAlias(@RequestBody ChannelUsersByEchoToAliasRequest request) {
-    String url = BASE_URL + "/get_channel_users_by_echo_to_alias";
+    String url = baseUrl + "/get_channel_users_by_echo_to_alias";
     try {
       return restTemplate.postForEntity(url, request, ChannelUsersByEchoToAliasResponse.class);
     } catch (Exception e) {
@@ -52,17 +59,20 @@ public class RestConnectionManagerClient {
   }
 
   public GetChannelActivityResponse getChannelActivity() {
-    String url = BASE_URL + "/get_channel_activity";
     try {
-      return restTemplate.getForObject(url, GetChannelActivityResponse.class);
+      return getChannelActivityRequired();
     } catch (Exception e) {
       log.error("Error sending getChannelActivity message: {}", e.getMessage());
       return new GetChannelActivityResponse();
     }
   }
 
+  public GetChannelActivityResponse getChannelActivityRequired() {
+    return restTemplate.getForObject(baseUrl + "/get_channel_activity", GetChannelActivityResponse.class);
+  }
+
   public GetKnownChatChannelsResponse getKnownChannels() {
-    String url = BASE_URL + "/get_known_channels";
+    String url = baseUrl + "/get_known_channels";
     try {
       return restTemplate.getForObject(url, GetKnownChatChannelsResponse.class);
     } catch (Exception e) {
@@ -72,7 +82,7 @@ public class RestConnectionManagerClient {
   }
 
   public GetKnownChatUsersResponse getKnownUsers(String query) {
-    String url = withOptionalQuery(BASE_URL + "/get_known_users", query);
+    String url = withOptionalQuery(baseUrl + "/get_known_users", query);
     try {
       return restTemplate.getForObject(url, GetKnownChatUsersResponse.class);
     } catch (Exception e) {
@@ -82,13 +92,17 @@ public class RestConnectionManagerClient {
   }
 
   public GetKnownUserTargetsResponse getKnownUserTargets(String query) {
-    String url = withOptionalQuery(BASE_URL + "/get_known_user_targets", query);
     try {
-      return restTemplate.getForObject(url, GetKnownUserTargetsResponse.class);
+      return getKnownUserTargetsRequired(query);
     } catch (Exception e) {
       log.error("Error sending getKnownUserTargets message: {}", e.getMessage());
       return new GetKnownUserTargetsResponse();
     }
+  }
+
+  public GetKnownUserTargetsResponse getKnownUserTargetsRequired(String query) {
+    String url = withOptionalQuery(baseUrl + "/get_known_user_targets", query);
+    return restTemplate.getForObject(url, GetKnownUserTargetsResponse.class);
   }
 
   private String withOptionalQuery(String url, String query) {
@@ -98,4 +112,7 @@ public class RestConnectionManagerClient {
     return url + "?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
   }
 
+  private String trimTrailingSlash(String value) {
+    return value == null ? "" : value.replaceFirst("/+$", "");
+  }
 }

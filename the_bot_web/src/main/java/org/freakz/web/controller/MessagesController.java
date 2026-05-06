@@ -3,10 +3,10 @@ package org.freakz.web.controller;
 import org.freakz.common.model.connectionmanager.BotConnectionResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRequest;
-import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
-import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
 import org.freakz.common.model.feed.Message;
+import org.freakz.common.spring.rest.RestConnectionManagerClient;
+import org.freakz.common.spring.rest.RestMessageSendClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,8 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/web/messages")
@@ -26,29 +24,30 @@ public class MessagesController {
 
   private static final Logger log = LoggerFactory.getLogger(MessagesController.class);
 
-  private final RestTemplate restTemplate;
+  private final RestMessageSendClient messageSendClient;
+  private final RestConnectionManagerClient connectionManagerClient;
   private final TheBotWebProperties properties;
 
-  public MessagesController(RestTemplate restTemplate, TheBotWebProperties properties) {
-    this.restTemplate = restTemplate;
+  public MessagesController(
+      RestMessageSendClient messageSendClient,
+      RestConnectionManagerClient connectionManagerClient,
+      TheBotWebProperties properties) {
+    this.messageSendClient = messageSendClient;
+    this.connectionManagerClient = connectionManagerClient;
     this.properties = properties;
   }
 
   @PostMapping("/known-user")
   public ResponseEntity<?> sendToKnownUser(@RequestBody SendMessageToKnownUserRequest request) {
-    return postToBotIo(
-        "/api/hokan/io/messages/send_message_to_known_user",
-        request,
-        SendMessageToKnownUserResponse.class,
+    return handleBotIoResponse(
+        messageSendClient.sendMessageToKnownUser(request),
         "Could not send message to known user");
   }
 
   @PostMapping("/echo-to-alias")
   public ResponseEntity<?> sendByEchoToAlias(@RequestBody SendMessageByEchoToAliasRequest request) {
-    return postToBotIo(
-        "/api/hokan/io/messages/send_message_by_echo_to_alias",
-        request,
-        SendMessageByEchoToAliasResponse.class,
+    return handleBotIoResponse(
+        messageSendClient.sendMessageByEchoToAlias(request),
         "Could not send message to channel");
   }
 
@@ -81,8 +80,9 @@ public class MessagesController {
         .message(request.getMessage().trim())
         .build();
 
-    String path = "/api/hokan/io/messages/send/" + request.getConnectionId();
-    ResponseEntity<?> response = postToBotIo(path, message, String.class, "Could not send IRC private message");
+    ResponseEntity<?> response = handleBotIoResponse(
+        messageSendClient.sendMessage(request.getConnectionId(), message),
+        "Could not send IRC private message");
     if (!response.getStatusCode().is2xxSuccessful()) {
       return response;
     }
@@ -90,14 +90,8 @@ public class MessagesController {
   }
 
   private boolean isIrcConnection(Integer connectionId) {
-    String url = UriComponentsBuilder
-        .fromUriString(properties.getBotIoBaseUrl())
-        .path("/api/hokan/io/connection_manager/get_connection_map")
-        .build()
-        .toUriString();
-
     try {
-      GetConnectionMapResponse response = restTemplate.getForObject(url, GetConnectionMapResponse.class);
+      GetConnectionMapResponse response = connectionManagerClient.getConnectionMapRequired();
       BotConnectionResponse connection = response == null || response.getConnectionMap() == null
           ? null
           : response.getConnectionMap().get(connectionId);
@@ -108,26 +102,18 @@ public class MessagesController {
     }
   }
 
-  private <T> ResponseEntity<?> postToBotIo(String path, Object request, Class<T> responseType, String errorMessage) {
-    String url = UriComponentsBuilder
-        .fromUriString(properties.getBotIoBaseUrl())
-        .path(path)
-        .build()
-        .toUriString();
-
-    try {
-      T response = restTemplate.postForObject(url, request, responseType);
-      return ResponseEntity.ok(response);
-    } catch (RestClientException e) {
-      log.warn("{} through bot-io: {}", errorMessage, e.getMessage());
+  private ResponseEntity<?> handleBotIoResponse(ResponseEntity<?> response, String errorMessage) {
+    if (response.getStatusCode().is2xxSuccessful()) {
+      return ResponseEntity.ok(response.getBody());
+    }
+    log.warn("{} through bot-io: {}", errorMessage, response.getStatusCode());
       return ResponseEntity
           .status(HttpStatus.BAD_GATEWAY)
           .body(new BotIoProxyErrorResponse(
               "BOT_IO_UNAVAILABLE",
               errorMessage,
               properties.getBotIoBaseUrl(),
-              e.getMessage()));
-    }
+              response.getBody() == null ? response.getStatusCode().toString() : response.getBody().toString()));
   }
 
   public static class BotIoProxyErrorResponse {

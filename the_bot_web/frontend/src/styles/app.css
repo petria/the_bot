@@ -100,6 +100,23 @@ body,
   overflow-wrap: anywhere;
 }
 
+.system-card {
+  min-width: 0;
+}
+
+.system-card-title {
+  min-width: 0;
+}
+
+.system-info-line {
+  min-width: 0;
+}
+
+.system-info-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;

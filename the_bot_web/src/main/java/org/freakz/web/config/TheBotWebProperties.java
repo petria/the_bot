@@ -7,7 +7,7 @@ public class TheBotWebProperties {
 
   private String usersFile = "runtime/data/users.json";
   private String botIoBaseUrl = "http://localhost:8090";
-  private String botEngineBaseUrl = "http://localhost:8081";
+  private String botEngineBaseUrl = "http://localhost:8100";
 
   public String getUsersFile() {
     return usersFile;

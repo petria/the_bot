@@ -1,6 +1,7 @@
 package org.freakz.web.controller;
 
 import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
+import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,10 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/web/known-users")
@@ -22,25 +19,18 @@ public class KnownUsersController {
 
   private static final Logger log = LoggerFactory.getLogger(KnownUsersController.class);
 
-  private final RestTemplate restTemplate;
+  private final RestConnectionManagerClient connectionManagerClient;
   private final TheBotWebProperties properties;
 
-  public KnownUsersController(RestTemplate restTemplate, TheBotWebProperties properties) {
-    this.restTemplate = restTemplate;
+  public KnownUsersController(RestConnectionManagerClient connectionManagerClient, TheBotWebProperties properties) {
+    this.connectionManagerClient = connectionManagerClient;
     this.properties = properties;
   }
 
   @GetMapping("/targets")
   public ResponseEntity<?> getTargets(@RequestParam(required = false) String query) {
-    String url = UriComponentsBuilder
-        .fromUriString(properties.getBotIoBaseUrl())
-        .path("/api/hokan/io/connection_manager/get_known_user_targets")
-        .queryParamIfPresent("query", normalizeQuery(query))
-        .build()
-        .toUriString();
-
     try {
-      GetKnownUserTargetsResponse response = restTemplate.getForObject(url, GetKnownUserTargetsResponse.class);
+      GetKnownUserTargetsResponse response = connectionManagerClient.getKnownUserTargetsRequired(query);
       return ResponseEntity.ok(response == null ? new GetKnownUserTargetsResponse() : response);
     } catch (RestClientException e) {
       log.warn("Could not load known user targets from bot-io: {}", e.getMessage());
@@ -52,13 +42,6 @@ public class KnownUsersController {
               properties.getBotIoBaseUrl(),
               e.getMessage()));
     }
-  }
-
-  private Optional<String> normalizeQuery(String query) {
-    if (query == null || query.isBlank()) {
-      return Optional.empty();
-    }
-    return Optional.of(query.trim());
   }
 
   public static class BotIoProxyErrorResponse {

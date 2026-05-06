@@ -10,6 +10,7 @@ import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -19,15 +20,18 @@ public class RestMessageSendClient {
 
   private static final Logger log = LoggerFactory.getLogger(RestMessageSendClient.class);
   private final RestTemplate restTemplate;
-  private final String BASE_URL = "http://bot-io:8090/api/hokan/io/messages";
+  private final String baseUrl;
 
   @Autowired
-  public RestMessageSendClient(RestTemplate restTemplate) {
+  public RestMessageSendClient(
+      RestTemplate restTemplate,
+      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl) {
     this.restTemplate = restTemplate;
+    this.baseUrl = trimTrailingSlash(botIoBaseUrl) + "/api/hokan/io/messages";
   }
 
   public ResponseEntity<String> sendMessage(int connectionId, Message message) {
-    String url = BASE_URL + "/send/" + connectionId;
+    String url = baseUrl + "/send/" + connectionId;
     try {
       return restTemplate.postForEntity(url, message, String.class);
     } catch (Exception e) {
@@ -37,7 +41,7 @@ public class RestMessageSendClient {
   }
 
   public ResponseEntity<SendMessageByEchoToAliasResponse> sendMessageByEchoToAlias(SendMessageByEchoToAliasRequest request) {
-    String url = BASE_URL + "/send_message_by_echo_to_alias";
+    String url = baseUrl + "/send_message_by_echo_to_alias";
     try {
       return restTemplate.postForEntity(url, request, SendMessageByEchoToAliasResponse.class);
     } catch (Exception e) {
@@ -47,7 +51,7 @@ public class RestMessageSendClient {
   }
 
   public ResponseEntity<SendIrcRawMessageByEchoToAliasResponse> sendIrcRawMessageByEchoToAlias(SendIrcRawMessageByEchoToAliasRequest request) {
-    String url = BASE_URL + "/send_irc_raw_message_by_echo_to_alias";
+    String url = baseUrl + "/send_irc_raw_message_by_echo_to_alias";
     try {
       return restTemplate.postForEntity(url, request, SendIrcRawMessageByEchoToAliasResponse.class);
     } catch (Exception e) {
@@ -57,7 +61,7 @@ public class RestMessageSendClient {
   }
 
   public ResponseEntity<SendMessageToKnownUserResponse> sendMessageToKnownUser(SendMessageToKnownUserRequest request) {
-    String url = BASE_URL + "/send_message_to_known_user";
+    String url = baseUrl + "/send_message_to_known_user";
     try {
       return restTemplate.postForEntity(url, request, SendMessageToKnownUserResponse.class);
     } catch (Exception e) {
@@ -67,5 +71,9 @@ public class RestMessageSendClient {
       response.setMessage(e.getMessage());
       return ResponseEntity.internalServerError().body(response);
     }
+  }
+
+  private String trimTrailingSlash(String value) {
+    return value == null ? "" : value.replaceFirst("/+$", "");
   }
 }

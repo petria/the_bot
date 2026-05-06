@@ -5,6 +5,7 @@ import org.freakz.common.model.engine.EngineResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,17 +16,20 @@ public class RestEngineClient {
 
   private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
   private final RestTemplate restTemplate;
-  private final String BASE_URL = "http://bot-engine:8100/api/hokan/engine";
+  private final String baseUrl;
 
   @Autowired
-  public RestEngineClient(RestTemplate restTemplate) {
+  public RestEngineClient(
+      RestTemplate restTemplate,
+      @Value("${the.bot.rest.bot-engine-base-url:http://bot-engine:8100}") String botEngineBaseUrl) {
     this.restTemplate = restTemplate;
+    this.baseUrl = trimTrailingSlash(botEngineBaseUrl) + "/api/hokan/engine";
   }
 
 
   //  @PostMapping("/handle_request")
   public ResponseEntity<EngineResponse> handleEngineRequest(@RequestBody EngineRequest request) {
-    String url = BASE_URL + "/handle_request";
+    String url = baseUrl + "/handle_request";
     try {
       return restTemplate.postForEntity(url, request, EngineResponse.class);
     } catch (Exception e) {
@@ -34,4 +38,7 @@ public class RestEngineClient {
     }
   }
 
+  private String trimTrailingSlash(String value) {
+    return value == null ? "" : value.replaceFirst("/+$", "");
+  }
 }
