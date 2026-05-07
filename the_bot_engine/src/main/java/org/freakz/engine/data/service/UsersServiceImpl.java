@@ -47,7 +47,18 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
 
   @Override
   public User getNotKnownUser() {
-    return (User) usersRepository.findAll().get(0);
+    List<? extends DataNodeBase> users = usersRepository.findAll();
+    for (DataNodeBase user : users) {
+      if (user.getId() != null && user.getId() == 0L) {
+        return (User) user;
+      }
+    }
+    return (User) users.get(0);
+  }
+
+  @Override
+  public void reloadUsers() {
+    usersRepository.reloadUsers();
   }
 
 }

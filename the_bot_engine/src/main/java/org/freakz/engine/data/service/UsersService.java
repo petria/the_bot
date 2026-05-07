@@ -10,4 +10,6 @@ public interface UsersService {
   List<? extends DataNodeBase> findAll();
 
   User getNotKnownUser();
+
+  void reloadUsers();
 }

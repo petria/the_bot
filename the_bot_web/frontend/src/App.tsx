@@ -1,11 +1,12 @@
 import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, User, Users } from 'lucide-react';
+import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, ShieldUser, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
+import { AdminUsersPage } from './pages/AdminUsersPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
@@ -19,6 +20,10 @@ const navItems = [
   { label: 'Known Users', path: '/users', icon: Users },
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Connections', path: '/connections', icon: RadioTower },
+];
+
+const adminNavItems = [
+  { label: 'Admin Users', path: '/admin/users', icon: ShieldUser },
 ];
 
 export function App() {
@@ -85,7 +90,7 @@ export function App() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm">
-        {navItems.map((item) => (
+        {[...navItems, ...(meQuery.data?.admin ? adminNavItems : [])].map((item) => (
           <NavLink
             key={item.path}
             label={item.label}
@@ -105,6 +110,7 @@ export function App() {
             <Route path="/send" element={<SendPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
           </Routes>
         </Box>
       </AppShell.Main>

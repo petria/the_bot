@@ -93,4 +93,10 @@ public class EngineController {
     return ResponseEntity.ok(response);
   }
 
+  @PostMapping("/internal/users/reload")
+  public ResponseEntity<Void> reloadUsers() {
+    usersService.reloadUsers();
+    return ResponseEntity.noContent().build();
+  }
+
 }

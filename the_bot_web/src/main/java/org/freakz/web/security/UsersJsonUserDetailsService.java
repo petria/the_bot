@@ -1,24 +1,23 @@
 package org.freakz.web.security;
 
-import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.users.User;
+import org.freakz.common.spring.rest.RestEngineClient;
+import org.freakz.common.users.UsersJsonStore;
 import org.freakz.web.config.TheBotWebProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,20 +30,27 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
   private static final Logger log = LoggerFactory.getLogger(UsersJsonUserDetailsService.class);
   private static final int MIN_PASSWORD_LENGTH = 10;
 
-  private final TheBotWebProperties properties;
-  private final JsonMapper jsonMapper;
   private final PasswordEncoder passwordEncoder;
+  private final UsersJsonStore usersStore;
+  private final RestEngineClient restEngineClient;
 
-  private volatile long lastModified = Long.MIN_VALUE;
-  private volatile List<User> users = List.of();
-
+  @Autowired
   public UsersJsonUserDetailsService(
       TheBotWebProperties properties,
       JsonMapper jsonMapper,
-      PasswordEncoder passwordEncoder) {
-    this.properties = properties;
-    this.jsonMapper = jsonMapper;
+      PasswordEncoder passwordEncoder,
+      ObjectProvider<RestEngineClient> restEngineClientProvider) {
     this.passwordEncoder = passwordEncoder;
+    this.usersStore = new UsersJsonStore(Path.of(properties.getUsersFile()), jsonMapper);
+    this.restEngineClient =
+        restEngineClientProvider == null ? null : restEngineClientProvider.getIfAvailable();
+  }
+
+  UsersJsonUserDetailsService(
+      TheBotWebProperties properties,
+      JsonMapper jsonMapper,
+      PasswordEncoder passwordEncoder) {
+    this(properties, jsonMapper, passwordEncoder, null);
   }
 
   @Override
@@ -53,7 +59,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     if (normalizedUsername == null) {
       throw new UsernameNotFoundException("Missing username");
     }
-    return readUsers().stream()
+    return usersStore.findAll().stream()
         .filter(user -> normalizedUsername.equals(normalize(user.getUsername())))
         .findFirst()
         .map(this::toPrincipal)
@@ -65,10 +71,80 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     if (normalizedUsername == null) {
       return Optional.empty();
     }
-    return readUsers().stream()
+    return usersStore.findAll().stream()
         .filter(user -> normalizedUsername.equals(normalize(user.getUsername())))
         .findFirst()
-        .map(this::copyUser);
+        .map(UsersJsonStore::copyUser);
+  }
+
+  public List<User> findAllUsers() {
+    return usersStore.findAll();
+  }
+
+  public User createUser(AdminUserCreate create) {
+    if (create == null) {
+      throw new IllegalArgumentException("Create user request is required");
+    }
+    String username = blankToNull(create.username());
+    if (username == null) {
+      throw new IllegalArgumentException("Username is required");
+    }
+    validateNewPassword(create.password(), create.password());
+
+    User user = User.builder()
+        .username(username)
+        .password(passwordEncoder.encode(create.password()))
+        .isAdmin(create.admin())
+        .canDoIrcOp(create.canDoIrcOp())
+        .name(blankToNull(create.name()))
+        .email(blankToNull(create.email()))
+        .ircNick(blankToNull(create.ircNick()))
+        .telegramId(blankToNull(create.telegramId()))
+        .discordId(blankToNull(create.discordId()))
+        .build();
+    User created = usersStore.addUser(user);
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(created);
+  }
+
+  public User updateUser(long id, AdminUserUpdate update) {
+    if (update == null) {
+      throw new IllegalArgumentException("Update user request is required");
+    }
+    User updated = usersStore.updateById(id, current -> {
+      User copy = UsersJsonStore.copyUser(current);
+      copy.setName(blankToNull(update.name()));
+      copy.setEmail(blankToNull(update.email()));
+      copy.setIrcNick(blankToNull(update.ircNick()));
+      copy.setTelegramId(blankToNull(update.telegramId()));
+      copy.setDiscordId(blankToNull(update.discordId()));
+      copy.setAdmin(update.admin());
+      copy.setCanDoIrcOp(update.canDoIrcOp());
+      return copy;
+    });
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(updated);
+  }
+
+  public User resetUserPassword(long id, AdminPasswordReset passwordReset) {
+    if (passwordReset == null) {
+      throw new IllegalArgumentException("Password reset request is required");
+    }
+    validateNewPassword(passwordReset.password(), passwordReset.password());
+
+    User updated = usersStore.updateById(id, current -> {
+      User copy = UsersJsonStore.copyUser(current);
+      copy.setPassword(passwordEncoder.encode(passwordReset.password()));
+      return copy;
+    });
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(updated);
+  }
+
+  public User deleteUser(long id) {
+    User deleted = usersStore.deleteById(id);
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(deleted);
   }
 
   public User updateProfile(String username, ProfileUpdate update) {
@@ -77,32 +153,20 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       throw new UsernameNotFoundException("Missing username");
     }
 
-    File usersFile = new File(properties.getUsersFile());
-    synchronized (this) {
-      List<User> currentUsers = new ArrayList<>(readUsers());
-      User updated = null;
-      for (int i = 0; i < currentUsers.size(); i++) {
-        User current = currentUsers.get(i);
-        if (!Objects.equals(normalizedUsername, normalize(current.getUsername()))) {
-          continue;
-        }
-
-        updated = copyUser(current);
-        updated.setName(blankToNull(update.name()));
-        updated.setEmail(blankToNull(update.email()));
-        updated.setIrcNick(blankToNull(update.ircNick()));
-        updated.setTelegramId(blankToNull(update.telegramId()));
-        updated.setDiscordId(blankToNull(update.discordId()));
-        currentUsers.set(i, updated);
-        break;
-      }
-
-      if (updated == null) {
-        throw new UsernameNotFoundException("No bot user found for username: " + username);
-      }
-
-      writeUsers(usersFile, currentUsers);
-      return copyUser(updated);
+    try {
+      User updated = usersStore.updateByUsername(username, current -> {
+        User copy = UsersJsonStore.copyUser(current);
+        copy.setName(blankToNull(update.name()));
+        copy.setEmail(blankToNull(update.email()));
+        copy.setIrcNick(blankToNull(update.ircNick()));
+        copy.setTelegramId(blankToNull(update.telegramId()));
+        copy.setDiscordId(blankToNull(update.discordId()));
+        return copy;
+      });
+      notifyEngineUsersReload();
+      return UsersJsonStore.copyUser(updated);
+    } catch (IllegalArgumentException e) {
+      throw new UsernameNotFoundException("No bot user found for username: " + username, e);
     }
   }
 
@@ -116,15 +180,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
     validateNewPassword(passwordChange.newPassword(), passwordChange.confirmNewPassword());
 
-    File usersFile = new File(properties.getUsersFile());
-    synchronized (this) {
-      List<User> currentUsers = new ArrayList<>(readUsers());
-      User updated = null;
-      for (int i = 0; i < currentUsers.size(); i++) {
-        User current = currentUsers.get(i);
-        if (!Objects.equals(normalizedUsername, normalize(current.getUsername()))) {
-          continue;
-        }
+    try {
+      usersStore.updateByUsername(username, current -> {
         if (isBlank(passwordChange.currentPassword())) {
           throw new BadCredentialsException("Current password does not match");
         }
@@ -132,45 +189,13 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
           throw new BadCredentialsException("Current password does not match");
         }
 
-        updated = copyUser(current);
+        User updated = UsersJsonStore.copyUser(current);
         updated.setPassword(passwordEncoder.encode(passwordChange.newPassword()));
-        currentUsers.set(i, updated);
-        break;
-      }
-
-      if (updated == null) {
-        throw new UsernameNotFoundException("No bot user found for username: " + username);
-      }
-
-      writeUsers(usersFile, currentUsers);
-    }
-  }
-
-  List<User> readUsers() {
-    File usersFile = new File(properties.getUsersFile());
-    if (!usersFile.exists()) {
-      log.warn("Bot users file does not exist: {}", usersFile.getAbsolutePath());
-      users = List.of();
-      lastModified = Long.MIN_VALUE;
-      return users;
-    }
-    long currentLastModified = usersFile.lastModified();
-    if (currentLastModified == lastModified) {
-      return users;
-    }
-    synchronized (this) {
-      if (currentLastModified == lastModified) {
-        return users;
-      }
-      try {
-        UserValuesJsonContainer container = jsonMapper.readValue(usersFile, UserValuesJsonContainer.class);
-        users = container.getData_values() == null ? List.of() : List.copyOf(container.getData_values());
-        lastModified = currentLastModified;
-        log.info("Loaded {} bot users from {}", users.size(), usersFile.getAbsolutePath());
-        return users;
-      } catch (RuntimeException e) {
-        throw new IllegalStateException("Could not read bot users file: " + usersFile.getAbsolutePath(), e);
-      }
+        return updated;
+      });
+      notifyEngineUsersReload();
+    } catch (IllegalArgumentException e) {
+      throw new UsernameNotFoundException("No bot user found for username: " + username, e);
     }
   }
 
@@ -186,36 +211,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     return BotUserPrincipal.from(user, authorities);
   }
 
-  private User copyUser(User source) {
-    User copy = User.builder()
-        .isAdmin(source.isAdmin())
-        .canDoIrcOp(source.isCanDoIrcOp())
-        .username(source.getUsername())
-        .password(source.getPassword())
-        .name(source.getName())
-        .email(source.getEmail())
-        .ircNick(source.getIrcNick())
-        .telegramId(source.getTelegramId())
-        .discordId(source.getDiscordId())
-        .build();
-    copy.setId(source.getId());
-    return copy;
-  }
-
-  private void writeUsers(File usersFile, List<User> currentUsers) {
-    try {
-      UserValuesJsonContainer container = new UserValuesJsonContainer(currentUsers);
-      String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
-      Files.writeString(Path.of(usersFile.toURI()), json, Charset.defaultCharset());
-      users = List.copyOf(currentUsers);
-      lastModified = usersFile.lastModified();
-    } catch (IOException | RuntimeException e) {
-      throw new IllegalStateException("Could not write bot users file: " + usersFile.getAbsolutePath(), e);
-    }
-  }
-
   private String normalize(String value) {
-    return isBlank(value) ? null : value.trim().toLowerCase();
+    return UsersJsonStore.normalize(value);
   }
 
   private boolean isBlank(String value) {
@@ -238,6 +235,17 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
   }
 
+  private void notifyEngineUsersReload() {
+    if (restEngineClient == null) {
+      return;
+    }
+    try {
+      restEngineClient.reloadUsers();
+    } catch (RuntimeException e) {
+      log.warn("Could not signal bot-engine to reload users.json: {}", e.getMessage());
+    }
+  }
+
   public record ProfileUpdate(
       String name,
       String email,
@@ -250,5 +258,30 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String currentPassword,
       String newPassword,
       String confirmNewPassword) {
+  }
+
+  public record AdminUserCreate(
+      String username,
+      String password,
+      String name,
+      String email,
+      String ircNick,
+      String telegramId,
+      String discordId,
+      boolean admin,
+      boolean canDoIrcOp) {
+  }
+
+  public record AdminUserUpdate(
+      String name,
+      String email,
+      String ircNick,
+      String telegramId,
+      String discordId,
+      boolean admin,
+      boolean canDoIrcOp) {
+  }
+
+  public record AdminPasswordReset(String password) {
   }
 }

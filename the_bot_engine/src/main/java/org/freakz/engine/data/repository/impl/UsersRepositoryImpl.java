@@ -1,9 +1,8 @@
 package org.freakz.engine.data.repository.impl;
 
-import org.freakz.common.model.dto.DataJsonSaveContainer;
 import org.freakz.common.model.dto.DataNodeBase;
-import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.UsersJsonStore;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
@@ -13,10 +12,6 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 public class UsersRepositoryImpl extends RepositoryBaseImpl
@@ -26,111 +21,39 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl
 
   private static final String USERS_FILE_NAME = "users.json";
 
-  public UsersRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) throws Exception {
+  private final UsersJsonStore usersStore;
+
+  public UsersRepositoryImpl(ConfigService configService, JsonMapper jsonMapper) {
     super(configService, jsonMapper);
-    initialize();
-    //        createUsers();
-  }
-
-  public void initialize() throws Exception {
     File dataFile = configService.getRuntimeDataFile(USERS_FILE_NAME);
-    if (dataFile.exists()) {
-      UserValuesJsonContainer dataValuesJson =
-          mapper.readValue(dataFile, UserValuesJsonContainer.class);
-      getDataValues().addAll(dataValuesJson.getData_values());
-      long highestId = -1;
-      for (DataNodeBase values : getDataValues()) {
-        if (values.getId() > highestId) {
-          highestId = values.getId();
-        }
-      }
-      setHighestId(highestId);
-
-      log.debug(
-          "Read dataValues, size: {} - highestId: {}", getDataValues().size(), getHighestId());
-    } else {
-      log.debug("No saved dataValues found: {}", dataFile.getName());
-    }
+    this.usersStore = new UsersJsonStore(dataFile.toPath(), jsonMapper);
+    this.usersStore.reload();
   }
 
-  private void createUsers() {
-
-    getDataValues().add(getJohnDoeUser());
-    long id = getHighestId();
-    id++;
-
-    User user =
-        User.builder()
-            .isAdmin(true)
-            .name("Petri Airio")
-            .email("petri.j.airio@gmail.com")
-            .ircNick("_Pete_")
-            .discordId("265828694445129728")
-            .telegramId("138695441")
-            .build();
-    user.setId(id);
-    setHighestId(id);
-    getDataValues().add(user);
-
-    setDirty(true);
-  }
-
-  public void saveDataValues() throws IOException {
-    synchronized (getDataValues()) {
-      String dataFileName = configService.getRuntimeDataFileName(USERS_FILE_NAME);
-      log.debug("synchronized start writing values: {}", dataFileName);
-
-      DataJsonSaveContainer container =
-          DataJsonSaveContainer.builder().data_values(getDataValues()).build();
-      container.setSaveTimes(container.getSaveTimes() + 1);
-
-      String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
-      Files.writeString(Path.of(dataFileName), json, Charset.defaultCharset());
-
-      log.debug("synchronized block write done: {}", getDataValues().size());
-    }
+  public void saveDataValues() {
+    log.debug("UsersRepositoryImpl is read-only; users are saved by bot-web");
   }
 
   @Override
   public void checkIsSavingNeeded() {
-    if (getSaveTrigger() >= 0) {
-      setSaveTrigger(-100);
-    }
     if (isDirty()) {
-      if (getSaveTrigger() <= 0) {
-        try {
-          saveDataValues();
-          setDirty(false);
-        } catch (IOException e) {
-          log.error("Saving data values failed", e);
-        }
-      }
+      log.warn("Ignoring dirty users repository state because bot-engine treats users.json as read-only");
+      setDirty(false);
     }
   }
 
   @Override
   public DataSaverInfo getDataSaverInfo() {
-    DataSaverInfo info =
-        DataSaverInfo.builder().nodeCount(getDataValues().size()).name("UsersData").build();
-    return info;
-  }
-
-  private User getJohnDoeUser() {
-    User user =
-        User.builder()
-            .isAdmin(false)
-            .name("John Doe")
-            .email("none@invalid")
-            .ircNick("none")
-            .telegramId("none")
-            .discordId("none")
-            .build();
-    user.setId(0L);
-    return user;
+    return DataSaverInfo.builder().nodeCount(usersStore.findAll().size()).name("UsersData").build();
   }
 
   @Override
   public List<? extends DataNodeBase> findAll() {
-    return getDataValues();
+    return usersStore.findAll();
+  }
+
+  @Override
+  public void reloadUsers() {
+    usersStore.reload();
   }
 }

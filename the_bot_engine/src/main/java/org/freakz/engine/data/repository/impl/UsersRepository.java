@@ -9,4 +9,6 @@ import java.util.List;
 public interface UsersRepository extends DataBaseRepository<User> {
 
   List<? extends DataNodeBase> findAll();
+
+  void reloadUsers();
 }

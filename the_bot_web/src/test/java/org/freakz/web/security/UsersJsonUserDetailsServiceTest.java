@@ -1,5 +1,6 @@
 package org.freakz.web.security;
 
+import org.freakz.common.model.users.User;
 import org.freakz.web.config.TheBotWebProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -215,6 +216,70 @@ class UsersJsonUserDetailsServiceTest {
         "new-password-123",
         "different-password")))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void adminCreatesEditsResetsAndDeletesUser() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 0,
+              "isAdmin": false,
+              "canDoIrcOp": false,
+              "username": "unknown",
+              "password": "hash"
+            },
+            {
+              "id": 3,
+              "isAdmin": true,
+              "canDoIrcOp": false,
+              "username": "admin",
+              "password": "%s"
+            }
+          ]
+        }
+        """.formatted(passwordEncoder.encode("admin-password")));
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    service.createUser(new UsersJsonUserDetailsService.AdminUserCreate(
+        "normal",
+        "normal-password",
+        "Normal User",
+        "normal@example.invalid",
+        "normal",
+        "111",
+        "222",
+        false,
+        true));
+
+    User created = service.findByUsername("normal").orElseThrow();
+    assertThat(created.getId()).isEqualTo(4L);
+    assertThat(created.getPassword()).doesNotContain("normal-password");
+    assertThat(passwordEncoder.matches("normal-password", created.getPassword())).isTrue();
+
+    service.updateUser(created.getId(), new UsersJsonUserDetailsService.AdminUserUpdate(
+        "Normal Edited",
+        "edited@example.invalid",
+        "edited",
+        "333",
+        "444",
+        false,
+        false));
+    User edited = service.findByUsername("normal").orElseThrow();
+    assertThat(edited.getUsername()).isEqualTo("normal");
+    assertThat(edited.getName()).isEqualTo("Normal Edited");
+    assertThat(edited.isCanDoIrcOp()).isFalse();
+
+    service.resetUserPassword(created.getId(), new UsersJsonUserDetailsService.AdminPasswordReset("reset-password"));
+    User reset = service.findByUsername("normal").orElseThrow();
+    assertThat(passwordEncoder.matches("reset-password", reset.getPassword())).isTrue();
+
+    service.deleteUser(created.getId());
+    assertThat(service.findByUsername("normal")).isEmpty();
   }
 
   private UsersJsonUserDetailsService serviceFor(Path usersFile) {
