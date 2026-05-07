@@ -2,12 +2,14 @@ package org.freakz.engine.commands;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.UserChatIdentityUtil;
 import org.freakz.engine.data.service.UsersService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @SuppressWarnings("unchecked")
@@ -28,23 +30,26 @@ public class AccessService {
     for (User user : users) {
       switch (request.getNetwork()) {
         case "BOT_WEB_CLIENT":
-          if (request.getFromSender().equals(user.getUsername())) {
+          if (Objects.equals(request.getFromSender(), user.getUsername())) {
             foundUser = user;
           }
           break;
         case "BOT_CLI_CLIENT":
         case "IRCNet":
-          if (request.getFromSender().equals(user.getIrcNick())) {
+          if (UserChatIdentityUtil.matches(user, "IRC_CONNECTION", request.getNetwork(), null, request.getFromSender(), null)
+              || Objects.equals(request.getFromSender(), user.getIrcNick())) {
             foundUser = user;
           }
           break;
         case "TelegramNetwork":
-          if (request.getFromSenderId().equals(user.getTelegramId())) {
+          if (UserChatIdentityUtil.matches(user, "TELEGRAM_CONNECTION", request.getNetwork(), request.getFromSenderId(), request.getFromSender(), null)
+              || Objects.equals(request.getFromSenderId(), user.getTelegramId())) {
             foundUser = user;
           }
           break;
         case "Discord":
-          if (request.getFromSenderId().equals(user.getDiscordId())) {
+          if (UserChatIdentityUtil.matches(user, "DISCORD_CONNECTION", request.getNetwork(), request.getFromSenderId(), request.getFromSender(), null)
+              || Objects.equals(request.getFromSenderId(), user.getDiscordId())) {
             foundUser = user;
           }
           break;

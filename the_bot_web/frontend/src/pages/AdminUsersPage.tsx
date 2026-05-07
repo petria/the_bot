@@ -24,13 +24,16 @@ import {
   createAdminUser,
   deleteAdminUser,
   getAdminUsers,
+  unlinkAdminUserChatIdentity,
   resetAdminUserPassword,
   updateAdminUser,
   type AdminUser,
+  type AdminChatIdentity,
   type AdminUserCreateRequest,
   type AdminUserUpdateRequest,
 } from '../api/adminUsers';
 import { ApiError } from '../api/client';
+import { LinkObservedIdentityModal } from './LinkObservedIdentityModal';
 
 const emptyUserForm: AdminUserCreateRequest = {
   username: '',
@@ -58,6 +61,7 @@ export function AdminUsersPage() {
   const [userModal, setUserModal] = useState<UserModalState>(null);
   const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [linkUser, setLinkUser] = useState<AdminUser | null>(null);
 
   const users = useMemo(
       () => [...(usersQuery.data?.users ?? [])].sort(compareUsers),
@@ -71,6 +75,14 @@ export function AdminUsersPage() {
     onSuccess: () => {
       setDeleteUser(null);
       invalidateUsers();
+    },
+  });
+  const unlinkIdentityMutation = useMutation({
+    mutationFn: ({ user, identity }: { user: AdminUser; identity: AdminChatIdentity }) =>
+      unlinkAdminUserChatIdentity(user.id as number, identity.identityKey as string),
+    onSuccess: () => {
+      invalidateUsers();
+      queryClient.invalidateQueries({ queryKey: ['known-user-targets'] });
     },
   });
 
@@ -116,12 +128,16 @@ export function AdminUsersPage() {
             users={users}
             onEdit={(user) => setUserModal({ mode: 'edit', user })}
             onResetPassword={setPasswordUser}
+            onLink={setLinkUser}
+            onUnlinkIdentity={(user, identity) => unlinkIdentityMutation.mutate({ user, identity })}
             onDelete={setDeleteUser}
           />
           <UsersCards
             users={users}
             onEdit={(user) => setUserModal({ mode: 'edit', user })}
             onResetPassword={setPasswordUser}
+            onLink={setLinkUser}
+            onUnlinkIdentity={(user, identity) => unlinkIdentityMutation.mutate({ user, identity })}
             onDelete={setDeleteUser}
           />
         </>
@@ -149,6 +165,11 @@ export function AdminUsersPage() {
         mutation={deleteMutation}
         onClose={() => setDeleteUser(null)}
       />
+      <LinkObservedIdentityModal
+        opened={!!linkUser}
+        user={linkUser}
+        onClose={() => setLinkUser(null)}
+      />
     </Stack>
   );
 }
@@ -157,11 +178,15 @@ function UsersTable({
   users,
   onEdit,
   onResetPassword,
+  onLink,
+  onUnlinkIdentity,
   onDelete,
 }: {
   users: AdminUser[];
   onEdit: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onLink: (user: AdminUser) => void;
+  onUnlinkIdentity: (user: AdminUser, identity: AdminChatIdentity) => void;
   onDelete: (user: AdminUser) => void;
 }) {
   return (
@@ -177,15 +202,16 @@ function UsersTable({
         </Table.Thead>
         <Table.Tbody>
           {users.map((user) => (
-            <Table.Tr key={user.id ?? user.username}>
-              <Table.Td><UserCell user={user} /></Table.Td>
-              <Table.Td><IdentityCell user={user} /></Table.Td>
+              <Table.Tr key={user.id ?? user.username}>
+                <Table.Td><UserCell user={user} /></Table.Td>
+              <Table.Td><IdentityCell user={user} onUnlinkIdentity={onUnlinkIdentity} /></Table.Td>
               <Table.Td><AccessBadges user={user} /></Table.Td>
               <Table.Td>
                 <UserActions
                   user={user}
                   onEdit={onEdit}
                   onResetPassword={onResetPassword}
+                  onLink={onLink}
                   onDelete={onDelete}
                 />
               </Table.Td>
@@ -201,11 +227,15 @@ function UsersCards({
   users,
   onEdit,
   onResetPassword,
+  onLink,
+  onUnlinkIdentity,
   onDelete,
 }: {
   users: AdminUser[];
   onEdit: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onLink: (user: AdminUser) => void;
+  onUnlinkIdentity: (user: AdminUser, identity: AdminChatIdentity) => void;
   onDelete: (user: AdminUser) => void;
 }) {
   return (
@@ -217,11 +247,12 @@ function UsersCards({
               <UserCell user={user} />
               <AccessBadges user={user} />
             </Group>
-            <IdentityCell user={user} />
+            <IdentityCell user={user} onUnlinkIdentity={onUnlinkIdentity} />
             <UserActions
               user={user}
               onEdit={onEdit}
               onResetPassword={onResetPassword}
+              onLink={onLink}
               onDelete={onDelete}
             />
           </Stack>
@@ -316,9 +347,6 @@ function UserEditorModal({
           )}
           <TextInput label="Name" value={form.name} onChange={(event) => setField('name', event.currentTarget.value)} />
           <TextInput label="Email" type="email" value={form.email} onChange={(event) => setField('email', event.currentTarget.value)} />
-          <TextInput label="IRC nick" value={form.ircNick} onChange={(event) => setField('ircNick', event.currentTarget.value)} />
-          <TextInput label="Telegram id" value={form.telegramId} onChange={(event) => setField('telegramId', event.currentTarget.value)} />
-          <TextInput label="Discord id" value={form.discordId} onChange={(event) => setField('discordId', event.currentTarget.value)} />
         </SimpleGrid>
 
         <Group gap="lg">
@@ -442,11 +470,13 @@ function UserActions({
   user,
   onEdit,
   onResetPassword,
+  onLink,
   onDelete,
 }: {
   user: AdminUser;
   onEdit: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void;
+  onLink: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }) {
   const disabled = user.reserved || user.id === null;
@@ -460,6 +490,11 @@ function UserActions({
       <Tooltip label="Reset password">
         <ActionIcon variant="light" aria-label="Reset password" disabled={disabled} onClick={() => onResetPassword(user)}>
           <KeyRound size={16} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label="Link observed identity">
+        <ActionIcon variant="light" aria-label="Link observed identity" disabled={disabled} onClick={() => onLink(user)}>
+          <Plus size={16} />
         </ActionIcon>
       </Tooltip>
       <Tooltip label="Delete">
@@ -483,12 +518,37 @@ function UserCell({ user }: { user: AdminUser }) {
   );
 }
 
-function IdentityCell({ user }: { user: AdminUser }) {
+function IdentityCell({
+  user,
+  onUnlinkIdentity,
+}: {
+  user: AdminUser;
+  onUnlinkIdentity: (user: AdminUser, identity: AdminChatIdentity) => void;
+}) {
+  const identities = user.chatIdentities ?? [];
+  if (identities.length === 0) {
+    return <Text size="sm" c="dimmed">No linked identities</Text>;
+  }
   return (
     <Stack gap={2} className="admin-users-cell">
-      <Text size="sm">IRC: {user.ircNick || '-'}</Text>
-      <Text size="sm">Telegram: {user.telegramId || '-'}</Text>
-      <Text size="sm">Discord: {user.discordId || '-'}</Text>
+      {identities.map((identity) => (
+        <Group key={identity.identityKey} gap="xs" wrap="nowrap" justify="space-between">
+          <Stack gap={0} className="admin-users-cell">
+            <Text size="sm" truncate>{identityLabel(identity)}</Text>
+            <Text size="xs" c="dimmed" truncate>{identity.identityKey || '-'}</Text>
+          </Stack>
+          <ActionIcon
+            size="sm"
+            color="red"
+            variant="subtle"
+            aria-label="Unlink identity"
+            disabled={!identity.identityKey || user.reserved}
+            onClick={() => onUnlinkIdentity(user, identity)}
+          >
+            <Trash2 size={14} />
+          </ActionIcon>
+        </Group>
+      ))}
     </Stack>
   );
 }
@@ -502,6 +562,11 @@ function AccessBadges({ user }: { user: AdminUser }) {
       {user.canDoIrcOp && <Badge variant="light">IRC op</Badge>}
     </Group>
   );
+}
+
+function identityLabel(identity: AdminChatIdentity) {
+  const observed = identity.displayName || identity.username || identity.userId || '-';
+  return `${identity.connectionType || 'unknown'}: ${observed}`;
 }
 
 function AdminUsersError({ error }: { error: Error }) {

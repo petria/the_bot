@@ -17,15 +17,22 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, ChevronsUpDown, RefreshCcw, Search, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown, Link2, RefreshCcw, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../api/client';
 import { getKnownUserTargets, KnownUserTarget } from '../api/knownUsers';
+import { getMe } from '../api/me';
+import { LinkObservedIdentityModal } from './LinkObservedIdentityModal';
 
 export function KnownUsersPage() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<RowSort>({ column: 'user', direction: 'asc' });
+  const [linkTarget, setLinkTarget] = useState<KnownUserTarget | null>(null);
   const [debouncedSearch] = useDebouncedValue(search, 250);
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+  });
   const targetsQuery = useQuery({
     queryKey: ['known-user-targets', debouncedSearch],
     queryFn: () => getKnownUserTargets(debouncedSearch),
@@ -93,8 +100,15 @@ export function KnownUsersPage() {
           groups={groups}
           sort={sort}
           onSortChange={setSort}
+          admin={!!meQuery.data?.admin}
+          onLink={setLinkTarget}
         />
       )}
+      <LinkObservedIdentityModal
+        opened={!!linkTarget}
+        target={linkTarget}
+        onClose={() => setLinkTarget(null)}
+      />
     </Stack>
   );
 }
@@ -121,10 +135,14 @@ function KnownUserGroups({
   groups,
   sort,
   onSortChange,
+  admin,
+  onLink,
 }: {
   groups: ConnectionGroup[];
   sort: RowSort;
   onSortChange: (sort: RowSort) => void;
+  admin: boolean;
+  onLink: (target: KnownUserTarget) => void;
 }) {
   return (
     <Stack gap="md">
@@ -151,6 +169,8 @@ function KnownUserGroups({
                   channel={channel}
                   sort={sort}
                   onSortChange={onSortChange}
+                  admin={admin}
+                  onLink={onLink}
                   withDivider={index > 0}
                 />
               ))}
@@ -166,11 +186,15 @@ function ChannelSection({
   channel,
   sort,
   onSortChange,
+  admin,
+  onLink,
   withDivider,
 }: {
   channel: ChannelGroup;
   sort: RowSort;
   onSortChange: (sort: RowSort) => void;
+  admin: boolean;
+  onLink: (target: KnownUserTarget) => void;
   withDivider: boolean;
 }) {
   const sortedTargets = sortTargets(channel.targets, sort);
@@ -192,8 +216,10 @@ function ChannelSection({
         targets={sortedTargets}
         sort={sort}
         onSortChange={onSortChange}
+        admin={admin}
+        onLink={onLink}
       />
-      <ChannelTargetsCards targets={sortedTargets} />
+      <ChannelTargetsCards targets={sortedTargets} admin={admin} onLink={onLink} />
     </Stack>
   );
 }
@@ -202,13 +228,17 @@ function ChannelTargetsTable({
   targets,
   sort,
   onSortChange,
+  admin,
+  onLink,
 }: {
   targets: KnownUserTarget[];
   sort: RowSort;
   onSortChange: (sort: RowSort) => void;
+  admin: boolean;
+  onLink: (target: KnownUserTarget) => void;
 }) {
   return (
-    <Table.ScrollContainer minWidth={760} className="known-users-table">
+    <Table.ScrollContainer minWidth={860} className="known-users-table">
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -216,6 +246,7 @@ function ChannelTargetsTable({
             <SortableHeader column="observed" sort={sort} onSortChange={onSortChange}>Observed as</SortableHeader>
             <SortableHeader column="target" sort={sort} onSortChange={onSortChange}>Target</SortableHeader>
             <SortableHeader column="lastSeen" sort={sort} onSortChange={onSortChange}>Last seen</SortableHeader>
+            {admin && <Table.Th>Actions</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -225,6 +256,11 @@ function ChannelTargetsTable({
               <Table.Td><ObservedCell target={target} /></Table.Td>
               <Table.Td><TargetType target={target} /></Table.Td>
               <Table.Td>{formatLastSeen(target.lastSeenAt)}</Table.Td>
+              {admin && (
+                <Table.Td>
+                  <LinkButton target={target} onLink={onLink} />
+                </Table.Td>
+              )}
             </Table.Tr>
           ))}
         </Table.Tbody>
@@ -276,7 +312,15 @@ function SortableHeader({
   );
 }
 
-function ChannelTargetsCards({ targets }: { targets: KnownUserTarget[] }) {
+function ChannelTargetsCards({
+  targets,
+  admin,
+  onLink,
+}: {
+  targets: KnownUserTarget[];
+  admin: boolean;
+  onLink: (target: KnownUserTarget) => void;
+}) {
   return (
     <Stack gap="sm" className="known-users-cards">
       {targets.map((target) => (
@@ -288,10 +332,33 @@ function ChannelTargetsCards({ targets }: { targets: KnownUserTarget[] }) {
             </Group>
             <InfoLine label="Observed" value={observedName(target)} />
             <InfoLine label="Last seen" value={formatLastSeen(target.lastSeenAt)} />
+            {admin && <LinkButton target={target} onLink={onLink} />}
           </Stack>
         </Card>
       ))}
     </Stack>
+  );
+}
+
+function LinkButton({
+  target,
+  onLink,
+}: {
+  target: KnownUserTarget;
+  onLink: (target: KnownUserTarget) => void;
+}) {
+  if (target.matchedConfiguredUser) {
+    return null;
+  }
+  return (
+    <Button
+      size="xs"
+      variant="light"
+      leftSection={<Link2 size={14} />}
+      onClick={() => onLink(target)}
+    >
+      Link
+    </Button>
   );
 }
 

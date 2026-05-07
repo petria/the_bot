@@ -1,6 +1,7 @@
 package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.UsersJsonStore;
 import org.freakz.web.config.TheBotWebProperties;
@@ -147,6 +148,31 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     return UsersJsonStore.copyUser(deleted);
   }
 
+  public User linkChatIdentity(long id, AdminChatIdentityLink link, String linkedBy) {
+    if (link == null) {
+      throw new IllegalArgumentException("Chat identity link request is required");
+    }
+    UserChatIdentity identity = UserChatIdentity.builder()
+        .connectionType(blankToNull(link.connectionType()))
+        .network(blankToNull(link.network()))
+        .userId(blankToNull(link.observedUserId()))
+        .username(blankToNull(link.observedUsername()))
+        .displayName(blankToNull(link.observedDisplayName()))
+        .source(blankToNull(link.source()))
+        .linkedAt(System.currentTimeMillis())
+        .linkedBy(blankToNull(linkedBy))
+        .build();
+    User updated = usersStore.addChatIdentity(id, identity, link.moveIfOwned());
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(updated);
+  }
+
+  public User unlinkChatIdentity(long id, String identityKey) {
+    User updated = usersStore.removeChatIdentity(id, identityKey);
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(updated);
+  }
+
   public User updateProfile(String username, ProfileUpdate update) {
     String normalizedUsername = normalize(username);
     if (normalizedUsername == null) {
@@ -283,5 +309,15 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
   }
 
   public record AdminPasswordReset(String password) {
+  }
+
+  public record AdminChatIdentityLink(
+      String connectionType,
+      String network,
+      String observedUserId,
+      String observedUsername,
+      String observedDisplayName,
+      String source,
+      boolean moveIfOwned) {
   }
 }

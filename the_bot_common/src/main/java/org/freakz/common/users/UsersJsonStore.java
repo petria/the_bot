@@ -2,6 +2,7 @@ package org.freakz.common.users;
 
 import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
@@ -156,6 +157,56 @@ public class UsersJsonStore {
     }
   }
 
+  public User addChatIdentity(long userId, UserChatIdentity identity, boolean moveIfOwned) {
+    String identityKey = UserChatIdentityUtil.identityKey(identity);
+    if (identityKey == null) {
+      throw new IllegalArgumentException("Chat identity is missing connection type and observed identity");
+    }
+
+    synchronized (this) {
+      List<User> currentUsers = new ArrayList<>(readUsersLocked());
+      User targetUser = findById(currentUsers, userId);
+      if (targetUser == null) {
+        throw new IllegalArgumentException("No bot user found with id: " + userId);
+      }
+      if (targetUser.getId() != null && targetUser.getId() == 0L) {
+        throw new IllegalArgumentException("Reserved unknown user cannot be linked");
+      }
+
+      User owner = findOwnerByIdentityKey(currentUsers, identityKey);
+      if (owner != null && !Objects.equals(owner.getId(), userId)) {
+        if (!moveIfOwned) {
+          throw new UserChatIdentityAlreadyLinkedException(owner, identity);
+        }
+        removeIdentityByKey(owner, identityKey);
+      }
+
+      removeIdentityByKey(targetUser, identityKey);
+      targetUser.getChatIdentities().add(copyIdentity(identity));
+      writeUsersLocked(currentUsers);
+      return copyUser(targetUser);
+    }
+  }
+
+  public User removeChatIdentity(long userId, String identityKey) {
+    if (identityKey == null || identityKey.isBlank()) {
+      throw new IllegalArgumentException("Identity key is required");
+    }
+    synchronized (this) {
+      List<User> currentUsers = new ArrayList<>(readUsersLocked());
+      User targetUser = findById(currentUsers, userId);
+      if (targetUser == null) {
+        throw new IllegalArgumentException("No bot user found with id: " + userId);
+      }
+      if (!removeIdentityByKey(targetUser, identityKey)) {
+        throw new IllegalArgumentException("Chat identity is not linked to user: " + userId);
+      }
+      clearLegacyFieldForIdentity(targetUser, identityKey);
+      writeUsersLocked(currentUsers);
+      return copyUser(targetUser);
+    }
+  }
+
   public void reload() {
     synchronized (this) {
       snapshot = Snapshot.empty();
@@ -181,6 +232,9 @@ public class UsersJsonStore {
         .ircNick(source.getIrcNick())
         .telegramId(source.getTelegramId())
         .discordId(source.getDiscordId())
+        .chatIdentities(source.getChatIdentities() == null
+            ? List.of()
+            : source.getChatIdentities().stream().map(UsersJsonStore::copyIdentity).toList())
         .build();
     copy.setId(source.getId());
     return copy;
@@ -188,6 +242,22 @@ public class UsersJsonStore {
 
   public static String normalize(String value) {
     return value == null || value.isBlank() ? null : value.trim().toLowerCase();
+  }
+
+  public static UserChatIdentity copyIdentity(UserChatIdentity source) {
+    if (source == null) {
+      return null;
+    }
+    return UserChatIdentity.builder()
+        .connectionType(source.getConnectionType())
+        .network(source.getNetwork())
+        .userId(source.getUserId())
+        .username(source.getUsername())
+        .displayName(source.getDisplayName())
+        .source(source.getSource())
+        .linkedAt(source.getLinkedAt())
+        .linkedBy(source.getLinkedBy())
+        .build();
   }
 
   private long nextId(List<User> users) {
@@ -201,6 +271,48 @@ public class UsersJsonStore {
 
   private long adminCount(List<User> users) {
     return users.stream().filter(User::isAdmin).count();
+  }
+
+  private User findById(List<User> users, long userId) {
+    for (User user : users) {
+      if (user.getId() != null && user.getId() == userId) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  private User findOwnerByIdentityKey(List<User> users, String identityKey) {
+    for (User user : users) {
+      if (user.getChatIdentities() == null) {
+        continue;
+      }
+      for (UserChatIdentity identity : user.getChatIdentities()) {
+        if (identityKey.equals(UserChatIdentityUtil.identityKey(identity))) {
+          return user;
+        }
+      }
+    }
+    return null;
+  }
+
+  private boolean removeIdentityByKey(User user, String identityKey) {
+    if (user.getChatIdentities() == null) {
+      return false;
+    }
+    return user.getChatIdentities().removeIf(identity -> identityKey.equals(UserChatIdentityUtil.identityKey(identity)));
+  }
+
+  private void clearLegacyFieldForIdentity(User user, String identityKey) {
+    if (identityKey.equals(UserChatIdentityUtil.identityKey("IRC_CONNECTION", null, null, user.getIrcNick(), null))) {
+      user.setIrcNick(null);
+    }
+    if (identityKey.equals(UserChatIdentityUtil.identityKey("DISCORD_CONNECTION", "Discord", user.getDiscordId(), null, null))) {
+      user.setDiscordId(null);
+    }
+    if (identityKey.equals(UserChatIdentityUtil.identityKey("TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null))) {
+      user.setTelegramId(null);
+    }
   }
 
   private List<User> readUsers() {
@@ -227,7 +339,7 @@ public class UsersJsonStore {
       UserValuesJsonContainer container = jsonMapper.readValue(usersFile.toFile(), UserValuesJsonContainer.class);
       List<User> loadedUsers = container.getData_values() == null
           ? List.of()
-          : container.getData_values().stream().map(UsersJsonStore::copyUser).toList();
+          : container.getData_values().stream().map(UsersJsonStore::copyUser).map(this::withMigratedLegacyIdentities).toList();
       snapshot = new Snapshot(lastModified, size, List.copyOf(loadedUsers));
       log.info("Loaded {} bot users from {}", loadedUsers.size(), usersFile.toAbsolutePath());
       return snapshot.users();
@@ -243,7 +355,7 @@ public class UsersJsonStore {
         Files.createDirectories(parent);
       }
 
-      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).toList();
+      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).map(this::withMigratedLegacyIdentities).toList();
       UserValuesJsonContainer container = new UserValuesJsonContainer(copiedUsers);
       String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
 
@@ -264,6 +376,46 @@ public class UsersJsonStore {
       Files.move(tempFile, usersFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
     } catch (AtomicMoveNotSupportedException e) {
       Files.move(tempFile, usersFile, StandardCopyOption.REPLACE_EXISTING);
+    }
+  }
+
+  private User withMigratedLegacyIdentities(User user) {
+    if (user == null) {
+      return null;
+    }
+    if (user.getChatIdentities() == null) {
+      user.setChatIdentities(new ArrayList<>());
+    }
+    addLegacyIdentityIfMissing(user, "IRC_CONNECTION", null, null, user.getIrcNick(), null, "LEGACY_IRC_NICK");
+    addLegacyIdentityIfMissing(user, "DISCORD_CONNECTION", "Discord", user.getDiscordId(), null, null, "LEGACY_DISCORD_ID");
+    addLegacyIdentityIfMissing(user, "TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null, "LEGACY_TELEGRAM_ID");
+    return user;
+  }
+
+  private void addLegacyIdentityIfMissing(
+      User user,
+      String connectionType,
+      String network,
+      String userId,
+      String username,
+      String displayName,
+      String source) {
+    UserChatIdentity identity = UserChatIdentity.builder()
+        .connectionType(connectionType)
+        .network(network)
+        .userId(userId)
+        .username(username)
+        .displayName(displayName)
+        .source(source)
+        .build();
+    String identityKey = UserChatIdentityUtil.identityKey(identity);
+    if (identityKey == null) {
+      return;
+    }
+    boolean exists = user.getChatIdentities().stream()
+        .anyMatch(existing -> identityKey.equals(UserChatIdentityUtil.identityKey(existing)));
+    if (!exists) {
+      user.getChatIdentities().add(identity);
     }
   }
 

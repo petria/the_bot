@@ -16,6 +16,7 @@ import org.freakz.common.model.dto.UserValuesJsonContainer;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.UserChatIdentityUtil;
 import org.freakz.io.config.ConfigService;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.slf4j.Logger;
@@ -757,6 +758,15 @@ public class ConnectionManager implements CommandLineRunner {
 
   private UserMatch matchConfiguredUser(KnownUserPresence presence, User user) {
     BotConnectionType connectionType = parseConnectionType(presence.connectionType);
+    if (UserChatIdentityUtil.matches(
+        user,
+        presence.connectionType,
+        presence.network,
+        presence.userId,
+        presence.username,
+        presence.displayName)) {
+      return new UserMatch(user, "CHAT_IDENTITY");
+    }
     if (connectionType == BotConnectionType.IRC_CONNECTION
         && configuredValueMatchesObserved(user.getIrcNick(), presence.userId, presence.username)) {
       return new UserMatch(user, "IRC_NICK");

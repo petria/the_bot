@@ -1,6 +1,7 @@
 package org.freakz.common.users;
 
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.json.JsonMapper;
@@ -175,6 +176,85 @@ class UsersJsonStoreTest {
     }))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Last admin");
+  }
+
+  @Test
+  void migratesLegacyIdentityFieldsWhenSaving() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, usersJson("petria", "_Pete_"));
+
+    UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
+    store.updateByUsername("petria", user -> user);
+
+    User user = store.findByUsername("petria").orElseThrow();
+    assertThat(user.getChatIdentities())
+        .extracting(UserChatIdentity::getConnectionType)
+        .contains("IRC_CONNECTION");
+    assertThat(Files.readString(usersFile)).contains("\"chatIdentities\"");
+  }
+
+  @Test
+  void linksMovesAndUnlinksChatIdentity() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 1,
+              "isAdmin": true,
+              "canDoIrcOp": false,
+              "username": "admin",
+              "password": "hash"
+            },
+            {
+              "id": 2,
+              "isAdmin": false,
+              "canDoIrcOp": false,
+              "username": "normal",
+              "password": "hash"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
+    UserChatIdentity identity = UserChatIdentity.builder()
+        .connectionType("DISCORD_CONNECTION")
+        .network("Discord")
+        .userId("123")
+        .username("discord-user")
+        .displayName("Discord User")
+        .source("TEST")
+        .build();
+
+    store.addChatIdentity(1L, identity, false);
+    assertThat(store.findByUsername("admin").orElseThrow().getChatIdentities()).hasSize(1);
+    assertThatThrownBy(() -> store.addChatIdentity(2L, identity, false))
+        .isInstanceOf(UserChatIdentityAlreadyLinkedException.class);
+
+    store.addChatIdentity(2L, identity, true);
+    assertThat(store.findByUsername("admin").orElseThrow().getChatIdentities()).isEmpty();
+    User normal = store.findByUsername("normal").orElseThrow();
+    assertThat(normal.getChatIdentities()).hasSize(1);
+
+    String identityKey = UserChatIdentityUtil.identityKey(identity);
+    store.removeChatIdentity(2L, identityKey);
+    assertThat(store.findByUsername("normal").orElseThrow().getChatIdentities()).isEmpty();
+  }
+
+  @Test
+  void unlinkingMigratedLegacyIdentityClearsLegacyField() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, usersJson("petria", "_Pete_"));
+
+    UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
+    String identityKey = UserChatIdentityUtil.identityKey("IRC_CONNECTION", null, null, "_Pete_", null);
+
+    store.removeChatIdentity(1L, identityKey);
+
+    User user = store.findByUsername("petria").orElseThrow();
+    assertThat(user.getIrcNick()).isNull();
+    assertThat(user.getChatIdentities()).isEmpty();
   }
 
   private String usersJson(String username, String ircNick) {

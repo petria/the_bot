@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.freakz.common.model.dto.DataNodeBase;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -27,6 +29,8 @@ public class User extends DataNodeBase {
   private String telegramId;
   @JsonProperty("discordId")
   private String discordId;
+  @JsonProperty("chatIdentities")
+  private List<UserChatIdentity> chatIdentities = new ArrayList<>();
 
   public User() {
   }
@@ -119,17 +123,25 @@ public class User extends DataNodeBase {
     this.discordId = discordId;
   }
 
+  public List<UserChatIdentity> getChatIdentities() {
+    return chatIdentities;
+  }
+
+  public void setChatIdentities(List<UserChatIdentity> chatIdentities) {
+    this.chatIdentities = chatIdentities == null ? new ArrayList<>() : new ArrayList<>(chatIdentities);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     User user = (User) o;
-    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId);
+    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(chatIdentities, user.chatIdentities);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
+    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, chatIdentities);
   }
 
   @Override
@@ -144,6 +156,7 @@ public class User extends DataNodeBase {
         ", ircNick='" + ircNick + '\'' +
         ", telegramId='" + telegramId + '\'' +
         ", discordId='" + discordId + '\'' +
+        ", chatIdentities=" + chatIdentities +
         '}';
   }
 
@@ -157,6 +170,7 @@ public class User extends DataNodeBase {
     private String ircNick;
     private String telegramId;
     private String discordId;
+    private List<UserChatIdentity> chatIdentities = new ArrayList<>();
 
     public Builder isAdmin(boolean isAdmin) {
       this.isAdmin = isAdmin;
@@ -203,8 +217,15 @@ public class User extends DataNodeBase {
       return this;
     }
 
+    public Builder chatIdentities(List<UserChatIdentity> chatIdentities) {
+      this.chatIdentities = chatIdentities == null ? new ArrayList<>() : new ArrayList<>(chatIdentities);
+      return this;
+    }
+
     public User build() {
-      return new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
+      User user = new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
+      user.setChatIdentities(chatIdentities);
+      return user;
     }
   }
 }
