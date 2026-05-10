@@ -1,16 +1,17 @@
 package org.freakz.io.connections;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.WhatsAppConfig;
 import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,9 +20,10 @@ public class WhatsAppConnection extends BotConnection {
 
   private static final Logger log = LoggerFactory.getLogger(WhatsAppConnection.class);
   private static final String DEFAULT_NETWORK = "WhatsApp";
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final EventPublisher publisher;
-  private final RestTemplate restTemplate = new RestTemplate();
+  private final HttpClient httpClient = HttpClient.newHttpClient();
   private ConnectionManager connectionManager;
   private WhatsAppConfig config;
 
@@ -56,14 +58,22 @@ public class WhatsAppConnection extends BotConnection {
     Map<String, String> request = new HashMap<>();
     request.put("to", to);
     request.put("message", message.getMessage());
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    String token = config == null ? null : config.getSendToken();
-    if (token != null && !token.isBlank()) {
-      headers.set("X-Bot-Whatsapp-Token", token);
+    try {
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+          .uri(URI.create(url))
+          .header("Content-Type", "application/json")
+          .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(request)));
+      String token = config == null ? null : config.getSendToken();
+      if (token != null && !token.isBlank()) {
+        requestBuilder.header("X-Bot-Whatsapp-Token", token);
+      }
+      HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new RuntimeException("WhatsApp sidecar send failed: HTTP " + response.statusCode() + " " + response.body());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to send WhatsApp message to " + to, e);
     }
-    restTemplate.postForEntity(url, new HttpEntity<>(request, headers), String.class);
   }
 
   public void handleWebhook(WacliWebhookMessageEvent event) {
