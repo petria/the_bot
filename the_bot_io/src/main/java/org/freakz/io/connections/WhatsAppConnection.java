@@ -52,12 +52,16 @@ public class WhatsAppConnection extends BotConnection {
     if (to == null) {
       throw new IllegalArgumentException("Missing WhatsApp message target");
     }
+    sendText(to, message.getMessage());
+  }
+
+  protected void sendText(String to, String text) {
     String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
     String url = sendBaseUrl.replaceFirst("/+$", "") + "/send";
 
     Map<String, String> request = new HashMap<>();
     request.put("to", to);
-    request.put("message", message.getMessage());
+    request.put("message", text);
     try {
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
           .uri(URI.create(url))
@@ -167,7 +171,7 @@ public class WhatsAppConnection extends BotConnection {
 
   private String firstNonBlank(String... values) {
     for (String value : values) {
-      if (value != null && !value.isBlank()) {
+      if (value != null && !value.isBlank() && !"null".equalsIgnoreCase(value.trim())) {
         return value.trim();
       }
     }

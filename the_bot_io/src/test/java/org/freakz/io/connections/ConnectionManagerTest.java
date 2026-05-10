@@ -5,6 +5,7 @@ import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
 import org.freakz.common.model.connectionmanager.KnownUserTargetResponse;
 import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
 import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
+import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
 import org.junit.jupiter.api.Test;
 
@@ -364,6 +365,21 @@ class ConnectionManagerTest {
     assertThat(whatsappConnection.lastMessage.getMessage()).isEqualTo("Petri Airio: test");
   }
 
+  @Test
+  void sendsWhatsAppReplyToTargetWhenChannelIdIsLiteralNull() {
+    CapturingWhatsAppConnection whatsappConnection = new CapturingWhatsAppConnection();
+    Message message = Message.builder()
+        .id("null")
+        .target("162251029934316@lid")
+        .message("pOnG")
+        .build();
+
+    whatsappConnection.sendMessageTo(message);
+
+    assertThat(whatsappConnection.to).isEqualTo("162251029934316@lid");
+    assertThat(whatsappConnection.text).isEqualTo("pOnG");
+  }
+
   private static class CapturingBotConnection extends BotConnection {
     private Message lastMessage;
     private final String network;
@@ -385,6 +401,30 @@ class ConnectionManagerTest {
     @Override
     public void sendMessageTo(Message message) {
       this.lastMessage = message;
+    }
+  }
+
+  private static class CapturingWhatsAppConnection extends WhatsAppConnection {
+    private String to;
+    private String text;
+
+    CapturingWhatsAppConnection() {
+      super(new EventPublisher() {
+        @Override
+        public void logMessage(MessageSource messageSource, String network, String channel, String sender, String message) {
+        }
+
+        @Override
+        public User publishEvent(BotConnection connection, Object source, String echoToAlias) {
+          return null;
+        }
+      });
+    }
+
+    @Override
+    protected void sendText(String to, String text) {
+      this.to = to;
+      this.text = text;
     }
   }
 }
