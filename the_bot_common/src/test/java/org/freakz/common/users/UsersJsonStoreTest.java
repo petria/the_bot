@@ -184,13 +184,49 @@ class UsersJsonStoreTest {
     Files.writeString(usersFile, usersJson("petria", "_Pete_"));
 
     UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
-    store.updateByUsername("petria", user -> user);
+    store.updateByUsername("petria", user -> {
+      user.setWhatsappId("162251029934316@lid");
+      return user;
+    });
 
     User user = store.findByUsername("petria").orElseThrow();
     assertThat(user.getChatIdentities())
         .extracting(UserChatIdentity::getConnectionType)
-        .contains("IRC_CONNECTION");
+        .contains("IRC_CONNECTION", "WHATSAPP_CONNECTION");
     assertThat(Files.readString(usersFile)).contains("\"chatIdentities\"");
+  }
+
+  @Test
+  void unlinkingMigratedWhatsappIdentityClearsWhatsappId() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 1,
+              "isAdmin": true,
+              "canDoIrcOp": true,
+              "username": "petria",
+              "password": "hash",
+              "whatsappId": "162251029934316@lid"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
+    String identityKey = UserChatIdentityUtil.identityKey(
+        "WHATSAPP_CONNECTION",
+        "WhatsApp",
+        "162251029934316@lid",
+        null,
+        null);
+
+    store.removeChatIdentity(1L, identityKey);
+
+    User user = store.findByUsername("petria").orElseThrow();
+    assertThat(user.getWhatsappId()).isNull();
+    assertThat(user.getChatIdentities()).isEmpty();
   }
 
   @Test

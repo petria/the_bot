@@ -20,6 +20,7 @@ export interface AdminUser {
   ircNick: string | null;
   telegramId: string | null;
   discordId: string | null;
+  whatsappId: string | null;
   chatIdentities: AdminChatIdentity[] | null;
   admin: boolean;
   canDoIrcOp: boolean;
@@ -38,6 +39,7 @@ export interface AdminUserCreateRequest {
   ircNick: string;
   telegramId: string;
   discordId: string;
+  whatsappId: string;
   admin: boolean;
   canDoIrcOp: boolean;
 }

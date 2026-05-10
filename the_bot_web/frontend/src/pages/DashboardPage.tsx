@@ -74,6 +74,7 @@ export function DashboardPage() {
           <InfoItem label="IRC nick" value={me.ircNick} />
           <InfoItem label="Telegram id" value={me.telegramId} />
           <InfoItem label="Discord id" value={me.discordId} />
+          <InfoItem label="WhatsApp id" value={me.whatsappId} />
           <InfoItem label="IRC op" value={me.canDoIrcOp ? 'yes' : 'no'} />
         </SimpleGrid>
       </Card>

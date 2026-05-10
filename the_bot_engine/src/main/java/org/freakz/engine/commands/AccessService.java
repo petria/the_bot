@@ -54,7 +54,8 @@ public class AccessService {
           }
           break;
         case "WhatsApp":
-          if (UserChatIdentityUtil.matches(user, "WHATSAPP_CONNECTION", request.getNetwork(), request.getFromSenderId(), request.getFromSender(), null)) {
+          if (UserChatIdentityUtil.matches(user, "WHATSAPP_CONNECTION", request.getNetwork(), request.getFromSenderId(), request.getFromSender(), null)
+              || Objects.equals(request.getFromSenderId(), user.getWhatsappId())) {
             foundUser = user;
           }
           break;

@@ -85,6 +85,7 @@ public class MeController {
       String ircNick,
       String telegramId,
       String discordId,
+      String whatsappId,
       boolean admin,
       boolean canDoIrcOp,
       List<String> roles) {
@@ -98,6 +99,7 @@ public class MeController {
           principal.getIrcNick(),
           principal.getTelegramId(),
           principal.getDiscordId(),
+          principal.getWhatsappId(),
           principal.isAdmin(),
           principal.isCanDoIrcOp(),
           principal.getAuthorities().stream()
@@ -115,6 +117,7 @@ public class MeController {
           user.getIrcNick(),
           user.getTelegramId(),
           user.getDiscordId(),
+          user.getWhatsappId(),
           user.isAdmin(),
           user.isCanDoIrcOp(),
           principal.getAuthorities().stream()

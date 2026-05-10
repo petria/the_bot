@@ -29,6 +29,8 @@ public class User extends DataNodeBase {
   private String telegramId;
   @JsonProperty("discordId")
   private String discordId;
+  @JsonProperty("whatsappId")
+  private String whatsappId;
   @JsonProperty("chatIdentities")
   private List<UserChatIdentity> chatIdentities = new ArrayList<>();
 
@@ -36,6 +38,10 @@ public class User extends DataNodeBase {
   }
 
   public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId) {
+    this(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, null);
+  }
+
+  public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId, String whatsappId) {
     this.isAdmin = isAdmin;
     this.canDoIrcOp = canDoIrcOp;
     this.username = username;
@@ -45,6 +51,7 @@ public class User extends DataNodeBase {
     this.ircNick = ircNick;
     this.telegramId = telegramId;
     this.discordId = discordId;
+    this.whatsappId = whatsappId;
   }
 
   public static Builder builder() {
@@ -123,6 +130,14 @@ public class User extends DataNodeBase {
     this.discordId = discordId;
   }
 
+  public String getWhatsappId() {
+    return whatsappId;
+  }
+
+  public void setWhatsappId(String whatsappId) {
+    this.whatsappId = whatsappId;
+  }
+
   public List<UserChatIdentity> getChatIdentities() {
     return chatIdentities;
   }
@@ -136,12 +151,12 @@ public class User extends DataNodeBase {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     User user = (User) o;
-    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(chatIdentities, user.chatIdentities);
+    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(whatsappId, user.whatsappId) && Objects.equals(chatIdentities, user.chatIdentities);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, chatIdentities);
+    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, whatsappId, chatIdentities);
   }
 
   @Override
@@ -156,6 +171,7 @@ public class User extends DataNodeBase {
         ", ircNick='" + ircNick + '\'' +
         ", telegramId='" + telegramId + '\'' +
         ", discordId='" + discordId + '\'' +
+        ", whatsappId='" + whatsappId + '\'' +
         ", chatIdentities=" + chatIdentities +
         '}';
   }
@@ -170,6 +186,7 @@ public class User extends DataNodeBase {
     private String ircNick;
     private String telegramId;
     private String discordId;
+    private String whatsappId;
     private List<UserChatIdentity> chatIdentities = new ArrayList<>();
 
     public Builder isAdmin(boolean isAdmin) {
@@ -217,13 +234,18 @@ public class User extends DataNodeBase {
       return this;
     }
 
+    public Builder whatsappId(String whatsappId) {
+      this.whatsappId = whatsappId;
+      return this;
+    }
+
     public Builder chatIdentities(List<UserChatIdentity> chatIdentities) {
       this.chatIdentities = chatIdentities == null ? new ArrayList<>() : new ArrayList<>(chatIdentities);
       return this;
     }
 
     public User build() {
-      User user = new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId);
+      User user = new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, whatsappId);
       user.setChatIdentities(chatIdentities);
       return user;
     }

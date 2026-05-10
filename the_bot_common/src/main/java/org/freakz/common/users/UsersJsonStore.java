@@ -232,6 +232,7 @@ public class UsersJsonStore {
         .ircNick(source.getIrcNick())
         .telegramId(source.getTelegramId())
         .discordId(source.getDiscordId())
+        .whatsappId(source.getWhatsappId())
         .chatIdentities(source.getChatIdentities() == null
             ? List.of()
             : source.getChatIdentities().stream().map(UsersJsonStore::copyIdentity).toList())
@@ -313,6 +314,9 @@ public class UsersJsonStore {
     if (identityKey.equals(UserChatIdentityUtil.identityKey("TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null))) {
       user.setTelegramId(null);
     }
+    if (identityKey.equals(UserChatIdentityUtil.identityKey("WHATSAPP_CONNECTION", "WhatsApp", user.getWhatsappId(), null, null))) {
+      user.setWhatsappId(null);
+    }
   }
 
   private List<User> readUsers() {
@@ -389,6 +393,7 @@ public class UsersJsonStore {
     addLegacyIdentityIfMissing(user, "IRC_CONNECTION", null, null, user.getIrcNick(), null, "LEGACY_IRC_NICK");
     addLegacyIdentityIfMissing(user, "DISCORD_CONNECTION", "Discord", user.getDiscordId(), null, null, "LEGACY_DISCORD_ID");
     addLegacyIdentityIfMissing(user, "TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null, "LEGACY_TELEGRAM_ID");
+    addLegacyIdentityIfMissing(user, "WHATSAPP_CONNECTION", "WhatsApp", user.getWhatsappId(), null, null, "LEGACY_WHATSAPP_ID");
     return user;
   }
 

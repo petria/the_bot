@@ -43,6 +43,7 @@ const emptyUserForm: AdminUserCreateRequest = {
   ircNick: '',
   telegramId: '',
   discordId: '',
+  whatsappId: '',
   admin: false,
   canDoIrcOp: false,
 };
@@ -362,6 +363,29 @@ function UserEditorModal({
           />
         </Group>
 
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <TextInput
+            label="IRC nick"
+            value={form.ircNick}
+            onChange={(event) => setField('ircNick', event.currentTarget.value)}
+          />
+          <TextInput
+            label="Telegram id"
+            value={form.telegramId}
+            onChange={(event) => setField('telegramId', event.currentTarget.value)}
+          />
+          <TextInput
+            label="Discord id"
+            value={form.discordId}
+            onChange={(event) => setField('discordId', event.currentTarget.value)}
+          />
+          <TextInput
+            label="WhatsApp id"
+            value={form.whatsappId}
+            onChange={(event) => setField('whatsappId', event.currentTarget.value)}
+          />
+        </SimpleGrid>
+
         {validationError && <Alert color="red" variant="light">{validationError}</Alert>}
         {mutationError && <AdminUsersError error={mutationError} />}
 
@@ -587,6 +611,7 @@ function toForm(user: AdminUser): AdminUserCreateRequest {
     ircNick: user.ircNick ?? '',
     telegramId: user.telegramId ?? '',
     discordId: user.discordId ?? '',
+    whatsappId: user.whatsappId ?? '',
     admin: user.admin,
     canDoIrcOp: user.canDoIrcOp,
   };
@@ -607,6 +632,7 @@ function trimUpdateForm(form: AdminUserCreateRequest): AdminUserUpdateRequest {
     ircNick: form.ircNick.trim(),
     telegramId: form.telegramId.trim(),
     discordId: form.discordId.trim(),
+    whatsappId: form.whatsappId.trim(),
     admin: form.admin,
     canDoIrcOp: form.canDoIrcOp,
   };

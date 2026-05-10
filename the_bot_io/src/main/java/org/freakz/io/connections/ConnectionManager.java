@@ -803,6 +803,10 @@ public class ConnectionManager implements CommandLineRunner {
         && configuredValueMatchesObserved(user.getTelegramId(), presence.userId)) {
       return new UserMatch(user, "TELEGRAM_ID");
     }
+    if (connectionType == BotConnectionType.WHATSAPP_CONNECTION
+        && configuredValueMatchesObserved(user.getWhatsappId(), presence.userId)) {
+      return new UserMatch(user, "WHATSAPP_ID");
+    }
     if (configuredValueMatchesObserved(user.getUsername(), presence.username, presence.displayName)
         || configuredValueMatchesObserved(user.getName(), presence.username, presence.displayName)) {
       return new UserMatch(user, "NAME");

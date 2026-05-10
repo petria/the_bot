@@ -102,6 +102,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         .ircNick(blankToNull(create.ircNick()))
         .telegramId(blankToNull(create.telegramId()))
         .discordId(blankToNull(create.discordId()))
+        .whatsappId(blankToNull(create.whatsappId()))
         .build();
     User created = usersStore.addUser(user);
     notifyEngineUsersReload();
@@ -119,6 +120,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       copy.setIrcNick(blankToNull(update.ircNick()));
       copy.setTelegramId(blankToNull(update.telegramId()));
       copy.setDiscordId(blankToNull(update.discordId()));
+      copy.setWhatsappId(blankToNull(update.whatsappId()));
       copy.setAdmin(update.admin());
       copy.setCanDoIrcOp(update.canDoIrcOp());
       return copy;
@@ -187,6 +189,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         copy.setIrcNick(blankToNull(update.ircNick()));
         copy.setTelegramId(blankToNull(update.telegramId()));
         copy.setDiscordId(blankToNull(update.discordId()));
+        copy.setWhatsappId(blankToNull(update.whatsappId()));
         return copy;
       });
       notifyEngineUsersReload();
@@ -277,7 +280,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String email,
       String ircNick,
       String telegramId,
-      String discordId) {
+      String discordId,
+      String whatsappId) {
   }
 
   public record PasswordChange(
@@ -294,6 +298,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String ircNick,
       String telegramId,
       String discordId,
+      String whatsappId,
       boolean admin,
       boolean canDoIrcOp) {
   }
@@ -304,6 +309,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String ircNick,
       String telegramId,
       String discordId,
+      String whatsappId,
       boolean admin,
       boolean canDoIrcOp) {
   }

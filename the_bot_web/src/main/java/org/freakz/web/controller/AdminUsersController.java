@@ -117,6 +117,7 @@ public class AdminUsersController {
       String ircNick,
       String telegramId,
       String discordId,
+      String whatsappId,
       List<AdminChatIdentityResponse> chatIdentities,
       boolean admin,
       boolean canDoIrcOp,
@@ -131,6 +132,7 @@ public class AdminUsersController {
           user.getIrcNick(),
           user.getTelegramId(),
           user.getDiscordId(),
+          user.getWhatsappId(),
           user.getChatIdentities() == null
               ? List.of()
               : user.getChatIdentities().stream()

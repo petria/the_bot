@@ -17,6 +17,7 @@ public class BotUserPrincipal implements UserDetails {
   private final String ircNick;
   private final String telegramId;
   private final String discordId;
+  private final String whatsappId;
   private final boolean admin;
   private final boolean canDoIrcOp;
   private final List<GrantedAuthority> authorities;
@@ -30,6 +31,7 @@ public class BotUserPrincipal implements UserDetails {
       String ircNick,
       String telegramId,
       String discordId,
+      String whatsappId,
       boolean admin,
       boolean canDoIrcOp,
       List<GrantedAuthority> authorities) {
@@ -41,6 +43,7 @@ public class BotUserPrincipal implements UserDetails {
     this.ircNick = ircNick;
     this.telegramId = telegramId;
     this.discordId = discordId;
+    this.whatsappId = whatsappId;
     this.admin = admin;
     this.canDoIrcOp = canDoIrcOp;
     this.authorities = List.copyOf(authorities);
@@ -56,6 +59,7 @@ public class BotUserPrincipal implements UserDetails {
         user.getIrcNick(),
         user.getTelegramId(),
         user.getDiscordId(),
+        user.getWhatsappId(),
         user.isAdmin(),
         user.isCanDoIrcOp(),
         authorities);
@@ -93,6 +97,10 @@ public class BotUserPrincipal implements UserDetails {
 
   public String getDiscordId() {
     return discordId;
+  }
+
+  public String getWhatsappId() {
+    return whatsappId;
   }
 
   public boolean isAdmin() {

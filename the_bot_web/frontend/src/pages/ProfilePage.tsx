@@ -18,6 +18,7 @@ const emptyProfile: ProfileUpdateRequest = {
   ircNick: '',
   telegramId: '',
   discordId: '',
+  whatsappId: '',
 };
 
 const emptyPasswordChange: PasswordChangeRequest = {
@@ -128,6 +129,11 @@ export function ProfilePage() {
               value={profile.discordId}
               onChange={(event) => setField('discordId', event.currentTarget.value)}
             />
+            <TextInput
+              label="WhatsApp id"
+              value={profile.whatsappId}
+              onChange={(event) => setField('whatsappId', event.currentTarget.value)}
+            />
           </Group>
 
           {updateMutation.isError && (
@@ -212,5 +218,6 @@ function toProfileForm(me: MeResponse): ProfileUpdateRequest {
     ircNick: me.ircNick ?? '',
     telegramId: me.telegramId ?? '',
     discordId: me.discordId ?? '',
+    whatsappId: me.whatsappId ?? '',
   };
 }

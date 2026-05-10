@@ -8,6 +8,7 @@ export interface MeResponse {
   ircNick: string | null;
   telegramId: string | null;
   discordId: string | null;
+  whatsappId: string | null;
   admin: boolean;
   canDoIrcOp: boolean;
   roles: string[];
@@ -23,6 +24,7 @@ export interface ProfileUpdateRequest {
   ircNick: string;
   telegramId: string;
   discordId: string;
+  whatsappId: string;
 }
 
 export function updateProfile(request: ProfileUpdateRequest): Promise<MeResponse> {

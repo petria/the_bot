@@ -99,7 +99,8 @@ class UsersJsonUserDetailsServiceTest {
               "email": "old@example.invalid",
               "ircNick": "oldnick",
               "telegramId": "111",
-              "discordId": "222"
+              "discordId": "222",
+              "whatsappId": "333"
             }
           ]
         }
@@ -112,7 +113,8 @@ class UsersJsonUserDetailsServiceTest {
         "new@example.invalid",
         "newnick",
         "333",
-        "444"));
+        "444",
+        "555"));
 
     BotUserPrincipal updated = (BotUserPrincipal) service.loadUserByUsername("petria");
     assertThat(updated.getId()).isEqualTo(7L);
@@ -125,6 +127,7 @@ class UsersJsonUserDetailsServiceTest {
     assertThat(updated.getIrcNick()).isEqualTo("newnick");
     assertThat(updated.getTelegramId()).isEqualTo("333");
     assertThat(updated.getDiscordId()).isEqualTo("444");
+    assertThat(updated.getWhatsappId()).isEqualTo("555");
     assertThat(Files.readString(usersFile)).contains("\"name\" : \"New Name\"");
   }
 
@@ -253,6 +256,7 @@ class UsersJsonUserDetailsServiceTest {
         "normal",
         "111",
         "222",
+        "333",
         false,
         true));
 
@@ -267,6 +271,7 @@ class UsersJsonUserDetailsServiceTest {
         "edited",
         "333",
         "444",
+        "555",
         false,
         false));
     User edited = service.findByUsername("normal").orElseThrow();
