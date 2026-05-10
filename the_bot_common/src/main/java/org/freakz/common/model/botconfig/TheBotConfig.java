@@ -14,15 +14,17 @@ public class TheBotConfig {
   private BotConfig botConfig;
   private DiscordConfig discordConfig;
   private TelegramConfig telegramConfig;
+  private WhatsAppConfig whatsappConfig;
   private List<IrcServerConfig> ircServerConfigs;
 
   public TheBotConfig() {
   }
 
-  public TheBotConfig(BotConfig botConfig, DiscordConfig discordConfig, TelegramConfig telegramConfig, List<IrcServerConfig> ircServerConfigs) {
+  public TheBotConfig(BotConfig botConfig, DiscordConfig discordConfig, TelegramConfig telegramConfig, WhatsAppConfig whatsappConfig, List<IrcServerConfig> ircServerConfigs) {
     this.botConfig = botConfig;
     this.discordConfig = discordConfig;
     this.telegramConfig = telegramConfig;
+    this.whatsappConfig = whatsappConfig;
     this.ircServerConfigs = ircServerConfigs;
   }
 
@@ -54,6 +56,14 @@ public class TheBotConfig {
     this.telegramConfig = telegramConfig;
   }
 
+  public WhatsAppConfig getWhatsappConfig() {
+    return whatsappConfig;
+  }
+
+  public void setWhatsappConfig(WhatsAppConfig whatsappConfig) {
+    this.whatsappConfig = whatsappConfig;
+  }
+
   public List<IrcServerConfig> getIrcServerConfigs() {
     return ircServerConfigs;
   }
@@ -67,12 +77,12 @@ public class TheBotConfig {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     TheBotConfig that = (TheBotConfig) o;
-    return Objects.equals(botConfig, that.botConfig) && Objects.equals(discordConfig, that.discordConfig) && Objects.equals(telegramConfig, that.telegramConfig) && Objects.equals(ircServerConfigs, that.ircServerConfigs);
+    return Objects.equals(botConfig, that.botConfig) && Objects.equals(discordConfig, that.discordConfig) && Objects.equals(telegramConfig, that.telegramConfig) && Objects.equals(whatsappConfig, that.whatsappConfig) && Objects.equals(ircServerConfigs, that.ircServerConfigs);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(botConfig, discordConfig, telegramConfig, ircServerConfigs);
+    return Objects.hash(botConfig, discordConfig, telegramConfig, whatsappConfig, ircServerConfigs);
   }
 
   @Override
@@ -81,6 +91,7 @@ public class TheBotConfig {
         "botConfig=" + botConfig +
         ", discordConfig=" + discordConfig +
         ", telegramConfig=" + telegramConfig +
+        ", whatsappConfig=" + whatsappConfig +
         ", ircServerConfigs=" + ircServerConfigs +
         '}';
   }
@@ -89,6 +100,7 @@ public class TheBotConfig {
     private BotConfig botConfig;
     private DiscordConfig discordConfig;
     private TelegramConfig telegramConfig;
+    private WhatsAppConfig whatsappConfig;
     private List<IrcServerConfig> ircServerConfigs;
 
     public Builder botConfig(BotConfig botConfig) {
@@ -106,13 +118,18 @@ public class TheBotConfig {
       return this;
     }
 
+    public Builder whatsappConfig(WhatsAppConfig whatsappConfig) {
+      this.whatsappConfig = whatsappConfig;
+      return this;
+    }
+
     public Builder ircServerConfigs(List<IrcServerConfig> ircServerConfigs) {
       this.ircServerConfigs = ircServerConfigs;
       return this;
     }
 
     public TheBotConfig build() {
-      return new TheBotConfig(botConfig, discordConfig, telegramConfig, ircServerConfigs);
+      return new TheBotConfig(botConfig, discordConfig, telegramConfig, whatsappConfig, ircServerConfigs);
     }
   }
 }

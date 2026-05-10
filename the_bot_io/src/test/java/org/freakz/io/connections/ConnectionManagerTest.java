@@ -335,6 +335,35 @@ class ConnectionManagerTest {
     assertThat(telegramConnection.lastMessage.getMessage()).isEqualTo("Petri Airio: test");
   }
 
+  @Test
+  void prefixesWhatsAppDisplayNameWhenSendingToGroup() {
+    ConnectionManager connectionManager = new ConnectionManager();
+
+    CapturingBotConnection whatsappConnection = new CapturingBotConnection(BotConnectionType.WHATSAPP_CONNECTION, "WhatsApp");
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.WHATSAPP_CONNECTION,
+        whatsappConnection,
+        new BotConnectionChannel("1203630@g.us", "WHATSAPP-HOKANDEV", BotConnectionType.WHATSAPP_CONNECTION.name(), "WhatsApp", "HokanDEV"));
+    connectionManager.markUserSeen(
+        whatsappConnection,
+        "WHATSAPP-HOKANDEV",
+        "358449125874@s.whatsapp.net",
+        "Petri",
+        "Petri Airio",
+        "WHATSAPP_MESSAGE");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("Petri")
+            .message("test")
+            .preferPrivate(false)
+            .connectionType("WHATSAPP_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(whatsappConnection.lastMessage.getMessage()).isEqualTo("Petri Airio: test");
+  }
+
   private static class CapturingBotConnection extends BotConnection {
     private Message lastMessage;
     private final String network;

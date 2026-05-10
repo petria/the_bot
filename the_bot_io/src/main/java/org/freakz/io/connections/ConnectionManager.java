@@ -420,6 +420,7 @@ public class ConnectionManager implements CommandLineRunner {
       case IRC_CONNECTION -> formatIrcChannelMessage(message, target);
       case DISCORD_CONNECTION -> formatDiscordChannelMessage(message, target);
       case TELEGRAM_CONNECTION -> formatTelegramChannelMessage(message, target);
+      case WHATSAPP_CONNECTION -> formatWhatsAppChannelMessage(message, target);
       case null -> message;
     };
   }
@@ -444,6 +445,11 @@ public class ConnectionManager implements CommandLineRunner {
       return "@" + cleanUsername + " " + message;
     }
     String displayName = firstNonBlank(target.getObservedDisplayName(), target.getObservedUserId());
+    return displayName == null ? message : displayName + ": " + message;
+  }
+
+  private String formatWhatsAppChannelMessage(String message, KnownUserTargetResponse target) {
+    String displayName = firstNonBlank(target.getObservedDisplayName(), target.getObservedUsername(), target.getObservedUserId());
     return displayName == null ? message : displayName + ": " + message;
   }
 
@@ -494,6 +500,24 @@ public class ConnectionManager implements CommandLineRunner {
     }
     log.debug(">> done!");
 
+    log.debug(">> Connecting WHATSAPP");
+    if (theBotConfig.getWhatsappConfig() != null && theBotConfig.getWhatsappConfig().isConnectStartup()) {
+      WhatsAppConnection wc = new WhatsAppConnection(this.eventPublisher);
+      wc.init(this, theBotConfig.getWhatsappConfig());
+      addConnection(wc);
+    } else {
+      log.warn("WHATSAPP Startup connect disabled: {}", theBotConfig.getWhatsappConfig());
+    }
+    log.debug(">> done!");
+
+  }
+
+  public void handleWhatsAppWebhook(WacliWebhookMessageEvent event) {
+    BotConnection connection = connectionMap.values().stream()
+        .filter(candidate -> candidate.getType() == BotConnectionType.WHATSAPP_CONNECTION)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("WhatsApp connection is not initialized"));
+    ((WhatsAppConnection) connection).handleWebhook(event);
   }
 
 

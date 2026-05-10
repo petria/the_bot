@@ -34,6 +34,15 @@
     ],
     "connectStartup": "false"
   },
+  "whatsappConfig": {
+    "network": "WhatsApp",
+    "sendBaseUrl": "http://bot-whatsapp:8095",
+    "sendToken": "${WHATSAPP_SEND_TOKEN:}",
+    "webhookSecret": "${WHATSAPP_WEBHOOK_SECRET:}",
+    "channelList": [
+    ],
+    "connectStartup": "false"
+  },
   "ircServerConfigs": [
     {
       "name": "TestConfig",
@@ -60,4 +69,3 @@
     }
   ]
 }
-

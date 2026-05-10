@@ -117,6 +117,7 @@ public class EventPublisherService implements EventPublisher {
       case IRC_CONNECTION -> "irc";
       case DISCORD_CONNECTION -> "discord";
       case TELEGRAM_CONNECTION -> "telegram";
+      case WHATSAPP_CONNECTION -> "whatsapp";
     };
 
     String network = ChatIdentityUtil.sanitize(connection.getNetwork(), "unknown");
@@ -296,6 +297,29 @@ public class EventPublisherService implements EventPublisher {
     return new org.freakz.common.model.users.User();
   }
 
+  private org.freakz.common.model.users.User publishWhatsAppEvent(
+      BotConnection connection, WacliWebhookMessageEvent event, String echoToAlias) {
+    log.debug("Publish WHATSAPP event: {}", event.getMessageId());
+    String sender = event.senderDisplayName();
+    String senderId = event.effectiveSenderJid();
+    String replyTo = event.getChatJid();
+    boolean isPrivate = event.isPrivateChat();
+
+    ChatIdentity identity = buildChatIdentity(connection, replyTo, senderId, sender, isPrivate);
+    logMessageForIdentity(identity, sender, event.getText());
+
+    publishToEngineAsync(
+        connection,
+        event.getText(),
+        sender,
+        replyTo,
+        null,
+        senderId,
+        echoToAlias,
+        isPrivate);
+    return new org.freakz.common.model.users.User();
+  }
+
   public org.freakz.common.model.users.User publishEvent(
       BotConnection connection, Object source, String echoToAlias) {
     switch (connection.getType()) {
@@ -309,6 +333,8 @@ public class EventPublisherService implements EventPublisher {
         return publishDiscordEvent(connection, (MessageCreateEvent) source, echoToAlias);
       case TELEGRAM_CONNECTION:
         return publishTelegramEvent(connection, (Update) source, echoToAlias);
+      case WHATSAPP_CONNECTION:
+        return publishWhatsAppEvent(connection, (WacliWebhookMessageEvent) source, echoToAlias);
     }
     return null;
   }

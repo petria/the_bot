@@ -53,6 +53,11 @@ public class AccessService {
             foundUser = user;
           }
           break;
+        case "WhatsApp":
+          if (UserChatIdentityUtil.matches(user, "WHATSAPP_CONNECTION", request.getNetwork(), request.getFromSenderId(), request.getFromSender(), null)) {
+            foundUser = user;
+          }
+          break;
       }
       if (foundUser != null) {
         break;

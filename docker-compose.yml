@@ -56,6 +56,8 @@ services:
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
     user: "${PUID}:${PGID}"
+    depends_on:
+      - bot-whatsapp
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
@@ -76,7 +78,25 @@ services:
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       - DISCORD_SECRET=${DISCORD_SECRET:-}
       - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
+      - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET:-}
+      - WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
     container_name: bot-io
+
+  # Hokan the Bot WhatsApp sidecar using wacli
+  bot-whatsapp:
+    image: ghcr.io/petria/the_bot-whatsapp:${WHATSAPP_IMAGE_TAG:-latest}
+    user: "${PUID}:${PGID}"
+    volumes:
+      - ${HOKAN_DATA_DIR:-.}/${WHATSAPP_WACLI_DIR:-wacli-dev}:/wacli
+    environment:
+      - TZ=Europe/Helsinki
+      - WACLI_STORE_DIR=/wacli
+      - WACLI_WEBHOOK_URL=${WACLI_WEBHOOK_URL:-http://bot-io:8090/api/connections/whatsapp/webhook}
+      - WACLI_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET:-}
+      - WACLI_SYNC_MAX_DB_SIZE=${WACLI_SYNC_MAX_DB_SIZE:-2GB}
+      - BOT_WHATSAPP_PORT=8095
+      - BOT_WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
+    container_name: bot-whatsapp
 
   # Hokan the Bot web UI container
   bot-web:
