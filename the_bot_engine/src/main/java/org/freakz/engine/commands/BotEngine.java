@@ -167,16 +167,15 @@ public class BotEngine {
     String message = request.getMessage();
     CommandArgs args = new CommandArgs(message);
 
-    HandlerAlias handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(message);
-    if (handlerAlias != null) {
+    CommandHandlerLoader.AliasResolution aliasResolution = getCommandHandlerLoader().resolveAlias(message);
+    if (aliasResolution.isError()) {
+      return aliasResolution.errorMessage();
+    }
+    if (aliasResolution.isAliased()) {
+      HandlerAlias handlerAlias = aliasResolution.alias();
       log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
-      message = handlerAlias.getTarget();
+      message = aliasResolution.resolvedMessage();
       args = new CommandArgs(message);
-    } else {
-      handlerAlias = getCommandHandlerLoader().getHandlerAliasMap().get(args.getCommand());
-      if (handlerAlias != null) {
-        args.setCommand(handlerAlias.getTarget());
-      }
     }
 
     AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());

@@ -5,7 +5,6 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
-import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
@@ -26,10 +25,13 @@ public class AliasCmd extends AbstractCmd {
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
     StringBuilder sb = new StringBuilder("Alias list:\n");
-    for (String alias : getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().keySet()) {
-      HandlerAlias ha = getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().get(alias);
-      sb.append(String.format("%s = %s\n", ha.getAlias(), ha.getTarget()));
-    }
+    getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().values().stream()
+        .sorted((left, right) -> String.CASE_INSENSITIVE_ORDER.compare(left.getAlias(), right.getAlias()))
+        .forEach(ha -> sb.append(String.format(
+            "%s%s = %s\n",
+            ha.getAlias(),
+            ha.isWithArgs() ? " + args" : "",
+            ha.getTarget())));
     return sb.toString();
   }
 }

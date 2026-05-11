@@ -70,24 +70,35 @@ public class HelpCmd extends AbstractCmd {
         if (!flags.isEmpty()) {
           sb.append("[").append(flags).append("]");
         }
+        String aliases = formatAliasesForCommand(cmdName, false);
+        if (!aliases.isBlank()) {
+          sb.append("  aliases: ").append(aliases);
+        }
+        sb.append("\n");
 
       }
-      sb.append("\n");
       sb.append("Command is triggered using: !<name in lower case>, example: !help triggers command named Help.\nUse !help <commandName> to get detailed help for specific command.\n");
 
 
     } else {
       List<AbstractCmd> list = getBotEngine().getCommandHandlerLoader().getMatchingCommandInstances(command);
-      if (list == null) {
+      if (list == null || list.isEmpty()) {
         sb.append(String.format("Help: with '%s' did not match any command. ", command));
       } else {
         for (AbstractCmd cmd : list) {
 
           String usage = "!" + cmd.getCommandName().toLowerCase() + " " + cmd.getJsap().getUsage();
           String help = cmd.getJsap().getHelp();
+          String aliases = formatAliasesForCommand(cmd.getCommandName(), true);
           sb.append("\nUsage    : ");
           sb.append(usage);
           sb.append("\n");
+
+          if (!aliases.isBlank()) {
+            sb.append("Aliases  : ");
+            sb.append(aliases);
+            sb.append("\n");
+          }
 
           sb.append("Help     : ");
           sb.append(help);
@@ -98,5 +109,36 @@ public class HelpCmd extends AbstractCmd {
     }
 
     return sb.toString();
+  }
+
+  private String formatAliasesForCommand(String commandName, boolean includeTargets) {
+    List<HandlerAlias> aliases = getBotEngine().getCommandHandlerLoader().getAliasesForCommand(commandName);
+    if (aliases.isEmpty()) {
+      return "";
+    }
+    return aliases.stream()
+        .map(alias -> formatAlias(alias, includeTargets))
+        .reduce((left, right) -> left + ", " + right)
+        .orElse("");
+  }
+
+  private String formatAlias(HandlerAlias alias, boolean includeTargets) {
+    String aliasName = alias.getAlias() + (alias.isWithArgs() ? " + args" : "");
+    if (!includeTargets && alias.isWithArgs()) {
+      return aliasName;
+    }
+    String target = alias.getTarget() == null ? "" : alias.getTarget().trim();
+    if (!includeTargets && target.equalsIgnoreCase("!" + targetCommand(target))) {
+      return aliasName;
+    }
+    return aliasName + " -> " + target;
+  }
+
+  private String targetCommand(String target) {
+    if (target == null || target.isBlank()) {
+      return "";
+    }
+    String token = target.trim().split("\\s+", 2)[0];
+    return token.startsWith("!") ? token.substring(1) : token;
   }
 }

@@ -67,7 +67,10 @@ public class CommandHandlerLoader {
       setAdminCommandFlag(hokanCmd);
 
       for (HandlerAlias handlerAlias : hokanCmd.getAliases(botName)) {
-        this.handlerAliasMap.put(handlerAlias.getAlias(), handlerAlias);
+        String aliasKey = normalizeAliasKey(handlerAlias.getAlias());
+        if (aliasKey != null) {
+          this.handlerAliasMap.put(aliasKey, handlerAlias);
+        }
       }
 
       HandlerClass handlerClass =
@@ -125,5 +128,121 @@ public class CommandHandlerLoader {
       log.error("getMatchingCommandInstances: " + command, e);
     }
     return list;
+  }
+
+  public AliasResolution resolveAlias(String message) {
+    String normalizedMessage = normalizeMessage(message);
+    if (normalizedMessage == null) {
+      return AliasResolution.notAliased(message);
+    }
+
+    String commandToken = firstToken(normalizedMessage);
+    HandlerAlias handlerAlias = getAlias(commandToken);
+    if (handlerAlias == null) {
+      handlerAlias = getAlias(normalizedMessage);
+    }
+    if (handlerAlias == null) {
+      return AliasResolution.notAliased(normalizedMessage);
+    }
+
+    String target = normalizeMessage(handlerAlias.getTarget());
+    if (target == null) {
+      return AliasResolution.error(handlerAlias, "Alias " + handlerAlias.getAlias() + " has no target.");
+    }
+
+    String userArgs = trailingArgs(normalizedMessage);
+    if (!handlerAlias.isWithArgs() && userArgs != null) {
+      return AliasResolution.error(
+          handlerAlias,
+          "Alias " + handlerAlias.getAlias() + " does not accept arguments.");
+    }
+
+    String resolved = handlerAlias.isWithArgs() && userArgs != null
+        ? target + " " + userArgs
+        : target;
+    return AliasResolution.aliased(handlerAlias, resolved);
+  }
+
+  public List<HandlerAlias> getAliasesForCommand(String commandName) {
+    String normalizedCommand = normalizeCommandName(commandName);
+    if (normalizedCommand == null) {
+      return List.of();
+    }
+    return this.handlerAliasMap.values().stream()
+        .filter(alias -> normalizedCommand.equals(normalizeCommandName(firstToken(alias.getTarget()))))
+        .sorted(Comparator.comparing(HandlerAlias::getAlias, String.CASE_INSENSITIVE_ORDER))
+        .toList();
+  }
+
+  private HandlerAlias getAlias(String alias) {
+    String aliasKey = normalizeAliasKey(alias);
+    return aliasKey == null ? null : handlerAliasMap.get(aliasKey);
+  }
+
+  private String normalizeAliasKey(String alias) {
+    String normalized = normalizeMessage(alias);
+    return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+  }
+
+  private String normalizeCommandName(String command) {
+    String normalized = normalizeMessage(command);
+    if (normalized == null) {
+      return null;
+    }
+    if (normalized.startsWith("!")) {
+      normalized = normalized.substring(1);
+    }
+    return normalized.toLowerCase(Locale.ROOT);
+  }
+
+  private String normalizeMessage(String message) {
+    return message == null || message.isBlank() ? null : message.trim().replaceAll("\\s+", " ");
+  }
+
+  private String firstToken(String message) {
+    String normalized = normalizeMessage(message);
+    if (normalized == null) {
+      return null;
+    }
+    int idx = normalized.indexOf(' ');
+    return idx < 0 ? normalized : normalized.substring(0, idx);
+  }
+
+  private String trailingArgs(String message) {
+    String normalized = normalizeMessage(message);
+    if (normalized == null) {
+      return null;
+    }
+    int idx = normalized.indexOf(' ');
+    if (idx < 0 || idx == normalized.length() - 1) {
+      return null;
+    }
+    return normalized.substring(idx + 1);
+  }
+
+  public record AliasResolution(
+      HandlerAlias alias,
+      String resolvedMessage,
+      String errorMessage) {
+
+    public static AliasResolution notAliased(String message) {
+      return new AliasResolution(null, message, null);
+    }
+
+    public static AliasResolution aliased(HandlerAlias alias, String resolvedMessage) {
+      return new AliasResolution(alias, resolvedMessage, null);
+    }
+
+    public static AliasResolution error(HandlerAlias alias, String errorMessage) {
+      return new AliasResolution(alias, null, errorMessage);
+    }
+
+    public boolean isAliased() {
+      return alias != null && errorMessage == null;
+    }
+
+    public boolean isError() {
+      return errorMessage != null;
+    }
   }
 }
