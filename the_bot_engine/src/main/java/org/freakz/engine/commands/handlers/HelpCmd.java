@@ -52,32 +52,35 @@ public class HelpCmd extends AbstractCmd {
       String[] cmdNames = handlersMap.keySet().toArray(strings);
       Arrays.sort(cmdNames);
 
-      sb.append("== HELP: COMMAND NAMES ==");
-      sb.append("\n");
-
+      List<String> entries = new ArrayList<>();
       for (String cmdName : cmdNames) {
         HandlerClass handlerClass = handlersMap.get(cmdName);
         if (handlerClass.isAdmin() && !request.isFromAdmin()) {
           continue;
         }
-        sb.append("  ");
-        sb.append(cmdName);
+        StringBuilder entry = new StringBuilder(cmdName);
 
         String flags = "";
         if (handlerClass.isAdmin()) {
           flags += "A";
         }
         if (!flags.isEmpty()) {
-          sb.append("[").append(flags).append("]");
+          entry.append("[").append(flags).append("]");
         }
         String aliases = formatAliasesForCommand(cmdName, false);
         if (!aliases.isBlank()) {
-          sb.append("  aliases: ").append(aliases);
+          entry.append(" aliases: ").append(aliases);
         }
-        sb.append("\n");
-
+        entries.add(entry.toString());
       }
-      sb.append("Command is triggered using: !<name in lower case>, example: !help triggers command named Help.\nUse !help <commandName> to get detailed help for specific command.\n");
+      boolean irc = getBotEngine().getReplyOutputService().isIrc(request);
+      return getBotEngine().getReplyOutputService().formatList(
+          request,
+          irc ? "HELP:" : "== HELP: COMMAND NAMES ==",
+          entries,
+          irc
+              ? "Use !help <commandName> for details."
+              : "Command is triggered using: !<name in lower case>, example: !help triggers command named Help.\nUse !help <commandName> to get detailed help for specific command.");
 
 
     } else {

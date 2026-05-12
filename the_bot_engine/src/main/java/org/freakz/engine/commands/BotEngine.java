@@ -10,6 +10,7 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.spring.rest.RestMessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
+import org.freakz.engine.commands.output.ReplyOutputService;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
@@ -43,6 +44,7 @@ public class BotEngine {
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
   private final PrivateChatAlertService privateChatAlertService;
+  private final ReplyOutputService replyOutputService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -51,7 +53,8 @@ public class BotEngine {
       ConfigService configService,
       UrlMetadataService urlMetadataService,
       RestMessageSendClient restMessageSendClient,
-      PrivateChatAlertService privateChatAlertService)
+      PrivateChatAlertService privateChatAlertService,
+      ReplyOutputService replyOutputService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -60,6 +63,7 @@ public class BotEngine {
     this.urlMetadataService = urlMetadataService;
     this.restMessageSendClient = restMessageSendClient;
     this.privateChatAlertService = privateChatAlertService;
+    this.replyOutputService = replyOutputService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -75,6 +79,10 @@ public class BotEngine {
 
   public HokanServices getHokanServices() {
     return hokanServices;
+  }
+
+  public ReplyOutputService getReplyOutputService() {
+    return replyOutputService;
   }
 
   public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) throws Exception {
@@ -243,18 +251,19 @@ public class BotEngine {
 
   public String sendReplyMessage(EngineRequest request, String reply) {
 
-    if (request.getNetwork().equals("BOT_CLI_CLIENT") || request.getNetwork().equals("BOT_INTERNAL")) {
+    if ("BOT_CLI_CLIENT".equals(request.getNetwork()) || "BOT_INTERNAL".equals(request.getNetwork())) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
 // TODO       countInterceptor.computeCount("OUT: commandHandler");
       return reply;
     } else {
+      String formattedReply = replyOutputService.formatReply(request, reply);
       Message message =
           Message.builder()
               .sender(this.botName)
               .timestamp(System.currentTimeMillis())
               .time(LocalDateTime.now())
               .requestTimestamp(request.getTimestamp())
-              .message(reply)
+              .message(formattedReply)
               .messageSource(MessageSource.NONE)
               .target(request.getReplyTo())
               .id("" + request.getFromChannelId())
@@ -280,7 +289,7 @@ public class BotEngine {
       } catch (Exception ex) {
         log.error("Sending reply failed: {}", ex.getMessage());
       }
-      return reply;
+      return formattedReply;
     }
   }
 

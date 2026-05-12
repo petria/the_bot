@@ -11,6 +11,8 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 @HokanCommandHandler
 @HokanAdminCommand
 public class AliasCmd extends AbstractCmd {
@@ -24,14 +26,14 @@ public class AliasCmd extends AbstractCmd {
 
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
-    StringBuilder sb = new StringBuilder("Alias list:\n");
-    getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().values().stream()
+    List<String> entries = getBotEngine().getCommandHandlerLoader().getHandlerAliasMap().values().stream()
         .sorted((left, right) -> String.CASE_INSENSITIVE_ORDER.compare(left.getAlias(), right.getAlias()))
-        .forEach(ha -> sb.append(String.format(
+        .map(ha -> String.format(
             "%s%s = %s\n",
             ha.getAlias(),
             ha.isWithArgs() ? " + args" : "",
-            ha.getTarget())));
-    return sb.toString();
+            ha.getTarget()).trim())
+        .toList();
+    return getBotEngine().getReplyOutputService().formatList(request, "Alias list:", entries, null);
   }
 }
