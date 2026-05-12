@@ -7,10 +7,13 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.freakz.web.config.TheBotWebProperties;
+import org.freakz.web.system.ContainerStatus;
+import org.freakz.web.system.ContainerStatusProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.http.MediaType;
@@ -28,19 +31,31 @@ class SystemControllerTest {
 
     SystemController.SystemStatusResponse response = controller(restTemplate).getStatus();
 
-    assertThat(response.components()).hasSize(3);
+    assertThat(response.components()).hasSize(5);
     assertThat(response.components())
         .filteredOn(component -> component.name().equals("bot-io"))
         .singleElement()
         .satisfies(component -> {
           assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.componentType()).isEqualTo("SPRING_BOOT");
           assertThat(component.artifact()).isEqualTo("the_bot_io");
           assertThat(component.version()).isEqualTo("3.0-SNAPSHOT");
           assertThat(component.uptimeSeconds()).isEqualTo(123L);
           assertThat(component.startedAt()).isNotNull();
           assertThat(component.receivedCalls()).isEqualTo(42L);
           assertThat(component.requestedCalls()).isEqualTo(17L);
+          assertThat(component.containerState()).isEqualTo("running");
           assertThat(component.error()).isNull();
+        });
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-whatsapp"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.componentType()).isEqualTo("SIDECAR");
+          assertThat(component.containerName()).isEqualTo("bot-whatsapp");
+          assertThat(component.containerState()).isEqualTo("running");
+          assertThat(component.image()).isEqualTo("image-bot-whatsapp");
         });
     server.verify();
   }
@@ -59,17 +74,92 @@ class SystemControllerTest {
         .filteredOn(component -> component.name().equals("bot-io"))
         .singleElement()
         .satisfies(component -> {
-          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.status()).isEqualTo("DEGRADED");
           assertThat(component.error()).contains("connection refused");
         });
     server.verify();
   }
 
+  @Test
+  void mapsRestartingSidecarContainerToDegraded() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        containerName -> {
+          if ("bot-openclaw".equals(containerName)) {
+            return containerStatus(containerName, "restarting");
+          }
+          return containerStatus(containerName, "running");
+        }).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-openclaw"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DEGRADED");
+          assertThat(component.containerState()).isEqualTo("restarting");
+        });
+    server.verify();
+  }
+
+  @Test
+  void mapsMissingSidecarContainerToDown() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        containerName -> {
+          if ("bot-whatsapp".equals(containerName)) {
+            return ContainerStatus.missing(containerName);
+          }
+          return containerStatus(containerName, "running");
+        }).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-whatsapp"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.containerState()).isEqualTo("missing");
+          assertThat(component.containerError()).isEqualTo("Container not found");
+        });
+    server.verify();
+  }
+
   private SystemController controller(RestTemplate restTemplate) {
+    return controller(restTemplate, containerName -> containerStatus(containerName, "running"));
+  }
+
+  private SystemController controller(RestTemplate restTemplate, ContainerStatusProvider containerStatusProvider) {
     TheBotWebProperties properties = new TheBotWebProperties();
     properties.setBotIoBaseUrl("http://bot-io:8090");
     properties.setBotEngineBaseUrl("http://bot-engine:8100");
-    return new SystemController(restTemplate, properties, new StandardEnvironment(), Optional.empty(), new SimpleMeterRegistry());
+    properties.setDockerStatusEnabled(true);
+    return new SystemController(
+        restTemplate,
+        properties,
+        new StandardEnvironment(),
+        Optional.empty(),
+        new SimpleMeterRegistry(),
+        containerStatusProvider);
+  }
+
+  private ContainerStatus containerStatus(String containerName, String state) {
+    return new ContainerStatus(
+        containerName,
+        state,
+        state + " for test",
+        "image-" + containerName,
+        Instant.parse("2026-05-01T10:00:00Z"),
+        1L,
+        null);
   }
 
   private void expectUpActuator(

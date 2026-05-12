@@ -108,6 +108,7 @@ services:
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${HOKAN_DATA_DIR:-.}/config:/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "0.0.0.0:8091:8091"
     environment:
@@ -116,6 +117,8 @@ services:
       - THE_BOT_WEB_USERS_FILE=${THE_BOT_WEB_USERS_FILE:-/runtime/data/users.json}
       - THE_BOT_WEB_BOT_IO_BASE_URL=${THE_BOT_WEB_BOT_IO_BASE_URL:-http://bot-io:8090}
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
+      - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
+      - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
     container_name: bot-web
 
 networks:

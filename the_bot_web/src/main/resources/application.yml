@@ -15,6 +15,13 @@ the-bot-web:
   users-file: ${THE_BOT_WEB_USERS_FILE:runtime/data/users.json}
   bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
   bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}
+  docker-status-enabled: ${THE_BOT_WEB_DOCKER_STATUS_ENABLED:false}
+  docker-host: ${THE_BOT_WEB_DOCKER_HOST:unix:///var/run/docker.sock}
+  bot-web-container-name: ${THE_BOT_WEB_BOT_WEB_CONTAINER_NAME:bot-web}
+  bot-io-container-name: ${THE_BOT_WEB_BOT_IO_CONTAINER_NAME:bot-io}
+  bot-engine-container-name: ${THE_BOT_WEB_BOT_ENGINE_CONTAINER_NAME:bot-engine}
+  bot-openclaw-container-name: ${THE_BOT_WEB_BOT_OPENCLAW_CONTAINER_NAME:bot-openclaw}
+  bot-whatsapp-container-name: ${THE_BOT_WEB_BOT_WHATSAPP_CONTAINER_NAME:bot-whatsapp}
 
 the:
   bot:

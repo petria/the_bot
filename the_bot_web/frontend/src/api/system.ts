@@ -3,6 +3,7 @@ import { getJson } from './client';
 export type SystemComponentStatus = {
   name: string;
   status: string;
+  componentType: string | null;
   baseUrl: string | null;
   profiles: string | null;
   version: string | null;
@@ -13,6 +14,13 @@ export type SystemComponentStatus = {
   requestedCalls: number | null;
   responseTimeMs: number | null;
   checkedAt: string | null;
+  containerName: string | null;
+  containerState: string | null;
+  containerStatusText: string | null;
+  image: string | null;
+  containerStartedAt: string | null;
+  restartCount: number | null;
+  containerError: string | null;
   error: string | null;
 };
 

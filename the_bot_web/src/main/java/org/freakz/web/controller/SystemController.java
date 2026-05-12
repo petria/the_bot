@@ -9,6 +9,8 @@ import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.freakz.web.config.TheBotWebProperties;
+import org.freakz.web.system.ContainerStatus;
+import org.freakz.web.system.ContainerStatusProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
@@ -28,18 +30,21 @@ public class SystemController {
   private final Environment environment;
   private final Optional<BuildProperties> buildProperties;
   private final MeterRegistry meterRegistry;
+  private final ContainerStatusProvider containerStatusProvider;
 
   public SystemController(
       RestTemplate restTemplate,
       TheBotWebProperties properties,
       Environment environment,
       Optional<BuildProperties> buildProperties,
-      MeterRegistry meterRegistry) {
+      MeterRegistry meterRegistry,
+      ContainerStatusProvider containerStatusProvider) {
     this.restTemplate = restTemplate;
     this.properties = properties;
     this.environment = environment;
     this.buildProperties = buildProperties;
     this.meterRegistry = meterRegistry;
+    this.containerStatusProvider = containerStatusProvider;
   }
 
   @GetMapping("/status")
@@ -49,6 +54,8 @@ public class SystemController {
     components.add(localComponentStatus(checkedAt));
     components.add(remoteComponentStatus("bot-io", properties.getBotIoBaseUrl(), checkedAt));
     components.add(remoteComponentStatus("bot-engine", properties.getBotEngineBaseUrl(), checkedAt));
+    components.add(sidecarComponentStatus("bot-openclaw", properties.getBotOpenclawContainerName(), checkedAt));
+    components.add(sidecarComponentStatus("bot-whatsapp", properties.getBotWhatsappContainerName(), checkedAt));
     return new SystemStatusResponse(checkedAt, components);
   }
 
@@ -56,9 +63,11 @@ public class SystemController {
     long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
     Instant startedAt = Instant.ofEpochMilli(ManagementFactory.getRuntimeMXBean().getStartTime());
     BuildProperties build = buildProperties.orElse(null);
+    ContainerStatus containerStatus = containerStatusProvider.getStatus(properties.getBotWebContainerName());
     return new SystemComponentStatus(
         "bot-web",
-        "UP",
+        effectiveSpringBootStatus("UP", containerStatus),
+        "SPRING_BOOT",
         "local",
         activeProfiles(),
         build == null ? null : build.getVersion(),
@@ -69,6 +78,13 @@ public class SystemController {
         localCounter("thebot.http.client.requests"),
         0L,
         checkedAt,
+        containerStatus.containerName(),
+        containerStatus.state(),
+        containerStatus.statusText(),
+        containerStatus.image(),
+        containerStatus.startedAt(),
+        containerStatus.restartCount(),
+        containerStatus.error(),
         null);
   }
 
@@ -82,6 +98,12 @@ public class SystemController {
     Long receivedCalls = null;
     Long requestedCalls = null;
     String error = null;
+    String containerName = switch (name) {
+      case "bot-io" -> properties.getBotIoContainerName();
+      case "bot-engine" -> properties.getBotEngineContainerName();
+      default -> name;
+    };
+    ContainerStatus containerStatus = containerStatusProvider.getStatus(containerName);
 
     try {
       Map<?, ?> health = getActuatorMap(baseUrl, "/actuator/health");
@@ -104,11 +126,13 @@ public class SystemController {
       status = "DOWN";
       error = e.getMessage();
     }
+    status = effectiveSpringBootStatus(status, containerStatus);
 
     long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
     return new SystemComponentStatus(
         name,
         status,
+        "SPRING_BOOT",
         baseUrl,
         null,
         version,
@@ -119,7 +143,74 @@ public class SystemController {
         requestedCalls,
         responseTimeMs,
         checkedAt,
+        containerStatus.containerName(),
+        containerStatus.state(),
+        containerStatus.statusText(),
+        containerStatus.image(),
+        containerStatus.startedAt(),
+        containerStatus.restartCount(),
+        containerStatus.error(),
         error);
+  }
+
+  private SystemComponentStatus sidecarComponentStatus(String name, String containerName, Instant checkedAt) {
+    long startedNanos = System.nanoTime();
+    ContainerStatus containerStatus = containerStatusProvider.getStatus(containerName);
+    long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
+    return new SystemComponentStatus(
+        name,
+        effectiveSidecarStatus(containerStatus),
+        "SIDECAR",
+        null,
+        null,
+        null,
+        null,
+        containerStatus.startedAt() == null ? null : Math.max(0, Instant.now().getEpochSecond() - containerStatus.startedAt().getEpochSecond()),
+        containerStatus.startedAt(),
+        null,
+        null,
+        responseTimeMs,
+        checkedAt,
+        containerStatus.containerName(),
+        containerStatus.state(),
+        containerStatus.statusText(),
+        containerStatus.image(),
+        containerStatus.startedAt(),
+        containerStatus.restartCount(),
+        containerStatus.error(),
+        containerStatus.error());
+  }
+
+  private String effectiveSpringBootStatus(String appStatus, ContainerStatus containerStatus) {
+    if (isContainerDisabled(containerStatus)) {
+      return appStatus == null ? "UNKNOWN" : appStatus;
+    }
+    if (!isContainerRunning(containerStatus)) {
+      return "DOWN";
+    }
+    return "UP".equalsIgnoreCase(appStatus) ? "UP" : "DEGRADED";
+  }
+
+  private String effectiveSidecarStatus(ContainerStatus containerStatus) {
+    if (isContainerDisabled(containerStatus)) {
+      return "UNKNOWN";
+    }
+    String state = containerStatus.state();
+    if ("running".equalsIgnoreCase(state)) {
+      return "UP";
+    }
+    if ("restarting".equalsIgnoreCase(state)) {
+      return "DEGRADED";
+    }
+    return "DOWN";
+  }
+
+  private boolean isContainerDisabled(ContainerStatus containerStatus) {
+    return containerStatus == null || "disabled".equalsIgnoreCase(containerStatus.state());
+  }
+
+  private boolean isContainerRunning(ContainerStatus containerStatus) {
+    return containerStatus != null && "running".equalsIgnoreCase(containerStatus.state());
   }
 
   private Map<?, ?> getActuatorMap(String baseUrl, String path) {
@@ -215,6 +306,7 @@ public class SystemController {
   public record SystemComponentStatus(
       String name,
       String status,
+      String componentType,
       String baseUrl,
       String profiles,
       String version,
@@ -225,6 +317,13 @@ public class SystemController {
       Long requestedCalls,
       Long responseTimeMs,
       Instant checkedAt,
+      String containerName,
+      String containerState,
+      String containerStatusText,
+      String image,
+      Instant containerStartedAt,
+      Long restartCount,
+      String containerError,
       String error) {
   }
 }

@@ -18,7 +18,7 @@ export function SystemPage() {
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
           <Title order={2}>System</Title>
-          <Text c="dimmed">Live Spring Boot application status.</Text>
+          <Text c="dimmed">Live bot component status.</Text>
         </div>
         <Button
           variant="light"
@@ -52,6 +52,8 @@ export function SystemPage() {
 
 function SystemComponentCard({ component }: { component: SystemComponentStatus }) {
   const up = component.status === 'UP';
+  const degraded = component.status === 'DEGRADED';
+  const sidecar = component.componentType === 'SIDECAR';
   return (
     <Card withBorder radius="sm" className="system-card">
       <Stack gap="sm">
@@ -60,11 +62,11 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
             <Server size={22} />
             <div>
               <Text fw={700}>{component.name}</Text>
-              <Text size="xs" c="dimmed">{component.artifact || '-'}</Text>
+              <Text size="xs" c="dimmed">{component.artifact || component.componentType || '-'}</Text>
             </div>
           </Group>
           <Badge
-            color={up ? 'green' : 'red'}
+            color={up ? 'green' : degraded ? 'yellow' : 'red'}
             variant={up ? 'filled' : 'light'}
             leftSection={up ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
           >
@@ -73,18 +75,29 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
         </Group>
 
         <Stack gap={6}>
-          <InfoLine label="Base URL" value={component.baseUrl || '-'} />
-          <InfoLine label="Version" value={component.version || '-'} />
-          <InfoLine label="Profile" value={component.profiles || '-'} />
+          <InfoLine label="Type" value={formatComponentType(component.componentType)} />
+          {!sidecar ? <InfoLine label="Base URL" value={component.baseUrl || '-'} /> : null}
+          {!sidecar ? <InfoLine label="Version" value={component.version || '-'} /> : null}
+          {!sidecar ? <InfoLine label="Profile" value={component.profiles || '-'} /> : null}
           <InfoLine label="Uptime" value={formatDuration(component.uptimeSeconds)} />
           <InfoLine label="Started" value={formatDateTime(component.startedAt)} />
-          <InfoLine label="Received" value={formatCount(component.receivedCalls)} />
-          <InfoLine label="Requested" value={formatCount(component.requestedCalls)} />
+          {!sidecar ? <InfoLine label="Received" value={formatCount(component.receivedCalls)} /> : null}
+          {!sidecar ? <InfoLine label="Requested" value={formatCount(component.requestedCalls)} /> : null}
+          <InfoLine label="Container" value={component.containerName || '-'} />
+          <InfoLine label="Docker" value={formatDockerStatus(component)} />
+          <InfoLine label="Image" value={component.image || '-'} />
+          <InfoLine label="Restarts" value={formatCount(component.restartCount)} />
           <InfoLine label="Response" value={formatResponseTime(component.responseTimeMs)} />
           <InfoLine label="Checked" value={formatDateTime(component.checkedAt)} />
         </Stack>
 
-        {component.error ? (
+        {component.containerError ? (
+          <Alert color="yellow" icon={<AlertCircle size={18} />}>
+            <Text size="sm">{component.containerError}</Text>
+          </Alert>
+        ) : null}
+
+        {component.error && component.error !== component.containerError ? (
           <Alert color="red" icon={<AlertCircle size={18} />}>
             <Text size="sm">{component.error}</Text>
           </Alert>
@@ -135,6 +148,25 @@ function formatResponseTime(responseTimeMs: number | null) {
 
 function formatCount(count: number | null) {
   return count == null ? '-' : count.toLocaleString('fi-FI');
+}
+
+function formatComponentType(type: string | null) {
+  if (type === 'SPRING_BOOT') {
+    return 'Spring Boot';
+  }
+  if (type === 'SIDECAR') {
+    return 'Sidecar';
+  }
+  return type || '-';
+}
+
+function formatDockerStatus(component: SystemComponentStatus) {
+  if (!component.containerState) {
+    return '-';
+  }
+  return component.containerStatusText
+    ? `${component.containerState} (${component.containerStatusText})`
+    : component.containerState;
 }
 
 function formatDateTime(value: string | null | undefined) {
