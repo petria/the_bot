@@ -185,6 +185,9 @@ public class SystemController {
     if (isContainerDisabled(containerStatus)) {
       return appStatus == null ? "UNKNOWN" : appStatus;
     }
+    if (isContainerStatusUnavailable(containerStatus)) {
+      return appStatus == null ? "UNKNOWN" : appStatus;
+    }
     if (!isContainerRunning(containerStatus)) {
       return "DOWN";
     }
@@ -193,6 +196,9 @@ public class SystemController {
 
   private String effectiveSidecarStatus(ContainerStatus containerStatus) {
     if (isContainerDisabled(containerStatus)) {
+      return "UNKNOWN";
+    }
+    if (isContainerStatusUnavailable(containerStatus)) {
       return "UNKNOWN";
     }
     String state = containerStatus.state();
@@ -207,6 +213,13 @@ public class SystemController {
 
   private boolean isContainerDisabled(ContainerStatus containerStatus) {
     return containerStatus == null || "disabled".equalsIgnoreCase(containerStatus.state());
+  }
+
+  private boolean isContainerStatusUnavailable(ContainerStatus containerStatus) {
+    return containerStatus != null
+        && "unknown".equalsIgnoreCase(containerStatus.state())
+        && containerStatus.error() != null
+        && !containerStatus.error().isBlank();
   }
 
   private boolean isContainerRunning(ContainerStatus containerStatus) {

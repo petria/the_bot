@@ -133,6 +133,35 @@ class SystemControllerTest {
     server.verify();
   }
 
+  @Test
+  void keepsSpringBootActuatorStatusWhenDockerStatusIsUnavailable() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        containerName -> ContainerStatus.error(containerName, "Permission denied")).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-io"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.containerState()).isEqualTo("unknown");
+          assertThat(component.containerError()).isEqualTo("Permission denied");
+        });
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-whatsapp"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UNKNOWN");
+          assertThat(component.containerError()).isEqualTo("Permission denied");
+        });
+    server.verify();
+  }
+
   private SystemController controller(RestTemplate restTemplate) {
     return controller(restTemplate, containerName -> containerStatus(containerName, "running"));
   }

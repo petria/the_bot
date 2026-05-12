@@ -294,6 +294,7 @@ jobs:
             BOT_CONFIG_FILE="/runtime/$RUNTIME_PROPERTIES_FILE"
             PUID="${CI_PUID:-${PUID:-1002}}"
             PGID="${CI_PGID:-${PGID:-1002}}"
+            DOCKER_GID="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "${DOCKER_GID:-989}")"
 
             if [ "$ENGINE_CHANGED" = "true" ]; then
               ENGINE_IMAGE_TAG="$DEPLOY_SHA"
@@ -352,6 +353,7 @@ jobs:
               echo "HOKAN_DATA_DIR=$HOKAN_DATA_DIR"
               echo "PUID=$PUID"
               echo "PGID=$PGID"
+              echo "DOCKER_GID=$DOCKER_GID"
               echo "ENGINE_IMAGE_TAG=$ENGINE_IMAGE_TAG"
               echo "IO_IMAGE_TAG=$IO_IMAGE_TAG"
               echo "WEB_IMAGE_TAG=$WEB_IMAGE_TAG"

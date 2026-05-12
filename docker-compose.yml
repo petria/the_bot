@@ -102,6 +102,8 @@ services:
   bot-web:
     image: ghcr.io/petria/the_bot-web:${WEB_IMAGE_TAG:-latest}
     user: "${PUID}:${PGID}"
+    group_add:
+      - "${DOCKER_GID:-989}"
     depends_on:
       - bot-engine
       - bot-io
