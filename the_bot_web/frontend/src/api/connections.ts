@@ -6,6 +6,7 @@ export type BotConnectionChannel = {
   network: string | null;
   name: string | null;
   echoToAlias: string | null;
+  observedOnly?: boolean;
 };
 
 export type BotConnection = {
@@ -71,6 +72,7 @@ function mergeActivityChannels(connections: BotConnection[], activities: Channel
           network: activity.network,
           name: activity.name,
           echoToAlias: activity.echoToAlias,
+          observedOnly: true,
         });
       }
     }

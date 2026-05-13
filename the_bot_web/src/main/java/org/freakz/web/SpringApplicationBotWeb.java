@@ -1,5 +1,6 @@
 package org.freakz.web;
 
+import org.freakz.common.config.TheBotProperties;
 import org.freakz.web.config.TheBotWebProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 import java.util.TimeZone;
 
 @SpringBootApplication
-@EnableConfigurationProperties(TheBotWebProperties.class)
+@EnableConfigurationProperties({TheBotWebProperties.class, TheBotProperties.class})
 @ComponentScan(basePackages = {"org.freakz.web", "org.freakz.common.spring"})
 public class SpringApplicationBotWeb {
 

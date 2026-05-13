@@ -1,12 +1,13 @@
 import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, ShieldUser, User, Users } from 'lucide-react';
+import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { AdminUsersPage } from './pages/AdminUsersPage';
+import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
@@ -24,6 +25,7 @@ const navItems = [
 
 const adminNavItems = [
   { label: 'Admin Users', path: '/admin/users', icon: ShieldUser },
+  { label: 'Config', path: '/admin/config', icon: SlidersHorizontal },
 ];
 
 export function App() {
@@ -111,6 +113,7 @@ export function App() {
             <Route path="/connections" element={<ConnectionsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/config" element={<AdminConnectionConfigPage />} />
           </Routes>
         </Box>
       </AppShell.Main>

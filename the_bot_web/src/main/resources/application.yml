@@ -25,6 +25,10 @@ the-bot-web:
 
 the:
   bot:
+    configFile: ${BOT_CONFIG_FILE:}
+    runtimeDir: ./runtime/
+    dataDir: ./runtime/data/
+    logDir: ./runtime/logs/
     rest:
       bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
       bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}

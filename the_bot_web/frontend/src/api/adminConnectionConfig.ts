@@ -1,0 +1,69 @@
+import { getJson, putJson } from './client';
+
+export type AdminConfigChannel = {
+  id: string | null;
+  description: string | null;
+  name: string | null;
+  type: string | null;
+  echoToAlias: string | null;
+  echoToAliases: string[] | null;
+  joinOnStart: boolean;
+};
+
+export type AdminIrcServerConfig = {
+  name: string | null;
+  connectStartup: boolean;
+  networkName: string | null;
+  host: string | null;
+  port: number;
+  channelList: AdminConfigChannel[] | null;
+};
+
+export type AdminDiscordConfig = {
+  connectStartup: boolean;
+  theBotUserId: number | null;
+  channelList: AdminConfigChannel[] | null;
+};
+
+export type AdminTelegramConfig = {
+  telegramName: string | null;
+  connectStartup: boolean;
+  channelList: AdminConfigChannel[] | null;
+};
+
+export type AdminWhatsAppConfig = {
+  network: string | null;
+  sendBaseUrl: string | null;
+  connectStartup: boolean;
+  channelList: AdminConfigChannel[] | null;
+};
+
+export type AdminConnectionConfigPayload = {
+  ircServerConfigs: AdminIrcServerConfig[] | null;
+  discordConfig: AdminDiscordConfig | null;
+  telegramConfig: AdminTelegramConfig | null;
+  whatsappConfig: AdminWhatsAppConfig | null;
+};
+
+export type AdminConnectionConfigResponse = {
+  profile: string | null;
+  configFile: string;
+  lastModifiedAt: string;
+  config: AdminConnectionConfigPayload;
+};
+
+export type PromoteChannelState = {
+  channel: AdminConfigChannel;
+  connectionType: string | null;
+  network: string | null;
+};
+
+export function getAdminConnectionConfig(): Promise<AdminConnectionConfigResponse> {
+  return getJson<AdminConnectionConfigResponse>('/api/web/admin/config/connections');
+}
+
+export function saveAdminConnectionConfig(
+  config: AdminConnectionConfigPayload,
+): Promise<AdminConnectionConfigResponse> {
+  return putJson<AdminConnectionConfigResponse>('/api/web/admin/config/connections', config);
+}

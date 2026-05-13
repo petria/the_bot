@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Badge,
+  Button,
   Card,
   Group,
   Loader,
@@ -13,6 +14,8 @@ import {
 } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCcw, RadioTower } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getMe } from '../api/me';
 import { ApiError } from '../api/client';
 import {
   BotConnection,
@@ -22,10 +25,15 @@ import {
 } from '../api/connections';
 
 export function ConnectionsPage() {
+  const navigate = useNavigate();
   const connectionsQuery = useQuery({
     queryKey: ['connections-overview'],
     queryFn: getConnectionsOverview,
     refetchInterval: 15000,
+  });
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
   });
 
   const connections = connectionsQuery.data?.connections ?? [];
@@ -85,6 +93,24 @@ export function ConnectionsPage() {
               key={connection.id}
               connection={connection}
               activityByAlias={activityByAlias}
+              canPromote={Boolean(meQuery.data?.admin)}
+              onPromote={(channel) => navigate('/admin/config', {
+                state: {
+                  promote: {
+                    connectionType: connection.type,
+                    network: connection.network,
+                    channel: {
+                      id: channel.id,
+                      description: null,
+                      name: channel.name,
+                      type: channel.type,
+                      echoToAlias: channel.echoToAlias,
+                      echoToAliases: [],
+                      joinOnStart: false,
+                    },
+                  },
+                },
+              })}
             />
           ))}
         </Stack>
@@ -96,9 +122,13 @@ export function ConnectionsPage() {
 function ConnectionCard({
   connection,
   activityByAlias,
+  canPromote,
+  onPromote,
 }: {
   connection: BotConnection;
   activityByAlias: Map<string, ChannelActivity>;
+  canPromote: boolean;
+  onPromote: (channel: BotConnectionChannel) => void;
 }) {
   const channels = [...(connection.channels ?? [])].sort(compareChannels);
 
@@ -122,8 +152,18 @@ function ConnectionCard({
           <Text c="dimmed">No channels are known for this connection.</Text>
         ) : (
           <>
-            <ChannelsTable channels={channels} activityByAlias={activityByAlias} />
-            <ChannelsCards channels={channels} activityByAlias={activityByAlias} />
+            <ChannelsTable
+              channels={channels}
+              activityByAlias={activityByAlias}
+              canPromote={canPromote}
+              onPromote={onPromote}
+            />
+            <ChannelsCards
+              channels={channels}
+              activityByAlias={activityByAlias}
+              canPromote={canPromote}
+              onPromote={onPromote}
+            />
           </>
         )}
       </Stack>
@@ -134,9 +174,13 @@ function ConnectionCard({
 function ChannelsTable({
   channels,
   activityByAlias,
+  canPromote,
+  onPromote,
 }: {
   channels: BotConnectionChannel[];
   activityByAlias: Map<string, ChannelActivity>;
+  canPromote: boolean;
+  onPromote: (channel: BotConnectionChannel) => void;
 }) {
   return (
     <Table.ScrollContainer minWidth={760} className="connections-table">
@@ -147,6 +191,7 @@ function ChannelsTable({
             <Table.Th>Alias</Table.Th>
             <Table.Th>Type</Table.Th>
             <Table.Th>Last activity</Table.Th>
+            <Table.Th>Config</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -158,6 +203,7 @@ function ChannelsTable({
                 <Table.Td><AliasBadge value={channel.echoToAlias} /></Table.Td>
                 <Table.Td>{channel.type || '-'}</Table.Td>
                 <Table.Td><ActivityCell activity={activity} /></Table.Td>
+                <Table.Td><ConfigCell channel={channel} canPromote={canPromote} onPromote={onPromote} /></Table.Td>
               </Table.Tr>
             );
           })}
@@ -170,9 +216,13 @@ function ChannelsTable({
 function ChannelsCards({
   channels,
   activityByAlias,
+  canPromote,
+  onPromote,
 }: {
   channels: BotConnectionChannel[];
   activityByAlias: Map<string, ChannelActivity>;
+  canPromote: boolean;
+  onPromote: (channel: BotConnectionChannel) => void;
 }) {
   return (
     <Stack gap="sm" className="connections-cards">
@@ -187,6 +237,7 @@ function ChannelsCards({
               </Group>
               <InfoLine label="Type" value={channel.type || '-'} />
               <InfoLine label="Last activity" value={formatLastActivity(activity)} />
+              <ConfigCell channel={channel} canPromote={canPromote} onPromote={onPromote} />
               {activity?.lastReceivedMessageBy && (
                 <InfoLine label="By" value={activity.lastReceivedMessageBy} />
               )}
@@ -195,6 +246,31 @@ function ChannelsCards({
         );
       })}
     </Stack>
+  );
+}
+
+function ConfigCell({
+  channel,
+  canPromote,
+  onPromote,
+}: {
+  channel: BotConnectionChannel;
+  canPromote: boolean;
+  onPromote: (channel: BotConnectionChannel) => void;
+}) {
+  if (!channel.observedOnly) {
+    return <Badge variant="light">Configured</Badge>;
+  }
+
+  return (
+    <Group gap="xs" wrap="nowrap">
+      <Badge color="yellow" variant="light">Observed only</Badge>
+      {canPromote && (
+        <Button size="compact-xs" variant="subtle" onClick={() => onPromote(channel)}>
+          Add to config
+        </Button>
+      )}
+    </Group>
   );
 }
 
