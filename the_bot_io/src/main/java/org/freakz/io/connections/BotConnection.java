@@ -70,6 +70,10 @@ public class BotConnection {
     log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
   }
 
+  public void stop() {
+    log.debug("stop() not implemented: {}", this.getClass());
+  }
+
   public String getNetwork() {
     return "ConnectionNetwork";
   }

@@ -4,6 +4,9 @@ import org.freakz.common.config.BotRuntimeBootstrapConfig;
 import org.freakz.common.config.BotRuntimeBootstrapLoader;
 import org.freakz.common.config.ConfigConstants;
 import org.freakz.common.config.TheBotProperties;
+import org.freakz.common.spring.rest.RestEngineClient;
+import org.freakz.common.spring.rest.RestServerConfigClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -33,11 +36,20 @@ public class AdminConnectionConfigService {
   private final Environment environment;
   private final TheBotProperties botProperties;
   private final JsonMapper jsonMapper;
+  private final RestServerConfigClient serverConfigClient;
+  private final RestEngineClient engineClient;
 
-  public AdminConnectionConfigService(Environment environment, TheBotProperties botProperties, JsonMapper jsonMapper) {
+  public AdminConnectionConfigService(
+      Environment environment,
+      TheBotProperties botProperties,
+      JsonMapper jsonMapper,
+      RestServerConfigClient serverConfigClient,
+      RestEngineClient engineClient) {
     this.environment = environment;
     this.botProperties = botProperties;
     this.jsonMapper = jsonMapper;
+    this.serverConfigClient = serverConfigClient;
+    this.engineClient = engineClient;
   }
 
   public AdminConnectionConfigResponse readConfig() {
@@ -66,6 +78,33 @@ public class AdminConnectionConfigService {
     } catch (IOException | RuntimeException e) {
       throw new IllegalStateException("Could not save connection config", e);
     }
+  }
+
+  public synchronized AdminConnectionConfigApplyResponse saveAndApplyConfig(AdminConnectionConfigPayload payload) {
+    AdminConnectionConfigResponse saved = saveConfig(payload);
+    ApplyTargetResult botIoResult = applyBotIo();
+    ApplyTargetResult botEngineResult = reloadBotEngine();
+    String status = botIoResult.ok() && botEngineResult.ok() ? "OK" : "PARTIAL";
+    return new AdminConnectionConfigApplyResponse(
+        status,
+        saved,
+        List.of(botIoResult, botEngineResult));
+  }
+
+  private ApplyTargetResult applyBotIo() {
+    ResponseEntity<String> response = serverConfigClient.applyConfig();
+    return new ApplyTargetResult(
+        "bot-io",
+        response.getStatusCode().is2xxSuccessful() ? "OK" : "NOK",
+        response.getBody());
+  }
+
+  private ApplyTargetResult reloadBotEngine() {
+    ResponseEntity<String> response = engineClient.reloadConfig();
+    return new ApplyTargetResult(
+        "bot-engine",
+        response.getStatusCode().is2xxSuccessful() ? "OK" : "NOK",
+        response.getBody());
   }
 
   private ConfigFile resolveConfigFile() throws IOException {
@@ -438,6 +477,22 @@ public class AdminConnectionConfigService {
       String configFile,
       Instant lastModifiedAt,
       AdminConnectionConfigPayload config) {
+  }
+
+  public record AdminConnectionConfigApplyResponse(
+      String status,
+      AdminConnectionConfigResponse savedConfig,
+      List<ApplyTargetResult> targets) {
+  }
+
+  public record ApplyTargetResult(
+      String target,
+      String status,
+      String message) {
+
+    boolean ok() {
+      return "OK".equals(status);
+    }
   }
 
   public record AdminConnectionConfigPayload(

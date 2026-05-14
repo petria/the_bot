@@ -14,6 +14,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.BotSession;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ public class TelegramConnection extends BotConnection {
   private final EventPublisher publisher;
   private ConnectionManager connectionManager;
   private HokanTelegram bot;
+  private BotSession botSession;
 
   public TelegramConnection(EventPublisher eventPublisher) {
     super();
@@ -68,8 +70,15 @@ public class TelegramConnection extends BotConnection {
     this.connectionManager = connectionManager;
     this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
     TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-    botsApi.registerBot(bot);
+    botSession = botsApi.registerBot(bot);
 
+  }
+
+  @Override
+  public void stop() {
+    if (botSession != null && botSession.isRunning()) {
+      botSession.stop();
+    }
   }
 
   @Override

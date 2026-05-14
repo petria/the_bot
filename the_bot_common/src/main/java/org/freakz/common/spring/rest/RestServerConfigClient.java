@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,6 +30,16 @@ public class RestServerConfigClient {
     } catch (Exception e) {
       log.error("Error sending message by target alias: {}", e.getMessage());
       return e.getMessage();
+    }
+  }
+
+  public ResponseEntity<String> applyConfig() {
+    String url = baseUrl + "/apply";
+    try {
+      return restTemplate.postForEntity(url, null, String.class);
+    } catch (Exception e) {
+      log.error("Error applying bot-io config: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(e.getMessage());
     }
   }
 

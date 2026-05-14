@@ -40,6 +40,7 @@ public class IrcServerConnection extends BotConnection {
   private ConnectionManager connectionManager;
   private IrcServerConfig config;
   private String botNick;
+  private volatile boolean intentionalStop;
 
   public IrcServerConnection(EventPublisher publisher) {
     super(BotConnectionType.IRC_CONNECTION);
@@ -231,8 +232,16 @@ public class IrcServerConnection extends BotConnection {
       );
     }
     event.setAttemptReconnect(false);
-    this.connectionManager.ircConnectionEnded(this);
+    this.connectionManager.ircConnectionEnded(this, intentionalStop);
     this.client.shutdown();
+  }
+
+  @Override
+  public void stop() {
+    intentionalStop = true;
+    if (client != null) {
+      client.shutdown();
+    }
   }
 
   public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {

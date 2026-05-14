@@ -99,4 +99,15 @@ public class EngineController {
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/internal/config/reload")
+  public ResponseEntity<String> reloadConfig() {
+    try {
+      configService.reloadConfig();
+      return ResponseEntity.ok("OK");
+    } catch (Exception e) {
+      log.error("Config reload failed: {}", e.getMessage(), e);
+      return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+  }
+
 }

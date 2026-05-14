@@ -38,6 +38,12 @@ public class WhatsAppConnection extends BotConnection {
     registerConfiguredChannels();
   }
 
+  public void applyConfig(WhatsAppConfig config) {
+    this.config = config;
+    clearChannels();
+    registerConfiguredChannels();
+  }
+
   @Override
   public String getNetwork() {
     if (config != null && config.getNetwork() != null && !config.getNetwork().isBlank()) {

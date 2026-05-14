@@ -29,6 +29,7 @@ import {
   AdminWhatsAppConfig,
   getAdminConnectionConfig,
   PromoteChannelState,
+  saveAndApplyAdminConnectionConfig,
   saveAdminConnectionConfig,
 } from '../api/adminConnectionConfig';
 import { ApiError } from '../api/client';
@@ -83,6 +84,14 @@ export function AdminConnectionConfigPage() {
     },
   });
 
+  const applyMutation = useMutation({
+    mutationFn: saveAndApplyAdminConnectionConfig,
+    onSuccess: (response) => {
+      setConfig(normalizePayload(response.savedConfig.config));
+      queryClient.setQueryData(['admin-connection-config'], response.savedConfig);
+    },
+  });
+
   useEffect(() => {
     if (configQuery.data?.config && !config) {
       setConfig(normalizePayload(configQuery.data.config));
@@ -106,6 +115,12 @@ export function AdminConnectionConfigPage() {
     }
   };
 
+  const handleSaveAndApply = () => {
+    if (config) {
+      applyMutation.mutate(config);
+    }
+  };
+
   if (configQuery.isLoading || !config) {
     return <Loader />;
   }
@@ -123,13 +138,23 @@ export function AdminConnectionConfigPage() {
             Profile {configQuery.data?.profile || '-'} from {configQuery.data?.configFile}
           </Text>
         </div>
-        <Button
-          leftSection={<Save size={16} />}
-          onClick={handleSave}
-          loading={saveMutation.isPending}
-        >
-          Save
-        </Button>
+        <Group gap="sm">
+          <Button
+            variant="light"
+            leftSection={<Save size={16} />}
+            onClick={handleSave}
+            loading={saveMutation.isPending}
+          >
+            Save
+          </Button>
+          <Button
+            leftSection={<Save size={16} />}
+            onClick={handleSaveAndApply}
+            loading={applyMutation.isPending}
+          >
+            Save and apply
+          </Button>
+        </Group>
       </Group>
 
       <Alert icon={<AlertTriangle size={18} />} color="yellow" variant="light">
@@ -141,6 +166,19 @@ export function AdminConnectionConfigPage() {
         <Alert color="green" variant="light">Connection config saved.</Alert>
       )}
       {saveMutation.isError && <ConfigError error={saveMutation.error} />}
+      {applyMutation.isSuccess && (
+        <Alert color={applyMutation.data.status === 'OK' ? 'green' : 'yellow'} variant="light">
+          <Stack gap="xs">
+            <Text fw={700}>Save and apply finished: {applyMutation.data.status}</Text>
+            {applyMutation.data.targets.map((target) => (
+              <Text key={target.target} size="sm">
+                {target.target}: {target.status}{target.message ? ` - ${target.message}` : ''}
+              </Text>
+            ))}
+          </Stack>
+        </Alert>
+      )}
+      {applyMutation.isError && <ConfigError error={applyMutation.error} />}
 
       <Tabs value={activeTab} onChange={setActiveTab} keepMounted={false}>
         <Tabs.List>

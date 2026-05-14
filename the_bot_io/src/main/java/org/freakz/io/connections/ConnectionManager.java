@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class ConnectionManager implements CommandLineRunner {
@@ -466,10 +467,12 @@ public class ConnectionManager implements CommandLineRunner {
 
   @PostConstruct
   public void init() throws IOException, TelegramApiException {
+    initializeConnections(configService.readBotConfig());
+  }
 
-    TheBotConfig theBotConfig = configService.readBotConfig();
+  private void initializeConnections(TheBotConfig theBotConfig) throws TelegramApiException {
     log.debug(">> Connecting IRC");
-    for (IrcServerConfig config : theBotConfig.getIrcServerConfigs()) {
+    for (IrcServerConfig config : theBotConfig.getIrcServerConfigs() == null ? List.<IrcServerConfig>of() : theBotConfig.getIrcServerConfigs()) {
       log.debug("init IrcServerConfig: {}", config);
       if (config.isConnectStartup()) {
         IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
@@ -481,7 +484,7 @@ public class ConnectionManager implements CommandLineRunner {
     log.debug("<< done!");
 
     log.debug(">> Connecting DISCORD");
-    if (theBotConfig.getDiscordConfig().isConnectStartup()) {
+    if (theBotConfig.getDiscordConfig() != null && theBotConfig.getDiscordConfig().isConnectStartup()) {
       DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
       dsc.init(this, theBotConfig.getDiscordConfig());
       addConnection(dsc);
@@ -491,7 +494,7 @@ public class ConnectionManager implements CommandLineRunner {
     log.debug(">> done!");
 
     log.debug(">> Connecting TELEGRAM");
-    if (theBotConfig.getTelegramConfig().isConnectStartup()) {
+    if (theBotConfig.getTelegramConfig() != null && theBotConfig.getTelegramConfig().isConnectStartup()) {
       TelegramConnection tc = new TelegramConnection(this.eventPublisher);
       tc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
       addConnection(tc);
@@ -518,6 +521,38 @@ public class ConnectionManager implements CommandLineRunner {
         .findFirst()
         .orElseThrow(() -> new IllegalStateException("WhatsApp connection is not initialized"));
     ((WhatsAppConnection) connection).handleWebhook(event);
+  }
+
+  public synchronized ApplyConfigResponse applyRuntimeConfig() {
+    AtomicInteger stopped = new AtomicInteger();
+    try {
+      List<BotConnection> existingConnections = new ArrayList<>(connectionMap.values());
+      for (BotConnection connection : existingConnections) {
+        try {
+          connection.stop();
+          removeJoinedChannelsForConnection(connection);
+          connectionMap.remove(connection.getId());
+          stopped.incrementAndGet();
+        } catch (RuntimeException e) {
+          log.warn("Stopping connection {} failed during config apply", connection.getId(), e);
+        }
+      }
+
+      configService.reloadConfig();
+      initializeConnections(configService.readBotConfig());
+      return new ApplyConfigResponse(
+          "OK",
+          "Applied runtime config by rebuilding bot-io connections",
+          stopped.get(),
+          connectionMap.size());
+    } catch (Exception e) {
+      log.error("Applying runtime config failed", e);
+      return new ApplyConfigResponse(
+          "NOK",
+          e.getMessage(),
+          stopped.get(),
+          connectionMap.size());
+    }
   }
 
 
@@ -547,11 +582,17 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   public void ircConnectionEnded(IrcServerConnection connection) {
+    ircConnectionEnded(connection, false);
+  }
+
+  public void ircConnectionEnded(IrcServerConnection connection, boolean intentionalStop) {
     log.debug("IRC connection ended: {}", connection.getId());
     IrcServerConnection remove = (IrcServerConnection) this.connectionMap.remove(connection.getId());
     removeJoinedChannelsForConnection(connection);
     log.debug("End IrcConnectionEnded: {}", remove);
-    reconnectIrcServer(connection.getConfig());
+    if (!intentionalStop) {
+      reconnectIrcServer(connection.getConfig());
+    }
   }
 
 
@@ -1067,6 +1108,14 @@ public class ConnectionManager implements CommandLineRunner {
   class Dual {
     public BotConnection connection;
     public BotConnectionChannel channel;
+  }
+
+  public record ApplyConfigResponse(
+      String status,
+      String message,
+      int stoppedConnections,
+      int activeConnections
+  ) {
   }
 
 }

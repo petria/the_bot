@@ -1,4 +1,4 @@
-import { getJson, putJson } from './client';
+import { getJson, postJson, putJson } from './client';
 
 export type AdminConfigChannel = {
   id: string | null;
@@ -52,6 +52,18 @@ export type AdminConnectionConfigResponse = {
   config: AdminConnectionConfigPayload;
 };
 
+export type AdminConnectionConfigApplyTarget = {
+  target: string;
+  status: string;
+  message: string | null;
+};
+
+export type AdminConnectionConfigApplyResponse = {
+  status: string;
+  savedConfig: AdminConnectionConfigResponse;
+  targets: AdminConnectionConfigApplyTarget[];
+};
+
 export type PromoteChannelState = {
   channel: AdminConfigChannel;
   connectionType: string | null;
@@ -66,4 +78,10 @@ export function saveAdminConnectionConfig(
   config: AdminConnectionConfigPayload,
 ): Promise<AdminConnectionConfigResponse> {
   return putJson<AdminConnectionConfigResponse>('/api/web/admin/config/connections', config);
+}
+
+export function saveAndApplyAdminConnectionConfig(
+  config: AdminConnectionConfigPayload,
+): Promise<AdminConnectionConfigApplyResponse> {
+  return postJson<AdminConnectionConfigApplyResponse>('/api/web/admin/config/connections/apply', config);
 }

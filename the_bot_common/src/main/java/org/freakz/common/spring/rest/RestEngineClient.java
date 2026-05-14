@@ -44,6 +44,16 @@ public class RestEngineClient {
     return restTemplate.exchange(url, HttpMethod.POST, null, Void.class);
   }
 
+  public ResponseEntity<String> reloadConfig() {
+    String url = baseUrl + "/internal/config/reload";
+    try {
+      return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    } catch (Exception e) {
+      log.error("Error reloading bot-engine config: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+  }
+
   private String trimTrailingSlash(String value) {
     return value == null ? "" : value.replaceFirst("/+$", "");
   }

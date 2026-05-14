@@ -63,6 +63,13 @@ public class DiscordServerConnection extends BotConnection {
 
   }
 
+  @Override
+  public void stop() {
+    if (api != null) {
+      api.disconnect();
+    }
+  }
+
   private void updateChannelMap(DiscordApi api) throws BotIOException {
     Set<Server> servers = api.getServers();
     for (Server server : servers) {

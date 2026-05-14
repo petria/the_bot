@@ -1,6 +1,8 @@
 package org.freakz.web.config;
 
 import org.freakz.common.config.TheBotProperties;
+import org.freakz.common.spring.rest.RestEngineClient;
+import org.freakz.common.spring.rest.RestServerConfigClient;
 import org.freakz.web.config.AdminConnectionConfigService.AdminConnectionConfigPayload;
 import org.freakz.web.config.AdminConnectionConfigService.ChannelDto;
 import org.freakz.web.config.AdminConnectionConfigService.DiscordConfigDto;
@@ -10,6 +12,7 @@ import org.freakz.web.config.AdminConnectionConfigService.WhatsAppConfigDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
@@ -99,7 +102,9 @@ class AdminConnectionConfigServiceTest {
     return new AdminConnectionConfigService(
         new MockEnvironment(),
         properties,
-        JsonMapper.builder().build());
+        JsonMapper.builder().build(),
+        new RestServerConfigClient(new RestTemplate(), "http://bot-io"),
+        new RestEngineClient(new RestTemplate(), "http://bot-engine"));
   }
 
   private TestFiles writeConfig() throws Exception {
