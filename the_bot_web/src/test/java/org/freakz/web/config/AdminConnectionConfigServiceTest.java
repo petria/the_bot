@@ -52,7 +52,7 @@ class AdminConnectionConfigServiceTest {
     AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
         payload.botConfig(),
         payload.ircServerConfigs(),
-        new DiscordConfigDto(true, 987L, List.of(channel("discord-extra"))),
+        new DiscordConfigDto(true, "288964147721404416", List.of(channel("discord-extra"))),
         payload.telegramConfig(),
         payload.whatsappConfig());
 
@@ -65,7 +65,7 @@ class AdminConnectionConfigServiceTest {
         .contains("whatsapp-send-secret")
         .contains("whatsapp-webhook-secret")
         .contains("discord-extra")
-        .contains("\"theBotUserId\" : 987");
+        .contains("\"theBotUserId\" : \"288964147721404416\"");
     assertThat(Files.list(tempDir).filter(path -> path.getFileName().toString().contains(".bak.")).count())
         .isEqualTo(1L);
   }
@@ -77,7 +77,7 @@ class AdminConnectionConfigServiceTest {
     AdminConnectionConfigPayload payload = new AdminConnectionConfigPayload(
         new BotConfigDto("devbot", "Dev Bot"),
         List.of(new IrcServerConfigDto("IRCDEV", true, "IRCDEV", "localhost", 0, List.of(channel("dup")))),
-        new DiscordConfigDto(true, 123L, List.of(channel("dup"))),
+        new DiscordConfigDto(true, "123", List.of(channel("dup"))),
         new TelegramConfigDto("bot", true, List.of()),
         new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
 
@@ -89,7 +89,7 @@ class AdminConnectionConfigServiceTest {
     AdminConnectionConfigPayload duplicateAliasPayload = new AdminConnectionConfigPayload(
         new BotConfigDto("devbot", "Dev Bot"),
         List.of(new IrcServerConfigDto("IRCDEV", true, "IRCDEV", "localhost", 6667, List.of(channel("dup")))),
-        new DiscordConfigDto(true, 123L, List.of(channel("dup"))),
+        new DiscordConfigDto(true, "123", List.of(channel("dup"))),
         new TelegramConfigDto("bot", true, List.of()),
         new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
 
@@ -113,7 +113,7 @@ class AdminConnectionConfigServiceTest {
             List.of(
                 channel("IRC-HOKANDEV2"),
                 new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false)))),
-        new DiscordConfigDto(true, 123L, List.of()),
+        new DiscordConfigDto(true, "123", List.of()),
         new TelegramConfigDto("bot", true, List.of()),
         new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
 
@@ -145,6 +145,21 @@ class AdminConnectionConfigServiceTest {
         .contains("\"ircRealName\" : \"The Bot Test IRC Name\"")
         .contains("api-secret")
         .contains("openai-secret");
+  }
+
+  @Test
+  void preservesDiscordBotUserIdAsExactString() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+
+    assertThat(payload.discordConfig().theBotUserId()).isEqualTo("288964147721404416");
+
+    service.saveConfig(payload);
+
+    assertThat(Files.readString(files.runtimeConfigFile()))
+        .contains("\"theBotUserId\" : \"288964147721404416\"");
   }
 
   @Test
@@ -210,7 +225,7 @@ class AdminConnectionConfigServiceTest {
               }
             ],
             "connectStartup": true,
-            "theBotUserId": 123
+            "theBotUserId": 288964147721404416
           },
           "telegramConfig": {
             "telegramName": "devbot",

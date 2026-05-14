@@ -186,6 +186,10 @@ public class IrcServerConnection extends BotConnection {
   }
 
   protected void checkEchoTo(IrcServerConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+    if (BridgeMessageGuard.shouldSkipEcho(message)) {
+      log.debug("Skip IRC bridge echo loop candidate");
+      return;
+    }
     String name = channelName; //event.getChannel().getName();
     config.getChannelList().forEach(ch -> {
       if (ch.getName().equalsIgnoreCase(name)) {

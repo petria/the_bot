@@ -26,7 +26,7 @@ export type AdminBotConfig = {
 
 export type AdminDiscordConfig = {
   connectStartup: boolean;
-  theBotUserId: number | null;
+  theBotUserId: string | null;
   channelList: AdminConfigChannel[] | null;
 };
 

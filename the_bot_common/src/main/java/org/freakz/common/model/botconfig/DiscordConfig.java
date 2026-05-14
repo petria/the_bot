@@ -8,12 +8,12 @@ public class DiscordConfig {
   private String token;
   private List<Channel> channelList;
   private boolean connectStartup;
-  private Long theBotUserId;
+  private String theBotUserId;
 
   public DiscordConfig() {
   }
 
-  public DiscordConfig(String token, List<Channel> channelList, boolean connectStartup, Long theBotUserId) {
+  public DiscordConfig(String token, List<Channel> channelList, boolean connectStartup, String theBotUserId) {
     this.token = token;
     this.channelList = channelList;
     this.connectStartup = connectStartup;
@@ -48,11 +48,11 @@ public class DiscordConfig {
     this.connectStartup = connectStartup;
   }
 
-  public Long getTheBotUserId() {
+  public String getTheBotUserId() {
     return theBotUserId;
   }
 
-  public void setTheBotUserId(Long theBotUserId) {
+  public void setTheBotUserId(String theBotUserId) {
     this.theBotUserId = theBotUserId;
   }
 
@@ -83,7 +83,7 @@ public class DiscordConfig {
     private String token;
     private List<Channel> channelList;
     private boolean connectStartup;
-    private Long theBotUserId;
+    private String theBotUserId;
 
     public Builder token(String token) {
       this.token = token;
@@ -100,7 +100,7 @@ public class DiscordConfig {
       return this;
     }
 
-    public Builder theBotUserId(Long theBotUserId) {
+    public Builder theBotUserId(String theBotUserId) {
       this.theBotUserId = theBotUserId;
       return this;
     }

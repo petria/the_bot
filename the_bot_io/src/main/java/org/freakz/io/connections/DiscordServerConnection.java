@@ -164,8 +164,7 @@ public class DiscordServerConnection extends BotConnection {
 
     log.debug("Discord msg: {}", event.toString());
     MessageAuthor messageAuthor = event.getMessageAuthor();
-    if (messageAuthor.asUser().isPresent()
-        && messageAuthor.asUser().get().getId() == this.config.getTheBotUserId()) {
+    if (isOwnDiscordMessage(messageAuthor)) {
       log.debug("Ignore own Discord message");
       return;
     }
@@ -216,6 +215,17 @@ public class DiscordServerConnection extends BotConnection {
     }
   }
 
+  private boolean isOwnDiscordMessage(MessageAuthor messageAuthor) {
+    if (messageAuthor.isYourself()) {
+      return true;
+    }
+    String configuredBotUserId = clean(this.config.getTheBotUserId());
+    return configuredBotUserId != null
+        && messageAuthor.asUser()
+            .map(user -> configuredBotUserId.equals(user.getIdAsString()))
+            .orElse(false);
+  }
+
   private void markDiscordUserSeen(String echoToAlias, MessageCreateEvent event, boolean isPrivate) {
     String userId = event.getMessageAuthor().asUser()
         .map(user -> user.getIdAsString())
@@ -249,6 +259,10 @@ public class DiscordServerConnection extends BotConnection {
   }
 
   protected void checkEchoTo(DiscordConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
+    if (BridgeMessageGuard.shouldSkipEcho(message)) {
+      log.debug("Skip Discord bridge echo loop candidate");
+      return;
+    }
     String name = channelName; //event.getChannel().getName();
     config.getChannelList().forEach(ch -> {
       if (ch.getName().equals(name)) {
@@ -268,6 +282,14 @@ public class DiscordServerConnection extends BotConnection {
         }
       }
     });
+  }
+
+  private String clean(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
 

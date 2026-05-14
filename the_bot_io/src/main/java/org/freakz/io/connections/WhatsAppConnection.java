@@ -163,10 +163,19 @@ public class WhatsAppConnection extends BotConnection {
   private void checkEchoTo(WacliWebhookMessageEvent event, String actorName) {
     Channel configured = resolveConfiguredChannel(event.getChatJid());
     List<String> echoToAliases = configured == null ? null : configured.getEchoToAliases();
-    if (echoToAliases == null || echoToAliases.isEmpty() || event.getText().startsWith("!")) {
+    String text = event.getText();
+    boolean bridgeMessage = BridgeMessageGuard.shouldSkipEcho(text);
+    if (echoToAliases == null
+        || echoToAliases.isEmpty()
+        || text == null
+        || text.startsWith("!")
+        || bridgeMessage) {
+      if (bridgeMessage) {
+        log.debug("Skip WhatsApp bridge echo loop candidate");
+      }
       return;
     }
-    String msg = String.format("<%s@WhatsApp>: %s", actorName, event.getText());
+    String msg = String.format("<%s@WhatsApp>: %s", actorName, text);
     for (String echoToAlias : echoToAliases) {
       try {
         connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);

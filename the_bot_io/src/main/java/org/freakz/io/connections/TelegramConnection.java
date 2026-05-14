@@ -221,6 +221,10 @@ public class TelegramConnection extends BotConnection {
 
 
     protected void checkEchoTo(TelegramConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message, User user) {
+      if (BridgeMessageGuard.shouldSkipEcho(message)) {
+        log.debug("Skip Telegram bridge echo loop candidate");
+        return;
+      }
       String msg;
       if (user != null && user.getId() > 0) {
         msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", user.getIrcNick(), message);

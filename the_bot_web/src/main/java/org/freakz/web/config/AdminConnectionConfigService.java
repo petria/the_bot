@@ -196,9 +196,7 @@ public class AdminConnectionConfigService {
   private DiscordConfigDto discordConfigFrom(JsonNode node) {
     return new DiscordConfigDto(
         node != null && node.path("connectStartup").asBoolean(false),
-        node == null || node.get("theBotUserId") == null || node.get("theBotUserId").isNull()
-            ? null
-            : node.get("theBotUserId").asLong(),
+        text(node, "theBotUserId"),
         channelsFrom(node == null ? null : node.get("channelList")));
   }
 
@@ -464,7 +462,7 @@ public class AdminConnectionConfigService {
     if (config == null) {
       return new DiscordConfigDto(false, null, List.of());
     }
-    return new DiscordConfigDto(config.connectStartup(), config.theBotUserId(), normalizeChannels(config.channelList()));
+    return new DiscordConfigDto(config.connectStartup(), clean(config.theBotUserId()), normalizeChannels(config.channelList()));
   }
 
   private TelegramConfigDto normalizeTelegram(TelegramConfigDto config) {
@@ -576,11 +574,7 @@ public class AdminConnectionConfigService {
     ObjectNode node = existing == null ? jsonMapper.createObjectNode() : existing.deepCopy();
     node.set("channelList", channelsToNode(config.channelList()));
     node.put("connectStartup", config.connectStartup());
-    if (config.theBotUserId() == null) {
-      node.putNull("theBotUserId");
-    } else {
-      node.put("theBotUserId", config.theBotUserId());
-    }
+    putNullable(node, "theBotUserId", config.theBotUserId());
     return node;
   }
 
@@ -731,7 +725,7 @@ public class AdminConnectionConfigService {
 
   public record DiscordConfigDto(
       boolean connectStartup,
-      Long theBotUserId,
+      String theBotUserId,
       List<ChannelDto> channelList) {
   }
 

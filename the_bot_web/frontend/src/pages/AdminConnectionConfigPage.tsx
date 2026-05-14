@@ -336,10 +336,10 @@ function DiscordEditor({
   return (
     <Stack gap="md">
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        <NumberInput
+        <TextInput
           label="Bot user ID"
           value={config.theBotUserId ?? ''}
-          onChange={(value) => onChange({ ...config, theBotUserId: nullableNumber(value) })}
+          onChange={(event) => onChange({ ...config, theBotUserId: nullableText(event.currentTarget.value) })}
         />
         <Switch
           label="Connect on startup"
@@ -641,9 +641,7 @@ function numericValue(value: string | number, fallback: number) {
   return typeof value === 'number' ? value : fallback;
 }
 
-function nullableNumber(value: string | number) {
-  if (value === '' || value == null) {
-    return null;
-  }
-  return typeof value === 'number' ? value : Number(value);
+function nullableText(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
