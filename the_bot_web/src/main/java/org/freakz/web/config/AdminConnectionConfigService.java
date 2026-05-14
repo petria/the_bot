@@ -69,6 +69,7 @@ public class AdminConnectionConfigService {
       ObjectNode root = readRoot(configFile.path());
 
       root.set("ircServerConfigs", ircConfigsToNode(normalized.ircServerConfigs()));
+      root.set("botConfig", botConfigToNode(asObject(root.get("botConfig")), normalized.botConfig()));
       root.set("discordConfig", discordConfigToNode(asObject(root.get("discordConfig")), normalized.discordConfig()));
       root.set("telegramConfig", telegramConfigToNode(asObject(root.get("telegramConfig")), normalized.telegramConfig()));
       root.set("whatsappConfig", whatsappConfigToNode(asObject(root.get("whatsappConfig")), normalized.whatsappConfig()));
@@ -140,10 +141,17 @@ public class AdminConnectionConfigService {
         configFile.path().toString(),
         Files.getLastModifiedTime(configFile.path()).toInstant(),
         new AdminConnectionConfigPayload(
+            botConfigFrom(root.get("botConfig")),
             ircConfigsFrom(root.get("ircServerConfigs")),
             discordConfigFrom(root.get("discordConfig")),
             telegramConfigFrom(root.get("telegramConfig")),
             whatsappConfigFrom(root.get("whatsappConfig"))));
+  }
+
+  private BotConfigDto botConfigFrom(JsonNode node) {
+    return new BotConfigDto(
+        text(node, "botName"),
+        text(node, "ircRealName"));
   }
 
   private List<IrcServerConfigDto> ircConfigsFrom(JsonNode node) {
@@ -226,6 +234,7 @@ public class AdminConnectionConfigService {
       throw new IllegalArgumentException("Config payload is required");
     }
 
+    BotConfigDto botConfig = normalizeBotConfig(payload.botConfig());
     List<IrcServerConfigDto> ircConfigs = payload.ircServerConfigs() == null ? List.of() : payload.ircServerConfigs().stream()
         .map(this::normalizeIrc)
         .toList();
@@ -234,7 +243,14 @@ public class AdminConnectionConfigService {
     WhatsAppConfigDto whatsappConfig = normalizeWhatsApp(payload.whatsappConfig());
 
     validateUniqueChannelAliases(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
-    return new AdminConnectionConfigPayload(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
+    return new AdminConnectionConfigPayload(botConfig, ircConfigs, discordConfig, telegramConfig, whatsappConfig);
+  }
+
+  private BotConfigDto normalizeBotConfig(BotConfigDto config) {
+    if (config == null) {
+      return new BotConfigDto(null, null);
+    }
+    return new BotConfigDto(clean(config.botName()), clean(config.ircRealName()));
   }
 
   private IrcServerConfigDto normalizeIrc(IrcServerConfigDto config) {
@@ -360,6 +376,13 @@ public class AdminConnectionConfigService {
       array.add(item);
     }
     return array;
+  }
+
+  private ObjectNode botConfigToNode(ObjectNode existing, BotConfigDto config) {
+    ObjectNode node = existing == null ? jsonMapper.createObjectNode() : existing.deepCopy();
+    putNullable(node, "botName", config.botName());
+    putNullable(node, "ircRealName", config.ircRealName());
+    return node;
   }
 
   private ObjectNode discordConfigToNode(ObjectNode existing, DiscordConfigDto config) {
@@ -492,10 +515,16 @@ public class AdminConnectionConfigService {
   }
 
   public record AdminConnectionConfigPayload(
+      BotConfigDto botConfig,
       List<IrcServerConfigDto> ircServerConfigs,
       DiscordConfigDto discordConfig,
       TelegramConfigDto telegramConfig,
       WhatsAppConfigDto whatsappConfig) {
+  }
+
+  public record BotConfigDto(
+      String botName,
+      String ircRealName) {
   }
 
   public record IrcServerConfigDto(

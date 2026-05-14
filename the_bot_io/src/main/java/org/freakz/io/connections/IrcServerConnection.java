@@ -244,7 +244,7 @@ public class IrcServerConnection extends BotConnection {
     }
   }
 
-  public void init(ConnectionManager connectionManager, String botNick, IrcServerConfig config) {
+  public void init(ConnectionManager connectionManager, String botNick, String ircRealName, IrcServerConfig config) {
     this.connectionManager = connectionManager;
     this.config = config;
     this.botNick = botNick;
@@ -252,6 +252,7 @@ public class IrcServerConnection extends BotConnection {
     client = Client.builder()
         .user("hokan")
         .nick(botNick)
+        .realName(firstNonBlank(ircRealName, botNick, "the_bot"))
         .server()
         .host(config.getIrcNetwork().getIrcServer().getHost())
         .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
@@ -266,6 +267,15 @@ public class IrcServerConnection extends BotConnection {
     client.getEventManager().registerEventListener(this);
     client.connect();
 
+  }
+
+  private String firstNonBlank(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value.trim();
+      }
+    }
+    return null;
   }
 
   private void joinConfiguredChannels() {

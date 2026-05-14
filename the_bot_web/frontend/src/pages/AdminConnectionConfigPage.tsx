@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AdminConfigChannel,
+  AdminBotConfig,
   AdminConnectionConfigPayload,
   AdminDiscordConfig,
   AdminIrcServerConfig,
@@ -48,6 +49,11 @@ const emptyDiscord: AdminDiscordConfig = {
   connectStartup: false,
   theBotUserId: null,
   channelList: [],
+};
+
+const emptyBotConfig: AdminBotConfig = {
+  botName: null,
+  ircRealName: null,
 };
 
 const emptyTelegram: AdminTelegramConfig = {
@@ -190,7 +196,9 @@ export function AdminConnectionConfigPage() {
 
         <Tabs.Panel value="irc" pt="md">
           <IrcConfigsEditor
+            botConfig={config.botConfig ?? emptyBotConfig}
             configs={config.ircServerConfigs ?? []}
+            onBotConfigChange={(botConfig) => setConfig({ ...config, botConfig })}
             onChange={(ircServerConfigs) => setConfig({ ...config, ircServerConfigs })}
           />
         </Tabs.Panel>
@@ -221,10 +229,14 @@ export function AdminConnectionConfigPage() {
 }
 
 function IrcConfigsEditor({
+  botConfig,
   configs,
+  onBotConfigChange,
   onChange,
 }: {
+  botConfig: AdminBotConfig;
   configs: AdminIrcServerConfig[];
+  onBotConfigChange: (config: AdminBotConfig) => void;
   onChange: (configs: AdminIrcServerConfig[]) => void;
 }) {
   const addConfig = () => onChange([
@@ -234,6 +246,24 @@ function IrcConfigsEditor({
 
   return (
     <Stack gap="md">
+      <Card withBorder radius="sm">
+        <Stack gap="md">
+          <Title order={3}>IRC identity</Title>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <TextInput
+              label="Bot nick"
+              value={botConfig.botName ?? ''}
+              onChange={(event) => onBotConfigChange({ ...botConfig, botName: event.currentTarget.value })}
+            />
+            <TextInput
+              label="IRC real name"
+              description="Shown as ircname in IRC WHOIS replies"
+              value={botConfig.ircRealName ?? ''}
+              onChange={(event) => onBotConfigChange({ ...botConfig, ircRealName: event.currentTarget.value })}
+            />
+          </SimpleGrid>
+        </Stack>
+      </Card>
       <Group justify="flex-end">
         <Button leftSection={<Plus size={16} />} variant="light" onClick={addConfig}>
           Add IRC server
@@ -524,6 +554,7 @@ function updateChannel(
 
 function normalizePayload(payload: AdminConnectionConfigPayload): AdminConnectionConfigPayload {
   return {
+    botConfig: payload.botConfig ?? emptyBotConfig,
     ircServerConfigs: payload.ircServerConfigs ?? [],
     discordConfig: payload.discordConfig ?? emptyDiscord,
     telegramConfig: payload.telegramConfig ?? emptyTelegram,

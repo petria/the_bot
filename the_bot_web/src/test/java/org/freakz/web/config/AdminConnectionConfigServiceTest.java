@@ -4,6 +4,7 @@ import org.freakz.common.config.TheBotProperties;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.spring.rest.RestServerConfigClient;
 import org.freakz.web.config.AdminConnectionConfigService.AdminConnectionConfigPayload;
+import org.freakz.web.config.AdminConnectionConfigService.BotConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.ChannelDto;
 import org.freakz.web.config.AdminConnectionConfigService.DiscordConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.IrcServerConfigDto;
@@ -48,6 +49,7 @@ class AdminConnectionConfigServiceTest {
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
     AdminConnectionConfigPayload payload = service.readConfig().config();
     AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
+        payload.botConfig(),
         payload.ircServerConfigs(),
         new DiscordConfigDto(true, 987L, List.of(channel("discord-extra"))),
         payload.telegramConfig(),
@@ -72,6 +74,7 @@ class AdminConnectionConfigServiceTest {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
     AdminConnectionConfigPayload payload = new AdminConnectionConfigPayload(
+        new BotConfigDto("devbot", "Dev Bot"),
         List.of(new IrcServerConfigDto("IRCDEV", true, "IRCDEV", "localhost", 0, List.of(channel("dup")))),
         new DiscordConfigDto(true, 123L, List.of(channel("dup"))),
         new TelegramConfigDto("bot", true, List.of()),
@@ -83,6 +86,7 @@ class AdminConnectionConfigServiceTest {
         .hasRootCauseMessage("IRC server port must be between 1 and 65535");
 
     AdminConnectionConfigPayload duplicateAliasPayload = new AdminConnectionConfigPayload(
+        new BotConfigDto("devbot", "Dev Bot"),
         List.of(new IrcServerConfigDto("IRCDEV", true, "IRCDEV", "localhost", 6667, List.of(channel("dup")))),
         new DiscordConfigDto(true, 123L, List.of(channel("dup"))),
         new TelegramConfigDto("bot", true, List.of()),
@@ -98,6 +102,7 @@ class AdminConnectionConfigServiceTest {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
     AdminConnectionConfigPayload payload = new AdminConnectionConfigPayload(
+        new BotConfigDto("devbot", "Dev Bot"),
         List.of(new IrcServerConfigDto(
             "IRCDEV",
             true,
@@ -118,6 +123,27 @@ class AdminConnectionConfigServiceTest {
         .contains("\"echoToAlias\" : \"IRC-HOKANDEV2\"")
         .contains("\"echoToAlias\" : \"IRC-TESTTEST\"")
         .contains("\"IRC-HOKANDEV2\"");
+  }
+
+  @Test
+  void savesIrcRealNameAndPreservesBotSecrets() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
+        new BotConfigDto(payload.botConfig().botName(), "The Bot Test IRC Name"),
+        payload.ircServerConfigs(),
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig());
+
+    service.saveConfig(edited);
+
+    String saved = Files.readString(files.runtimeConfigFile());
+    assertThat(saved)
+        .contains("\"ircRealName\" : \"The Bot Test IRC Name\"")
+        .contains("api-secret")
+        .contains("openai-secret");
   }
 
   private AdminConnectionConfigService serviceFor(Path bootstrapFile) {
@@ -146,6 +172,7 @@ class AdminConnectionConfigServiceTest {
         {
           "botConfig": {
             "botName": "devbot",
+            "ircRealName": "Old IRC Name",
             "apiKey": "api-secret",
             "openAiApiKey": "openai-secret"
           },

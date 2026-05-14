@@ -19,6 +19,11 @@ export type AdminIrcServerConfig = {
   channelList: AdminConfigChannel[] | null;
 };
 
+export type AdminBotConfig = {
+  botName: string | null;
+  ircRealName: string | null;
+};
+
 export type AdminDiscordConfig = {
   connectStartup: boolean;
   theBotUserId: number | null;
@@ -39,6 +44,7 @@ export type AdminWhatsAppConfig = {
 };
 
 export type AdminConnectionConfigPayload = {
+  botConfig: AdminBotConfig | null;
   ircServerConfigs: AdminIrcServerConfig[] | null;
   discordConfig: AdminDiscordConfig | null;
   telegramConfig: AdminTelegramConfig | null;

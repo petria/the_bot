@@ -476,7 +476,7 @@ public class ConnectionManager implements CommandLineRunner {
       log.debug("init IrcServerConfig: {}", config);
       if (config.isConnectStartup()) {
         IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
-        isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
+        isc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getBotConfig().getIrcRealName(), config);
       } else {
         log.warn("IRC Startup connect disabled: {}", config);
       }
@@ -567,7 +567,7 @@ public class ConnectionManager implements CommandLineRunner {
       log.debug("Try reconnect: {}", config);
 
       IrcServerConnection isc = new IrcServerConnection(this.eventPublisher);
-      isc.init(this, theBotConfig.getBotConfig().getBotName(), config);
+      isc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getBotConfig().getIrcRealName(), config);
 //            addConnection(isc);
 
     } catch (Exception e) {
