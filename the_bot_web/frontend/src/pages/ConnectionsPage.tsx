@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   Badge,
   Button,
   Card,
@@ -12,9 +13,8 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw, RadioTower } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, CheckCircle2, RefreshCcw, RadioTower } from 'lucide-react';
 import { getMe } from '../api/me';
 import { ApiError } from '../api/client';
 import {
@@ -22,10 +22,11 @@ import {
   BotConnectionChannel,
   ChannelActivity,
   getConnectionsOverview,
+  promoteConnectionChannel,
 } from '../api/connections';
 
 export function ConnectionsPage() {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const connectionsQuery = useQuery({
     queryKey: ['connections-overview'],
     queryFn: getConnectionsOverview,
@@ -34,6 +35,13 @@ export function ConnectionsPage() {
   const meQuery = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
+  });
+  const promoteMutation = useMutation({
+    mutationFn: promoteConnectionChannel,
+    onSuccess: (response) => {
+      queryClient.setQueryData(['admin-connection-config'], response);
+      queryClient.invalidateQueries({ queryKey: ['connections-overview'] });
+    },
   });
 
   const connections = connectionsQuery.data?.connections ?? [];
@@ -75,6 +83,18 @@ export function ConnectionsPage() {
         <StatCard label="Active channels" value={activeChannelCount.toString()} />
       </SimpleGrid>
 
+      {promoteMutation.isSuccess && (
+        <Alert color="green" variant="light" icon={<CheckCircle2 size={18} />}>
+          Channel saved to connection configuration.
+        </Alert>
+      )}
+
+      {promoteMutation.isError && (
+        <Alert color="red" variant="light" icon={<AlertTriangle size={18} />}>
+          {promoteErrorMessage(promoteMutation.error)}
+        </Alert>
+      )}
+
       {connectionsQuery.isLoading ? (
         <Loader />
       ) : connectionsQuery.isError ? (
@@ -94,21 +114,18 @@ export function ConnectionsPage() {
               connection={connection}
               activityByAlias={activityByAlias}
               canPromote={Boolean(meQuery.data?.admin)}
-              onPromote={(channel) => navigate('/admin/config', {
-                state: {
-                  promote: {
-                    connectionType: connection.type,
-                    network: connection.network,
-                    channel: {
-                      id: channel.id,
-                      description: null,
-                      name: channel.name,
-                      type: channel.type,
-                      echoToAlias: channel.echoToAlias,
-                      echoToAliases: [],
-                      joinOnStart: false,
-                    },
-                  },
+              promoting={promoteMutation.isPending}
+              onPromote={(channel) => promoteMutation.mutate({
+                connectionType: connection.type,
+                network: connection.network,
+                channel: {
+                  id: channel.id,
+                  description: null,
+                  name: channel.name,
+                  type: channel.type,
+                  echoToAlias: channel.echoToAlias,
+                  echoToAliases: [],
+                  joinOnStart: false,
                 },
               })}
             />
@@ -123,11 +140,13 @@ function ConnectionCard({
   connection,
   activityByAlias,
   canPromote,
+  promoting,
   onPromote,
 }: {
   connection: BotConnection;
   activityByAlias: Map<string, ChannelActivity>;
   canPromote: boolean;
+  promoting: boolean;
   onPromote: (channel: BotConnectionChannel) => void;
 }) {
   const channels = [...(connection.channels ?? [])].sort(compareChannels);
@@ -156,12 +175,14 @@ function ConnectionCard({
               channels={channels}
               activityByAlias={activityByAlias}
               canPromote={canPromote}
+              promoting={promoting}
               onPromote={onPromote}
             />
             <ChannelsCards
               channels={channels}
               activityByAlias={activityByAlias}
               canPromote={canPromote}
+              promoting={promoting}
               onPromote={onPromote}
             />
           </>
@@ -175,11 +196,13 @@ function ChannelsTable({
   channels,
   activityByAlias,
   canPromote,
+  promoting,
   onPromote,
 }: {
   channels: BotConnectionChannel[];
   activityByAlias: Map<string, ChannelActivity>;
   canPromote: boolean;
+  promoting: boolean;
   onPromote: (channel: BotConnectionChannel) => void;
 }) {
   return (
@@ -203,7 +226,7 @@ function ChannelsTable({
                 <Table.Td><AliasBadge value={channel.echoToAlias} /></Table.Td>
                 <Table.Td>{channel.type || '-'}</Table.Td>
                 <Table.Td><ActivityCell activity={activity} /></Table.Td>
-                <Table.Td><ConfigCell channel={channel} canPromote={canPromote} onPromote={onPromote} /></Table.Td>
+                <Table.Td><ConfigCell channel={channel} canPromote={canPromote} promoting={promoting} onPromote={onPromote} /></Table.Td>
               </Table.Tr>
             );
           })}
@@ -217,11 +240,13 @@ function ChannelsCards({
   channels,
   activityByAlias,
   canPromote,
+  promoting,
   onPromote,
 }: {
   channels: BotConnectionChannel[];
   activityByAlias: Map<string, ChannelActivity>;
   canPromote: boolean;
+  promoting: boolean;
   onPromote: (channel: BotConnectionChannel) => void;
 }) {
   return (
@@ -237,7 +262,7 @@ function ChannelsCards({
               </Group>
               <InfoLine label="Type" value={channel.type || '-'} />
               <InfoLine label="Last activity" value={formatLastActivity(activity)} />
-              <ConfigCell channel={channel} canPromote={canPromote} onPromote={onPromote} />
+              <ConfigCell channel={channel} canPromote={canPromote} promoting={promoting} onPromote={onPromote} />
               {activity?.lastReceivedMessageBy && (
                 <InfoLine label="By" value={activity.lastReceivedMessageBy} />
               )}
@@ -252,13 +277,15 @@ function ChannelsCards({
 function ConfigCell({
   channel,
   canPromote,
+  promoting,
   onPromote,
 }: {
   channel: BotConnectionChannel;
   canPromote: boolean;
+  promoting: boolean;
   onPromote: (channel: BotConnectionChannel) => void;
 }) {
-  if (!channel.observedOnly) {
+  if (channel.configured !== false && !channel.observedOnly) {
     return <Badge variant="light">Configured</Badge>;
   }
 
@@ -266,7 +293,13 @@ function ConfigCell({
     <Group gap="xs" wrap="nowrap">
       <Badge color="yellow" variant="light">Observed only</Badge>
       {canPromote && (
-        <Button size="compact-xs" variant="subtle" onClick={() => onPromote(channel)}>
+        <Button
+          size="compact-xs"
+          variant="subtle"
+          loading={promoting}
+          disabled={!channel.echoToAlias}
+          onClick={() => onPromote(channel)}
+        >
           Add to config
         </Button>
       )}
@@ -318,6 +351,13 @@ function ConnectionsError({ error }: { error: Error }) {
       </Stack>
     </Card>
   );
+}
+
+function promoteErrorMessage(error: Error) {
+  if (error instanceof ApiError) {
+    return error.detail || error.message || 'Could not save channel to configuration.';
+  }
+  return 'Could not save channel to configuration.';
 }
 
 function InfoLine({ label, value }: { label: string; value: string }) {

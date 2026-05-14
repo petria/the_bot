@@ -4,6 +4,7 @@ import org.freakz.web.config.AdminConnectionConfigService;
 import org.freakz.web.config.AdminConnectionConfigService.AdminConnectionConfigApplyResponse;
 import org.freakz.web.config.AdminConnectionConfigService.AdminConnectionConfigPayload;
 import org.freakz.web.config.AdminConnectionConfigService.AdminConnectionConfigResponse;
+import org.freakz.web.config.AdminConnectionConfigService.PromoteChannelRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +38,11 @@ public class AdminConnectionConfigController {
   @PostMapping("/apply")
   public AdminConnectionConfigApplyResponse saveAndApplyConfig(@RequestBody AdminConnectionConfigPayload payload) {
     return configService.saveAndApplyConfig(payload);
+  }
+
+  @PostMapping("/promote-channel")
+  public AdminConnectionConfigResponse promoteChannel(@RequestBody PromoteChannelRequest request) {
+    return configService.promoteChannel(request);
   }
 
   @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})

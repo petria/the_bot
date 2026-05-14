@@ -762,6 +762,7 @@ public class ConnectionManager implements CommandLineRunner {
     channel.setName(firstNonBlank(channelName, echoToAlias));
     channel.setNetwork(connection.getNetwork());
     channel.setType(connection.getType().name());
+    channel.setConfigured(false);
     return channel;
   }
 

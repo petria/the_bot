@@ -1,4 +1,5 @@
-import { getJson } from './client';
+import { getJson, postJson } from './client';
+import type { AdminConnectionConfigResponse, PromoteChannelState } from './adminConnectionConfig';
 
 export type BotConnectionChannel = {
   id: string | null;
@@ -6,6 +7,7 @@ export type BotConnectionChannel = {
   network: string | null;
   name: string | null;
   echoToAlias: string | null;
+  configured?: boolean;
   observedOnly?: boolean;
 };
 
@@ -72,6 +74,7 @@ function mergeActivityChannels(connections: BotConnection[], activities: Channel
           network: activity.network,
           name: activity.name,
           echoToAlias: activity.echoToAlias,
+          configured: false,
           observedOnly: true,
         });
       }
@@ -82,6 +85,12 @@ function mergeActivityChannels(connections: BotConnection[], activities: Channel
       channels: Array.from(channelsByAlias.values()),
     };
   });
+}
+
+export function promoteConnectionChannel(
+  request: PromoteChannelState,
+): Promise<AdminConnectionConfigResponse> {
+  return postJson<AdminConnectionConfigResponse>('/api/web/admin/config/connections/promote-channel', request);
 }
 
 function activityMatchesConnection(activity: ChannelActivity, connection: BotConnection) {

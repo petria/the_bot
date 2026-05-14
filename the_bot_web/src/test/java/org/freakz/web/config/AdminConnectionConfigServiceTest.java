@@ -8,6 +8,7 @@ import org.freakz.web.config.AdminConnectionConfigService.BotConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.ChannelDto;
 import org.freakz.web.config.AdminConnectionConfigService.DiscordConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.IrcServerConfigDto;
+import org.freakz.web.config.AdminConnectionConfigService.PromoteChannelRequest;
 import org.freakz.web.config.AdminConnectionConfigService.TelegramConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.WhatsAppConfigDto;
 import org.junit.jupiter.api.Test;
@@ -144,6 +145,25 @@ class AdminConnectionConfigServiceTest {
         .contains("\"ircRealName\" : \"The Bot Test IRC Name\"")
         .contains("api-secret")
         .contains("openai-secret");
+  }
+
+  @Test
+  void promotesObservedIrcChannelToSavedConfig() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+
+    service.promoteChannel(new PromoteChannelRequest(
+        "IRC_CONNECTION",
+        "IRCDEV",
+        new ChannelDto("123", null, "#Observed", "IrcPublic", "IRC-OBSERVED", List.of(), false)));
+
+    String saved = Files.readString(files.runtimeConfigFile());
+    assertThat(saved)
+        .contains("\"id\" : \"123\"")
+        .contains("\"name\" : \"#Observed\"")
+        .contains("\"echoToAlias\" : \"IRC-OBSERVED\"");
+    assertThat(service.hasConfiguredChannel("IRC_CONNECTION", "IRCDEV", "IRC-OBSERVED"))
+        .isTrue();
   }
 
   private AdminConnectionConfigService serviceFor(Path bootstrapFile) {

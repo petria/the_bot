@@ -132,6 +132,7 @@ public class WhatsAppConnection extends BotConnection {
       channel.setType(getType().name());
       channel.setName(ch.getName());
       channel.setEchoToAlias(ch.getEchoToAlias());
+      channel.setConfigured(true);
       connectionManager.updateJoinedChannelsMap(BotConnectionType.WHATSAPP_CONNECTION, this, channel);
     }
   }

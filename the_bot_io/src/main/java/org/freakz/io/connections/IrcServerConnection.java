@@ -132,6 +132,7 @@ public class IrcServerConnection extends BotConnection {
     } else {
       botConnectionChannel = container.channel;
     }
+    botConnectionChannel.setConfigured(true);
 
     this.connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, this, botConnectionChannel);
 

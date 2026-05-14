@@ -45,6 +45,7 @@ public class DataToDTOMapper {
     response.setNetwork(botConnectionChannel.getNetwork());
     response.setType(botConnectionChannel.getType());
     response.setEchoToAlias((botConnectionChannel.getEchoToAlias()));
+    response.setConfigured(botConnectionChannel.isConfigured());
     return response;
   }
 }

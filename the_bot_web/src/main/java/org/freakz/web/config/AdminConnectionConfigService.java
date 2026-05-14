@@ -92,6 +92,26 @@ public class AdminConnectionConfigService {
         List.of(botIoResult, botEngineResult));
   }
 
+  public synchronized AdminConnectionConfigResponse promoteChannel(PromoteChannelRequest request) {
+    if (request == null || request.channel() == null) {
+      throw new IllegalArgumentException("Promoted channel is required");
+    }
+    AdminConnectionConfigPayload current = readConfig().config();
+    return saveConfig(addPromotedChannel(current, request));
+  }
+
+  public boolean hasConfiguredChannel(String connectionType, String network, String echoToAlias) {
+    String alias = clean(echoToAlias);
+    if (alias == null) {
+      return false;
+    }
+    try {
+      return hasConfiguredChannel(readConfig().config(), connectionType, network, alias);
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
   private ApplyTargetResult applyBotIo() {
     ResponseEntity<String> response = serverConfigClient.applyConfig();
     return new ApplyTargetResult(
@@ -244,6 +264,173 @@ public class AdminConnectionConfigService {
 
     validateUniqueChannelAliases(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
     return new AdminConnectionConfigPayload(botConfig, ircConfigs, discordConfig, telegramConfig, whatsappConfig);
+  }
+
+  private AdminConnectionConfigPayload addPromotedChannel(
+      AdminConnectionConfigPayload payload,
+      PromoteChannelRequest request) {
+    AdminConnectionConfigPayload normalized = normalizeAndValidate(payload);
+    ChannelDto channel = normalizedPromotedChannel(request);
+    if (hasConfiguredChannel(normalized, request.connectionType(), request.network(), channel.echoToAlias())) {
+      return normalized;
+    }
+
+    String type = clean(request.connectionType());
+    if (isConnectionType(type, "IRC_CONNECTION")) {
+      return promoteIrcChannel(normalized, request.network(), channel);
+    }
+    if (isConnectionType(type, "DISCORD_CONNECTION")) {
+      DiscordConfigDto discord = normalized.discordConfig();
+      return new AdminConnectionConfigPayload(
+          normalized.botConfig(),
+          normalized.ircServerConfigs(),
+          new DiscordConfigDto(discord.connectStartup(), discord.theBotUserId(), appendChannel(discord.channelList(), channel)),
+          normalized.telegramConfig(),
+          normalized.whatsappConfig());
+    }
+    if (isConnectionType(type, "TELEGRAM_CONNECTION")) {
+      TelegramConfigDto telegram = normalized.telegramConfig();
+      return new AdminConnectionConfigPayload(
+          normalized.botConfig(),
+          normalized.ircServerConfigs(),
+          normalized.discordConfig(),
+          new TelegramConfigDto(telegram.telegramName(), telegram.connectStartup(), appendChannel(telegram.channelList(), channel)),
+          normalized.whatsappConfig());
+    }
+    if (isConnectionType(type, "WHATSAPP_CONNECTION")) {
+      WhatsAppConfigDto whatsapp = normalized.whatsappConfig();
+      return new AdminConnectionConfigPayload(
+          normalized.botConfig(),
+          normalized.ircServerConfigs(),
+          normalized.discordConfig(),
+          normalized.telegramConfig(),
+          new WhatsAppConfigDto(whatsapp.network(), whatsapp.sendBaseUrl(), whatsapp.connectStartup(), appendChannel(whatsapp.channelList(), channel)));
+    }
+    throw new IllegalArgumentException("Unsupported connection type for channel promotion: " + type);
+  }
+
+  private AdminConnectionConfigPayload promoteIrcChannel(
+      AdminConnectionConfigPayload payload,
+      String network,
+      ChannelDto channel) {
+    List<IrcServerConfigDto> configs = payload.ircServerConfigs();
+    if (configs.isEmpty()) {
+      throw new IllegalArgumentException("No IRC server config exists for promoted channel");
+    }
+
+    int targetIndex = findIrcConfigIndex(configs, network);
+    if (targetIndex < 0) {
+      throw new IllegalArgumentException("No IRC server config found for network: " + network);
+    }
+
+    List<IrcServerConfigDto> updated = new ArrayList<>(configs);
+    IrcServerConfigDto target = updated.get(targetIndex);
+    updated.set(targetIndex, new IrcServerConfigDto(
+        target.name(),
+        target.connectStartup(),
+        target.networkName(),
+        target.host(),
+        target.port(),
+        appendChannel(target.channelList(), channel)));
+
+    return new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        updated,
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig());
+  }
+
+  private int findIrcConfigIndex(List<IrcServerConfigDto> configs, String network) {
+    String normalizedNetwork = clean(network);
+    if (normalizedNetwork != null) {
+      for (int i = 0; i < configs.size(); i++) {
+        String configNetwork = clean(configs.get(i).networkName());
+        if (configNetwork != null && configNetwork.equalsIgnoreCase(normalizedNetwork)) {
+          return i;
+        }
+      }
+    }
+    return configs.size() == 1 ? 0 : -1;
+  }
+
+  private ChannelDto normalizedPromotedChannel(PromoteChannelRequest request) {
+    ChannelDto source = request.channel();
+    String echoToAlias = required(source.echoToAlias(), "Promoted channel alias is required");
+    String name = clean(source.name());
+    String id = clean(source.id());
+    return new ChannelDto(
+        id == null ? echoToAlias : id,
+        clean(source.description()),
+        name == null ? echoToAlias : name,
+        firstNonBlank(source.type(), defaultChannelType(request.connectionType())),
+        echoToAlias,
+        normalizeAliases(source.echoToAliases()),
+        source.joinOnStart());
+  }
+
+  private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
+    List<ChannelDto> updated = new ArrayList<>(channels == null ? List.of() : channels);
+    updated.add(channel);
+    return updated;
+  }
+
+  private boolean hasConfiguredChannel(
+      AdminConnectionConfigPayload payload,
+      String connectionType,
+      String network,
+      String echoToAlias) {
+    String type = clean(connectionType);
+    if (isConnectionType(type, "IRC_CONNECTION")) {
+      return payload.ircServerConfigs().stream()
+          .filter(config -> network == null || network.isBlank() || equalsIgnoreCase(config.networkName(), network))
+          .flatMap(config -> config.channelList().stream())
+          .anyMatch(channel -> equalsIgnoreCase(channel.echoToAlias(), echoToAlias));
+    }
+    if (isConnectionType(type, "DISCORD_CONNECTION")) {
+      return hasChannelAlias(payload.discordConfig().channelList(), echoToAlias);
+    }
+    if (isConnectionType(type, "TELEGRAM_CONNECTION")) {
+      return hasChannelAlias(payload.telegramConfig().channelList(), echoToAlias);
+    }
+    if (isConnectionType(type, "WHATSAPP_CONNECTION")) {
+      return hasChannelAlias(payload.whatsappConfig().channelList(), echoToAlias);
+    }
+    return false;
+  }
+
+  private boolean hasChannelAlias(List<ChannelDto> channels, String echoToAlias) {
+    return channels != null && channels.stream()
+        .anyMatch(channel -> equalsIgnoreCase(channel.echoToAlias(), echoToAlias));
+  }
+
+  private boolean isConnectionType(String actual, String expected) {
+    return actual != null && actual.equalsIgnoreCase(expected);
+  }
+
+  private boolean equalsIgnoreCase(String left, String right) {
+    String cleanLeft = clean(left);
+    String cleanRight = clean(right);
+    return cleanLeft != null && cleanRight != null && cleanLeft.equalsIgnoreCase(cleanRight);
+  }
+
+  private String defaultChannelType(String connectionType) {
+    String type = clean(connectionType);
+    if (isConnectionType(type, "IRC_CONNECTION")) {
+      return "IrcPublic";
+    }
+    if (isConnectionType(type, "DISCORD_CONNECTION")) {
+      return "SERVER_TEXT_CHANNEL";
+    }
+    if (isConnectionType(type, "TELEGRAM_CONNECTION") || isConnectionType(type, "WHATSAPP_CONNECTION")) {
+      return "group";
+    }
+    return null;
+  }
+
+  private String firstNonBlank(String first, String second) {
+    String cleanedFirst = clean(first);
+    return cleanedFirst != null ? cleanedFirst : clean(second);
   }
 
   private BotConfigDto normalizeBotConfig(BotConfigDto config) {
@@ -520,6 +707,12 @@ public class AdminConnectionConfigService {
       DiscordConfigDto discordConfig,
       TelegramConfigDto telegramConfig,
       WhatsAppConfigDto whatsappConfig) {
+  }
+
+  public record PromoteChannelRequest(
+      String connectionType,
+      String network,
+      ChannelDto channel) {
   }
 
   public record BotConfigDto(

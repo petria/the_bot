@@ -1,6 +1,9 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.connectionmanager.BotConnectionChannelResponse;
+import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
+import org.freakz.web.config.AdminConnectionConfigService;
 import org.freakz.web.config.TheBotWebProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,20 +21,46 @@ public class ConnectionsController {
   private static final Logger log = LoggerFactory.getLogger(ConnectionsController.class);
 
   private final RestConnectionManagerClient connectionManagerClient;
+  private final AdminConnectionConfigService configService;
   private final TheBotWebProperties properties;
 
-  public ConnectionsController(RestConnectionManagerClient connectionManagerClient, TheBotWebProperties properties) {
+  public ConnectionsController(
+      RestConnectionManagerClient connectionManagerClient,
+      AdminConnectionConfigService configService,
+      TheBotWebProperties properties) {
     this.connectionManagerClient = connectionManagerClient;
+    this.configService = configService;
     this.properties = properties;
   }
 
   @GetMapping("/map")
   public ResponseEntity<?> getConnectionMap() {
     try {
-      return ResponseEntity.ok(connectionManagerClient.getConnectionMapRequired());
+      GetConnectionMapResponse response = connectionManagerClient.getConnectionMapRequired();
+      enrichConfiguredChannels(response);
+      return ResponseEntity.ok(response);
     } catch (RestClientException e) {
       return botIoUnavailable(e);
     }
+  }
+
+  private void enrichConfiguredChannels(GetConnectionMapResponse response) {
+    if (response == null || response.getConnectionMap() == null) {
+      return;
+    }
+    response.getConnectionMap().values().forEach(connection -> {
+      if (connection.getChannels() == null) {
+        return;
+      }
+      for (BotConnectionChannelResponse channel : connection.getChannels()) {
+        if (!channel.isConfigured() && configService.hasConfiguredChannel(
+            connection.getType(),
+            connection.getNetwork(),
+            channel.getEchoToAlias())) {
+          channel.setConfigured(true);
+        }
+      }
+    });
   }
 
   @GetMapping("/activity")

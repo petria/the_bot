@@ -94,6 +94,7 @@ public class DiscordServerConnection extends BotConnection {
         } else {
           botConnectionChannel = container.channel;
         }
+        botConnectionChannel.setConfigured(true);
         this.connectionManager.updateJoinedChannelsMap(BotConnectionType.DISCORD_CONNECTION, this, botConnectionChannel);
         log.debug("Updated channel: {}", botConnectionChannel);
       }

@@ -13,6 +13,8 @@ public class BotConnectionChannel {
 
   private String name;
 
+  private boolean configured = true;
+
   public BotConnectionChannel() {
   }
 
@@ -64,6 +66,14 @@ public class BotConnectionChannel {
     this.name = name;
   }
 
+  public boolean isConfigured() {
+    return configured;
+  }
+
+  public void setConfigured(boolean configured) {
+    this.configured = configured;
+  }
+
   @Override
   public String toString() {
     return "BotConnectionChannel{" +
@@ -72,6 +82,7 @@ public class BotConnectionChannel {
         ", type='" + type + '\'' +
         ", network='" + network + '\'' +
         ", name='" + name + '\'' +
+        ", configured=" + configured +
         '}';
   }
 }

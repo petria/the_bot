@@ -9,6 +9,7 @@ public class BotConnectionChannelResponse {
   private String network;
   private String name;
   private String echoToAlias;
+  private boolean configured = true;
 
   public BotConnectionChannelResponse() {
   }
@@ -61,17 +62,25 @@ public class BotConnectionChannelResponse {
     this.echoToAlias = echoToAlias;
   }
 
+  public boolean isConfigured() {
+    return configured;
+  }
+
+  public void setConfigured(boolean configured) {
+    this.configured = configured;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     BotConnectionChannelResponse that = (BotConnectionChannelResponse) o;
-    return Objects.equals(id, that.id) && Objects.equals(type, that.type) && Objects.equals(network, that.network) && Objects.equals(name, that.name) && Objects.equals(echoToAlias, that.echoToAlias);
+    return configured == that.configured && Objects.equals(id, that.id) && Objects.equals(type, that.type) && Objects.equals(network, that.network) && Objects.equals(name, that.name) && Objects.equals(echoToAlias, that.echoToAlias);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, type, network, name, echoToAlias);
+    return Objects.hash(id, type, network, name, echoToAlias, configured);
   }
 
   @Override
@@ -82,6 +91,7 @@ public class BotConnectionChannelResponse {
         ", network='" + network + '\'' +
         ", name='" + name + '\'' +
         ", echoToAlias='" + echoToAlias + '\'' +
+        ", configured=" + configured +
         '}';
   }
 }
