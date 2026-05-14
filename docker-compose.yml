@@ -116,6 +116,7 @@ services:
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
       - THE_BOT_WEB_USERS_FILE=${THE_BOT_WEB_USERS_FILE:-/runtime/data/users.json}
       - THE_BOT_WEB_BOT_IO_BASE_URL=${THE_BOT_WEB_BOT_IO_BASE_URL:-http://bot-io:8090}
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
