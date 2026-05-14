@@ -241,7 +241,7 @@ function IrcConfigsEditor({
       </Group>
       {configs.length === 0 ? <EmptyState text="No IRC configs." /> : null}
       {configs.map((config, index) => (
-        <Card withBorder radius="sm" key={`${config.name}-${index}`}>
+        <Card withBorder radius="sm" key={`irc-config-${index}`}>
           <Stack gap="md">
             <Group justify="space-between" gap="sm">
               <Title order={3}>{config.name || 'IRC config'}</Title>
@@ -410,7 +410,7 @@ function ChannelsEditor({
       </Group>
       {channels.length === 0 ? <EmptyState text="No configured channels." /> : null}
       {channels.map((channel, index) => (
-        <Card withBorder radius="sm" key={`${channel.echoToAlias}-${channel.id}-${index}`}>
+        <Card withBorder radius="sm" key={`channel-${index}`}>
           <Stack gap="sm">
             <Group justify="space-between" gap="sm">
               <Text fw={700}>{channel.name || channel.echoToAlias || channel.id || 'Channel'}</Text>
@@ -447,8 +447,8 @@ function ChannelsEditor({
                 onChange={(event) => updateChannel(channels, index, { echoToAlias: event.currentTarget.value }, onChange)}
               />
               <TextInput
-                label="Extra aliases"
-                description="Comma separated"
+                label="Echo to aliases"
+                description="Comma separated target channel aliases"
                 value={(channel.echoToAliases ?? []).join(', ')}
                 onChange={(event) => updateChannel(
                   channels,

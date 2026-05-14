@@ -233,7 +233,7 @@ public class AdminConnectionConfigService {
     TelegramConfigDto telegramConfig = normalizeTelegram(payload.telegramConfig());
     WhatsAppConfigDto whatsappConfig = normalizeWhatsApp(payload.whatsappConfig());
 
-    validateUniqueAliases(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
+    validateUniqueChannelAliases(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
     return new AdminConnectionConfigPayload(ircConfigs, discordConfig, telegramConfig, whatsappConfig);
   }
 
@@ -319,7 +319,7 @@ public class AdminConnectionConfigService {
         && normalizeAliases(channel.echoToAliases()).isEmpty();
   }
 
-  private void validateUniqueAliases(
+  private void validateUniqueChannelAliases(
       List<IrcServerConfigDto> ircConfigs,
       DiscordConfigDto discordConfig,
       TelegramConfigDto telegramConfig,
@@ -332,17 +332,13 @@ public class AdminConnectionConfigService {
     channels.addAll(whatsappConfig.channelList());
 
     for (ChannelDto channel : channels) {
-      List<String> aliases = new ArrayList<>();
-      if (channel.echoToAlias() != null && !channel.echoToAlias().isBlank()) {
-        aliases.add(channel.echoToAlias());
+      String alias = channel.echoToAlias();
+      if (alias == null || alias.isBlank()) {
+        continue;
       }
-      aliases.addAll(channel.echoToAliases());
-
-      for (String alias : aliases) {
-        String key = alias.toLowerCase(Locale.ROOT);
-        if (!seen.add(key)) {
-          throw new IllegalArgumentException("Duplicate channel alias: " + alias);
-        }
+      String key = alias.toLowerCase(Locale.ROOT);
+      if (!seen.add(key)) {
+        throw new IllegalArgumentException("Duplicate channel alias: " + alias);
       }
     }
   }

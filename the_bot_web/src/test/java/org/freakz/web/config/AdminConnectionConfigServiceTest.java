@@ -93,6 +93,33 @@ class AdminConnectionConfigServiceTest {
         .hasRootCauseMessage("Duplicate channel alias: dup");
   }
 
+  @Test
+  void allowsEchoToAliasesToReferenceExistingChannelAliases() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+    AdminConnectionConfigPayload payload = new AdminConnectionConfigPayload(
+        List.of(new IrcServerConfigDto(
+            "IRCDEV",
+            true,
+            "IRCDEV",
+            "localhost",
+            6667,
+            List.of(
+                channel("IRC-HOKANDEV2"),
+                new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false)))),
+        new DiscordConfigDto(true, 123L, List.of()),
+        new TelegramConfigDto("bot", true, List.of()),
+        new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
+
+    service.saveConfig(payload);
+
+    String saved = Files.readString(files.runtimeConfigFile());
+    assertThat(saved)
+        .contains("\"echoToAlias\" : \"IRC-HOKANDEV2\"")
+        .contains("\"echoToAlias\" : \"IRC-TESTTEST\"")
+        .contains("\"IRC-HOKANDEV2\"");
+  }
+
   private AdminConnectionConfigService serviceFor(Path bootstrapFile) {
     TheBotProperties properties = new TheBotProperties();
     properties.setConfigFile(bootstrapFile.toString());
