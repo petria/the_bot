@@ -11,6 +11,12 @@ services:
       - ${HOKAN_DATA_DIR:-.}/runtime:/workspace/runtime
     ports:
       - "127.0.0.1:${OPENCLAW_HOST_PORT:-18899}:18889"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18889/health >/dev/null"]
+      interval: 3m
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     environment:
       - TZ=Europe/Helsinki
       - HOME=/state
