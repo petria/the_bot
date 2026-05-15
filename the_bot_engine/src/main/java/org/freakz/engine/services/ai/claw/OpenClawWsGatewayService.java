@@ -225,7 +225,7 @@ public class OpenClawWsGatewayService {
 
     ObjectNode params = root.putObject("params");
     params.put("minProtocol", 3);
-    params.put("maxProtocol", 3);
+    params.put("maxProtocol", 4);
 
     ObjectNode client = params.putObject("client");
     client.put("id", wsIdentity.clientId());
