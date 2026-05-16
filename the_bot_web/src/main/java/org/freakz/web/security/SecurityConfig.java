@@ -16,6 +16,7 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -31,7 +32,8 @@ public class SecurityConfig {
             .ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/logout"))
         )
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/assets/**", "/favicon.ico", "/default-ui.css", "/error").permitAll()
+            .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
+            .requestMatchers("/assets/**", "/index.html", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/admin/**").hasRole("ADMIN")
