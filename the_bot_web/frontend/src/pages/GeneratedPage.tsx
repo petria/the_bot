@@ -51,6 +51,29 @@ interface GluggaWeekdayProps {
   nickRows: GluggaWeekdayNickRow[];
 }
 
+interface GluggaStreakRow {
+  nick: string;
+  longestDays: number;
+  startDate: string;
+  endDate: string;
+  streakCount: number;
+  activeDays: number;
+  totalCount: number;
+}
+
+interface GluggaStreakProps {
+  channel: string;
+  network: string;
+  counterKey: string;
+  counterName: string;
+  generatedAt: string;
+  totalCount: number;
+  rawRowCount: number;
+  skippedRowCount: number;
+  nickCount: number;
+  rows: GluggaStreakRow[];
+}
+
 export function GeneratedPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -93,6 +116,9 @@ function GeneratedPageRenderer({ page }: { page: GeneratedPageResponse }) {
   }
   if (page.componentType === 'GluggaWeekdayPage') {
     return <GluggaWeekdayPage page={page} />;
+  }
+  if (page.componentType === 'GluggaStreakPage') {
+    return <GluggaStreakPage page={page} />;
   }
 
   return <GeneratedPageError message={`Unsupported generated page type: ${page.componentType}`} />;
@@ -306,6 +332,120 @@ function GluggaWeekdayPage({ page }: { page: GeneratedPageResponse }) {
   );
 }
 
+function GluggaStreakPage({ page }: { page: GeneratedPageResponse }) {
+  const props = normalizeGluggaStreakProps(page.props);
+  const rows = useMemo(
+    () => [...props.rows].sort((left, right) => {
+      if (right.longestDays !== left.longestDays) {
+        return right.longestDays - left.longestDays;
+      }
+      if (right.endDate !== left.endDate) {
+        return right.endDate.localeCompare(left.endDate);
+      }
+      return left.nick.localeCompare(right.nick);
+    }),
+    [props.rows],
+  );
+
+  return (
+    <Stack gap="md">
+      <div>
+        <Title order={1}>{page.title}</Title>
+        <Text c="dimmed">
+          {props.network} / {props.channel} / {props.counterKey}
+        </Text>
+      </div>
+
+      <Card withBorder radius="sm">
+        <Group gap="xl">
+          <InfoValue label="Total count" value={props.totalCount.toLocaleString('fi-FI')} />
+          <InfoValue label="Nicks" value={props.nickCount.toLocaleString('fi-FI')} />
+          <InfoValue label="Rows" value={props.rawRowCount.toLocaleString('fi-FI')} />
+          <InfoValue label="Generated" value={formatDateTime(page.createdAt || props.generatedAt)} />
+          <InfoValue label="Expires" value={formatDateTime(page.expiresAt)} />
+        </Group>
+      </Card>
+
+      {rows.length === 0 ? (
+        <Alert color="blue">No {props.counterName} counts recorded for this channel.</Alert>
+      ) : (
+        <>
+          <Table.ScrollContainer minWidth={760}>
+            <Table striped highlightOnHover className="generated-streaks-table">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th className="generated-rank-cell">Rank</Table.Th>
+                  <Table.Th>Nick</Table.Th>
+                  <Table.Th className="generated-count-cell">Longest</Table.Th>
+                  <Table.Th>Start</Table.Th>
+                  <Table.Th>End</Table.Th>
+                  <Table.Th className="generated-count-cell">Streak count</Table.Th>
+                  <Table.Th className="generated-count-cell">Active days</Table.Th>
+                  <Table.Th className="generated-count-cell">Total</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.map((row, index) => (
+                  <Table.Tr key={row.nick}>
+                    <Table.Td className="generated-rank-cell">{index + 1}</Table.Td>
+                    <Table.Td>
+                      <Text fw={600} className="generated-nick">{row.nick}</Text>
+                    </Table.Td>
+                    <Table.Td className="generated-count-cell">
+                      {row.longestDays.toLocaleString('fi-FI')}
+                    </Table.Td>
+                    <Table.Td>{formatDate(row.startDate)}</Table.Td>
+                    <Table.Td>{formatDate(row.endDate)}</Table.Td>
+                    <Table.Td className="generated-count-cell">
+                      {row.streakCount.toLocaleString('fi-FI')}
+                    </Table.Td>
+                    <Table.Td className="generated-count-cell">
+                      {row.activeDays.toLocaleString('fi-FI')}
+                    </Table.Td>
+                    <Table.Td className="generated-count-cell">
+                      {row.totalCount.toLocaleString('fi-FI')}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+
+          <Stack gap="xs" className="generated-streaks-cards">
+            {rows.map((row, index) => (
+              <Card withBorder radius="sm" key={row.nick}>
+                <Stack gap={4}>
+                  <Group justify="space-between" gap="sm" wrap="nowrap">
+                    <Group gap="sm" wrap="nowrap">
+                      <Badge variant="light">#{index + 1}</Badge>
+                      <Text fw={700} className="generated-nick">{row.nick}</Text>
+                    </Group>
+                    <Text fw={700}>
+                      {row.longestDays.toLocaleString('fi-FI')} days
+                    </Text>
+                  </Group>
+                  <Text size="sm" c="dimmed">
+                    {formatDate(row.startDate)} - {formatDate(row.endDate)}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {row.streakCount.toLocaleString('fi-FI')} in streak / {row.activeDays.toLocaleString('fi-FI')} active days / {row.totalCount.toLocaleString('fi-FI')} total
+                  </Text>
+                </Stack>
+              </Card>
+            ))}
+          </Stack>
+        </>
+      )}
+
+      {props.skippedRowCount > 0 ? (
+        <Text size="sm" c="dimmed">
+          Skipped {props.skippedRowCount.toLocaleString('fi-FI')} rows with invalid date or count values.
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
 function normalizeGluggaCountsProps(props: Record<string, unknown>): GluggaCountsProps {
   const rows = Array.isArray(props.rows) ? props.rows : [];
   return {
@@ -356,6 +496,33 @@ function normalizeGluggaWeekdayProps(props: Record<string, unknown>): GluggaWeek
         bestDayPercent: numberValue(item.bestDayPercent),
         totalCount: numberValue(item.totalCount),
         weekdayPercents: recordNumberValues(item.weekdayPercents),
+      };
+    }),
+  };
+}
+
+function normalizeGluggaStreakProps(props: Record<string, unknown>): GluggaStreakProps {
+  const rows = Array.isArray(props.rows) ? props.rows : [];
+  return {
+    channel: stringValue(props.channel),
+    network: stringValue(props.network),
+    counterKey: stringValue(props.counterKey),
+    counterName: stringValue(props.counterName),
+    generatedAt: stringValue(props.generatedAt),
+    totalCount: numberValue(props.totalCount),
+    rawRowCount: numberValue(props.rawRowCount),
+    skippedRowCount: numberValue(props.skippedRowCount),
+    nickCount: numberValue(props.nickCount),
+    rows: rows.map((row) => {
+      const item = row as Record<string, unknown>;
+      return {
+        nick: stringValue(item.nick),
+        longestDays: numberValue(item.longestDays),
+        startDate: stringValue(item.startDate),
+        endDate: stringValue(item.endDate),
+        streakCount: numberValue(item.streakCount),
+        activeDays: numberValue(item.activeDays),
+        totalCount: numberValue(item.totalCount),
       };
     }),
   };
@@ -421,5 +588,20 @@ function formatDateTime(value: string | null | undefined) {
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
+  }).format(date);
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return '-';
+  }
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+  return new Intl.DateTimeFormat('fi-FI', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
   }).format(date);
 }

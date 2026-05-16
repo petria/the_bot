@@ -84,5 +84,6 @@ class CommandHandlerLoaderTest {
 
     assertThat(loader.getHandlersMap()).containsKey("Gentest");
     assertThat(loader.getHandlersMap()).containsKey("Gentest2");
+    assertThat(loader.getHandlersMap()).containsKey("Gentest3");
   }
 }

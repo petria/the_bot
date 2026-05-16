@@ -149,6 +149,10 @@ body,
   display: none;
 }
 
+.generated-streaks-cards {
+  display: none;
+}
+
 .generated-weekday-percent-line {
   overflow-wrap: anywhere;
 }
@@ -216,6 +220,14 @@ body,
   }
 
   .generated-weekday-nicks-cards {
+    display: flex;
+  }
+
+  .generated-streaks-table {
+    display: none;
+  }
+
+  .generated-streaks-cards {
     display: flex;
   }
 }
