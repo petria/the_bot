@@ -373,7 +373,7 @@ jobs:
             OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-${OPENCLAW_RUNTIME_LOG_ROOT:-/workspace/runtime/logs}}"
             OPENCLAW_RUNTIME_LOG_ROOT_LOCAL="${CI_OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}}"
             if [ "$OPENCLAW_DEPLOYMENT_MODE" = "external" ]; then
-              OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-/runtime/openclaw-client-state}"
+              OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-/openclaw-state}"
               OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-$OPENCLAW_EXTERNAL_BASE_MOUNT/$HOKAN_BOT_INSTANCE_ID/the_bot/runtime/logs}"
             fi
             OPENCLAW_NODE_BRIDGE_ENABLED="${CI_OPENCLAW_NODE_BRIDGE_ENABLED:-${OPENCLAW_NODE_BRIDGE_ENABLED:-true}}"
@@ -425,9 +425,6 @@ jobs:
             } > .env
 
             mkdir -p "$HOKAN_DATA_DIR/runtime"
-            if [ "$OPENCLAW_DEPLOYMENT_MODE" = "external" ]; then
-              mkdir -p "$HOKAN_DATA_DIR/runtime/openclaw-client-state"
-            fi
             if [ "$OPENCLAW_DEPLOYMENT_MODE" = "local" ] && [ -f "$HOKAN_DATA_DIR/openclaw/config/config.json" ]; then
               python3 - <<'PY'
             import json
@@ -563,6 +560,7 @@ jobs:
           OPENCLAW_HOOKS_TOKEN: ${{ secrets.OPENCLAW_HOOKS_TOKEN }}
           OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
           OPENCLAW_AUTH_PROFILE_SECRET_KEY: ${{ secrets.OPENCLAW_AUTH_PROFILE_SECRET_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PUID: ${{ vars.PUID }}
           PGID: ${{ vars.PGID }}
           OPENCLAW_ALLOWED_ORIGINS: ${{ vars.OPENCLAW_ALLOWED_ORIGINS }}
@@ -572,7 +570,7 @@ jobs:
           host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server' }}
           username: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
           key: ${{ secrets.OPENCLAW_VM_SSH_KEY }}
-          envs: OPENCLAW_IMAGE,OPENCLAW_HOST_PORT,OPENCLAW_DATA_DIR,OPENCLAW_EXTERNAL_BASE_MOUNT,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_AUTH_PROFILE_SECRET_KEY,PUID,PGID,OPENCLAW_ALLOWED_ORIGINS,OPENCLAW_MODEL,OPENCLAW_DEPLOY_WORKDIR
+          envs: OPENCLAW_IMAGE,OPENCLAW_HOST_PORT,OPENCLAW_DATA_DIR,OPENCLAW_EXTERNAL_BASE_MOUNT,OPENCLAW_HOOKS_TOKEN,OPENCLAW_GATEWAY_TOKEN,OPENCLAW_AUTH_PROFILE_SECRET_KEY,OPENAI_API_KEY,PUID,PGID,OPENCLAW_ALLOWED_ORIGINS,OPENCLAW_MODEL,OPENCLAW_DEPLOY_WORKDIR
           script: |
             cd "${OPENCLAW_DEPLOY_WORKDIR:-/home/hokan/bot-openclaw}"
 
@@ -597,6 +595,7 @@ jobs:
               echo "OPENCLAW_HOOKS_TOKEN=$OPENCLAW_HOOKS_TOKEN"
               echo "OPENCLAW_GATEWAY_TOKEN=$OPENCLAW_GATEWAY_TOKEN"
               echo "OPENCLAW_AUTH_PROFILE_SECRET_KEY=$OPENCLAW_AUTH_PROFILE_SECRET_KEY"
+              echo "OPENAI_API_KEY=$OPENAI_API_KEY"
               echo "PUID=$PUID"
               echo "PGID=$PGID"
             } > .env
