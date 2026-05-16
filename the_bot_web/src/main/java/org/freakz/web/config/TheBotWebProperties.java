@@ -15,6 +15,9 @@ public class TheBotWebProperties {
   private String botEngineContainerName = "bot-engine";
   private String botOpenclawContainerName = "bot-openclaw";
   private String botWhatsappContainerName = "bot-whatsapp";
+  private String openclawDeploymentMode = "local";
+  private String openclawGatewayWsUrl = "ws://bot-openclaw:18889";
+  private String openclawHealthUrl = "";
 
   public String getUsersFile() {
     return usersFile;
@@ -94,5 +97,29 @@ public class TheBotWebProperties {
 
   public void setBotWhatsappContainerName(String botWhatsappContainerName) {
     this.botWhatsappContainerName = botWhatsappContainerName;
+  }
+
+  public String getOpenclawDeploymentMode() {
+    return openclawDeploymentMode;
+  }
+
+  public void setOpenclawDeploymentMode(String openclawDeploymentMode) {
+    this.openclawDeploymentMode = openclawDeploymentMode;
+  }
+
+  public String getOpenclawGatewayWsUrl() {
+    return openclawGatewayWsUrl;
+  }
+
+  public void setOpenclawGatewayWsUrl(String openclawGatewayWsUrl) {
+    this.openclawGatewayWsUrl = openclawGatewayWsUrl;
+  }
+
+  public String getOpenclawHealthUrl() {
+    return openclawHealthUrl;
+  }
+
+  public void setOpenclawHealthUrl(String openclawHealthUrl) {
+    this.openclawHealthUrl = openclawHealthUrl;
   }
 }

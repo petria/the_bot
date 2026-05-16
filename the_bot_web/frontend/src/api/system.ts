@@ -4,6 +4,9 @@ export type SystemComponentStatus = {
   name: string;
   status: string;
   componentType: string | null;
+  runtimeMode: string | null;
+  healthUrl: string | null;
+  healthStatus: string | null;
   baseUrl: string | null;
   profiles: string | null;
   version: string | null;

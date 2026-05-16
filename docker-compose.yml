@@ -123,6 +123,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "0.0.0.0:8091:8091"
+    extra_hosts:
+      - "ubuntu-server:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
+      - "ubuntu-server.local:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
@@ -132,6 +135,9 @@ services:
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
+      - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-local}
+      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
+      - THE_BOT_WEB_OPENCLAW_HEALTH_URL=${THE_BOT_WEB_OPENCLAW_HEALTH_URL:-}
     container_name: bot-web
 
 networks:

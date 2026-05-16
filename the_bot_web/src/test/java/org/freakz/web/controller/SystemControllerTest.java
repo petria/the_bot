@@ -9,6 +9,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.freakz.web.config.TheBotWebProperties;
@@ -107,6 +108,73 @@ class SystemControllerTest {
   }
 
   @Test
+  void mapsExternalOpenClawHealthWithoutLocalContainer() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
+        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> {
+          properties.setOpenclawDeploymentMode("external");
+          properties.setOpenclawGatewayWsUrl("ws://ubuntu-server:18889");
+        },
+        containerName -> {
+          if ("bot-openclaw".equals(containerName)) {
+            return ContainerStatus.missing(containerName);
+          }
+          return containerStatus(containerName, "running");
+        }).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-openclaw"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.componentType()).isEqualTo("OPENCLAW_GATEWAY");
+          assertThat(component.runtimeMode()).isEqualTo("external");
+          assertThat(component.baseUrl()).isEqualTo("ws://ubuntu-server:18889");
+          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server:18889/health");
+          assertThat(component.healthStatus()).isEqualTo("live");
+          assertThat(component.containerName()).isNull();
+          assertThat(component.containerError()).isNull();
+          assertThat(component.error()).isNull();
+        });
+    server.verify();
+  }
+
+  @Test
+  void mapsExternalOpenClawHealthFailureToDown() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
+        .andRespond(withException(new IOException("connection refused")));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> {
+          properties.setOpenclawDeploymentMode("external");
+          properties.setOpenclawGatewayWsUrl("ws://ubuntu-server:18889");
+        },
+        containerName -> ContainerStatus.missing(containerName)).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-openclaw"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server:18889/health");
+          assertThat(component.error()).contains("connection refused");
+        });
+    server.verify();
+  }
+
+  @Test
   void mapsMissingSidecarContainerToDown() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -167,10 +235,19 @@ class SystemControllerTest {
   }
 
   private SystemController controller(RestTemplate restTemplate, ContainerStatusProvider containerStatusProvider) {
+    return controller(restTemplate, properties -> {
+    }, containerStatusProvider);
+  }
+
+  private SystemController controller(
+      RestTemplate restTemplate,
+      Consumer<TheBotWebProperties> propertiesCustomizer,
+      ContainerStatusProvider containerStatusProvider) {
     TheBotWebProperties properties = new TheBotWebProperties();
     properties.setBotIoBaseUrl("http://bot-io:8090");
     properties.setBotEngineBaseUrl("http://bot-engine:8100");
     properties.setDockerStatusEnabled(true);
+    propertiesCustomizer.accept(properties);
     return new SystemController(
         restTemplate,
         properties,
