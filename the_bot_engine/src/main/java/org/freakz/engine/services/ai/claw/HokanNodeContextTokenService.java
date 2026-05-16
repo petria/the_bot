@@ -21,12 +21,15 @@ public class HokanNodeContextTokenService {
 
   private final ConfigService configService;
   private final JsonMapper objectMapper;
+  private final BotInstanceIdentityService botInstanceIdentityService;
 
   public HokanNodeContextTokenService(
       ConfigService configService,
-      JsonMapper objectMapper) {
+      JsonMapper objectMapper,
+      BotInstanceIdentityService botInstanceIdentityService) {
     this.configService = configService;
     this.objectMapper = objectMapper;
+    this.botInstanceIdentityService = botInstanceIdentityService;
   }
 
   public String createToken(EngineRequest request, String sessionKey) {
@@ -36,6 +39,7 @@ public class HokanNodeContextTokenService {
 
       ObjectNode payload = objectMapper.createObjectNode();
       payload.put("v", 1);
+      payload.put("botInstanceId", botInstanceIdentityService.getInstanceId());
       payload.put("issuedAt", issuedAt);
       payload.put("expiresAt", issuedAt + ttlSeconds);
       payload.put("sessionKey", nullToEmpty(sessionKey));
@@ -79,6 +83,11 @@ public class HokanNodeContextTokenService {
 
       byte[] payloadBytes = Base64.getUrlDecoder().decode(payloadB64);
       JsonNode payload = objectMapper.readTree(payloadBytes);
+      String botInstanceId = payload.path("botInstanceId").asString("");
+      String expectedBotInstanceId = botInstanceIdentityService.getInstanceId();
+      if (!expectedBotInstanceId.equals(botInstanceId)) {
+        throw new IllegalArgumentException("hokanContextToken bot instance mismatch");
+      }
       long expiresAt = payload.path("expiresAt").asLong(0L);
       if (expiresAt > 0L && Instant.now().getEpochSecond() > expiresAt) {
         throw new IllegalArgumentException("expired hokanContextToken");
@@ -86,6 +95,7 @@ public class HokanNodeContextTokenService {
 
       JsonNode user = payload.path("user");
       return new VerifiedNodeContext(
+          botInstanceId,
           payload.path("sessionKey").asString(""),
           payload.path("sourceEchoToAlias").asString(""),
           payload.path("chatProtocol").asString(""),
@@ -175,6 +185,7 @@ public class HokanNodeContextTokenService {
   }
 
   public record VerifiedNodeContext(
+      String botInstanceId,
       String sessionKey,
       String sourceEchoToAlias,
       String chatProtocol,

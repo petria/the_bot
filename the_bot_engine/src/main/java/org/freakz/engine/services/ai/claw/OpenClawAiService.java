@@ -37,19 +37,22 @@ public class OpenClawAiService {
   private final BotEngine botEngine;
   private final OpenClawWsGatewayService openClawWsGatewayService;
   private final HokanNodeContextTokenService hokanNodeContextTokenService;
+  private final BotInstanceIdentityService botInstanceIdentityService;
 
   public OpenClawAiService(
       ConfigService configService,
       JsonMapper objectMapper,
       BotEngine botEngine,
       OpenClawWsGatewayService openClawWsGatewayService,
-      HokanNodeContextTokenService hokanNodeContextTokenService
+      HokanNodeContextTokenService hokanNodeContextTokenService,
+      BotInstanceIdentityService botInstanceIdentityService
   ) {
     this.configService = configService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.openClawWsGatewayService = openClawWsGatewayService;
     this.hokanNodeContextTokenService = hokanNodeContextTokenService;
+    this.botInstanceIdentityService = botInstanceIdentityService;
     this.httpClient = HttpClient.newBuilder().build();
   }
 
@@ -315,7 +318,8 @@ public class OpenClawAiService {
     return latest;
   }
 
-  private String buildSessionKey(EngineRequest request) {
+  String buildSessionKey(EngineRequest request) {
+    String botInstanceId = botInstanceIdentityService.getInstanceId();
     String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
     String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
     String senderKey = ChatIdentityUtil.sanitize(request.getFromSenderId(), null);
@@ -334,13 +338,15 @@ public class OpenClawAiService {
     }
 
     if ("dm".equals(chatType)) {
-      return protocol + ":" + network + ":dm:" + senderKey;
+      return "bot:" + botInstanceId + ":" + protocol + ":" + network + ":dm:" + senderKey;
     }
 
-    return protocol + ":" + network + ":channel:" + chatTarget + ":user:" + senderKey;
+    return "bot:" + botInstanceId + ":" + protocol + ":" + network + ":channel:" + chatTarget + ":user:" + senderKey;
   }
 
-  private String buildOpenClawEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
+  String buildOpenClawEnvelope(EngineRequest request, String sessionKey, String userPrompt) {
+    String botInstanceId = botInstanceIdentityService.getInstanceId();
+    String botInstanceMount = botInstanceIdentityService.getInstanceMount();
     String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
     String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
     String chatType = ChatIdentityUtil.sanitize(request.getChatType(), request.isPrivateChannel() ? "dm" : "channel");
@@ -375,6 +381,8 @@ public class OpenClawAiService {
 
     StringBuilder sb = new StringBuilder();
     sb.append("[HOKAN_CONTEXT v1]\n");
+    sb.append("bot_instance_id=").append(botInstanceId).append("\n");
+    sb.append("bot_instance_mount=").append(botInstanceMount).append("\n");
     sb.append("echo_to_alias=").append(request.getEchoToAlias()).append("\n");
     sb.append("source=").append(protocol).append("\n");
     sb.append("network=").append(network).append("\n");
