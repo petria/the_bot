@@ -9,6 +9,7 @@ public class TheBotProperties {
   private String dataDir;
   private String runtimeDir;
   private String logDir;
+  private String webPublicBaseUrl = "http://localhost:8091";
 
   public TheBotProperties() {
   }
@@ -52,6 +53,14 @@ public class TheBotProperties {
     this.logDir = logDir;
   }
 
+  public String getWebPublicBaseUrl() {
+    return webPublicBaseUrl;
+  }
+
+  public void setWebPublicBaseUrl(String webPublicBaseUrl) {
+    this.webPublicBaseUrl = webPublicBaseUrl;
+  }
+
   @Override
   public String toString() {
     return "TheBotProperties{" +
@@ -59,6 +68,7 @@ public class TheBotProperties {
         ", dataDir='" + dataDir + '\'' +
         ", runtimeDir='" + runtimeDir + '\'' +
         ", logDir='" + logDir + '\'' +
+        ", webPublicBaseUrl='" + webPublicBaseUrl + '\'' +
         '}';
   }
 }

@@ -117,6 +117,29 @@ body,
   overflow-wrap: anywhere;
 }
 
+.generated-page-shell {
+  width: min(100% - 24px, 1100px);
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.generated-nick {
+  overflow-wrap: anywhere;
+}
+
+.generated-rank-cell {
+  width: 96px;
+}
+
+.generated-count-cell {
+  width: 140px;
+  text-align: right;
+}
+
+.generated-counts-cards {
+  display: none;
+}
+
 .admin-users-cell {
   max-width: 320px;
 }
@@ -159,6 +182,19 @@ body,
   }
 
   .admin-users-cards {
+    display: flex;
+  }
+
+  .generated-page-shell {
+    width: min(100% - 16px, 1100px);
+    padding: 16px 0;
+  }
+
+  .generated-counts-table {
+    display: none;
+  }
+
+  .generated-counts-cards {
     display: flex;
   }
 }

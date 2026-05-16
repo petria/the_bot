@@ -10,6 +10,7 @@ import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { GeneratedPage } from './pages/GeneratedPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
@@ -29,6 +30,20 @@ const adminNavItems = [
 ];
 
 export function App() {
+  const location = useLocation();
+
+  if (location.pathname.startsWith('/generated/')) {
+    return (
+      <Routes>
+        <Route path="/generated/:id" element={<GeneratedPage />} />
+      </Routes>
+    );
+  }
+
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const [opened, { close, toggle }] = useDisclosure();
   const location = useLocation();
   const navigate = useNavigate();

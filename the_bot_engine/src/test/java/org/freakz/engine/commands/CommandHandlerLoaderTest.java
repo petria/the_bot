@@ -77,4 +77,11 @@ class CommandHandlerLoaderTest {
         .extracting(HandlerAlias::getAlias)
         .contains("!topgl", "!topkor", "!topryyst", "!toppuuh");
   }
+
+  @Test
+  void includesGeneratedGluggaPageCommand() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    assertThat(loader.getHandlersMap()).containsKey("Gentest");
+  }
 }

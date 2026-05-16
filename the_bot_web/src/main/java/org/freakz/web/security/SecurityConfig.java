@@ -12,9 +12,12 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.http.HttpStatus;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import jakarta.servlet.http.HttpServletResponse;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @Configuration
 @EnableWebSecurity
@@ -29,6 +32,8 @@ public class SecurityConfig {
         )
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/assets/**", "/favicon.ico", "/default-ui.css", "/error").permitAll()
+            .requestMatchers("/generated/**").permitAll()
+            .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/admin/**").hasRole("ADMIN")
             .requestMatchers("/api/web/**").authenticated()
             .anyRequest().authenticated()
@@ -67,6 +72,11 @@ public class SecurityConfig {
 
   @Bean
   public JsonMapper jsonMapper() {
-    return JsonMapper.builder().build();
+    var builder = JsonMapper.builder();
+    builder.changeDefaultPropertyInclusion(include -> include.withValueInclusion(JsonInclude.Include.NON_NULL))
+        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .findAndAddModules();
+    return builder.build();
   }
 }
