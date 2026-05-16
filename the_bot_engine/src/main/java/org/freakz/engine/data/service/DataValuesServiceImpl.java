@@ -162,6 +162,12 @@ public class DataValuesServiceImpl implements DataValuesService, DataSavingServi
   }
 
   @Override
+  public List<DataValues> getRawDataValues(String channel, String network, String key) {
+    String keyLike = key + ".*";
+    return dataValuesRepository.findAllByChannelAndNetworkAndKeyNameIsLike(channel, network, keyLike);
+  }
+
+  @Override
   //    @Transactional(readOnly = true)
   public List<DataValuesModel> getDataValuesAsc(String channel, String network, String key) {
     String keyLike = key + ".*";

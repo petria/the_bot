@@ -2,6 +2,7 @@ package org.freakz.engine.data.service;
 
 import org.freakz.common.exception.DataRepositoryException;
 import org.freakz.common.model.dto.DataValueStatsModel;
+import org.freakz.common.model.dto.DataValues;
 import org.freakz.common.model.dto.DataValuesModel;
 
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.List;
 public interface DataValuesService {
 
   List<DataValuesModel> getDataValues(String channel, String network, String key);
+
+  List<DataValues> getRawDataValues(String channel, String network, String key);
 
   List<DataValuesModel> getDataValuesAsc(String channel, String network, String key);
 

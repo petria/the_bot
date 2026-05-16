@@ -24,6 +24,7 @@ public enum ServiceRequestType {
   GetTopCountsService,
   GetTopStatsRequest,
   GenerateGluggaCountsPage,
+  GenerateGluggaWeekdayPage,
 
   ChannelOpRequest,
 

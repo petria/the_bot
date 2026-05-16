@@ -83,5 +83,6 @@ class CommandHandlerLoaderTest {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
 
     assertThat(loader.getHandlersMap()).containsKey("Gentest");
+    assertThat(loader.getHandlersMap()).containsKey("Gentest2");
   }
 }

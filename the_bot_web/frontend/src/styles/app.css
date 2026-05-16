@@ -136,7 +136,16 @@ body,
   text-align: right;
 }
 
+.generated-percent-cell {
+  width: 140px;
+  text-align: right;
+}
+
 .generated-counts-cards {
+  display: none;
+}
+
+.generated-weekday-nicks-cards {
   display: none;
 }
 
@@ -195,6 +204,14 @@ body,
   }
 
   .generated-counts-cards {
+    display: flex;
+  }
+
+  .generated-weekday-nicks-table {
+    display: none;
+  }
+
+  .generated-weekday-nicks-cards {
     display: flex;
   }
 }
