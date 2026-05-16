@@ -34,6 +34,7 @@ interface GluggaWeekdayNickRow {
   bestDayCount: number;
   bestDayPercent: number;
   totalCount: number;
+  weekdayPercents: Record<string, number>;
 }
 
 interface GluggaWeekdayProps {
@@ -83,6 +84,8 @@ export function GeneratedPage() {
     </Box>
   );
 }
+
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function GeneratedPageRenderer({ page }: { page: GeneratedPageResponse }) {
   if (page.componentType === 'GluggaCountsPage') {
@@ -239,6 +242,9 @@ function GluggaWeekdayPage({ page }: { page: GeneratedPageResponse }) {
                     <Table.Th>Best day</Table.Th>
                     <Table.Th className="generated-count-cell">Best count</Table.Th>
                     <Table.Th className="generated-percent-cell">Nick percent</Table.Th>
+                    {WEEKDAY_LABELS.map((day) => (
+                      <Table.Th className="generated-percent-cell" key={day}>{day}</Table.Th>
+                    ))}
                     <Table.Th className="generated-count-cell">Total</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -255,6 +261,11 @@ function GluggaWeekdayPage({ page }: { page: GeneratedPageResponse }) {
                       <Table.Td className="generated-percent-cell">
                         {formatPercent(row.bestDayPercent)}
                       </Table.Td>
+                      {WEEKDAY_LABELS.map((day) => (
+                        <Table.Td className="generated-percent-cell" key={day}>
+                          {formatPercent(row.weekdayPercents[day] ?? 0)}
+                        </Table.Td>
+                      ))}
                       <Table.Td className="generated-count-cell">
                         {row.totalCount.toLocaleString('fi-FI')}
                       </Table.Td>
@@ -274,6 +285,9 @@ function GluggaWeekdayPage({ page }: { page: GeneratedPageResponse }) {
                     </Group>
                     <Text size="sm" c="dimmed">
                       {row.bestDayCount.toLocaleString('fi-FI')} of {row.totalCount.toLocaleString('fi-FI')} ({formatPercent(row.bestDayPercent)})
+                    </Text>
+                    <Text size="xs" c="dimmed" className="generated-weekday-percent-line">
+                      {WEEKDAY_LABELS.map((day) => `${day} ${formatPercent(row.weekdayPercents[day] ?? 0)}`).join(' / ')}
                     </Text>
                   </Stack>
                 </Card>
@@ -341,6 +355,7 @@ function normalizeGluggaWeekdayProps(props: Record<string, unknown>): GluggaWeek
         bestDayCount: numberValue(item.bestDayCount),
         bestDayPercent: numberValue(item.bestDayPercent),
         totalCount: numberValue(item.totalCount),
+        weekdayPercents: recordNumberValues(item.weekdayPercents),
       };
     }),
   };
@@ -371,6 +386,16 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function recordNumberValues(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+        .map(([key, item]) => [key, numberValue(item)]),
+  );
 }
 
 function formatPercent(value: number) {

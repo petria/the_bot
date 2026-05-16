@@ -170,6 +170,7 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
       row.put("bestDayCount", bestDayCount);
       row.put("bestDayPercent", total == 0 ? 0D : (bestDayCount * 100D) / total);
       row.put("totalCount", total);
+      row.put("weekdayPercents", createWeekdayPercents(dayCounts, total));
       rows.add(row);
     }
     rows.sort(Comparator
@@ -177,6 +178,15 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
         .reversed()
         .thenComparing(row -> row.get("nick").toString(), String.CASE_INSENSITIVE_ORDER));
     return rows;
+  }
+
+  private Map<String, Object> createWeekdayPercents(Map<DayOfWeek, Integer> dayCounts, int total) {
+    Map<String, Object> percents = new LinkedHashMap<>();
+    for (DayOfWeek day : DayOfWeek.values()) {
+      int count = dayCounts.get(day);
+      percents.put(dayLabel(day), total == 0 ? 0D : (count * 100D) / total);
+    }
+    return percents;
   }
 
   private DayOfWeek parseDayOfWeek(String keyName) {

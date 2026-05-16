@@ -149,6 +149,10 @@ body,
   display: none;
 }
 
+.generated-weekday-percent-line {
+  overflow-wrap: anywhere;
+}
+
 .admin-users-cell {
   max-width: 320px;
 }

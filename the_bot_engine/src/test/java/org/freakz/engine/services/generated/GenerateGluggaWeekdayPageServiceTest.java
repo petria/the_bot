@@ -101,6 +101,9 @@ class GenerateGluggaWeekdayPageServiceTest {
           assertThat(item.get("nick")).isEqualTo("NickA");
           assertThat(item.get("bestDay")).isEqualTo("Mon");
           assertThat(item.get("bestDayCount")).isEqualTo(3);
+          Map<?, ?> weekdayPercents = (Map<?, ?>) item.get("weekdayPercents");
+          assertThat(weekdayPercents.get("Mon")).isEqualTo(75.0);
+          assertThat(weekdayPercents.get("Tue")).isEqualTo(25.0);
         })
         .anySatisfy(row -> {
           Map<?, ?> item = (Map<?, ?>) row;
