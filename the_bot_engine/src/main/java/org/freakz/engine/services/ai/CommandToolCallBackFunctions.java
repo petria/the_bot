@@ -32,11 +32,11 @@ public class CommandToolCallBackFunctions {
   }
 
   @Tool(
-      description = "Execute a classic bot command as if the user had typed !<commandName> <args>. " +
-          "Command name must be without leading '!'."
+      description = "Execute a bot command as if the user had typed !<commandName> <args>. " +
+          "Command name must be without leading '!' and may include a provider namespace, for example main::help."
   )
   public String executeCommand(
-      @ToolParam(description = "Command name without leading '!'. Example: 'help', 'weather', 'quiz'.")
+      @ToolParam(description = "Command name without leading '!'. Examples: 'help', 'weather', 'main::help'.")
       String commandName,
       @ToolParam(description = "Raw argument string exactly as the user would type after the command. Can be empty.", required = false)
       String args,

@@ -2,24 +2,27 @@ package org.freakz.engine.commands;
 
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
-import org.freakz.engine.commands.annotations.HokanCommandHandler;
+import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
+import org.freakz.engine.commands.providers.CommandProvider;
 import org.reflections.Reflections;
 import org.reflections.util.ClasspathHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 public class CommandHandlerLoader {
 
+  public static final String MAIN_NAMESPACE = "main";
+
   private static final Logger log = LoggerFactory.getLogger(CommandHandlerLoader.class);
   private Map<String, HandlerClass> handlersMap = new TreeMap<>();
   private Map<String, HandlerAlias> handlerAliasMap = new TreeMap<>();
+  private Map<String, CommandProvider> commandProviderMap = new TreeMap<>();
 
   public CommandHandlerLoader(String activeProfile, String botName)
       throws InitializeFailedException {
@@ -27,6 +30,7 @@ public class CommandHandlerLoader {
       initializeCommandHandlers(activeProfile, botName);
 
     } catch (Exception e) {
+      log.error("Could not initialize command handlers correctly", e);
       throw new InitializeFailedException("Could not initialize command handlers correctly!");
     }
   }
@@ -39,56 +43,90 @@ public class CommandHandlerLoader {
     return handlerAliasMap;
   }
 
+  public Map<String, CommandProvider> getCommandProviderMap() {
+    return commandProviderMap;
+  }
+
   public void initializeCommandHandlers(String activeProfile, String botName) throws Exception {
     Reflections reflections = new Reflections(ClasspathHelper.forPackage("org.freakz"));
 
-    Set<Class<?>> typesAnnotatedWith = reflections.getTypesAnnotatedWith(HokanCommandHandler.class);
-    for (Class<?> clazz : typesAnnotatedWith) {
+    List<CommandProvider> providers = reflections.getSubTypesOf(CommandProvider.class).stream()
+        .map(this::newProviderInstance)
+        .sorted(Comparator.comparing(CommandProvider::namespace, String.CASE_INSENSITIVE_ORDER))
+        .toList();
 
-      HokanDEVCommand devCommand = clazz.getAnnotation(HokanDEVCommand.class);
-      if (devCommand != null) {
-        if (!activeProfile.equals("DEV")) {
-          log.debug("Skipping initialize of DEV clazz: {}", clazz);
-          continue;
-        }
+    for (CommandProvider provider : providers) {
+      String namespace = normalizeProviderNamespace(provider.namespace());
+      if (this.commandProviderMap.containsKey(namespace)) {
+        throw new InvalidAnnotationException("Duplicate command provider namespace: " + namespace);
       }
+      this.commandProviderMap.put(namespace, provider);
 
-      Object o = clazz.getDeclaredConstructor().newInstance();
-      String name = o.getClass().getSimpleName();
-
-      if (name.endsWith("Cmd")) {
-        name = name.replaceAll("Cmd", "");
-      } else {
-        throw new InvalidAnnotationException("Annotation class not ending Cmd: " + clazz);
+      for (Class<? extends AbstractCmd> clazz : provider.commands()) {
+        initializeCommandHandler(activeProfile, botName, namespace, clazz);
       }
-
-      log.debug("init: {}", name);
-      HokanCmd hokanCmd = (HokanCmd) o;
-      setAdminCommandFlag(hokanCmd);
-
-      for (HandlerAlias handlerAlias : hokanCmd.getAliases(botName)) {
-        String aliasKey = normalizeAliasKey(handlerAlias.getAlias());
-        if (aliasKey != null) {
-          this.handlerAliasMap.put(aliasKey, handlerAlias);
-        }
-      }
-
-      HandlerClass handlerClass =
-          HandlerClass.builder().clazz(clazz).isAdmin(hokanCmd.isAdminCommand()).build();
-
-      this.handlersMap.put(name, handlerClass);
     }
   }
 
-  private void setAdminCommandFlag(HokanCmd hokanCmd) {
-    Class clazz = hokanCmd.getClass();
-    Annotation[] declaredAnnotations = clazz.getDeclaredAnnotations();
-    for (Annotation annotation : declaredAnnotations) {
-      String annotationName = annotation.toString();
-      if (annotationName.equals("@org.freakz.engine.commands.annotations.HokanAdminCommand()")) {
-        hokanCmd.setIsAdminCommand(true);
-        break;
+  private CommandProvider newProviderInstance(Class<? extends CommandProvider> providerClass) {
+    try {
+      return providerClass.getDeclaredConstructor().newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Could not instantiate command provider: " + providerClass.getName(), e);
+    }
+  }
+
+  private void initializeCommandHandler(
+      String activeProfile,
+      String botName,
+      String namespace,
+      Class<? extends AbstractCmd> clazz) throws Exception {
+    HokanDEVCommand devCommand = clazz.getAnnotation(HokanDEVCommand.class);
+    if (devCommand != null) {
+      if (!activeProfile.equals("DEV")) {
+        log.debug("Skipping initialize of DEV clazz: {}", clazz);
+        return;
       }
+    }
+
+    AbstractCmd cmd = clazz.getDeclaredConstructor().newInstance();
+    String commandName = commandNameFromClass(clazz);
+    String canonicalName = canonicalName(namespace, commandName);
+
+    if (this.handlersMap.containsKey(canonicalName)) {
+      throw new InvalidAnnotationException(
+          "Duplicate command handler: " + canonicalName
+              + " for " + clazz.getName()
+              + " and " + this.handlersMap.get(canonicalName).getClazz().getName());
+    }
+
+    log.debug("init: {}", canonicalName);
+    setAdminCommandFlag(cmd);
+
+    for (HandlerAlias handlerAlias : cmd.getAliases(botName)) {
+      String aliasKey = normalizeAliasKey(handlerAlias.getAlias());
+      if (aliasKey != null) {
+        if (this.handlerAliasMap.containsKey(aliasKey)) {
+          throw new InvalidAnnotationException("Duplicate command alias: " + handlerAlias.getAlias());
+        }
+        this.handlerAliasMap.put(aliasKey, handlerAlias);
+      }
+    }
+
+    HandlerClass handlerClass =
+        HandlerClass.builder()
+            .clazz(clazz)
+            .isAdmin(cmd.isAdminCommand())
+            .namespace(namespace)
+            .commandName(commandName)
+            .build();
+
+    this.handlersMap.put(canonicalName, handlerClass);
+  }
+
+  private void setAdminCommandFlag(HokanCmd hokanCmd) {
+    if (hokanCmd.getClass().isAnnotationPresent(HokanAdminCommand.class)) {
+      hokanCmd.setIsAdminCommand(true);
     }
   }
 
@@ -97,17 +135,14 @@ public class CommandHandlerLoader {
       InvocationTargetException,
       InstantiationException,
       IllegalAccessException {
-    for (String key : this.handlersMap.keySet()) {
-      String match = String.format("!%s", key.toLowerCase());
-      if (match.equalsIgnoreCase(trigger)) {
-        HandlerClass handlerClass = this.handlersMap.get(key);
-        Class<?> aClass = handlerClass.clazz;
-        Object o = aClass.getConstructor().newInstance();
-        HokanCmd hokanCmd = (HokanCmd) o;
-        setAdminCommandFlag(hokanCmd);
-        hokanCmd.setBotEngine(botEngine);
-        return (HokanCmd) o;
-      }
+    String canonicalName = canonicalNameFromTrigger(trigger);
+    HandlerClass handlerClass = this.handlersMap.get(canonicalName);
+    if (handlerClass != null) {
+      Class<? extends AbstractCmd> aClass = handlerClass.clazz;
+      HokanCmd hokanCmd = aClass.getConstructor().newInstance();
+      setAdminCommandFlag(hokanCmd);
+      hokanCmd.setBotEngine(botEngine);
+      return hokanCmd;
     }
     return null;
   }
@@ -115,13 +150,12 @@ public class CommandHandlerLoader {
   public List<AbstractCmd> getMatchingCommandInstances(String command) {
     List<AbstractCmd> list = new ArrayList<>();
     try {
-      for (String key : this.handlersMap.keySet()) {
-        if (key.equalsIgnoreCase(command)) {
-          Class<?> aClass = this.handlersMap.get(key).getClazz();
-          AbstractCmd cmd = (AbstractCmd) aClass.getConstructor().newInstance();
-          cmd.abstractInitCommandOptions();
-          list.add(cmd);
-        }
+      HandlerClass handlerClass = this.handlersMap.get(canonicalNameFromCommandName(command));
+      if (handlerClass != null) {
+        Class<? extends AbstractCmd> aClass = handlerClass.getClazz();
+        AbstractCmd cmd = aClass.getConstructor().newInstance();
+        cmd.abstractInitCommandOptions();
+        list.add(cmd);
       }
 
     } catch (Exception e) {
@@ -164,12 +198,12 @@ public class CommandHandlerLoader {
   }
 
   public List<HandlerAlias> getAliasesForCommand(String commandName) {
-    String normalizedCommand = normalizeCommandName(commandName);
+    String normalizedCommand = canonicalNameFromCommandName(commandName);
     if (normalizedCommand == null) {
       return List.of();
     }
     return this.handlerAliasMap.values().stream()
-        .filter(alias -> normalizedCommand.equals(normalizeCommandName(firstToken(alias.getTarget()))))
+        .filter(alias -> normalizedCommand.equals(canonicalNameFromCommandName(firstToken(alias.getTarget()))))
         .sorted(Comparator.comparing(HandlerAlias::getAlias, String.CASE_INSENSITIVE_ORDER))
         .toList();
   }
@@ -193,6 +227,53 @@ public class CommandHandlerLoader {
       normalized = normalized.substring(1);
     }
     return normalized.toLowerCase(Locale.ROOT);
+  }
+
+  private String canonicalNameFromTrigger(String trigger) {
+    return canonicalNameFromCommandName(trigger);
+  }
+
+  private String canonicalNameFromCommandName(String command) {
+    String normalized = normalizeCommandName(command);
+    if (normalized == null) {
+      return null;
+    }
+    int idx = normalized.indexOf("::");
+    if (idx > 0 && idx < normalized.length() - 2) {
+      return canonicalName(normalized.substring(0, idx), normalized.substring(idx + 2));
+    }
+    return canonicalName(MAIN_NAMESPACE, normalized);
+  }
+
+  private String canonicalName(String namespace, String commandName) {
+    return normalizeProviderNamespace(namespace) + "::" + normalizeCommandPart(commandName);
+  }
+
+  private String commandNameFromClass(Class<? extends AbstractCmd> clazz) throws InvalidAnnotationException {
+    String name = clazz.getSimpleName();
+    if (name.endsWith("Cmd")) {
+      return name.replaceAll("Cmd", "");
+    }
+    throw new InvalidAnnotationException("Command class name does not end with Cmd: " + clazz);
+  }
+
+  private String normalizeProviderNamespace(String namespace) {
+    String normalized = namespace == null ? "" : namespace.trim().toLowerCase(Locale.ROOT);
+    if (normalized.isBlank() || !normalized.matches("[a-z][a-z0-9_-]*")) {
+      throw new IllegalArgumentException("Invalid command provider namespace: " + namespace);
+    }
+    return normalized;
+  }
+
+  private String normalizeCommandPart(String command) {
+    String normalized = command == null ? "" : command.trim().toLowerCase(Locale.ROOT);
+    if (normalized.startsWith("!")) {
+      normalized = normalized.substring(1);
+    }
+    if (normalized.isBlank()) {
+      throw new IllegalArgumentException("Invalid command name: " + command);
+    }
+    return normalized;
   }
 
   private String normalizeMessage(String message) {

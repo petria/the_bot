@@ -73,7 +73,7 @@ class CommandHandlerLoaderTest {
     assertThat(loader.getAliasesForCommand("weather"))
         .extracting(HandlerAlias::getAlias)
         .contains("!saa", "!sää", "!foreca", "!keli");
-    assertThat(loader.getAliasesForCommand("topcounts"))
+    assertThat(loader.getAliasesForCommand("main::topcounts"))
         .extracting(HandlerAlias::getAlias)
         .contains("!topgl", "!topkor", "!topryyst", "!toppuuh");
   }
@@ -82,8 +82,41 @@ class CommandHandlerLoaderTest {
   void includesGeneratedGluggaPageCommand() throws Exception {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
 
-    assertThat(loader.getHandlersMap()).containsKey("Gentest");
-    assertThat(loader.getHandlersMap()).containsKey("Gentest2");
-    assertThat(loader.getHandlersMap()).containsKey("Gentest3");
+    assertThat(loader.getHandlersMap()).containsKey("main::gentest");
+    assertThat(loader.getHandlersMap()).containsKey("main::gentest2");
+    assertThat(loader.getHandlersMap()).containsKey("main::gentest3");
+  }
+
+  @Test
+  void registersCurrentCommandsUnderMainProvider() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    assertThat(loader.getCommandProviderMap()).containsKey("main");
+    assertThat(loader.getHandlersMap()).containsKey("main::ping");
+    assertThat(loader.getHandlersMap().get("main::ping").getNamespace()).isEqualTo("main");
+  }
+
+  @Test
+  void resolvesMainCommandsWithOldAndNamespacedSyntax() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    assertThat(loader.getMatchingCommandHandlers(null, "!ping"))
+        .extracting(handler -> handler.getClass().getSimpleName())
+        .isEqualTo("PingCmd");
+    assertThat(loader.getMatchingCommandHandlers(null, "!main::ping"))
+        .extracting(handler -> handler.getClass().getSimpleName())
+        .isEqualTo("PingCmd");
+  }
+
+  @Test
+  void resolvesNonMainProviderCommandsOnlyWithNamespace() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    assertThat(loader.getCommandProviderMap()).containsKey("test");
+    assertThat(loader.getHandlersMap()).containsKey("test::sample");
+    assertThat(loader.getMatchingCommandHandlers(null, "!sample")).isNull();
+    assertThat(loader.getMatchingCommandHandlers(null, "!test::sample"))
+        .extracting(handler -> handler.getClass().getSimpleName())
+        .isEqualTo("SampleCmd");
   }
 }

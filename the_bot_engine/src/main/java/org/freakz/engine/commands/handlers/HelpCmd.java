@@ -12,7 +12,7 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -48,16 +48,16 @@ public class HelpCmd extends AbstractCmd {
 
     if (command == null) {
       Map<String, HandlerClass> handlersMap = getBotEngine().getCommandHandlerLoader().getHandlersMap();
-      String[] strings = new String[handlersMap.keySet().size()];
-      String[] cmdNames = handlersMap.keySet().toArray(strings);
-      Arrays.sort(cmdNames);
 
       List<String> entries = new ArrayList<>();
-      for (String cmdName : cmdNames) {
-        HandlerClass handlerClass = handlersMap.get(cmdName);
+      List<HandlerClass> handlerClasses = handlersMap.values().stream()
+          .sorted(Comparator.comparing(HandlerClass::getDisplayName, String.CASE_INSENSITIVE_ORDER))
+          .toList();
+      for (HandlerClass handlerClass : handlerClasses) {
         if (handlerClass.isAdmin() && !request.isFromAdmin()) {
           continue;
         }
+        String cmdName = handlerClass.getDisplayName();
         StringBuilder entry = new StringBuilder(cmdName);
 
         String flags = "";
@@ -67,7 +67,7 @@ public class HelpCmd extends AbstractCmd {
         if (!flags.isEmpty()) {
           entry.append("[").append(flags).append("]");
         }
-        String aliases = formatAliasesForCommand(cmdName, false);
+        String aliases = formatAliasesForCommand(handlerClass.getCanonicalName(), false);
         if (!aliases.isBlank()) {
           entry.append(" aliases: ").append(aliases);
         }
@@ -90,9 +90,9 @@ public class HelpCmd extends AbstractCmd {
       } else {
         for (AbstractCmd cmd : list) {
 
-          String usage = "!" + cmd.getCommandName().toLowerCase() + " " + cmd.getJsap().getUsage();
+          String usage = "!" + formatHelpCommandName(command, cmd) + " " + cmd.getJsap().getUsage();
           String help = cmd.getJsap().getHelp();
-          String aliases = formatAliasesForCommand(cmd.getCommandName(), true);
+          String aliases = formatAliasesForCommand(command, true);
           sb.append("\nUsage    : ");
           sb.append(usage);
           sb.append("\n");
@@ -112,6 +112,13 @@ public class HelpCmd extends AbstractCmd {
     }
 
     return sb.toString();
+  }
+
+  private String formatHelpCommandName(String requestedCommand, AbstractCmd cmd) {
+    if (requestedCommand != null && requestedCommand.contains("::")) {
+      return requestedCommand.toLowerCase();
+    }
+    return cmd.getCommandName().toLowerCase();
   }
 
   private String formatAliasesForCommand(String commandName, boolean includeTargets) {
