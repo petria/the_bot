@@ -51,7 +51,7 @@ Optional local overrides:
 `OPENCLAW_RUNTIME_LOG_ROOT`
 `OPENCLAW_RUNTIME_LOG_ROOT_LOCAL`
 
-`OPENCLAW_GATEWAY_WS_ORIGIN` must match one of OpenClaw's allowed control UI origins. Local dev defaults to `http://localhost:18899`.
+`OPENCLAW_GATEWAY_WS_ORIGIN` must match one of OpenClaw's allowed control UI origins. The default Docker deployment uses the shared OpenClaw gateway at `http://ubuntu-server.local:18889`.
 
 Docker Compose injects `BOT_CONFIG_FILE=/runtime/dev.properties` by default for `bot-io` and `bot-engine`. CI deploy writes `/runtime/prod.properties` and points both modules to that file.
 

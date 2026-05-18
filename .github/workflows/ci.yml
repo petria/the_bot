@@ -313,17 +313,18 @@ jobs:
             PUID="${CI_PUID:-${PUID:-1002}}"
             PGID="${CI_PGID:-${PGID:-1002}}"
             DOCKER_GID="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "${DOCKER_GID:-989}")"
-            OPENCLAW_DEPLOYMENT_MODE="${CI_OPENCLAW_DEPLOYMENT_MODE:-${OPENCLAW_DEPLOYMENT_MODE:-local}}"
+            OPENCLAW_DEPLOYMENT_MODE="${CI_OPENCLAW_DEPLOYMENT_MODE:-${OPENCLAW_DEPLOYMENT_MODE:-external}}"
             OPENCLAW_DEPLOYMENT_MODE="$(printf '%s' "$OPENCLAW_DEPLOYMENT_MODE" | tr '[:upper:]' '[:lower:]')"
             case "$OPENCLAW_DEPLOYMENT_MODE" in
-              local|external) ;;
+              external) ;;
               *)
-                echo "Unsupported OPENCLAW_DEPLOYMENT_MODE: $OPENCLAW_DEPLOYMENT_MODE"
+                echo "Unsupported OPENCLAW_DEPLOYMENT_MODE for bot instance deployment: $OPENCLAW_DEPLOYMENT_MODE"
+                echo "Use docker-compose.openclaw-gateway.yml on the shared OpenClaw gateway host instead."
                 exit 1
                 ;;
             esac
             HOKAN_BOT_INSTANCE_ID="${CI_HOKAN_BOT_INSTANCE_ID:-${HOKAN_BOT_INSTANCE_ID:-$DEFAULT_HOKAN_BOT_INSTANCE_ID}}"
-            OPENCLAW_EXTERNAL_HOST="${CI_OPENCLAW_EXTERNAL_HOST:-${OPENCLAW_EXTERNAL_HOST:-ubuntu-server}}"
+            OPENCLAW_EXTERNAL_HOST="${CI_OPENCLAW_EXTERNAL_HOST:-${OPENCLAW_EXTERNAL_HOST:-ubuntu-server.local}}"
             OPENCLAW_EXTERNAL_HOST_IP="${CI_OPENCLAW_EXTERNAL_HOST_IP:-${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}}"
             OPENCLAW_EXTERNAL_BASE_MOUNT="${CI_OPENCLAW_EXTERNAL_BASE_MOUNT:-${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}}"
 
@@ -359,19 +360,13 @@ jobs:
             TELEGRAM_SECRET="${CI_TELEGRAM_SECRET:-${TELEGRAM_SECRET:-}}"
             WHATSAPP_WEBHOOK_SECRET="${CI_WHATSAPP_WEBHOOK_SECRET:-${WHATSAPP_WEBHOOK_SECRET:-}}"
             WHATSAPP_SEND_TOKEN="${CI_WHATSAPP_SEND_TOKEN:-${WHATSAPP_SEND_TOKEN:-}}"
-            HOKAN_OPENCLAW_HOOKS_URL="${CI_HOKAN_OPENCLAW_HOOKS_URL:-${HOKAN_OPENCLAW_HOOKS_URL:-http://bot-openclaw:18889/hooks/agent}}"
-            HOKAN_OPENCLAW_WAKE_URL="${CI_HOKAN_OPENCLAW_WAKE_URL:-${HOKAN_OPENCLAW_WAKE_URL:-http://bot-openclaw:18889/hooks/wake}}"
-            OPENCLAW_GATEWAY_WS_URL="${CI_OPENCLAW_GATEWAY_WS_URL:-${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}}"
-            OPENCLAW_GATEWAY_WS_ORIGIN="${CI_OPENCLAW_GATEWAY_WS_ORIGIN:-${OPENCLAW_GATEWAY_WS_ORIGIN:-}}"
-            if [ "$OPENCLAW_DEPLOYMENT_MODE" = "external" ]; then
-              HOKAN_OPENCLAW_HOOKS_URL="${CI_HOKAN_OPENCLAW_HOOKS_URL:-http://$OPENCLAW_EXTERNAL_HOST:18889/hooks/agent}"
-              HOKAN_OPENCLAW_WAKE_URL="${CI_HOKAN_OPENCLAW_WAKE_URL:-http://$OPENCLAW_EXTERNAL_HOST:18889/hooks/wake}"
-              OPENCLAW_GATEWAY_WS_URL="${CI_OPENCLAW_GATEWAY_WS_URL:-ws://$OPENCLAW_EXTERNAL_HOST:18889}"
-              OPENCLAW_GATEWAY_WS_ORIGIN="${CI_OPENCLAW_GATEWAY_WS_ORIGIN:-http://$OPENCLAW_EXTERNAL_HOST:18889}"
-            fi
+            HOKAN_OPENCLAW_HOOKS_URL="${CI_HOKAN_OPENCLAW_HOOKS_URL:-${HOKAN_OPENCLAW_HOOKS_URL:-http://$OPENCLAW_EXTERNAL_HOST:18889/hooks/agent}}"
+            HOKAN_OPENCLAW_WAKE_URL="${CI_HOKAN_OPENCLAW_WAKE_URL:-${HOKAN_OPENCLAW_WAKE_URL:-http://$OPENCLAW_EXTERNAL_HOST:18889/hooks/wake}}"
+            OPENCLAW_GATEWAY_WS_URL="${CI_OPENCLAW_GATEWAY_WS_URL:-${OPENCLAW_GATEWAY_WS_URL:-ws://$OPENCLAW_EXTERNAL_HOST:18889}}"
+            OPENCLAW_GATEWAY_WS_ORIGIN="${CI_OPENCLAW_GATEWAY_WS_ORIGIN:-${OPENCLAW_GATEWAY_WS_ORIGIN:-http://$OPENCLAW_EXTERNAL_HOST:18889}}"
             case "$OPENCLAW_GATEWAY_WS_ORIGIN" in
               ""|null|NULL|None|none)
-                OPENCLAW_GATEWAY_WS_ORIGIN="http://localhost:$OPENCLAW_HOST_PORT"
+                OPENCLAW_GATEWAY_WS_ORIGIN="http://$OPENCLAW_EXTERNAL_HOST:18889"
                 ;;
             esac
             OPENCLAW_WS_TIMEOUT_SECONDS="${CI_OPENCLAW_WS_TIMEOUT_SECONDS:-${OPENCLAW_WS_TIMEOUT_SECONDS:-300}}"
@@ -379,10 +374,8 @@ jobs:
             OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}}"
             OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-${OPENCLAW_RUNTIME_LOG_ROOT:-/workspace/runtime/logs}}"
             OPENCLAW_RUNTIME_LOG_ROOT_LOCAL="${CI_OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}}"
-            if [ "$OPENCLAW_DEPLOYMENT_MODE" = "external" ]; then
-              OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-/openclaw-state}"
-              OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-$OPENCLAW_EXTERNAL_BASE_MOUNT/$HOKAN_BOT_INSTANCE_ID/the_bot/runtime/logs}"
-            fi
+            OPENCLAW_STATE_DIR_HOST="${CI_OPENCLAW_STATE_DIR_HOST:-/openclaw-state}"
+            OPENCLAW_RUNTIME_LOG_ROOT="${CI_OPENCLAW_RUNTIME_LOG_ROOT:-$OPENCLAW_EXTERNAL_BASE_MOUNT/$HOKAN_BOT_INSTANCE_ID/the_bot/runtime/logs}"
             OPENCLAW_NODE_BRIDGE_ENABLED="${CI_OPENCLAW_NODE_BRIDGE_ENABLED:-${OPENCLAW_NODE_BRIDGE_ENABLED:-true}}"
             WEATHER_API_URL="${CI_WEATHER_API_URL:-${WEATHER_API_URL:-http://api.weatherapi.com/v1}}"
             THE_BOT_WEB_PUBLIC_BASE_URL="${CI_THE_BOT_WEB_PUBLIC_BASE_URL:-${THE_BOT_WEB_PUBLIC_BASE_URL:-$DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL}}"
@@ -435,35 +428,6 @@ jobs:
             } > .env
 
             mkdir -p "$HOKAN_DATA_DIR/runtime"
-            if [ "$OPENCLAW_DEPLOYMENT_MODE" = "local" ] && [ -f "$HOKAN_DATA_DIR/openclaw/config/config.json" ]; then
-              python3 - <<'PY'
-            import json
-            import os
-            from pathlib import Path
-
-            config_path = Path(os.environ["HOKAN_DATA_DIR"]) / "openclaw" / "config" / "config.json"
-            data = json.loads(config_path.read_text())
-            control_ui = data.setdefault("gateway", {}).setdefault("controlUi", {})
-            allowed_origins = control_ui.setdefault("allowedOrigins", [])
-            origins = [
-                os.environ["OPENCLAW_GATEWAY_WS_ORIGIN"],
-                f"http://localhost:{os.environ['OPENCLAW_HOST_PORT']}",
-                f"http://127.0.0.1:{os.environ['OPENCLAW_HOST_PORT']}",
-                "http://bot-openclaw:18889",
-            ]
-            for origin in origins:
-                if origin and origin not in allowed_origins:
-                    allowed_origins.append(origin)
-            hooks = data.setdefault("hooks", {})
-            prefixes = hooks.setdefault("allowedSessionKeyPrefixes", [])
-            for prefix in ["bot:", "hook:", "irc:", "discord:", "telegram:", "whatsapp:"]:
-                if prefix not in prefixes:
-                    prefixes.append(prefix)
-            config_path.write_text(json.dumps(data, indent=2) + "\n")
-            PY
-            elif [ "$OPENCLAW_DEPLOYMENT_MODE" = "local" ]; then
-              echo "OpenClaw config not found at $HOKAN_DATA_DIR/openclaw/config/config.json; skipping allowed origin sync."
-            fi
 
             cat > "$HOKAN_DATA_DIR/runtime/$RUNTIME_PROPERTIES_FILE" <<EOF
             hokan.runtime.profile=$HOKAN_RUNTIME_PROFILE
@@ -503,12 +467,8 @@ jobs:
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 
-            if [ "$OPENCLAW_DEPLOYMENT_MODE" = "local" ]; then
-              docker compose up -d bot-openclaw
-            else
-              echo "OPENCLAW_DEPLOYMENT_MODE=external; skipping local bot-openclaw startup."
-              docker compose stop bot-openclaw || true
-            fi
+            echo "OPENCLAW_DEPLOYMENT_MODE=external; removing any old local bot-openclaw container."
+            docker rm -f bot-openclaw || true
 
             if [ "$WHATSAPP_CHANGED" = "true" ]; then
               docker compose pull bot-whatsapp

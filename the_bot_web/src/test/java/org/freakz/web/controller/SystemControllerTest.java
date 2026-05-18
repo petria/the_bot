@@ -247,6 +247,7 @@ class SystemControllerTest {
     properties.setBotIoBaseUrl("http://bot-io:8090");
     properties.setBotEngineBaseUrl("http://bot-engine:8100");
     properties.setDockerStatusEnabled(true);
+    properties.setOpenclawDeploymentMode("local");
     propertiesCustomizer.accept(properties);
     return new SystemController(
         restTemplate,

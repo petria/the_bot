@@ -1,35 +1,4 @@
 services:
-  # Hokan dedicated OpenClaw container
-  bot-openclaw:
-    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
-    user: "${PUID}:${PGID}"
-    volumes:
-      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/state
-      - ${HOKAN_DATA_DIR:-.}/openclaw/workspace:/workspace
-      - ${HOKAN_DATA_DIR:-.}/openclaw/config:/config
-      - ${HOKAN_DATA_DIR:-.}/openclaw/logs:/logs
-      - ${HOKAN_DATA_DIR:-.}/runtime:/workspace/runtime
-    ports:
-      - "127.0.0.1:${OPENCLAW_HOST_PORT:-18899}:18889"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18889/health >/dev/null"]
-      interval: 3m
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-    environment:
-      - TZ=Europe/Helsinki
-      - HOME=/state
-      - NPM_CONFIG_CACHE=/state/.npm
-      - XDG_CACHE_HOME=/state/.cache
-      - OPENCLAW_STATE_DIR=/state
-      - OPENCLAW_WORKSPACE_DIR=/workspace
-      - OPENCLAW_CONFIG_PATH=/config/config.json
-      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
-      - OPENCLAW_AUTH_PROFILE_SECRET_KEY=${OPENCLAW_AUTH_PROFILE_SECRET_KEY:-${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}}
-    container_name: bot-openclaw
-
   # Hokan the Bot engine container
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
@@ -51,8 +20,8 @@ services:
       - HOKAN_BOT_INSTANCE_ID=${HOKAN_BOT_INSTANCE_ID:-dev}
       - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
-      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://localhost:18899}
+      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
+      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://ubuntu-server.local:18889}
       - OPENCLAW_EXTERNAL_BASE_MOUNT=${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}
       - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
       - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
@@ -80,8 +49,8 @@ services:
       - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
       - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
-      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://localhost:18899}
+      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
+      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://ubuntu-server.local:18889}
       - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
       - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
       - OPENCLAW_NODE_CONTEXT_SECRET=${OPENCLAW_NODE_CONTEXT_SECRET:-}
@@ -136,8 +105,8 @@ services:
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
-      - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-local}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://bot-openclaw:18889}
+      - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-external}
+      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
       - THE_BOT_WEB_OPENCLAW_HEALTH_URL=${THE_BOT_WEB_OPENCLAW_HEALTH_URL:-}
     container_name: bot-web
 

@@ -15,8 +15,8 @@ public class TheBotWebProperties {
   private String botEngineContainerName = "bot-engine";
   private String botOpenclawContainerName = "bot-openclaw";
   private String botWhatsappContainerName = "bot-whatsapp";
-  private String openclawDeploymentMode = "local";
-  private String openclawGatewayWsUrl = "ws://bot-openclaw:18889";
+  private String openclawDeploymentMode = "external";
+  private String openclawGatewayWsUrl = "ws://ubuntu-server.local:18889";
   private String openclawHealthUrl = "";
 
   public String getUsersFile() {

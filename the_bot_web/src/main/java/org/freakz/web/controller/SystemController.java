@@ -320,7 +320,7 @@ public class SystemController {
   private String openClawDeploymentMode() {
     String mode = properties.getOpenclawDeploymentMode();
     if (mode == null || mode.isBlank()) {
-      return "local";
+      return "external";
     }
     return mode.trim().toLowerCase();
   }
