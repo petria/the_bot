@@ -106,7 +106,6 @@ public class CommandToolCallBackFunctions {
           .fromChannelId(null)
           .fromSenderId(null)
           .fromSender(sentByNick != null ? sentByNick : "LLM")
-          .isFromAdmin(false)
           .network(network != null ? network : "UNKNOWN")
           .echoToAlias(null)
           .user(null)

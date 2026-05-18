@@ -86,8 +86,7 @@ public class MeController {
       String telegramId,
       String discordId,
       String whatsappId,
-      boolean admin,
-      boolean canDoIrcOp,
+      List<String> permissions,
       List<String> roles) {
 
     static MeResponse from(BotUserPrincipal principal) {
@@ -100,8 +99,7 @@ public class MeController {
           principal.getTelegramId(),
           principal.getDiscordId(),
           principal.getWhatsappId(),
-          principal.isAdmin(),
-          principal.isCanDoIrcOp(),
+          principal.getPermissions(),
           principal.getAuthorities().stream()
               .map(authority -> authority.getAuthority())
               .sorted()
@@ -118,8 +116,7 @@ public class MeController {
           user.getTelegramId(),
           user.getDiscordId(),
           user.getWhatsappId(),
-          user.isAdmin(),
-          user.isCanDoIrcOp(),
+          user.getPermissions(),
           principal.getAuthorities().stream()
               .map(authority -> authority.getAuthority())
               .sorted()

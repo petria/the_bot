@@ -5,13 +5,13 @@ import org.freakz.engine.commands.api.AbstractCmd;
 public class HandlerClass {
 
   Class<? extends AbstractCmd> clazz;
-  boolean isAdmin;
+  String requiredPermission;
   String namespace;
   String commandName;
 
-  public HandlerClass(Class<? extends AbstractCmd> clazz, boolean isAdmin, String namespace, String commandName) {
+  public HandlerClass(Class<? extends AbstractCmd> clazz, String requiredPermission, String namespace, String commandName) {
     this.clazz = clazz;
-    this.isAdmin = isAdmin;
+    this.requiredPermission = requiredPermission;
     this.namespace = namespace;
     this.commandName = commandName;
   }
@@ -28,12 +28,12 @@ public class HandlerClass {
     this.clazz = clazz;
   }
 
-  public boolean isAdmin() {
-    return isAdmin;
+  public String getRequiredPermission() {
+    return requiredPermission;
   }
 
-  public void setAdmin(boolean admin) {
-    isAdmin = admin;
+  public void setRequiredPermission(String requiredPermission) {
+    this.requiredPermission = requiredPermission;
   }
 
   public String getNamespace() {
@@ -67,8 +67,8 @@ public class HandlerClass {
 
     HandlerClass that = (HandlerClass) o;
 
-    if (isAdmin != that.isAdmin) return false;
     if (clazz != null ? !clazz.equals(that.clazz) : that.clazz != null) return false;
+    if (requiredPermission != null ? !requiredPermission.equals(that.requiredPermission) : that.requiredPermission != null) return false;
     if (namespace != null ? !namespace.equals(that.namespace) : that.namespace != null) return false;
     return commandName != null ? commandName.equals(that.commandName) : that.commandName == null;
   }
@@ -76,7 +76,7 @@ public class HandlerClass {
   @Override
   public int hashCode() {
     int result = clazz != null ? clazz.hashCode() : 0;
-    result = 31 * result + (isAdmin ? 1 : 0);
+    result = 31 * result + (requiredPermission != null ? requiredPermission.hashCode() : 0);
     result = 31 * result + (namespace != null ? namespace.hashCode() : 0);
     result = 31 * result + (commandName != null ? commandName.hashCode() : 0);
     return result;
@@ -86,7 +86,7 @@ public class HandlerClass {
   public String toString() {
     return "HandlerClass{" +
         "clazz=" + clazz +
-        ", isAdmin=" + isAdmin +
+        ", requiredPermission='" + requiredPermission + '\'' +
         ", namespace='" + namespace + '\'' +
         ", commandName='" + commandName + '\'' +
         '}';
@@ -94,7 +94,7 @@ public class HandlerClass {
 
   public static class Builder {
     private Class<? extends AbstractCmd> clazz;
-    private boolean isAdmin;
+    private String requiredPermission;
     private String namespace;
     private String commandName;
 
@@ -106,8 +106,8 @@ public class HandlerClass {
       return this;
     }
 
-    public Builder isAdmin(boolean isAdmin) {
-      this.isAdmin = isAdmin;
+    public Builder requiredPermission(String requiredPermission) {
+      this.requiredPermission = requiredPermission;
       return this;
     }
 
@@ -122,14 +122,14 @@ public class HandlerClass {
     }
 
     public HandlerClass build() {
-      return new HandlerClass(clazz, isAdmin, namespace, commandName);
+      return new HandlerClass(clazz, requiredPermission, namespace, commandName);
     }
 
     @Override
     public String toString() {
       return "Builder{" +
           "clazz=" + clazz +
-          ", isAdmin=" + isAdmin +
+          ", requiredPermission='" + requiredPermission + '\'' +
           ", namespace='" + namespace + '\'' +
           ", commandName='" + commandName + '\'' +
           '}';

@@ -17,7 +17,7 @@ import java.util.List;
 public abstract class AbstractCmd implements HokanCmd {
 
   private final StringBuilder sb = new StringBuilder();
-  private boolean adminCommand = false;
+  private String requiredPermission;
   private JSAP jsap = new JSAP();
   private BotEngine botEngine;
 
@@ -54,13 +54,13 @@ public abstract class AbstractCmd implements HokanCmd {
   }
 
   @Override
-  public boolean isAdminCommand() {
-    return this.adminCommand;
+  public String getRequiredPermission() {
+    return this.requiredPermission;
   }
 
   @Override
-  public void setIsAdminCommand(boolean isAdminCommand) {
-    this.adminCommand = isAdminCommand;
+  public void setRequiredPermission(String requiredPermission) {
+    this.requiredPermission = requiredPermission;
   }
 
   @Override

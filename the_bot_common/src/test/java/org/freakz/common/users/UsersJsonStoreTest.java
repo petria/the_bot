@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -141,7 +142,7 @@ class UsersJsonStoreTest {
         .hasMessageContaining("Reserved unknown user");
     assertThatThrownBy(() -> store.deleteById(1L))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Last admin");
+        .hasMessageContaining("Last web admin");
   }
 
   @Test
@@ -171,11 +172,11 @@ class UsersJsonStoreTest {
     UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
 
     assertThatThrownBy(() -> store.updateById(1L, current -> {
-      current.setAdmin(false);
+      current.setPermissions(List.of());
       return current;
     }))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Last admin");
+        .hasMessageContaining("Last web admin");
   }
 
   @Test

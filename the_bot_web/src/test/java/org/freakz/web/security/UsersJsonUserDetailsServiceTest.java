@@ -1,6 +1,7 @@
 package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.BotPermission;
 import org.freakz.web.config.TheBotWebProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,6 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,14 +61,13 @@ class UsersJsonUserDetailsServiceTest {
     BotUserPrincipal admin = (BotUserPrincipal) service.loadUserByUsername("PETRIA");
     assertThat(admin.getId()).isEqualTo(1L);
     assertThat(admin.getUsername()).isEqualTo("petria");
-    assertThat(admin.isAdmin()).isTrue();
-    assertThat(admin.isCanDoIrcOp()).isTrue();
+    assertThat(admin.getPermissions()).containsExactly(BotPermission.ALL);
     assertThat(admin.getAuthorities())
         .extracting(authority -> authority.getAuthority())
-        .containsExactlyInAnyOrder("ROLE_USER", "ROLE_ADMIN");
+        .contains(BotPermission.WEB_ADMIN, "ROLE_USER");
 
     BotUserPrincipal normal = (BotUserPrincipal) service.loadUserByUsername("normal");
-    assertThat(normal.isAdmin()).isFalse();
+    assertThat(normal.getPermissions()).isEmpty();
     assertThat(normal.getAuthorities())
         .extracting(authority -> authority.getAuthority())
         .containsExactly("ROLE_USER");
@@ -120,8 +121,7 @@ class UsersJsonUserDetailsServiceTest {
     assertThat(updated.getId()).isEqualTo(7L);
     assertThat(updated.getUsername()).isEqualTo("petria");
     assertThat(updated.getPassword()).isEqualTo("hash");
-    assertThat(updated.isAdmin()).isTrue();
-    assertThat(updated.isCanDoIrcOp()).isTrue();
+    assertThat(updated.getPermissions()).containsExactly(BotPermission.ALL);
     assertThat(updated.getName()).isEqualTo("New Name");
     assertThat(updated.getEmail()).isEqualTo("new@example.invalid");
     assertThat(updated.getIrcNick()).isEqualTo("newnick");
@@ -257,8 +257,7 @@ class UsersJsonUserDetailsServiceTest {
         "111",
         "222",
         "333",
-        false,
-        true));
+        List.of(BotPermission.OPENCLAW_USE)));
 
     User created = service.findByUsername("normal").orElseThrow();
     assertThat(created.getId()).isEqualTo(4L);
@@ -272,12 +271,11 @@ class UsersJsonUserDetailsServiceTest {
         "333",
         "444",
         "555",
-        false,
-        false));
+        List.of()));
     User edited = service.findByUsername("normal").orElseThrow();
     assertThat(edited.getUsername()).isEqualTo("normal");
     assertThat(edited.getName()).isEqualTo("Normal Edited");
-    assertThat(edited.isCanDoIrcOp()).isFalse();
+    assertThat(edited.getPermissions()).isEmpty();
 
     service.resetUserPassword(created.getId(), new UsersJsonUserDetailsService.AdminPasswordReset("reset-password"));
     User reset = service.findByUsername("normal").orElseThrow();

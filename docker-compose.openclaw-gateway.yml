@@ -7,7 +7,12 @@ services:
       - ${OPENCLAW_DATA_DIR:-.}/openclaw/workspace:/workspace
       - ${OPENCLAW_DATA_DIR:-.}/openclaw/config:/config
       - ${OPENCLAW_DATA_DIR:-.}/openclaw/logs:/logs
-      - ${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}:${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}:ro
+      - type: bind
+        source: ${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}
+        target: ${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}
+        read_only: true
+        bind:
+          propagation: rslave
     ports:
       - "0.0.0.0:${OPENCLAW_HOST_PORT:-18889}:18889"
     healthcheck:

@@ -24,6 +24,7 @@ import {
   getConnectionsOverview,
   promoteConnectionChannel,
 } from '../api/connections';
+import { CONFIG_EDIT_PERMISSION, hasPermission } from '../permissions';
 
 export function ConnectionsPage() {
   const queryClient = useQueryClient();
@@ -56,6 +57,7 @@ export function ConnectionsPage() {
       0,
   );
   const activeChannelCount = activities.filter((activity) => activity.lastReceivedMessageAt).length;
+  const canEditConfig = hasPermission(meQuery.data?.permissions, CONFIG_EDIT_PERMISSION);
 
   return (
     <Stack gap="md">
@@ -113,7 +115,7 @@ export function ConnectionsPage() {
               key={connection.id}
               connection={connection}
               activityByAlias={activityByAlias}
-              canPromote={Boolean(meQuery.data?.admin)}
+              canPromote={canEditConfig}
               promoting={promoteMutation.isPending}
               onPromote={(channel) => promoteMutation.mutate({
                 connectionType: connection.type,

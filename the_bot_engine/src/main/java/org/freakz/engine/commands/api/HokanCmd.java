@@ -20,7 +20,7 @@ public interface HokanCmd {
 
   List<HandlerAlias> getAliases(String botName);
 
-  boolean isAdminCommand();
+  String getRequiredPermission();
 
-  void setIsAdminCommand(boolean isAdminCommand);
+  void setRequiredPermission(String requiredPermission);
 }

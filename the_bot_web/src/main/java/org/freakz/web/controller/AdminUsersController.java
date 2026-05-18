@@ -2,6 +2,7 @@ package org.freakz.web.controller;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
 import org.freakz.common.users.UserChatIdentityUtil;
 import org.freakz.web.security.UsersJsonUserDetailsService;
@@ -106,7 +107,10 @@ public class AdminUsersController {
     T run();
   }
 
-  public record AdminUsersResponse(List<AdminUserResponse> users) {
+  public record AdminUsersResponse(List<AdminUserResponse> users, List<String> availablePermissions) {
+    public AdminUsersResponse(List<AdminUserResponse> users) {
+      this(users, BotPermission.known());
+    }
   }
 
   public record AdminUserResponse(
@@ -119,8 +123,7 @@ public class AdminUsersController {
       String discordId,
       String whatsappId,
       List<AdminChatIdentityResponse> chatIdentities,
-      boolean admin,
-      boolean canDoIrcOp,
+      List<String> permissions,
       boolean reserved) {
 
     static AdminUserResponse from(User user) {
@@ -139,8 +142,7 @@ public class AdminUsersController {
                   .map(AdminChatIdentityResponse::from)
                   .sorted(Comparator.comparing(AdminChatIdentityResponse::identityKey))
                   .toList(),
-          user.isAdmin(),
-          user.isCanDoIrcOp(),
+          user.getPermissions(),
           user.getId() != null && user.getId() == 0L);
     }
   }

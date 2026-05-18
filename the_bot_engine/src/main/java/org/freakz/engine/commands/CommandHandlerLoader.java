@@ -2,6 +2,7 @@ package org.freakz.engine.commands;
 
 import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.exception.InvalidAnnotationException;
+import org.freakz.common.users.BotPermission;
 import org.freakz.engine.commands.annotations.HokanAdminCommand;
 import org.freakz.engine.commands.annotations.HokanDEVCommand;
 import org.freakz.engine.commands.api.AbstractCmd;
@@ -101,7 +102,7 @@ public class CommandHandlerLoader {
     }
 
     log.debug("init: {}", canonicalName);
-    setAdminCommandFlag(cmd);
+    setRequiredPermission(cmd);
 
     for (HandlerAlias handlerAlias : cmd.getAliases(botName)) {
       String aliasKey = normalizeAliasKey(handlerAlias.getAlias());
@@ -116,7 +117,7 @@ public class CommandHandlerLoader {
     HandlerClass handlerClass =
         HandlerClass.builder()
             .clazz(clazz)
-            .isAdmin(cmd.isAdminCommand())
+            .requiredPermission(cmd.getRequiredPermission())
             .namespace(namespace)
             .commandName(commandName)
             .build();
@@ -124,9 +125,9 @@ public class CommandHandlerLoader {
     this.handlersMap.put(canonicalName, handlerClass);
   }
 
-  private void setAdminCommandFlag(HokanCmd hokanCmd) {
+  private void setRequiredPermission(HokanCmd hokanCmd) {
     if (hokanCmd.getClass().isAnnotationPresent(HokanAdminCommand.class)) {
-      hokanCmd.setIsAdminCommand(true);
+      hokanCmd.setRequiredPermission(BotPermission.COMMANDS_ADMIN);
     }
   }
 
@@ -140,7 +141,7 @@ public class CommandHandlerLoader {
     if (handlerClass != null) {
       Class<? extends AbstractCmd> aClass = handlerClass.clazz;
       HokanCmd hokanCmd = aClass.getConstructor().newInstance();
-      setAdminCommandFlag(hokanCmd);
+      setRequiredPermission(hokanCmd);
       hokanCmd.setBotEngine(botEngine);
       return hokanCmd;
     }

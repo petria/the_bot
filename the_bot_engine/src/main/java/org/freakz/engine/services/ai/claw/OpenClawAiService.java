@@ -2,6 +2,8 @@ package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.users.BotPermission;
+import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
@@ -392,8 +394,9 @@ public class OpenClawAiService {
     sb.append("sender_nick=").append(senderNick).append("\n");
     sb.append("sender_id=").append(senderId).append("\n");
     sb.append("sender_name=").append(senderName).append("\n");
-    boolean isAdmin = request.isFromAdmin();
-    sb.append("is_admin=").append(isAdmin).append("\n");
+    List<String> effectivePermissions = UserPermissions.effective(request.getUser());
+    boolean hasAllPermissions = UserPermissions.has(request.getUser(), BotPermission.ALL);
+    sb.append("permissions=").append(String.join(",", effectivePermissions)).append("\n");
     sb.append("requested_by_username=").append(requestedByUsername).append("\n");
     sb.append("requested_by_name=").append(requestedByRealName).append("\n");
     sb.append("requested_by_irc_nick=").append(requestedByIrcNick).append("\n");
@@ -417,7 +420,7 @@ public class OpenClawAiService {
     sb.append("log_directory_may_be_inspected_when_supported=true\n");
     sb.append("preferred_local_tools=read\n");
 
-    if (!isAdmin) {
+    if (!hasAllPermissions) {
       sb.append("assistant_identity=the_bot\n");
       sb.append("assistant_display_name=Hokan\n");
       sb.append("assistant_backend_hidden=true\n");

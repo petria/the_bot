@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LogIn } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { getMe } from '../api/me';
+import { WEB_ADMIN_PERMISSION } from '../permissions';
 
 export function DashboardPage() {
   const meQuery = useQuery({
@@ -59,9 +60,9 @@ export function DashboardPage() {
           <Text c="dimmed">Signed in as {me.username}</Text>
         </div>
         <Group gap="xs" wrap="wrap">
-          {me.roles.map((role) => (
-            <Badge key={role} variant={role === 'ROLE_ADMIN' ? 'filled' : 'light'}>
-              {role.replace('ROLE_', '')}
+          {me.permissions.map((permission) => (
+            <Badge key={permission} variant={permission === '*' || permission === WEB_ADMIN_PERMISSION ? 'filled' : 'light'}>
+              {permission}
             </Badge>
           ))}
         </Group>
@@ -75,7 +76,6 @@ export function DashboardPage() {
           <InfoItem label="Telegram id" value={me.telegramId} />
           <InfoItem label="Discord id" value={me.discordId} />
           <InfoItem label="WhatsApp id" value={me.whatsappId} />
-          <InfoItem label="IRC op" value={me.canDoIrcOp ? 'yes' : 'no'} />
         </SimpleGrid>
       </Card>
     </Stack>

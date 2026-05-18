@@ -7,6 +7,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.UserPermissions;
 import org.freakz.common.spring.rest.RestMessageSendClient;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
@@ -188,9 +189,11 @@ public class BotEngine {
 
     AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
     if (abstractCmd != null) {
+      request.setUser(user);
 
-      if (abstractCmd.isAdminCommand() && !user.isAdmin()) {
-        log.debug("User is not admin but command is, access denied!");
+      String requiredPermission = abstractCmd.getRequiredPermission();
+      if (requiredPermission != null && !requiredPermission.isBlank() && !UserPermissions.has(user, requiredPermission)) {
+        log.debug("User lacks required command permission: {}", requiredPermission);
         return null;
       }
 
@@ -232,8 +235,6 @@ public class BotEngine {
                 "Invalid arguments, usage: %s %s",
                 abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
       } else {
-        request.setFromAdmin(user.isAdmin());
-        request.setUser(user);
         try {
           reply = abstractCmd.executeCommand(request, results);
 

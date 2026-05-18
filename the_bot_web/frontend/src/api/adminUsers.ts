@@ -22,13 +22,13 @@ export interface AdminUser {
   discordId: string | null;
   whatsappId: string | null;
   chatIdentities: AdminChatIdentity[] | null;
-  admin: boolean;
-  canDoIrcOp: boolean;
+  permissions: string[];
   reserved: boolean;
 }
 
 export interface AdminUsersResponse {
   users: AdminUser[];
+  availablePermissions: string[];
 }
 
 export interface AdminUserCreateRequest {
@@ -40,8 +40,7 @@ export interface AdminUserCreateRequest {
   telegramId: string;
   discordId: string;
   whatsappId: string;
-  admin: boolean;
-  canDoIrcOp: boolean;
+  permissions: string[];
 }
 
 export type AdminUserUpdateRequest = Omit<AdminUserCreateRequest, 'username' | 'password'>;

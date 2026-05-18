@@ -2,6 +2,8 @@ package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.common.users.BotPermission;
+import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -12,7 +14,9 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 
 @Service
 public class HokanNodeContextTokenService {
@@ -47,9 +51,9 @@ public class HokanNodeContextTokenService {
       payload.put("chatProtocol", nullToEmpty(request.getChatProtocol()));
       payload.put("chatId", nullToEmpty(request.getChatId()));
       payload.put("fromConnectionId", request.getFromConnectionId());
-      payload.put("requestedByAdmin", request.isFromAdmin());
 
       User user = request.getUser();
+      payload.put("permissions", String.join(",", UserPermissions.effective(user)));
       ObjectNode userNode = payload.putObject("user");
       userNode.put("username", user == null ? "" : nullToEmpty(user.getUsername()));
       userNode.put("name", user == null ? "" : nullToEmpty(user.getName()));
@@ -101,7 +105,7 @@ public class HokanNodeContextTokenService {
           payload.path("chatProtocol").asString(""),
           payload.path("chatId").asString(""),
           payload.path("fromConnectionId").asInt(0),
-          payload.path("requestedByAdmin").asBoolean(false),
+          parsePermissions(payload.path("permissions").asString("")),
           user.path("username").asString(""),
           user.path("name").asString(""),
           user.path("ircNick").asString(""),
@@ -184,6 +188,19 @@ public class HokanNodeContextTokenService {
     return value == null ? "" : value;
   }
 
+  private List<String> parsePermissions(String permissions) {
+    if (permissions == null || permissions.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(permissions.split(","))
+        .map(String::trim)
+        .filter(value -> !value.isBlank())
+        .map(String::toLowerCase)
+        .distinct()
+        .sorted()
+        .toList();
+  }
+
   public record VerifiedNodeContext(
       String botInstanceId,
       String sessionKey,
@@ -191,7 +208,7 @@ public class HokanNodeContextTokenService {
       String chatProtocol,
       String chatId,
       int fromConnectionId,
-      boolean requestedByAdmin,
+      List<String> permissions,
       String requestedByUsername,
       String requestedByName,
       String requestedByIrcNick,
@@ -199,5 +216,8 @@ public class HokanNodeContextTokenService {
       String requestedByDiscordId,
       String requestedByWhatsappId
   ) {
+    public boolean hasPermission(String permission) {
+      return permissions.contains(BotPermission.ALL) || permissions.contains(permission);
+    }
   }
 }

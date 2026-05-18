@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.claw;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
+import org.freakz.common.users.BotPermission;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.slf4j.Logger;
@@ -266,7 +267,7 @@ public class OpenClawNodeGatewayService {
       HokanNodeContextTokenService.VerifiedNodeContext verifiedContext =
           hokanNodeContextTokenService.verifyToken(hokanContextToken);
 
-      if (!verifiedContext.requestedByAdmin()) {
+      if (!verifiedContext.hasPermission(BotPermission.OPENCLAW_SEND_MESSAGE)) {
         String sourceEchoToAlias = verifiedContext.sourceEchoToAlias();
         if (sourceEchoToAlias == null || sourceEchoToAlias.isBlank() || !sourceEchoToAlias.equalsIgnoreCase(echoToAlias)) {
           String error = "permission denied for cross-alias send to " + echoToAlias;
@@ -287,13 +288,13 @@ public class OpenClawNodeGatewayService {
       }
 
       log.debug(
-          "OpenClaw node invoke start reqId={} command={} echoToAlias={} messageLength={} requestedBy={} requestedByAdmin={}",
+          "OpenClaw node invoke start reqId={} command={} echoToAlias={} messageLength={} requestedBy={} permissions={}",
           reqId,
           command,
           echoToAlias,
           message.length(),
           verifiedContext.requestedByUsername(),
-          verifiedContext.requestedByAdmin()
+          verifiedContext.permissions()
       );
       SendMessageByEchoToAliasResponse response =
           connectionManagerService.sendMessageByEchoToAlias(message, echoToAlias);

@@ -4,10 +4,10 @@ import {
   Badge,
   Button,
   Card,
-  Checkbox,
   Group,
   Loader,
   Modal,
+  MultiSelect,
   PasswordInput,
   SimpleGrid,
   Stack,
@@ -44,8 +44,7 @@ const emptyUserForm: AdminUserCreateRequest = {
   telegramId: '',
   discordId: '',
   whatsappId: '',
-  admin: false,
-  canDoIrcOp: false,
+  permissions: [],
 };
 
 type UserModalState =
@@ -146,6 +145,7 @@ export function AdminUsersPage() {
 
       <UserEditorModal
         state={userModal}
+        availablePermissions={usersQuery.data?.availablePermissions ?? []}
         onClose={() => setUserModal(null)}
         onSaved={() => {
           setUserModal(null);
@@ -265,10 +265,12 @@ function UsersCards({
 
 function UserEditorModal({
   state,
+  availablePermissions,
   onClose,
   onSaved,
 }: {
   state: UserModalState;
+  availablePermissions: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -303,7 +305,7 @@ function UserEditorModal({
   const mutationError = createMutation.error || updateMutation.error;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const setField = (field: keyof AdminUserCreateRequest, value: string | boolean) => {
+  const setField = (field: keyof AdminUserCreateRequest, value: string | string[]) => {
     setValidationError(null);
     createMutation.reset();
     updateMutation.reset();
@@ -350,18 +352,14 @@ function UserEditorModal({
           <TextInput label="Email" type="email" value={form.email} onChange={(event) => setField('email', event.currentTarget.value)} />
         </SimpleGrid>
 
-        <Group gap="lg">
-          <Checkbox
-            label="Admin"
-            checked={form.admin}
-            onChange={(event) => setField('admin', event.currentTarget.checked)}
-          />
-          <Checkbox
-            label="Can do IRC op"
-            checked={form.canDoIrcOp}
-            onChange={(event) => setField('canDoIrcOp', event.currentTarget.checked)}
-          />
-        </Group>
+        <MultiSelect
+          label="Permissions"
+          data={availablePermissions}
+          value={form.permissions}
+          searchable
+          clearable
+          onChange={(value) => setField('permissions', value)}
+        />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <TextInput
@@ -578,12 +576,16 @@ function IdentityCell({
 }
 
 function AccessBadges({ user }: { user: AdminUser }) {
+  const permissions = user.permissions ?? [];
   return (
     <Group gap="xs" wrap="wrap">
-      <Badge variant={user.admin ? 'filled' : 'light'} color={user.admin ? 'blue' : 'gray'}>
-        {user.admin ? 'Admin' : 'User'}
-      </Badge>
-      {user.canDoIrcOp && <Badge variant="light">IRC op</Badge>}
+      {permissions.length === 0 ? (
+        <Badge variant="light" color="gray">No permissions</Badge>
+      ) : permissions.map((permission) => (
+        <Badge key={permission} variant={permission === '*' ? 'filled' : 'light'}>
+          {permission}
+        </Badge>
+      ))}
     </Group>
   );
 }
@@ -612,8 +614,7 @@ function toForm(user: AdminUser): AdminUserCreateRequest {
     telegramId: user.telegramId ?? '',
     discordId: user.discordId ?? '',
     whatsappId: user.whatsappId ?? '',
-    admin: user.admin,
-    canDoIrcOp: user.canDoIrcOp,
+    permissions: user.permissions ?? [],
   };
 }
 
@@ -633,8 +634,7 @@ function trimUpdateForm(form: AdminUserCreateRequest): AdminUserUpdateRequest {
     telegramId: form.telegramId.trim(),
     discordId: form.discordId.trim(),
     whatsappId: form.whatsappId.trim(),
-    admin: form.admin,
-    canDoIrcOp: form.canDoIrcOp,
+    permissions: form.permissions,
   };
 }
 

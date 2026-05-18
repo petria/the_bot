@@ -15,6 +15,7 @@ import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
+import { hasPermission, WEB_ADMIN_PERMISSION } from './permissions';
 
 const navItems = [
   { label: 'System', path: '/', icon: Server },
@@ -75,6 +76,7 @@ function AuthenticatedApp() {
   if (meQuery.isLoading || authenticationRequired) {
     return null;
   }
+  const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
 
   return (
     <AppShell
@@ -98,7 +100,7 @@ function AuthenticatedApp() {
             <UserMenu
               username={meQuery.data?.username}
               name={meQuery.data?.name}
-              admin={meQuery.data?.admin}
+              webAdmin={webAdmin}
               onProfile={() => handleNavigate('/profile')}
               onLogout={handleLogout}
             />
@@ -107,7 +109,7 @@ function AuthenticatedApp() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm">
-        {[...navItems, ...(meQuery.data?.admin ? adminNavItems : [])].map((item) => (
+        {[...navItems, ...(webAdmin ? adminNavItems : [])].map((item) => (
           <NavLink
             key={item.path}
             label={item.label}
@@ -139,13 +141,13 @@ function AuthenticatedApp() {
 function UserMenu({
   username,
   name,
-  admin,
+  webAdmin,
   onProfile,
   onLogout,
 }: {
   username?: string;
   name?: string | null;
-  admin?: boolean;
+  webAdmin?: boolean;
   onProfile: () => void;
   onLogout: () => void;
 }) {
@@ -163,7 +165,7 @@ function UserMenu({
             <Avatar size="sm" radius="xl">{initials}</Avatar>
             <Box visibleFrom="sm" className="user-menu-label">
               <Text size="sm" fw={600} truncate>{name || username}</Text>
-              <Text size="xs" c="dimmed" truncate>{admin ? 'Admin' : 'User'}</Text>
+              <Text size="xs" c="dimmed" truncate>{webAdmin ? 'Web admin' : 'User'}</Text>
             </Box>
             <ChevronDown size={16} />
           </Group>

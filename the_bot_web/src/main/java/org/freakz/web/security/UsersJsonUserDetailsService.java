@@ -3,6 +3,7 @@ package org.freakz.web.security;
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.spring.rest.RestEngineClient;
+import org.freakz.common.users.UserPermissions;
 import org.freakz.common.users.UsersJsonStore;
 import org.freakz.web.config.TheBotWebProperties;
 import org.slf4j.Logger;
@@ -95,14 +96,13 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     User user = User.builder()
         .username(username)
         .password(passwordEncoder.encode(create.password()))
-        .isAdmin(create.admin())
-        .canDoIrcOp(create.canDoIrcOp())
         .name(blankToNull(create.name()))
         .email(blankToNull(create.email()))
         .ircNick(blankToNull(create.ircNick()))
         .telegramId(blankToNull(create.telegramId()))
         .discordId(blankToNull(create.discordId()))
         .whatsappId(blankToNull(create.whatsappId()))
+        .permissions(create.permissions())
         .build();
     User created = usersStore.addUser(user);
     notifyEngineUsersReload();
@@ -121,8 +121,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       copy.setTelegramId(blankToNull(update.telegramId()));
       copy.setDiscordId(blankToNull(update.discordId()));
       copy.setWhatsappId(blankToNull(update.whatsappId()));
-      copy.setAdmin(update.admin());
-      copy.setCanDoIrcOp(update.canDoIrcOp());
+      copy.setPermissions(update.permissions());
       return copy;
     });
     notifyEngineUsersReload();
@@ -234,8 +233,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
     List<GrantedAuthority> authorities = new ArrayList<>();
     authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-    if (user.isAdmin()) {
-      authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+    for (String permission : UserPermissions.effective(user)) {
+      authorities.add(new SimpleGrantedAuthority(permission));
     }
     return BotUserPrincipal.from(user, authorities);
   }
@@ -299,8 +298,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String telegramId,
       String discordId,
       String whatsappId,
-      boolean admin,
-      boolean canDoIrcOp) {
+      List<String> permissions) {
   }
 
   public record AdminUserUpdate(
@@ -310,8 +308,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String telegramId,
       String discordId,
       String whatsappId,
-      boolean admin,
-      boolean canDoIrcOp) {
+      List<String> permissions) {
   }
 
   public record AdminPasswordReset(String password) {

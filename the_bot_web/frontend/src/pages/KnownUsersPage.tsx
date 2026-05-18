@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { ApiError } from '../api/client';
 import { getKnownUserTargets, KnownUserTarget } from '../api/knownUsers';
 import { getMe } from '../api/me';
+import { hasPermission, WEB_ADMIN_PERMISSION } from '../permissions';
 import { LinkObservedIdentityModal } from './LinkObservedIdentityModal';
 
 export function KnownUsersPage() {
@@ -43,6 +44,7 @@ export function KnownUsersPage() {
   const groups = groupTargets(targets);
   const configuredCount = targets.filter((target) => target.matchedConfiguredUser).length;
   const privateCount = targets.filter((target) => target.targetType === 'PRIVATE').length;
+  const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
 
   return (
     <Stack gap="md">
@@ -100,7 +102,7 @@ export function KnownUsersPage() {
           groups={groups}
           sort={sort}
           onSortChange={setSort}
-          admin={!!meQuery.data?.admin}
+          admin={webAdmin}
           onLink={setLinkTarget}
         />
       )}

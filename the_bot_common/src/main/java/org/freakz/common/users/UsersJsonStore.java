@@ -5,6 +5,7 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -116,8 +117,8 @@ public class UsersJsonStore {
         updated = copyUser(updater.apply(copyUser(current)));
         updated.setId(original.getId());
         updated.setUsername(original.getUsername());
-        if (original.isAdmin() && !updated.isAdmin() && adminCount(currentUsers) <= 1) {
-          throw new IllegalArgumentException("Last admin user cannot be demoted");
+        if (hasWebAdminAccess(original) && !hasWebAdminAccess(updated) && webAdminCount(currentUsers) <= 1) {
+          throw new IllegalArgumentException("Last web admin user cannot be demoted");
         }
         currentUsers.set(i, updated);
         break;
@@ -143,8 +144,8 @@ public class UsersJsonStore {
         if (!Objects.equals(current.getId(), id)) {
           continue;
         }
-        if (current.isAdmin() && adminCount(currentUsers) <= 1) {
-          throw new IllegalArgumentException("Last admin user cannot be deleted");
+        if (hasWebAdminAccess(current) && webAdminCount(currentUsers) <= 1) {
+          throw new IllegalArgumentException("Last web admin user cannot be deleted");
         }
         deleted = currentUsers.remove(i);
         break;
@@ -223,8 +224,6 @@ public class UsersJsonStore {
       return null;
     }
     User copy = User.builder()
-        .isAdmin(source.isAdmin())
-        .canDoIrcOp(source.isCanDoIrcOp())
         .username(source.getUsername())
         .password(source.getPassword())
         .name(source.getName())
@@ -236,6 +235,7 @@ public class UsersJsonStore {
         .chatIdentities(source.getChatIdentities() == null
             ? List.of()
             : source.getChatIdentities().stream().map(UsersJsonStore::copyIdentity).toList())
+        .permissions(UserPermissions.normalize(source.getPermissions()))
         .build();
     copy.setId(source.getId());
     return copy;
@@ -270,8 +270,12 @@ public class UsersJsonStore {
         .orElse(-1L) + 1L;
   }
 
-  private long adminCount(List<User> users) {
-    return users.stream().filter(User::isAdmin).count();
+  private long webAdminCount(List<User> users) {
+    return users.stream().filter(this::hasWebAdminAccess).count();
+  }
+
+  private boolean hasWebAdminAccess(User user) {
+    return UserPermissions.has(user, BotPermission.WEB_ADMIN);
   }
 
   private User findById(List<User> users, long userId) {
@@ -341,9 +345,15 @@ public class UsersJsonStore {
       }
 
       UserValuesJsonContainer container = jsonMapper.readValue(usersFile.toFile(), UserValuesJsonContainer.class);
-      List<User> loadedUsers = container.getData_values() == null
-          ? List.of()
-          : container.getData_values().stream().map(UsersJsonStore::copyUser).map(this::withMigratedLegacyIdentities).toList();
+      JsonNode rawRoot = jsonMapper.readTree(usersFile.toFile());
+      JsonNode rawUsers = rawRoot.path("data_values");
+      List<User> loadedUsers = new ArrayList<>();
+      if (container.getData_values() != null) {
+        for (int i = 0; i < container.getData_values().size(); i++) {
+          JsonNode rawUser = rawUsers.isArray() && rawUsers.size() > i ? rawUsers.get(i) : null;
+          loadedUsers.add(withMigratedLegacyUser(copyUser(container.getData_values().get(i)), rawUser));
+        }
+      }
       snapshot = new Snapshot(lastModified, size, List.copyOf(loadedUsers));
       log.info("Loaded {} bot users from {}", loadedUsers.size(), usersFile.toAbsolutePath());
       return snapshot.users();
@@ -359,7 +369,7 @@ public class UsersJsonStore {
         Files.createDirectories(parent);
       }
 
-      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).map(this::withMigratedLegacyIdentities).toList();
+      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).map(user -> withMigratedLegacyUser(user, null)).toList();
       UserValuesJsonContainer container = new UserValuesJsonContainer(copiedUsers);
       String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
 
@@ -383,10 +393,11 @@ public class UsersJsonStore {
     }
   }
 
-  private User withMigratedLegacyIdentities(User user) {
+  private User withMigratedLegacyUser(User user, JsonNode rawUser) {
     if (user == null) {
       return null;
     }
+    user.setPermissions(mergedPermissions(user.getPermissions(), rawUser));
     if (user.getChatIdentities() == null) {
       user.setChatIdentities(new ArrayList<>());
     }
@@ -395,6 +406,17 @@ public class UsersJsonStore {
     addLegacyIdentityIfMissing(user, "TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null, "LEGACY_TELEGRAM_ID");
     addLegacyIdentityIfMissing(user, "WHATSAPP_CONNECTION", "WhatsApp", user.getWhatsappId(), null, null, "LEGACY_WHATSAPP_ID");
     return user;
+  }
+
+  private List<String> mergedPermissions(List<String> permissions, JsonNode rawUser) {
+    List<String> merged = new ArrayList<>(UserPermissions.normalize(permissions));
+    if (rawUser != null) {
+      boolean legacyAdmin = rawUser.path("isAdmin").asBoolean(false);
+      if (legacyAdmin) {
+        merged.addAll(BotPermission.legacyAdminPermissions());
+      }
+    }
+    return UserPermissions.normalize(merged);
   }
 
   private void addLegacyIdentityIfMissing(

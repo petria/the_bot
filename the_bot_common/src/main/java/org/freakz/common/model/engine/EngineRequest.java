@@ -18,7 +18,6 @@ public class EngineRequest {
 
   private String fromSenderId;
   private String fromSender;
-  private boolean isFromAdmin;
 
   private String network;
 
@@ -36,7 +35,7 @@ public class EngineRequest {
 
   }
 
-  public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, boolean isFromAdmin, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig, ChatIdentity chatIdentity) {
+  public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig, ChatIdentity chatIdentity) {
     this.timestamp = timestamp;
     this.command = command;
     this.replyTo = replyTo;
@@ -45,7 +44,6 @@ public class EngineRequest {
     this.fromChannelId = fromChannelId;
     this.fromSenderId = fromSenderId;
     this.fromSender = fromSender;
-    this.isFromAdmin = isFromAdmin;
     this.network = network;
     this.chatProtocol = chatProtocol;
     this.chatType = chatType;
@@ -114,14 +112,6 @@ public class EngineRequest {
 
   public void setFromSender(String fromSender) {
     this.fromSender = fromSender;
-  }
-
-  public boolean isFromAdmin() {
-    return isFromAdmin;
-  }
-
-  public void setFromAdmin(boolean fromAdmin) {
-    isFromAdmin = fromAdmin;
   }
 
   public String getNetwork() {
@@ -193,12 +183,12 @@ public class EngineRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     EngineRequest that = (EngineRequest) o;
-    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && isFromAdmin == that.isFromAdmin && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
+    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, isFromAdmin, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
+    return Objects.hash(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
   }
 
   @Override
@@ -212,7 +202,6 @@ public class EngineRequest {
         ", fromChannelId=" + fromChannelId +
         ", fromSenderId='" + fromSenderId + '\'' +
         ", fromSender='" + fromSender + '\'' +
-        ", isFromAdmin=" + isFromAdmin +
         ", network='" + network + '\'' +
         ", chatProtocol='" + chatProtocol + '\'' +
         ", chatType='" + chatType + '\'' +
@@ -245,7 +234,6 @@ public class EngineRequest {
     private Long fromChannelId;
     private String fromSenderId;
     private String fromSender;
-    private boolean isFromAdmin;
     private String network;
     private String chatProtocol;
     private String chatType;
@@ -295,11 +283,6 @@ public class EngineRequest {
       return this;
     }
 
-    public Builder isFromAdmin(boolean isFromAdmin) {
-      this.isFromAdmin = isFromAdmin;
-      return this;
-    }
-
     public Builder network(String network) {
       this.network = network;
       return this;
@@ -341,7 +324,7 @@ public class EngineRequest {
     }
 
     public EngineRequest build() {
-      return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, isFromAdmin, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
+      return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
     }
 
   }

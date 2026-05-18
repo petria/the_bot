@@ -9,8 +9,7 @@ export interface MeResponse {
   telegramId: string | null;
   discordId: string | null;
   whatsappId: string | null;
-  admin: boolean;
-  canDoIrcOp: boolean;
+  permissions: string[];
   roles: string[];
 }
 

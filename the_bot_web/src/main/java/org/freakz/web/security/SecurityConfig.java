@@ -19,6 +19,7 @@ import tools.jackson.databind.json.JsonMapper;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.freakz.common.users.BotPermission;
 
 @Configuration
 @EnableWebSecurity
@@ -36,7 +37,7 @@ public class SecurityConfig {
             .requestMatchers("/assets/**", "/index.html", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
-            .requestMatchers("/api/web/admin/**").hasRole("ADMIN")
+            .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
             .requestMatchers("/api/web/**").authenticated()
             .anyRequest().authenticated()
         )

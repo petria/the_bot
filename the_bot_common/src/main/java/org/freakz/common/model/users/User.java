@@ -11,10 +11,6 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class User extends DataNodeBase {
 
-  @JsonProperty("isAdmin")
-  private boolean isAdmin;
-  @JsonProperty("canDoIrcOp")
-  private boolean canDoIrcOp;
   @JsonProperty("username")
   private String username;
   @JsonProperty("password")
@@ -33,17 +29,13 @@ public class User extends DataNodeBase {
   private String whatsappId;
   @JsonProperty("chatIdentities")
   private List<UserChatIdentity> chatIdentities = new ArrayList<>();
+  @JsonProperty("permissions")
+  private List<String> permissions = new ArrayList<>();
 
   public User() {
   }
 
-  public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId) {
-    this(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, null);
-  }
-
-  public User(boolean isAdmin, boolean canDoIrcOp, String username, String password, String name, String email, String ircNick, String telegramId, String discordId, String whatsappId) {
-    this.isAdmin = isAdmin;
-    this.canDoIrcOp = canDoIrcOp;
+  public User(String username, String password, String name, String email, String ircNick, String telegramId, String discordId, String whatsappId) {
     this.username = username;
     this.password = password;
     this.name = name;
@@ -56,22 +48,6 @@ public class User extends DataNodeBase {
 
   public static Builder builder() {
     return new Builder();
-  }
-
-  public boolean isAdmin() {
-    return isAdmin;
-  }
-
-  public void setAdmin(boolean admin) {
-    isAdmin = admin;
-  }
-
-  public boolean isCanDoIrcOp() {
-    return canDoIrcOp;
-  }
-
-  public void setCanDoIrcOp(boolean canDoIrcOp) {
-    this.canDoIrcOp = canDoIrcOp;
   }
 
   public String getUsername() {
@@ -146,25 +122,31 @@ public class User extends DataNodeBase {
     this.chatIdentities = chatIdentities == null ? new ArrayList<>() : new ArrayList<>(chatIdentities);
   }
 
+  public List<String> getPermissions() {
+    return permissions;
+  }
+
+  public void setPermissions(List<String> permissions) {
+    this.permissions = permissions == null ? new ArrayList<>() : new ArrayList<>(permissions);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     User user = (User) o;
-    return isAdmin == user.isAdmin && canDoIrcOp == user.canDoIrcOp && Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(whatsappId, user.whatsappId) && Objects.equals(chatIdentities, user.chatIdentities);
+    return Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(whatsappId, user.whatsappId) && Objects.equals(chatIdentities, user.chatIdentities) && Objects.equals(permissions, user.permissions);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, whatsappId, chatIdentities);
+    return Objects.hash(username, password, name, email, ircNick, telegramId, discordId, whatsappId, chatIdentities, permissions);
   }
 
   @Override
   public String toString() {
     return "User{" +
-        "isAdmin=" + isAdmin +
-        ", canDoIrcOp=" + canDoIrcOp +
-        ", username='" + username + '\'' +
+        "username='" + username + '\'' +
         ", password='" + password + '\'' +
         ", name='" + name + '\'' +
         ", email='" + email + '\'' +
@@ -173,12 +155,11 @@ public class User extends DataNodeBase {
         ", discordId='" + discordId + '\'' +
         ", whatsappId='" + whatsappId + '\'' +
         ", chatIdentities=" + chatIdentities +
+        ", permissions=" + permissions +
         '}';
   }
 
   public static class Builder {
-    private boolean isAdmin;
-    private boolean canDoIrcOp;
     private String username;
     private String password;
     private String name;
@@ -188,16 +169,7 @@ public class User extends DataNodeBase {
     private String discordId;
     private String whatsappId;
     private List<UserChatIdentity> chatIdentities = new ArrayList<>();
-
-    public Builder isAdmin(boolean isAdmin) {
-      this.isAdmin = isAdmin;
-      return this;
-    }
-
-    public Builder canDoIrcOp(boolean canDoIrcOp) {
-      this.canDoIrcOp = canDoIrcOp;
-      return this;
-    }
+    private List<String> permissions = new ArrayList<>();
 
     public Builder username(String username) {
       this.username = username;
@@ -244,9 +216,15 @@ public class User extends DataNodeBase {
       return this;
     }
 
+    public Builder permissions(List<String> permissions) {
+      this.permissions = permissions == null ? new ArrayList<>() : new ArrayList<>(permissions);
+      return this;
+    }
+
     public User build() {
-      User user = new User(isAdmin, canDoIrcOp, username, password, name, email, ircNick, telegramId, discordId, whatsappId);
+      User user = new User(username, password, name, email, ircNick, telegramId, discordId, whatsappId);
       user.setChatIdentities(chatIdentities);
+      user.setPermissions(permissions);
       return user;
     }
   }

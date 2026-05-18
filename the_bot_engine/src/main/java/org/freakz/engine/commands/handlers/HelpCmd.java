@@ -6,6 +6,7 @@ import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HandlerClass;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
@@ -54,15 +55,16 @@ public class HelpCmd extends AbstractCmd {
           .sorted(Comparator.comparing(HandlerClass::getDisplayName, String.CASE_INSENSITIVE_ORDER))
           .toList();
       for (HandlerClass handlerClass : handlerClasses) {
-        if (handlerClass.isAdmin() && !request.isFromAdmin()) {
+        String requiredPermission = handlerClass.getRequiredPermission();
+        if (requiredPermission != null && !requiredPermission.isBlank() && !UserPermissions.has(request.getUser(), requiredPermission)) {
           continue;
         }
         String cmdName = handlerClass.getDisplayName();
         StringBuilder entry = new StringBuilder(cmdName);
 
         String flags = "";
-        if (handlerClass.isAdmin()) {
-          flags += "A";
+        if (requiredPermission != null && !requiredPermission.isBlank()) {
+          flags += "P";
         }
         if (!flags.isEmpty()) {
           entry.append("[").append(flags).append("]");
