@@ -53,12 +53,10 @@ public class ConnectionsController {
         return;
       }
       for (BotConnectionChannelResponse channel : connection.getChannels()) {
-        if (!channel.isConfigured() && configService.hasConfiguredChannel(
+        channel.setConfigured(configService.hasConfiguredChannel(
             connection.getType(),
             connection.getNetwork(),
-            channel.getEchoToAlias())) {
-          channel.setConfigured(true);
-        }
+            channel.getEchoToAlias()));
       }
     });
   }
