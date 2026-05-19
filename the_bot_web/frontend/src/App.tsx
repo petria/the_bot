@@ -1,8 +1,8 @@
-import { AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Text, Title, UnstyledButton } from '@mantine/core';
+import { Alert, AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Stack, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
@@ -15,7 +15,7 @@ import { KnownUsersPage } from './pages/KnownUsersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
-import { hasPermission, WEB_ADMIN_PERMISSION } from './permissions';
+import { hasPermission, WEB_ADMIN_PERMISSION, WEB_USER_PERMISSION } from './permissions';
 
 const navItems = [
   { label: 'System', path: '/', icon: Server },
@@ -77,6 +77,7 @@ function AuthenticatedApp() {
     return null;
   }
   const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
+  const webUser = hasPermission(meQuery.data?.permissions, WEB_USER_PERMISSION);
 
   return (
     <AppShell
@@ -109,32 +110,98 @@ function AuthenticatedApp() {
       </AppShell.Header>
 
       <AppShell.Navbar p="sm">
-        {[...navItems, ...(webAdmin ? adminNavItems : [])].map((item) => (
-          <NavLink
-            key={item.path}
-            label={item.label}
-            leftSection={<item.icon size={18} />}
-            active={location.pathname === item.path}
-            onClick={() => handleNavigate(item.path)}
-          />
-        ))}
+        <Stack gap="xs">
+          {webUser && (
+            <NavSection
+              label="User"
+              items={navItems}
+              activePath={location.pathname}
+              onNavigate={handleNavigate}
+            />
+          )}
+          {webAdmin && (
+            <NavSection
+              label="Admin"
+              items={adminNavItems}
+              activePath={location.pathname}
+              onNavigate={handleNavigate}
+            />
+          )}
+        </Stack>
       </AppShell.Navbar>
 
       <AppShell.Main>
         <Box className="page-frame">
           <Routes>
-            <Route path="/" element={<SystemPage />} />
-            <Route path="/overview" element={<DashboardPage />} />
-            <Route path="/users" element={<KnownUsersPage />} />
-            <Route path="/send" element={<SendPage />} />
-            <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/" element={<RequireWebUser allowed={webUser}><SystemPage /></RequireWebUser>} />
+            <Route path="/overview" element={<RequireWebUser allowed={webUser}><DashboardPage /></RequireWebUser>} />
+            <Route path="/users" element={<RequireWebUser allowed={webUser}><KnownUsersPage /></RequireWebUser>} />
+            <Route path="/send" element={<RequireWebUser allowed={webUser}><SendPage /></RequireWebUser>} />
+            <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/admin/users" element={<AdminUsersPage />} />
-            <Route path="/admin/config" element={<AdminConnectionConfigPage />} />
+            <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />
+            <Route path="/admin/config" element={<RequireWebAdmin allowed={webAdmin}><AdminConnectionConfigPage /></RequireWebAdmin>} />
           </Routes>
         </Box>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+type NavItem = {
+  label: string;
+  path: string;
+  icon: typeof Server;
+};
+
+function NavSection({
+  label,
+  items,
+  activePath,
+  onNavigate,
+}: {
+  label: string;
+  items: NavItem[];
+  activePath: string;
+  onNavigate: (path: string) => void;
+}) {
+  return (
+    <Box>
+      <Text size="xs" fw={700} c="dimmed" tt="uppercase" px="sm" mb={4}>
+        {label}
+      </Text>
+      {items.map((item) => (
+        <NavLink
+          key={item.path}
+          label={item.label}
+          leftSection={<item.icon size={18} />}
+          active={activePath === item.path}
+          onClick={() => onNavigate(item.path)}
+        />
+      ))}
+    </Box>
+  );
+}
+
+function RequireWebUser({ allowed, children }: { allowed: boolean; children: ReactNode }) {
+  if (!allowed) {
+    return <AccessDenied title="Web access required" message="Your account does not have web user access." />;
+  }
+  return <>{children}</>;
+}
+
+function RequireWebAdmin({ allowed, children }: { allowed: boolean; children: ReactNode }) {
+  if (!allowed) {
+    return <AccessDenied title="Admin access required" message="This page is available only to web admins." />;
+  }
+  return <>{children}</>;
+}
+
+function AccessDenied({ title, message }: { title: string; message: string }) {
+  return (
+    <Alert color="red" variant="light" title={title}>
+      {message}
+    </Alert>
   );
 }
 

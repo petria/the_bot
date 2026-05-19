@@ -47,6 +47,26 @@ const emptyUserForm: AdminUserCreateRequest = {
   permissions: [],
 };
 
+const permissionLabels: Record<string, string> = {
+  '*': 'All permissions',
+  'web.user': 'Web user',
+  'web.admin': 'Web admin',
+  'users.manage': 'Manage users',
+  'config.edit': 'Edit config',
+  'commands.admin': 'Admin bot commands',
+  'openclaw.use': 'Use OpenClaw',
+  'openclaw.tools.send-message': 'OpenClaw send message',
+  'logs.read.current-chat': 'Read current chat logs',
+  'logs.read.current-channel': 'Read current channel logs',
+  'logs.read.current-user-dm': 'Read own DM logs',
+  'logs.read.all-public-channels': 'Read all public channel logs',
+  'logs.read.all-private-chats': 'Read all private chat logs',
+  'logs.read.all': 'Read all logs',
+};
+
+const webPermissions = new Set(['web.user', 'web.admin']);
+const broadPermission = new Set(['*']);
+
 type UserModalState =
   | { mode: 'create'; user: null }
   | { mode: 'edit'; user: AdminUser }
@@ -354,7 +374,8 @@ function UserEditorModal({
 
         <MultiSelect
           label="Permissions"
-          data={availablePermissions}
+          description="Web admin also grants normal web-user access."
+          data={permissionOptions(availablePermissions)}
           value={form.permissions}
           searchable
           clearable
@@ -583,11 +604,52 @@ function AccessBadges({ user }: { user: AdminUser }) {
         <Badge variant="light" color="gray">No permissions</Badge>
       ) : permissions.map((permission) => (
         <Badge key={permission} variant={permission === '*' ? 'filled' : 'light'}>
-          {permission}
+          {permissionLabel(permission)}
         </Badge>
       ))}
     </Group>
   );
+}
+
+function permissionOptions(availablePermissions: string[]) {
+  const available = [...availablePermissions].sort(comparePermissions);
+  const toOption = (permission: string) => ({
+    value: permission,
+    label: `${permissionLabel(permission)} (${permission})`,
+  });
+  return [
+    {
+      group: 'Web access',
+      items: available.filter((permission) => webPermissions.has(permission)).map(toOption),
+    },
+    {
+      group: 'All access',
+      items: available.filter((permission) => broadPermission.has(permission)).map(toOption),
+    },
+    {
+      group: 'Bot and data permissions',
+      items: available
+          .filter((permission) => !webPermissions.has(permission) && !broadPermission.has(permission))
+          .map(toOption),
+    },
+  ].filter((group) => group.items.length > 0);
+}
+
+function permissionLabel(permission: string) {
+  return permissionLabels[permission] ?? permission;
+}
+
+function comparePermissions(left: string, right: string) {
+  const rank = (permission: string) => {
+    if (webPermissions.has(permission)) {
+      return 0;
+    }
+    if (broadPermission.has(permission)) {
+      return 1;
+    }
+    return 2;
+  };
+  return rank(left) - rank(right) || permissionLabel(left).localeCompare(permissionLabel(right));
 }
 
 function identityLabel(identity: AdminChatIdentity) {

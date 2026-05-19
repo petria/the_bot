@@ -5,6 +5,7 @@ import java.util.List;
 public final class BotPermission {
 
   public static final String ALL = "*";
+  public static final String WEB_USER = "web.user";
   public static final String WEB_ADMIN = "web.admin";
   public static final String USERS_MANAGE = "users.manage";
   public static final String CONFIG_EDIT = "config.edit";
@@ -20,6 +21,7 @@ public final class BotPermission {
 
   private static final List<String> KNOWN = List.of(
       ALL,
+      WEB_USER,
       WEB_ADMIN,
       USERS_MANAGE,
       CONFIG_EDIT,

@@ -41,7 +41,7 @@ class UsersJsonUserDetailsServiceTest {
             },
             {
               "id": 2,
-              "permissions": [],
+              "permissions": ["web.user"],
               "username": "normal",
               "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO",
               "name": "Normal User",
@@ -65,10 +65,11 @@ class UsersJsonUserDetailsServiceTest {
         .contains(BotPermission.WEB_ADMIN, "ROLE_USER");
 
     BotUserPrincipal normal = (BotUserPrincipal) service.loadUserByUsername("normal");
-    assertThat(normal.getPermissions()).isEmpty();
+    assertThat(normal.getPermissions()).containsExactly(BotPermission.WEB_USER);
     assertThat(normal.getAuthorities())
         .extracting(authority -> authority.getAuthority())
-        .containsExactly("ROLE_USER");
+        .contains(BotPermission.WEB_USER, "ROLE_USER")
+        .doesNotContain(BotPermission.WEB_ADMIN);
   }
 
   @Test

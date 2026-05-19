@@ -18,7 +18,10 @@ public final class UserPermissions {
       return false;
     }
     Set<String> normalized = normalizedSet(user.getPermissions());
-    return normalized.contains(BotPermission.ALL) || normalized.contains(normalize(permission));
+    String requested = normalize(permission);
+    return normalized.contains(BotPermission.ALL)
+        || normalized.contains(requested)
+        || (BotPermission.WEB_USER.equals(requested) && normalized.contains(BotPermission.WEB_ADMIN));
   }
 
   public static boolean hasAny(User user, Collection<String> permissions) {
@@ -44,6 +47,8 @@ public final class UserPermissions {
     Set<String> normalized = normalizedSet(user.getPermissions());
     if (normalized.contains(BotPermission.ALL)) {
       normalized.addAll(BotPermission.known());
+    } else if (normalized.contains(BotPermission.WEB_ADMIN)) {
+      normalized.add(BotPermission.WEB_USER);
     }
     return normalized.stream().toList();
   }

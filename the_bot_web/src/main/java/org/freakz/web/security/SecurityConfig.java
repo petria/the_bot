@@ -37,8 +37,9 @@ public class SecurityConfig {
             .requestMatchers("/assets/**", "/index.html", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
+            .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
-            .requestMatchers("/api/web/**").authenticated()
+            .requestMatchers("/api/web/**").hasAnyAuthority(BotPermission.WEB_USER, BotPermission.WEB_ADMIN, BotPermission.ALL)
             .anyRequest().authenticated()
         )
         .exceptionHandling(exceptionHandling -> exceptionHandling
