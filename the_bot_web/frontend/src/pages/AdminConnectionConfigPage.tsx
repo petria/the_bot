@@ -43,6 +43,7 @@ const emptyChannel: AdminConfigChannel = {
   echoToAlias: null,
   echoToAliases: [],
   joinOnStart: false,
+  publicAiEnabled: false,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -497,6 +498,11 @@ function ChannelsEditor({
               label="Join on start"
               checked={channel.joinOnStart}
               onChange={(event) => updateChannel(channels, index, { joinOnStart: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Public AI"
+              checked={channel.publicAiEnabled}
+              onChange={(event) => updateChannel(channels, index, { publicAiEnabled: event.currentTarget.checked }, onChange)}
             />
           </Stack>
         </Card>

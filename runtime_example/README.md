@@ -26,7 +26,6 @@ Currently only `channel.*` keys are runtime-mutable through the bot env-value co
 
 Examples:
 
-`channel.do.public.ai`
 `channel.do.url.topic`
 `channel.do.sys.notify`
 

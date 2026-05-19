@@ -228,7 +228,8 @@ public class AdminConnectionConfigService {
           text(item, "type"),
           text(item, "echoToAlias"),
           aliasesFrom(item.get("echoToAliases")),
-          item.path("joinOnStart").asBoolean(false)));
+          item.path("joinOnStart").asBoolean(false),
+          item.path("publicAiEnabled").asBoolean(false)));
     }
     return channels;
   }
@@ -364,7 +365,8 @@ public class AdminConnectionConfigService {
         firstNonBlank(source.type(), defaultChannelType(request.connectionType())),
         echoToAlias,
         normalizeAliases(source.echoToAliases()),
-        source.joinOnStart());
+        source.joinOnStart(),
+        source.publicAiEnabled());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -496,7 +498,8 @@ public class AdminConnectionConfigService {
             clean(channel.type()),
             clean(channel.echoToAlias()),
             normalizeAliases(channel.echoToAliases()),
-            channel.joinOnStart()))
+            channel.joinOnStart(),
+            channel.publicAiEnabled()))
         .toList();
   }
 
@@ -608,6 +611,7 @@ public class AdminConnectionConfigService {
       channel.echoToAliases().forEach(aliases::add);
       item.set("echoToAliases", aliases);
       item.put("joinOnStart", channel.joinOnStart());
+      item.put("publicAiEnabled", channel.publicAiEnabled());
       array.add(item);
     }
     return array;
@@ -749,6 +753,7 @@ public class AdminConnectionConfigService {
       String type,
       String echoToAlias,
       List<String> echoToAliases,
-      boolean joinOnStart) {
+      boolean joinOnStart,
+      boolean publicAiEnabled) {
   }
 }

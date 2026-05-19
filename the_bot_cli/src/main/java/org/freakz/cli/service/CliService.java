@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Scanner;
 
 @Service
@@ -15,7 +16,7 @@ public class CliService implements CommandLineRunner {
 
   private static final Scanner scanner = new Scanner(System.in);
   boolean pressed = false;
-  private String user = "_Pete_";
+  private static final String DEFAULT_USER = "_Pete_";
   private boolean doMainLoop = true;
   @Autowired
   private MessageSender sender;
@@ -118,18 +119,34 @@ public class CliService implements CommandLineRunner {
 
   @Override
   public void run(String... args) throws Exception {
+    String botUser = resolveUser(args);
+    String oneShotMessage = resolveOneShotMessage(args);
 
-    if (args.length == 0) {
-      log.info("ENTERING INTERACTIVE MODE");
-      Thread t = new Thread(() -> mainLoop(user));
-      t.setName("The Bot client: " + user);
+    if (oneShotMessage == null) {
+      log.info("ENTERING INTERACTIVE MODE as {}", botUser);
+      Thread t = new Thread(() -> mainLoop(botUser));
+      t.setName("The Bot client: " + botUser);
       t.start();
 
     } else {
-      log.info("SENDING LINE: {}", args[0]);
-      String reply = sender.sendToServer(args[0], user);
+      log.info("SENDING LINE as {}: {}", botUser, oneShotMessage);
+      String reply = sender.sendToServer(oneShotMessage, botUser);
       print("BOT REPLY: " + reply + "\n", true);
     }
+  }
+
+  private String resolveUser(String... args) {
+    if (args.length == 0 || args[0] == null || args[0].isBlank()) {
+      return DEFAULT_USER;
+    }
+    return args[0].trim();
+  }
+
+  private String resolveOneShotMessage(String... args) {
+    if (args.length < 2) {
+      return null;
+    }
+    return String.join(" ", Arrays.copyOfRange(args, 1, args.length)).trim();
   }
 
 }

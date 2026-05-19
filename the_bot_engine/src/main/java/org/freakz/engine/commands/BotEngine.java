@@ -6,6 +6,9 @@ import org.freakz.common.exception.InitializeFailedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
+import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.botconfig.IrcServerConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.users.User;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.spring.rest.RestMessageSendClient;
@@ -28,8 +31,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 @Service
 public class BotEngine {
@@ -135,17 +138,9 @@ public class BotEngine {
       return false;
     }
 
-    String configured = configService.getConfigValue("channel.do.public.ai", null, null);
-    if (configured == null || configured.isBlank()) {
-      return false;
-    }
-
-    boolean allowlisted = Arrays.stream(configured.split(","))
-        .map(String::trim)
-        .filter(value -> !value.isBlank())
-        .anyMatch(value -> value.equalsIgnoreCase(echoToAlias));
-
-    if (!allowlisted) {
+    TheBotConfig botConfig = request.getBotConfig();
+    Channel configuredChannel = findChannelByEchoToAlias(botConfig, echoToAlias);
+    if (configuredChannel == null || !Boolean.TRUE.equals(configuredChannel.getPublicAiEnabled())) {
       return false;
     }
 
@@ -155,6 +150,46 @@ public class BotEngine {
     }
 
     return message.contains("?") || containsBotMention(message);
+  }
+
+  private Channel findChannelByEchoToAlias(TheBotConfig botConfig, String echoToAlias) {
+    if (botConfig == null || echoToAlias == null || echoToAlias.isBlank()) {
+      return null;
+    }
+    for (IrcServerConfig ircConfig : nullSafe(botConfig.getIrcServerConfigs())) {
+      Channel channel = findChannelInList(ircConfig == null ? null : ircConfig.getChannelList(), echoToAlias);
+      if (channel != null) {
+        return channel;
+      }
+    }
+    Channel discordChannel = findChannelInList(
+        botConfig.getDiscordConfig() == null ? null : botConfig.getDiscordConfig().getChannelList(),
+        echoToAlias);
+    if (discordChannel != null) {
+      return discordChannel;
+    }
+    Channel telegramChannel = findChannelInList(
+        botConfig.getTelegramConfig() == null ? null : botConfig.getTelegramConfig().getChannelList(),
+        echoToAlias);
+    if (telegramChannel != null) {
+      return telegramChannel;
+    }
+    return findChannelInList(
+        botConfig.getWhatsappConfig() == null ? null : botConfig.getWhatsappConfig().getChannelList(),
+        echoToAlias);
+  }
+
+  private Channel findChannelInList(List<Channel> channels, String echoToAlias) {
+    for (Channel channel : nullSafe(channels)) {
+      if (channel != null && channel.getEchoToAlias() != null && channel.getEchoToAlias().equalsIgnoreCase(echoToAlias)) {
+        return channel;
+      }
+    }
+    return null;
+  }
+
+  private <T> List<T> nullSafe(List<T> values) {
+    return values == null ? List.of() : values;
   }
 
   private boolean containsBotMention(String message) {

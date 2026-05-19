@@ -128,6 +128,7 @@ export function ConnectionsPage() {
                   echoToAlias: channel.echoToAlias,
                   echoToAliases: [],
                   joinOnStart: false,
+                  publicAiEnabled: false,
                 },
               })}
             />

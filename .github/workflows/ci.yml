@@ -589,7 +589,10 @@ jobs:
             gateway["bind"] = "lan"
             gateway.setdefault("auth", {})["mode"] = "token"
             gateway["auth"]["token"] = os.environ["OPENCLAW_GATEWAY_TOKEN"]
-            gateway.setdefault("nodes", {})["allowCommands"] = ["hokan.send_message_by_echo_to_alias"]
+            gateway.setdefault("nodes", {})["allowCommands"] = [
+                "hokan.send_message_by_echo_to_alias",
+                "hokan.read_logs",
+            ]
             control_ui = gateway.setdefault("controlUi", {})
             allowed_origins = control_ui.setdefault("allowedOrigins", [])
             for origin in os.environ.get("OPENCLAW_ALLOWED_ORIGINS", "").split(","):
