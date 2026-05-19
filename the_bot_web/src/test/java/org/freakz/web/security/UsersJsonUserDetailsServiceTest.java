@@ -30,8 +30,7 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "petria",
               "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO",
               "name": "Petri Airio",
@@ -42,8 +41,7 @@ class UsersJsonUserDetailsServiceTest {
             },
             {
               "id": 2,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "normal",
               "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO",
               "name": "Normal User",
@@ -92,8 +90,7 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 7,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "petria",
               "password": "hash",
               "name": "Old Name",
@@ -140,8 +137,7 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 7,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "petria",
               "password": "%s",
               "name": "Petri",
@@ -175,8 +171,7 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 7,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "petria",
               "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO"
             }
@@ -203,8 +198,7 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 7,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "petria",
               "password": "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiAUi2qROrMjoY5hRd7WjAe/X7wVFwO"
             }
@@ -230,15 +224,13 @@ class UsersJsonUserDetailsServiceTest {
           "data_values": [
             {
               "id": 0,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "unknown",
               "password": "hash"
             },
             {
               "id": 3,
-              "isAdmin": true,
-              "canDoIrcOp": false,
+              "permissions": ["*"],
               "username": "admin",
               "password": "%s"
             }

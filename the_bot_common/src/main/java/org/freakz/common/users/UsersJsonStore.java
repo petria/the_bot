@@ -5,7 +5,6 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -345,13 +344,10 @@ public class UsersJsonStore {
       }
 
       UserValuesJsonContainer container = jsonMapper.readValue(usersFile.toFile(), UserValuesJsonContainer.class);
-      JsonNode rawRoot = jsonMapper.readTree(usersFile.toFile());
-      JsonNode rawUsers = rawRoot.path("data_values");
       List<User> loadedUsers = new ArrayList<>();
       if (container.getData_values() != null) {
-        for (int i = 0; i < container.getData_values().size(); i++) {
-          JsonNode rawUser = rawUsers.isArray() && rawUsers.size() > i ? rawUsers.get(i) : null;
-          loadedUsers.add(withMigratedLegacyUser(copyUser(container.getData_values().get(i)), rawUser));
+        for (User user : container.getData_values()) {
+          loadedUsers.add(withMigratedLegacyUser(copyUser(user)));
         }
       }
       snapshot = new Snapshot(lastModified, size, List.copyOf(loadedUsers));
@@ -369,7 +365,7 @@ public class UsersJsonStore {
         Files.createDirectories(parent);
       }
 
-      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).map(user -> withMigratedLegacyUser(user, null)).toList();
+      List<User> copiedUsers = users.stream().map(UsersJsonStore::copyUser).map(this::withMigratedLegacyUser).toList();
       UserValuesJsonContainer container = new UserValuesJsonContainer(copiedUsers);
       String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(container);
 
@@ -393,11 +389,11 @@ public class UsersJsonStore {
     }
   }
 
-  private User withMigratedLegacyUser(User user, JsonNode rawUser) {
+  private User withMigratedLegacyUser(User user) {
     if (user == null) {
       return null;
     }
-    user.setPermissions(mergedPermissions(user.getPermissions(), rawUser));
+    user.setPermissions(UserPermissions.normalize(user.getPermissions()));
     if (user.getChatIdentities() == null) {
       user.setChatIdentities(new ArrayList<>());
     }
@@ -406,17 +402,6 @@ public class UsersJsonStore {
     addLegacyIdentityIfMissing(user, "TELEGRAM_CONNECTION", "TelegramNetwork", user.getTelegramId(), null, null, "LEGACY_TELEGRAM_ID");
     addLegacyIdentityIfMissing(user, "WHATSAPP_CONNECTION", "WhatsApp", user.getWhatsappId(), null, null, "LEGACY_WHATSAPP_ID");
     return user;
-  }
-
-  private List<String> mergedPermissions(List<String> permissions, JsonNode rawUser) {
-    List<String> merged = new ArrayList<>(UserPermissions.normalize(permissions));
-    if (rawUser != null) {
-      boolean legacyAdmin = rawUser.path("isAdmin").asBoolean(false);
-      if (legacyAdmin) {
-        merged.addAll(BotPermission.legacyAdminPermissions());
-      }
-    }
-    return UserPermissions.normalize(merged);
   }
 
   private void addLegacyIdentityIfMissing(

@@ -42,16 +42,14 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "petria",
               "password": "hash",
               "ircNick": "oldnick"
             },
             {
               "id": 2,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "normal",
               "password": "hash",
               "ircNick": "normal"
@@ -81,15 +79,13 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 0,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "unknown",
               "password": "hash"
             },
             {
               "id": 4,
-              "isAdmin": true,
-              "canDoIrcOp": false,
+              "permissions": ["*"],
               "username": "petria",
               "password": "hash"
             }
@@ -119,15 +115,13 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 0,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "unknown",
               "password": "hash"
             },
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": false,
+              "permissions": ["*"],
               "username": "admin",
               "password": "hash"
             }
@@ -153,15 +147,13 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": false,
+              "permissions": ["*"],
               "username": "admin",
               "password": "hash"
             },
             {
               "id": 2,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "normal",
               "password": "hash"
             }
@@ -205,8 +197,7 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "petria",
               "password": "hash",
               "whatsappId": "162251029934316@lid"
@@ -238,15 +229,13 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": false,
+              "permissions": ["*"],
               "username": "admin",
               "password": "hash"
             },
             {
               "id": 2,
-              "isAdmin": false,
-              "canDoIrcOp": false,
+              "permissions": [],
               "username": "normal",
               "password": "hash"
             }
@@ -300,8 +289,7 @@ class UsersJsonStoreTest {
           "data_values": [
             {
               "id": 1,
-              "isAdmin": true,
-              "canDoIrcOp": true,
+              "permissions": ["*"],
               "username": "%s",
               "password": "hash",
               "ircNick": "%s"

@@ -40,8 +40,4 @@ public final class BotPermission {
   public static List<String> known() {
     return KNOWN;
   }
-
-  public static List<String> legacyAdminPermissions() {
-    return List.of(ALL);
-  }
 }
