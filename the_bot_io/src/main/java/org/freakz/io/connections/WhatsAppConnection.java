@@ -61,6 +61,20 @@ public class WhatsAppConnection extends BotConnection {
     sendText(to, message.getMessage());
   }
 
+  @Override
+  public void sendProcessingIndicator(Message message) {
+    String to = firstNonBlank(message.getId(), message.getTarget());
+    if (to == null) {
+      log.debug("Can not send WhatsApp typing indicator without target");
+      return;
+    }
+    try {
+      sendPresence(to, "typing");
+    } catch (Exception e) {
+      log.debug("WhatsApp typing indicator failed: {}", e.getMessage());
+    }
+  }
+
   protected void sendText(String to, String text) {
     String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
     String url = sendBaseUrl.replaceFirst("/+$", "") + "/send";
@@ -83,6 +97,31 @@ public class WhatsAppConnection extends BotConnection {
       }
     } catch (Exception e) {
       throw new RuntimeException("Unable to send WhatsApp message to " + to, e);
+    }
+  }
+
+  protected void sendPresence(String to, String presence) {
+    String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
+    String url = sendBaseUrl.replaceFirst("/+$", "") + "/presence";
+
+    Map<String, String> request = new HashMap<>();
+    request.put("to", to);
+    request.put("presence", presence);
+    try {
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+          .uri(URI.create(url))
+          .header("Content-Type", "application/json")
+          .POST(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(request)));
+      String token = config == null ? null : config.getSendToken();
+      if (token != null && !token.isBlank()) {
+        requestBuilder.header("X-Bot-Whatsapp-Token", token);
+      }
+      HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new RuntimeException("WhatsApp sidecar presence failed: HTTP " + response.statusCode() + " " + response.body());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Unable to send WhatsApp presence to " + to, e);
     }
   }
 

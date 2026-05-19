@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.api.methods.ActionType;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -50,12 +52,7 @@ public class TelegramConnection extends BotConnection {
   public void sendMessageTo(Message message) {
     log.debug("Send messageTo: {}", message);
     SendMessage sendMessage = new SendMessage();
-    if (message.getId() != null && !message.getId().equals("null")) {
-      // TODO fix
-      sendMessage.setChatId(message.getId());
-    } else {
-      sendMessage.setChatId(message.getTarget());
-    }
+    sendMessage.setChatId(resolveChatId(message));
     sendMessage.setText(message.getMessage());
     try {
       this.bot.execute(sendMessage);
@@ -64,6 +61,30 @@ public class TelegramConnection extends BotConnection {
       throw new RuntimeException(e);
     }
 
+  }
+
+  @Override
+  public void sendProcessingIndicator(Message message) {
+    String chatId = resolveChatId(message);
+    if (chatId == null) {
+      log.debug("Can not send Telegram typing indicator without chat id");
+      return;
+    }
+    SendChatAction action = new SendChatAction();
+    action.setChatId(chatId);
+    action.setAction(ActionType.TYPING);
+    try {
+      this.bot.execute(action);
+    } catch (TelegramApiException e) {
+      log.debug("Telegram typing indicator failed: {}", e.getMessage());
+    }
+  }
+
+  private String resolveChatId(Message message) {
+    if (message.getId() != null && !message.getId().equals("null")) {
+      return message.getId();
+    }
+    return message.getTarget();
   }
 
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {

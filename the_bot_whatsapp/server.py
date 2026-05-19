@@ -18,18 +18,21 @@ class Handler(BaseHTTPRequestHandler):
         self.respond(404, {"status": "NOK", "message": "Not found"})
 
     def do_POST(self):
-        if self.path != "/send":
-            self.respond(404, {"status": "NOK", "message": "Not found"})
+        if self.path == "/send":
+            self.handle_send()
             return
-        if SEND_TOKEN and self.headers.get("X-Bot-Whatsapp-Token") != SEND_TOKEN:
+        if self.path == "/presence":
+            self.handle_presence()
+            return
+        self.respond(404, {"status": "NOK", "message": "Not found"})
+
+    def handle_send(self):
+        if not self.authorized():
             self.respond(401, {"status": "NOK", "message": "Unauthorized"})
             return
 
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-            payload = json.loads(self.rfile.read(length).decode("utf-8"))
-        except Exception as exc:
-            self.respond(400, {"status": "NOK", "message": f"Invalid JSON: {exc}"})
+        payload = self.read_json_payload()
+        if payload is None:
             return
 
         to = str(payload.get("to", "")).strip()
@@ -50,7 +53,58 @@ class Handler(BaseHTTPRequestHandler):
             "--message",
             message,
         ]
-        result = subprocess.run(command, text=True, capture_output=True, timeout=90)
+        self.run_wacli(command, to)
+
+    def handle_presence(self):
+        if not self.authorized():
+            self.respond(401, {"status": "NOK", "message": "Unauthorized"})
+            return
+
+        payload = self.read_json_payload()
+        if payload is None:
+            return
+
+        to = str(payload.get("to", "")).strip()
+        presence = str(payload.get("presence", "typing")).strip()
+        if not to:
+            self.respond(400, {"status": "NOK", "message": "'to' is required"})
+            return
+        if presence not in ("typing", "paused"):
+            self.respond(400, {"status": "NOK", "message": "Unsupported presence"})
+            return
+
+        command = [
+            WACLI_BIN,
+            "--json",
+            "--store",
+            STORE_DIR,
+            "presence",
+            presence,
+            "--to",
+            to,
+        ]
+        media = str(payload.get("media", "")).strip()
+        if media:
+            command.extend(["--media", media])
+        self.run_wacli(command, to)
+
+    def authorized(self):
+        return not SEND_TOKEN or self.headers.get("X-Bot-Whatsapp-Token") == SEND_TOKEN
+
+    def read_json_payload(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            return json.loads(self.rfile.read(length).decode("utf-8"))
+        except Exception as exc:
+            self.respond(400, {"status": "NOK", "message": f"Invalid JSON: {exc}"})
+            return None
+
+    def run_wacli(self, command, to):
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, timeout=90)
+        except subprocess.TimeoutExpired:
+            self.respond(504, {"status": "NOK", "to": to, "message": "wacli command timed out"})
+            return
         body = {
             "status": "OK" if result.returncode == 0 else "NOK",
             "to": to,

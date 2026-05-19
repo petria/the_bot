@@ -53,6 +53,17 @@ public class MessagesController {
     }
   }
 
+  @PostMapping("/processing/{connectionId}")
+  public ResponseEntity<?> sendProcessingIndicator(
+      @PathVariable int connectionId, @RequestBody Message message) {
+    try {
+      connectionManager.sendProcessingIndicatorToConnection(connectionId, message);
+    } catch (Exception e) {
+      log.debug("Processing indicator failed for connection {}: {}", connectionId, e.getMessage());
+    }
+    return ResponseEntity.ok().build();
+  }
+
   @PostMapping("/send_message_by_echo_to_alias")
   public ResponseEntity<?> sendByEchoToAlias(@RequestBody SendMessageByEchoToAliasRequest request) {
     long startedAt = System.currentTimeMillis();

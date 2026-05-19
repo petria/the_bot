@@ -6,6 +6,7 @@ The image contains `wacli` and a small HTTP wrapper:
 
 - `wacli sync --follow` receives WhatsApp Web messages and posts them to `bot-io`.
 - `POST /send` executes `wacli --json send text` for outbound messages.
+- `POST /presence` executes `wacli --json presence typing` for typing indicators.
 
 ## First Pairing
 

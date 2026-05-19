@@ -113,25 +113,9 @@ public class DiscordServerConnection extends BotConnection {
 
   @Override
   public void sendMessageTo(Message message) {
-    Channel channel = null;
-    Set<Channel> channels = api.getChannels();
-    for (Channel ch : channels) {
-/*            if (ch.asVoiceChannel().isPresent()) {
-                continue;
-            }
-            */
-      String chId = "" + ch.getId();
-      if (chId.equals(message.getId())) {
-        channel = ch;
-        break;
-      }
-      String t = ch.toString();
-      if (t.contains("name: " + message.getTarget())) {
-        channel = ch;
-        break;
-      }
-    }
-    if (channel != null) {
+    Optional<Channel> resolvedChannel = resolveChannel(message);
+    if (resolvedChannel.isPresent()) {
+      Channel channel = resolvedChannel.get();
       String outgoingMessage = formatOutgoingMessage(message.getMessage());
       Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
       if (serverTextChannel.isPresent()) {
@@ -148,6 +132,31 @@ public class DiscordServerConnection extends BotConnection {
       throw new RuntimeException("Can't send Discord message to: " + message.getTarget());
     }
 
+  }
+
+  @Override
+  public void sendProcessingIndicator(Message message) {
+    resolveChannel(message)
+        .flatMap(Channel::asTextChannel)
+        .ifPresent(channel -> channel.type().exceptionally(e -> {
+          log.debug("Discord typing indicator failed: {}", e.getMessage());
+          return null;
+        }));
+  }
+
+  private Optional<Channel> resolveChannel(Message message) {
+    Set<Channel> channels = api.getChannels();
+    for (Channel ch : channels) {
+      String chId = "" + ch.getId();
+      if (chId.equals(message.getId())) {
+        return Optional.of(ch);
+      }
+      String t = ch.toString();
+      if (t.contains("name: " + message.getTarget())) {
+        return Optional.of(ch);
+      }
+    }
+    return Optional.empty();
   }
 
   static String formatOutgoingMessage(String message) {

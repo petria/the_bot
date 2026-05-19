@@ -70,6 +70,10 @@ public class BotConnection {
     log.error("sendRawMessage(Message message) not implemented: " + this.getClass());
   }
 
+  public void sendProcessingIndicator(Message message) {
+    log.debug("sendProcessingIndicator(Message message) not implemented: {}", this.getClass());
+  }
+
   public void stop() {
     log.debug("stop() not implemented: {}", this.getClass());
   }

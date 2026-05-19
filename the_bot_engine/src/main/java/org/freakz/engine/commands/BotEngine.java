@@ -118,9 +118,9 @@ public class BotEngine {
     String replyMessage = null;
     if (implicitOpenClawChat) {
       request.setCommand("!hokan " + originalCommand);
-      replyMessage = parseAndExecute(request, user);
+      replyMessage = parseAndExecute(request, user, false);
     } else if (explicitCommand) {
-      replyMessage = parseAndExecute(request, user);
+      replyMessage = parseAndExecute(request, user, true);
     }
     if (wholeLine != null) {
       replyMessage += " WL: " + wholeLine;
@@ -205,7 +205,7 @@ public class BotEngine {
         || messageLower.contains("@" + botNameLower);
   }
 
-  private String parseAndExecute(EngineRequest request, User user) throws Exception {
+  private String parseAndExecute(EngineRequest request, User user, boolean sendProcessingIndicator) throws Exception {
     log.debug("Handle request: {}", request.getCommand());
 
     String message = request.getMessage();
@@ -271,6 +271,9 @@ public class BotEngine {
                 abstractCmd.getCommandName(), abstractCmd.getJsap().getUsage());
       } else {
         try {
+          if (sendProcessingIndicator) {
+            sendProcessingIndicator(request);
+          }
           reply = abstractCmd.executeCommand(request, results);
 
         } catch (Exception e) {
@@ -283,6 +286,30 @@ public class BotEngine {
       }
     }
     return null;
+  }
+
+  private void sendProcessingIndicator(EngineRequest request) {
+    if (request.getFromConnectionId() < 0) {
+      return;
+    }
+    Message message =
+        Message.builder()
+            .sender(this.botName)
+            .timestamp(System.currentTimeMillis())
+            .time(LocalDateTime.now())
+            .requestTimestamp(request.getTimestamp())
+            .message("processing")
+            .messageSource(MessageSource.NONE)
+            .target(request.getReplyTo())
+            .id(request.getFromChannelId() == null ? null : "" + request.getFromChannelId())
+            .build();
+    try {
+      ResponseEntity<String> response =
+          restMessageSendClient.sendProcessingIndicator(request.getFromConnectionId(), message);
+      log.debug("Processing indicator status: {}", response.getStatusCode());
+    } catch (Exception ex) {
+      log.debug("Processing indicator failed: {}", ex.getMessage());
+    }
   }
 
   public String sendReplyMessage(EngineRequest request, String reply) {
