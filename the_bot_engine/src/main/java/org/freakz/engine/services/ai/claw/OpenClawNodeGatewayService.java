@@ -582,7 +582,8 @@ public class OpenClawNodeGatewayService {
   private void persistNodeToken(String deviceToken) {
     try {
       Path deviceAuthPath = getStateDirPath().resolve(Path.of("identity", "device-auth.json"));
-      ObjectNode root = (ObjectNode) readJsonFile(deviceAuthPath);
+      JsonNode existingRoot = Files.exists(deviceAuthPath) ? readJsonFile(deviceAuthPath) : objectMapper.createObjectNode();
+      ObjectNode root = existingRoot.isObject() ? (ObjectNode) existingRoot : objectMapper.createObjectNode();
       ObjectNode tokens = root.has("tokens") && root.path("tokens").isObject()
           ? (ObjectNode) root.path("tokens")
           : root.putObject("tokens");

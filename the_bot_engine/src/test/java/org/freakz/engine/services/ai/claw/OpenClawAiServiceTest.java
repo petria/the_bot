@@ -41,8 +41,9 @@ class OpenClawAiServiceTest {
     assertThat(envelope).contains("bot_instance_id=hokan-develop");
     assertThat(envelope).contains("bot_instance_mount=/mnt/hokan/hokan-develop");
     assertThat(envelope).contains("session_key=bot:hokan-develop:irc:ircnet:channel:hokandev:user:petri");
-    assertThat(envelope).contains("log_access_mode=controlled_api");
-    assertThat(envelope).contains("log_api_url=http://bot-engine:8100/api/hokan/engine/openclaw/logs/read");
+    assertThat(envelope).contains("log_access_mode=controlled_node_command");
+    assertThat(envelope).contains("tool_nodes_log_command=hokan.read_logs");
+    assertThat(envelope).doesNotContain("log_api_url=");
     assertThat(envelope).contains("local_file_access_allowed=false");
     assertThat(envelope).doesNotContain("log_file_may_be_read_directly=true");
   }
