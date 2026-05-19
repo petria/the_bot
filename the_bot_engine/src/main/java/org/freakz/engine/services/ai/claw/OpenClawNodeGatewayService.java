@@ -40,11 +40,14 @@ public class OpenClawNodeGatewayService {
 
   private static final String NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS =
       "hokan.send_message_by_echo_to_alias";
+  private static final String NODE_COMMAND_READ_LOGS =
+      "hokan.read_logs";
 
   private final ConfigService configService;
   private final JsonMapper objectMapper;
   private final ConnectionManagerService connectionManagerService;
   private final HokanNodeContextTokenService hokanNodeContextTokenService;
+  private final OpenClawLogAccessService openClawLogAccessService;
   private final WebSocketClient webSocketClient;
 
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -54,12 +57,14 @@ public class OpenClawNodeGatewayService {
       ConfigService configService,
       JsonMapper objectMapper,
       ConnectionManagerService connectionManagerService,
-      HokanNodeContextTokenService hokanNodeContextTokenService
+      HokanNodeContextTokenService hokanNodeContextTokenService,
+      OpenClawLogAccessService openClawLogAccessService
   ) {
     this.configService = configService;
     this.objectMapper = objectMapper;
     this.connectionManagerService = connectionManagerService;
     this.hokanNodeContextTokenService = hokanNodeContextTokenService;
+    this.openClawLogAccessService = openClawLogAccessService;
     this.webSocketClient = new ReactorNettyWebSocketClient();
   }
 
@@ -224,6 +229,11 @@ public class OpenClawNodeGatewayService {
       boolean eventProtocol
   ) {
 
+    if (NODE_COMMAND_READ_LOGS.equals(command)) {
+      handleReadLogsInvoke(session, reqId, nodeId, commandParams, eventProtocol);
+      return;
+    }
+
     if (!NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS.equals(command)) {
       session.send(Mono.just(session.textMessage(
           eventProtocol
@@ -349,16 +359,70 @@ public class OpenClawNodeGatewayService {
     }
   }
 
+  private void handleReadLogsInvoke(
+      org.springframework.web.reactive.socket.WebSocketSession session,
+      String reqId,
+      String nodeId,
+      JsonNode commandParams,
+      boolean eventProtocol
+  ) {
+    String hokanContextToken = commandParams.path("hokanContextToken").asString("").trim();
+    if (hokanContextToken.isBlank()) {
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeErrorEvent(reqId, nodeId, "missing hokanContextToken")
+              : buildErrorResponse(reqId, "missing hokanContextToken")
+      ))).subscribe();
+      return;
+    }
+
+    try {
+      OpenClawLogAccessService.LogReadRequest request =
+          new OpenClawLogAccessService.LogReadRequest(
+              hokanContextToken,
+              commandParams.path("scope").asString(null),
+              commandParams.path("protocol").asString(null),
+              commandParams.path("network").asString(null),
+              commandParams.path("chatType").asString(null),
+              commandParams.path("chatTarget").asString(null),
+              commandParams.path("date").asString(null),
+              commandParams.path("lines").isMissingNode() || commandParams.path("lines").isNull()
+                  ? null
+                  : commandParams.path("lines").asInt()
+          );
+      OpenClawLogAccessService.LogReadResponse response = openClawLogAccessService.readLogs(request);
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeSuccessEvent(reqId, nodeId, NODE_COMMAND_READ_LOGS, objectMapper.valueToTree(response))
+              : buildSuccessResponse(reqId, NODE_COMMAND_READ_LOGS, objectMapper.valueToTree(response))
+      ))).subscribe();
+    } catch (Exception e) {
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeErrorEvent(reqId, nodeId, e.getMessage())
+              : buildErrorResponse(reqId, e.getMessage())
+      ))).subscribe();
+    }
+  }
+
   private String buildSuccessResponse(String reqId, SendMessageByEchoToAliasResponse response) {
+    ObjectNode payload = objectMapper.createObjectNode();
+    payload.put("sentTo", response.getSentTo());
+    payload.put("status", "sent");
+    return buildSuccessResponse(reqId, NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, payload);
+  }
+
+  private String buildSuccessResponse(String reqId, String command, JsonNode payloadNode) {
     ObjectNode root = objectMapper.createObjectNode();
     root.put("type", "res");
     root.put("id", reqId);
     root.put("ok", true);
 
-    ObjectNode payload = root.putObject("payload");
-    payload.put("sentTo", response.getSentTo());
-    payload.put("status", "sent");
-    payload.put("command", NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
+    ObjectNode payload = payloadNode != null && payloadNode.isObject()
+        ? (ObjectNode) payloadNode
+        : objectMapper.createObjectNode();
+    payload.put("command", command);
+    root.set("payload", payload);
     return root.toString();
   }
 
@@ -376,6 +440,18 @@ public class OpenClawNodeGatewayService {
       String nodeId,
       SendMessageByEchoToAliasResponse response
   ) {
+    ObjectNode result = objectMapper.createObjectNode();
+    result.put("sentTo", response.getSentTo());
+    result.put("status", "sent");
+    return buildNodeInvokeSuccessEvent(reqId, nodeId, NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, result);
+  }
+
+  private String buildNodeInvokeSuccessEvent(
+      String reqId,
+      String nodeId,
+      String command,
+      JsonNode result
+  ) {
     ObjectNode root = objectMapper.createObjectNode();
     root.put("type", "req");
     root.put("id", "node-invoke-result-" + reqId);
@@ -385,11 +461,11 @@ public class OpenClawNodeGatewayService {
     payload.put("id", reqId);
     payload.put("nodeId", nodeId);
     payload.put("ok", true);
-    ObjectNode result = objectMapper.createObjectNode();
-    result.put("sentTo", response.getSentTo());
-    result.put("status", "sent");
-    result.put("command", NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
-    payload.put("payloadJSON", result.toString());
+    ObjectNode resultObject = result != null && result.isObject()
+        ? (ObjectNode) result
+        : objectMapper.createObjectNode();
+    resultObject.put("command", command);
+    payload.put("payloadJSON", resultObject.toString());
     return root.toString();
   }
 
@@ -427,7 +503,10 @@ public class OpenClawNodeGatewayService {
     params.put("role", "node");
     params.withArray("caps").add("message");
     params.withArray("commands").add(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
-    params.putObject("permissions").put(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, true);
+    params.withArray("commands").add(NODE_COMMAND_READ_LOGS);
+    ObjectNode permissions = params.putObject("permissions");
+    permissions.put(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, true);
+    permissions.put(NODE_COMMAND_READ_LOGS, true);
 
     ObjectNode auth = params.putObject("auth");
     auth.put("token", identity.connectToken());

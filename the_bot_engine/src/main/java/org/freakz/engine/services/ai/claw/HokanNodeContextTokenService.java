@@ -2,6 +2,7 @@ package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.config.ConfigService;
@@ -48,8 +49,15 @@ public class HokanNodeContextTokenService {
       payload.put("expiresAt", issuedAt + ttlSeconds);
       payload.put("sessionKey", nullToEmpty(sessionKey));
       payload.put("sourceEchoToAlias", nullToEmpty(request.getEchoToAlias()));
-      payload.put("chatProtocol", nullToEmpty(request.getChatProtocol()));
-      payload.put("chatId", nullToEmpty(request.getChatId()));
+      String protocol = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 0, request.getChatProtocol()), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
+      String network = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 1, request.getNetwork()), "unknown");
+      String chatType = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 2, request.getChatType()), request.isPrivateChannel() ? "dm" : "channel");
+      String chatTarget = resolveChatTarget(request, protocol, network, chatType);
+      payload.put("chatProtocol", protocol);
+      payload.put("network", network);
+      payload.put("chatType", chatType);
+      payload.put("chatTarget", chatTarget);
+      payload.put("chatId", ChatIdentityUtil.buildChatId(protocol, network, chatType, chatTarget));
       payload.put("fromConnectionId", request.getFromConnectionId());
 
       User user = request.getUser();
@@ -103,6 +111,9 @@ public class HokanNodeContextTokenService {
           payload.path("sessionKey").asString(""),
           payload.path("sourceEchoToAlias").asString(""),
           payload.path("chatProtocol").asString(""),
+          payload.path("network").asString(""),
+          payload.path("chatType").asString(""),
+          payload.path("chatTarget").asString(""),
           payload.path("chatId").asString(""),
           payload.path("fromConnectionId").asInt(0),
           parsePermissions(payload.path("permissions").asString("")),
@@ -188,6 +199,30 @@ public class HokanNodeContextTokenService {
     return value == null ? "" : value;
   }
 
+  private String resolveChatTarget(EngineRequest request, String protocol, String network, String chatType) {
+    String chatId = request.getChatId();
+    if (chatId != null && !chatId.isBlank() && chatId.contains("/")) {
+      return ChatIdentityUtil.extractTargetFromChatId(chatId, "unknown");
+    }
+    String fallback = "dm".equals(chatType)
+        ? firstNonBlank(request.getFromSenderId(), request.getFromSender(), request.getReplyTo())
+        : request.getReplyTo();
+    return ChatIdentityUtil.extractTargetFromChatId(
+        ChatIdentityUtil.buildChatId(protocol, network, chatType, fallback),
+        "unknown");
+  }
+
+  private String chatIdPart(String chatId, int index, String fallback) {
+    if (chatId == null || chatId.isBlank() || !chatId.contains("/")) {
+      return fallback;
+    }
+    String[] parts = chatId.split("/");
+    if (parts.length <= index) {
+      return fallback;
+    }
+    return parts[index];
+  }
+
   private List<String> parsePermissions(String permissions) {
     if (permissions == null || permissions.isBlank()) {
       return List.of();
@@ -206,6 +241,9 @@ public class HokanNodeContextTokenService {
       String sessionKey,
       String sourceEchoToAlias,
       String chatProtocol,
+      String network,
+      String chatType,
+      String chatTarget,
       String chatId,
       int fromConnectionId,
       List<String> permissions,

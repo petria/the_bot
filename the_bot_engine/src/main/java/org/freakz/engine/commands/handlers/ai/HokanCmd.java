@@ -5,6 +5,7 @@ import com.martiansoftware.jsap.JSAPException;
 import com.martiansoftware.jsap.JSAPResult;
 import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.users.BotPermission;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
@@ -23,6 +24,10 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 public class HokanCmd extends AbstractCmd {
 
   private static final Logger log = LoggerFactory.getLogger(HokanCmd.class);
+
+  public HokanCmd() {
+    setRequiredPermission(BotPermission.OPENCLAW_USE);
+  }
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {

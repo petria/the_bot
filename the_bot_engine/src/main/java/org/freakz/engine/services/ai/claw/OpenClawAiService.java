@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Comparator;
@@ -368,12 +367,10 @@ public class OpenClawAiService {
         ? request.getUser().getName().replaceAll("[\\r\\n]+", " ").trim()
         : senderNick;
 
-    String runtimeLogRoot = getConfigValue("openclawRuntimeLogRoot", "OPENCLAW_RUNTIME_LOG_ROOT", "/workspace/runtime/logs");
     String runtimeLogRootLocal = getConfigValue("openclawRuntimeLogRootLocal", "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL", "/runtime/logs");
-    String logDir = runtimeLogRoot + "/" + protocol + "/" + network + "/" + chatType + "/" + chatTarget;
-    String logFile = logDir + "/" + LocalDate.now(ZoneId.of("Europe/Helsinki")) + ".log";
     List<String> availableLogFiles = listAvailableLogFiles(Path.of(runtimeLogRootLocal), protocol, network, chatType, chatTarget);
     String hokanContextToken = hokanNodeContextTokenService.createToken(request, sessionKey);
+    String engineBaseUrl = getConfigValue("openclawEngineBaseUrl", "OPENCLAW_ENGINE_BASE_URL", "http://bot-engine:8100");
     String requestedByUsername = request.getUser() == null ? "" : safePromptValue(request.getUser().getUsername());
     String requestedByRealName = request.getUser() == null ? "" : safePromptValue(request.getUser().getName());
     String requestedByIrcNick = request.getUser() == null ? "" : safePromptValue(request.getUser().getIrcNick());
@@ -406,8 +403,8 @@ public class OpenClawAiService {
     sb.append("session_key=").append(sessionKey).append("\n");
     sb.append("chat_id=").append(chatId).append("\n");
     sb.append("timestamp=").append(OffsetDateTime.now(ZoneId.of("Europe/Helsinki"))).append("\n\n");
-    sb.append("log_dir=").append(logDir).append("\n");
-    sb.append("log_file=").append(logFile).append("\n");
+    sb.append("log_access_mode=controlled_api\n");
+    sb.append("log_api_url=").append(trimTrailingSlash(engineBaseUrl)).append("/api/hokan/engine/openclaw/logs/read\n");
     sb.append("log_file_name_format=yyyy-mm-dd.log\n");
     sb.append("log_file_name_date_meaning=each log filename date is the chat day in Europe/Helsinki\n");
     if (!availableLogFiles.isEmpty()) {
@@ -415,10 +412,10 @@ public class OpenClawAiService {
       sb.append("log_dir_file_count=").append(availableLogFiles.size()).append("\n");
     }
     sb.append("log_hint_lines=80\n");
-    sb.append("local_file_access_allowed=true\n");
-    sb.append("log_file_may_be_read_directly=true\n");
-    sb.append("log_directory_may_be_inspected_when_supported=true\n");
-    sb.append("preferred_local_tools=read\n");
+    sb.append("local_file_access_allowed=false\n");
+    sb.append("log_file_may_be_read_directly=false\n");
+    sb.append("log_directory_may_be_inspected_when_supported=false\n");
+    sb.append("preferred_log_tool=hokan.read_logs_node_command\n");
 
     if (!hasAllPermissions) {
       sb.append("assistant_identity=the_bot\n");
@@ -449,9 +446,19 @@ public class OpenClawAiService {
     sb.append("final_reply_forbid_phrases=checking now|looking it up now|i will check|let me check|hold on while i check\n");
     sb.append("tool_usage_rule=if you decide to check, fetch, inspect, open, search, read, or verify something, do that work first and only then send the final user-visible reply\n");
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
-    sb.append("log_access_rule=when log_file is provided, you may use local file tools to inspect that file or its parent directory directly\n");
-    sb.append("directory_scan_rule=when asked what log files exist, do not claim lack of access if a supported local tool can inspect the provided path\n");
+    sb.append("log_access_rule=do not read local log files directly; request logs only with log_api_url and hokan_context_token\n");
+    sb.append("log_api_request_json={\"hokanContextToken\":\"")
+        .append(hokanContextToken)
+        .append("\",\"scope\":\"current-chat\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80}\n");
+    sb.append("log_api_scope_rule=use current-chat by default; use broader scopes only when the user asks and the API permits it\n");
+    sb.append("directory_scan_rule=use log_api_url without date to discover availableFiles for the permitted target\n");
     sb.append("tool_nodes_available=true\n");
+    sb.append("tool_nodes_log_command=hokan.read_logs\n");
+    sb.append("tool_nodes_log_command_params={\"hokanContextToken\":\"")
+        .append(hokanContextToken)
+        .append("\",\"scope\":\"current-chat\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80}\n");
+    sb.append("tool_nodes_log_command_use=when logs are needed, prefer invoking hokan.read_logs through the OpenClaw nodes tool; omit date to read latest available log\n");
+    sb.append("tool_nodes_log_command_returns=json with content, found, date, availableFiles\n");
     sb.append("tool_nodes_preferred_command=hokan.send_message_by_echo_to_alias\n");
     sb.append("tool_nodes_preferred_command_params={\"echoToAlias\":\"<alias>\",\"message\":\"<text>\",\"hokanContextToken\":\"")
         .append(hokanContextToken)
@@ -461,6 +468,7 @@ public class OpenClawAiService {
     sb.append("tool_nodes_preferred_command_rule=do not use this command for your normal reply to the current chat\n");
     sb.append("tool_nodes_preferred_command_confirm=if the requested target alias or outgoing text is ambiguous, ask a clarifying question instead of guessing\n");
     sb.append("tool_nodes_context_token=").append(hokanContextToken).append("\n");
+    sb.append("hokan_context_token=").append(hokanContextToken).append("\n");
     sb.append("tool_nodes_context_token_rule=when invoking hokan.send_message_by_echo_to_alias, include hokanContextToken exactly as provided here without modification\n");
     sb.append("tool_nodes_auth_rule=do not invent or alter requester identity fields; the backend validates the signed hokanContextToken\n");
 
@@ -473,10 +481,10 @@ public class OpenClawAiService {
     }
 
     sb.append("\n");
-    sb.append("recent_messages_source=log_file\n");
+    sb.append("recent_messages_source=controlled_log_api\n");
     sb.append("recent_messages:\n");
     sb.append("- not inlined by bot-engine\n");
-    sb.append("- if needed, read from log_file (latest lines first)\n");
+    sb.append("- if needed, call log_api_url with hokanContextToken (latest lines first when date is omitted)\n");
     sb.append("- suggested range: last 80 lines\n");
     sb.append("[/HOKAN_CONTEXT]\n\n");
     sb.append("[USER_PROMPT]\n");
@@ -533,6 +541,17 @@ public class OpenClawAiService {
       return "";
     }
     return value.replaceAll("[\\r\\n]+", " ").trim();
+  }
+
+  private String trimTrailingSlash(String value) {
+    if (value == null || value.isBlank()) {
+      return "";
+    }
+    String trimmed = value.trim();
+    while (trimmed.endsWith("/") && trimmed.length() > 1) {
+      trimmed = trimmed.substring(0, trimmed.length() - 1);
+    }
+    return trimmed;
   }
 
   private String toBootstrapPropertyKey(String key) {

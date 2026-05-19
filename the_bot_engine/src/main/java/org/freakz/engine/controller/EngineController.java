@@ -10,6 +10,7 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
+import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,13 +34,21 @@ public class EngineController {
 
   private final ConnectionManagerService connectionManagerService;
   private final ConfigService configService;
+  private final OpenClawLogAccessService openClawLogAccessService;
 
-  public EngineController(BotEngine botEngine, TopCountService countService, UsersService usersService, ConnectionManagerService connectionManagerService, ConfigService configService) {
+  public EngineController(
+      BotEngine botEngine,
+      TopCountService countService,
+      UsersService usersService,
+      ConnectionManagerService connectionManagerService,
+      ConfigService configService,
+      OpenClawLogAccessService openClawLogAccessService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
     this.connectionManagerService = connectionManagerService;
     this.configService = configService;
+    this.openClawLogAccessService = openClawLogAccessService;
   }
 
   @PostMapping("/handle_request")
@@ -84,6 +93,20 @@ public class EngineController {
     }
 
     return ResponseEntity.ok(response);
+  }
+
+  @PostMapping(
+      path = "/openclaw/logs/read",
+      consumes = MediaType.APPLICATION_JSON_VALUE
+  )
+  public ResponseEntity<?> readLogsForOpenClaw(@RequestBody OpenClawLogAccessService.LogReadRequest request) {
+    try {
+      return ResponseEntity.ok(openClawLogAccessService.readLogs(request));
+    } catch (SecurityException e) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(e.getMessage());
+    }
   }
 
   @GetMapping("/get_users")

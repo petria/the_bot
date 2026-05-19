@@ -19,6 +19,10 @@ class HokanNodeContextTokenServiceTest {
 
     assertThat(verified.botInstanceId()).isEqualTo("hokan-develop");
     assertThat(verified.sessionKey()).isEqualTo("bot:hokan-develop:irc:ircnet:dm:petri");
+    assertThat(verified.chatProtocol()).isEqualTo("irc");
+    assertThat(verified.network()).isEqualTo("ircnet");
+    assertThat(verified.chatType()).isEqualTo("dm");
+    assertThat(verified.chatTarget()).isEqualTo("petri");
   }
 
   @Test
