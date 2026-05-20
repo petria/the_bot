@@ -229,7 +229,8 @@ public class AdminConnectionConfigService {
           text(item, "echoToAlias"),
           aliasesFrom(item.get("echoToAliases")),
           item.path("joinOnStart").asBoolean(false),
-          item.path("publicAiEnabled").asBoolean(false)));
+          item.path("publicAiEnabled").asBoolean(false),
+          item.path("allowAnonymousAiCommands").asBoolean(false)));
     }
     return channels;
   }
@@ -366,7 +367,8 @@ public class AdminConnectionConfigService {
         echoToAlias,
         normalizeAliases(source.echoToAliases()),
         source.joinOnStart(),
-        source.publicAiEnabled());
+        source.publicAiEnabled(),
+        source.allowAnonymousAiCommands());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -499,7 +501,8 @@ public class AdminConnectionConfigService {
             clean(channel.echoToAlias()),
             normalizeAliases(channel.echoToAliases()),
             channel.joinOnStart(),
-            channel.publicAiEnabled()))
+            channel.publicAiEnabled(),
+            channel.allowAnonymousAiCommands()))
         .toList();
   }
 
@@ -612,6 +615,7 @@ public class AdminConnectionConfigService {
       item.set("echoToAliases", aliases);
       item.put("joinOnStart", channel.joinOnStart());
       item.put("publicAiEnabled", channel.publicAiEnabled());
+      item.put("allowAnonymousAiCommands", channel.allowAnonymousAiCommands());
       array.add(item);
     }
     return array;
@@ -754,6 +758,7 @@ public class AdminConnectionConfigService {
       String echoToAlias,
       List<String> echoToAliases,
       boolean joinOnStart,
-      boolean publicAiEnabled) {
+      boolean publicAiEnabled,
+      boolean allowAnonymousAiCommands) {
   }
 }

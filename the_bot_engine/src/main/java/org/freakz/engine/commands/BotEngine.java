@@ -236,7 +236,9 @@ public class BotEngine {
       request.setUser(user);
 
       String requiredPermission = abstractCmd.getRequiredPermission();
-      if (requiredPermission != null && !requiredPermission.isBlank() && !UserPermissions.has(user, requiredPermission)) {
+      if (requiredPermission != null && !requiredPermission.isBlank()
+          && !UserPermissions.has(user, requiredPermission)
+          && !isAnonymousAiCommandAllowed(abstractCmd, request, user)) {
         log.debug("User lacks required command permission: {}", requiredPermission);
         return null;
       }
@@ -319,6 +321,28 @@ public class BotEngine {
     } catch (Exception ex) {
       log.debug("Processing indicator failed: {}", ex.getMessage());
     }
+  }
+
+  private boolean isAnonymousAiCommandAllowed(AbstractCmd abstractCmd, EngineRequest request, User user) {
+    if (!"hokan".equalsIgnoreCase(abstractCmd.getCommandName())) {
+      return false;
+    }
+    if (request == null || request.isPrivateChannel() || !isUnknownUser(user)) {
+      return false;
+    }
+
+    Channel configuredChannel = findChannelByEchoToAlias(request.getBotConfig(), request.getEchoToAlias());
+    return configuredChannel != null
+        && Boolean.TRUE.equals(configuredChannel.getPublicAiEnabled())
+        && Boolean.TRUE.equals(configuredChannel.getAllowAnonymousAiCommands());
+  }
+
+  private boolean isUnknownUser(User user) {
+    User unknownUser = accessService.getUsersService().getNotKnownUser();
+    return user != null
+        && user.getId() != null
+        && unknownUser != null
+        && user.getId().equals(unknownUser.getId());
   }
 
   public String sendReplyMessage(EngineRequest request, String reply) {

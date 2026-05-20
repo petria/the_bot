@@ -9,6 +9,7 @@ export type AdminConfigChannel = {
   echoToAliases: string[] | null;
   joinOnStart: boolean;
   publicAiEnabled: boolean;
+  allowAnonymousAiCommands: boolean;
 };
 
 export type AdminIrcServerConfig = {

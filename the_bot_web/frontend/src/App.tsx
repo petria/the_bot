@@ -21,11 +21,11 @@ const navItems = [
   { label: 'System', path: '/', icon: Server },
   { label: 'Overview', path: '/overview', icon: Bot },
   { label: 'Known Users', path: '/users', icon: Users },
-  { label: 'Send', path: '/send', icon: Send },
   { label: 'Connections', path: '/connections', icon: RadioTower },
 ];
 
 const adminNavItems = [
+  { label: 'Send', path: '/send', icon: Send },
   { label: 'Admin Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Config', path: '/admin/config', icon: SlidersHorizontal },
 ];
@@ -136,7 +136,7 @@ function AuthenticatedApp() {
             <Route path="/" element={<RequireWebUser allowed={webUser}><SystemPage /></RequireWebUser>} />
             <Route path="/overview" element={<RequireWebUser allowed={webUser}><DashboardPage /></RequireWebUser>} />
             <Route path="/users" element={<RequireWebUser allowed={webUser}><KnownUsersPage /></RequireWebUser>} />
-            <Route path="/send" element={<RequireWebUser allowed={webUser}><SendPage /></RequireWebUser>} />
+            <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />

@@ -13,11 +13,16 @@ public class Channel {
   private List<String> echoToAliases;
   private boolean joinOnStart;
   private Boolean publicAiEnabled;
+  private Boolean allowAnonymousAiCommands;
 
   public Channel() {
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled) {
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, null);
+  }
+
+  public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands) {
     this.id = id;
     this.description = description;
     this.name = name;
@@ -26,6 +31,7 @@ public class Channel {
     this.echoToAliases = echoToAliases;
     this.joinOnStart = joinOnStart;
     this.publicAiEnabled = publicAiEnabled;
+    this.allowAnonymousAiCommands = allowAnonymousAiCommands;
   }
 
   public static Builder builder() {
@@ -96,17 +102,25 @@ public class Channel {
     this.publicAiEnabled = publicAiEnabled;
   }
 
+  public Boolean getAllowAnonymousAiCommands() {
+    return allowAnonymousAiCommands;
+  }
+
+  public void setAllowAnonymousAiCommands(Boolean allowAnonymousAiCommands) {
+    this.allowAnonymousAiCommands = allowAnonymousAiCommands;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Channel channel = (Channel) o;
-    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
+    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled);
+    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands);
   }
 
   @Override
@@ -120,6 +134,7 @@ public class Channel {
         ", echoToAliases=" + echoToAliases +
         ", joinOnStart=" + joinOnStart +
         ", publicAiEnabled=" + publicAiEnabled +
+        ", allowAnonymousAiCommands=" + allowAnonymousAiCommands +
         '}';
   }
 
@@ -132,6 +147,7 @@ public class Channel {
     private List<String> echoToAliases;
     private boolean joinOnStart;
     private Boolean publicAiEnabled;
+    private Boolean allowAnonymousAiCommands;
 
     public Builder id(String id) {
       this.id = id;
@@ -173,8 +189,13 @@ public class Channel {
       return this;
     }
 
+    public Builder allowAnonymousAiCommands(Boolean allowAnonymousAiCommands) {
+      this.allowAnonymousAiCommands = allowAnonymousAiCommands;
+      return this;
+    }
+
     public Channel build() {
-      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled);
+      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands);
     }
   }
 }

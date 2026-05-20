@@ -112,7 +112,7 @@ class AdminConnectionConfigServiceTest {
             6667,
             List.of(
                 channel("IRC-HOKANDEV2"),
-                new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false, false)))),
+                new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false, false, false)))),
         new DiscordConfigDto(true, "123", List.of()),
         new TelegramConfigDto("bot", true, List.of()),
         new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
@@ -148,6 +148,45 @@ class AdminConnectionConfigServiceTest {
   }
 
   @Test
+  void savesAnonymousAiCommandChannelFlag() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    IrcServerConfigDto irc = payload.ircServerConfigs().getFirst();
+    ChannelDto channel = irc.channelList().getFirst();
+    ChannelDto editedChannel = new ChannelDto(
+        channel.id(),
+        channel.description(),
+        channel.name(),
+        channel.type(),
+        channel.echoToAlias(),
+        channel.echoToAliases(),
+        channel.joinOnStart(),
+        true,
+        true);
+    AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        List.of(new IrcServerConfigDto(
+            irc.name(),
+            irc.connectStartup(),
+            irc.networkName(),
+            irc.host(),
+            irc.port(),
+            List.of(editedChannel))),
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig());
+
+    service.saveConfig(edited);
+
+    String saved = Files.readString(files.runtimeConfigFile());
+    assertThat(saved)
+        .contains("\"publicAiEnabled\" : true")
+        .contains("\"allowAnonymousAiCommands\" : true");
+  }
+
+  @Test
   void preservesDiscordBotUserIdAsExactString() throws Exception {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
@@ -170,7 +209,7 @@ class AdminConnectionConfigServiceTest {
     service.promoteChannel(new PromoteChannelRequest(
         "IRC_CONNECTION",
         "IRCDEV",
-        new ChannelDto("123", null, "#Observed", "IrcPublic", "IRC-OBSERVED", List.of(), false, false)));
+        new ChannelDto("123", null, "#Observed", "IrcPublic", "IRC-OBSERVED", List.of(), false, false, false)));
 
     String saved = Files.readString(files.runtimeConfigFile());
     assertThat(saved)
@@ -271,7 +310,7 @@ class AdminConnectionConfigServiceTest {
   }
 
   private ChannelDto channel(String alias) {
-    return new ChannelDto(alias, null, alias, "PUBLIC", alias, List.of(), false, false);
+    return new ChannelDto(alias, null, alias, "PUBLIC", alias, List.of(), false, false, false);
   }
 
   private record TestFiles(Path bootstrapFile, Path runtimeConfigFile) {

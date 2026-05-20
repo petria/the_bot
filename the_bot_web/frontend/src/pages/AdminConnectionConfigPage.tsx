@@ -44,6 +44,7 @@ const emptyChannel: AdminConfigChannel = {
   echoToAliases: [],
   joinOnStart: false,
   publicAiEnabled: false,
+  allowAnonymousAiCommands: false,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -503,6 +504,11 @@ function ChannelsEditor({
               label="Public AI"
               checked={channel.publicAiEnabled}
               onChange={(event) => updateChannel(channels, index, { publicAiEnabled: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Allow unknown users to use AI"
+              checked={channel.allowAnonymousAiCommands}
+              onChange={(event) => updateChannel(channels, index, { allowAnonymousAiCommands: event.currentTarget.checked }, onChange)}
             />
           </Stack>
         </Card>
