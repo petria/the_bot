@@ -2,6 +2,7 @@ package org.freakz.common.spring.rest;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +52,16 @@ public class RestEngineClient {
     } catch (Exception e) {
       log.error("Error reloading bot-engine config: {}", e.getMessage());
       return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+  }
+
+  public ResponseEntity<Void> reportWebLoginFailed(WebLoginFailedEvent event) {
+    String url = baseUrl + "/internal/security/web-login-failed";
+    try {
+      return restTemplate.postForEntity(url, event, Void.class);
+    } catch (Exception e) {
+      log.error("Error reporting failed web login to bot-engine: {}", e.getMessage());
+      return ResponseEntity.internalServerError().build();
     }
   }
 

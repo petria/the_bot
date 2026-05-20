@@ -122,7 +122,7 @@ public class MeController {
           user.getTelegramId(),
           user.getDiscordId(),
           user.getWhatsappId(),
-          user.getPermissions(),
+          principal.getPermissions(),
           principal.getAuthorities().stream()
               .map(authority -> authority.getAuthority())
               .sorted()

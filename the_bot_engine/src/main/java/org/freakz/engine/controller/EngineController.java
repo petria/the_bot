@@ -3,6 +3,7 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
@@ -11,6 +12,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
+import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,7 @@ public class EngineController {
   private final ConnectionManagerService connectionManagerService;
   private final ConfigService configService;
   private final OpenClawLogAccessService openClawLogAccessService;
+  private final WebLoginSecurityAlertService webLoginSecurityAlertService;
 
   public EngineController(
       BotEngine botEngine,
@@ -42,13 +45,15 @@ public class EngineController {
       UsersService usersService,
       ConnectionManagerService connectionManagerService,
       ConfigService configService,
-      OpenClawLogAccessService openClawLogAccessService) {
+      OpenClawLogAccessService openClawLogAccessService,
+      WebLoginSecurityAlertService webLoginSecurityAlertService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
     this.connectionManagerService = connectionManagerService;
     this.configService = configService;
     this.openClawLogAccessService = openClawLogAccessService;
+    this.webLoginSecurityAlertService = webLoginSecurityAlertService;
   }
 
   @PostMapping("/handle_request")
@@ -131,6 +136,12 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  @PostMapping("/internal/security/web-login-failed")
+  public ResponseEntity<Void> webLoginFailed(@RequestBody WebLoginFailedEvent event) {
+    webLoginSecurityAlertService.notifyFailedLogin(event);
+    return ResponseEntity.noContent().build();
   }
 
 }

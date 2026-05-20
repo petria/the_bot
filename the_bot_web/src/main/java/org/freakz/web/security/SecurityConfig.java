@@ -26,7 +26,9 @@ import org.freakz.common.users.BotPermission;
 public class SecurityConfig {
 
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain securityFilterChain(
+      HttpSecurity http,
+      WebLoginFailureHandler webLoginFailureHandler) throws Exception {
     http
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -49,6 +51,7 @@ public class SecurityConfig {
         )
         .formLogin(formLogin -> formLogin
             .successHandler((request, response, authentication) -> relativeRedirect(response, "/"))
+            .failureHandler(webLoginFailureHandler)
             .permitAll()
         )
         .logout(logout -> logout
