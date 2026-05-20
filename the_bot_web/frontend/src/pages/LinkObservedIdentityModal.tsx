@@ -9,7 +9,12 @@ import {
   type AdminChatIdentityLinkRequest,
 } from '../api/adminUsers';
 import { ApiError } from '../api/client';
-import { getKnownUserTargets, type KnownUserTarget } from '../api/knownUsers';
+import {
+  getKnownUserTargets,
+  observedOptionLabel,
+  observedSecondaryText,
+  type KnownUserTarget,
+} from '../api/knownUsers';
 
 export function LinkObservedIdentityModal({
   opened,
@@ -131,6 +136,7 @@ export function LinkObservedIdentityModal({
         {effectiveTarget && (
           <Stack gap={2}>
             <Text size="sm" fw={700}>{targetLabel(effectiveTarget)}</Text>
+            <Text size="xs" c="dimmed">{observedSecondaryText(effectiveTarget)}</Text>
             <Text size="xs" c="dimmed">{effectiveTarget.observedUserKey || '-'}</Text>
           </Stack>
         )}
@@ -175,6 +181,5 @@ function targetKey(target: KnownUserTarget) {
 }
 
 function targetLabel(target: KnownUserTarget) {
-  const observed = target.observedDisplayName || target.observedUsername || target.observedUserId || '-';
-  return `${observed} / ${target.connectionType || 'unknown'} / ${target.network || 'unknown'}`;
+  return observedOptionLabel(target);
 }

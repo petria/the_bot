@@ -824,6 +824,12 @@ public class ConnectionManager implements CommandLineRunner {
 
   private UserMatch matchConfiguredUser(KnownUserPresence presence, User user) {
     BotConnectionType connectionType = parseConnectionType(presence.connectionType);
+    if (connectionType == BotConnectionType.IRC_CONNECTION) {
+      if (matchesVerifiedIrcIdentity(presence, user)) {
+        return new UserMatch(user, "CHAT_IDENTITY");
+      }
+      return null;
+    }
     if (UserChatIdentityUtil.matches(
         user,
         presence.connectionType,
@@ -832,10 +838,6 @@ public class ConnectionManager implements CommandLineRunner {
         presence.username,
         presence.displayName)) {
       return new UserMatch(user, "CHAT_IDENTITY");
-    }
-    if (connectionType == BotConnectionType.IRC_CONNECTION
-        && configuredValueMatchesObserved(user.getIrcNick(), presence.userId, presence.username)) {
-      return new UserMatch(user, "IRC_NICK");
     }
     if (connectionType == BotConnectionType.DISCORD_CONNECTION
         && configuredValueMatchesObserved(user.getDiscordId(), presence.userId)) {
@@ -849,11 +851,27 @@ public class ConnectionManager implements CommandLineRunner {
         && configuredValueMatchesObserved(user.getWhatsappId(), presence.userId)) {
       return new UserMatch(user, "WHATSAPP_ID");
     }
-    if (configuredValueMatchesObserved(user.getUsername(), presence.username, presence.displayName)
-        || configuredValueMatchesObserved(user.getName(), presence.username, presence.displayName)) {
-      return new UserMatch(user, "NAME");
-    }
     return null;
+  }
+
+  private boolean matchesVerifiedIrcIdentity(KnownUserPresence presence, User user) {
+    if (user == null || user.getChatIdentities() == null || presence.userId == null) {
+      return false;
+    }
+    for (org.freakz.common.model.users.UserChatIdentity identity : user.getChatIdentities()) {
+      if (identity == null || !"IRC_CONNECTION".equalsIgnoreCase(identity.getConnectionType())) {
+        continue;
+      }
+      String configuredNetwork = normalizeComparable(identity.getNetwork());
+      String observedNetwork = normalizeComparable(presence.network);
+      if (configuredNetwork != null && observedNetwork != null && !configuredNetwork.equals(observedNetwork)) {
+        continue;
+      }
+      if (configuredValueMatchesObserved(identity.getUserId(), presence.userId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private BotConnectionType parseConnectionType(String connectionType) {

@@ -20,7 +20,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, ChevronsUpDown, Link2, RefreshCcw, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError } from '../api/client';
-import { getKnownUserTargets, KnownUserTarget } from '../api/knownUsers';
+import {
+  getKnownUserTargets,
+  KnownUserTarget,
+  observedPrimaryName,
+  observedSecondaryText,
+} from '../api/knownUsers';
 import { getMe } from '../api/me';
 import { hasPermission, WEB_ADMIN_PERMISSION } from '../permissions';
 import { LinkObservedIdentityModal } from './LinkObservedIdentityModal';
@@ -51,7 +56,7 @@ export function KnownUsersPage() {
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
           <Title order={2}>Known Users</Title>
-          <Text c="dimmed">Resolved send targets observed by bot-io across IRC, Discord and Telegram.</Text>
+          <Text c="dimmed">Resolved send targets observed by bot-io across IRC, Discord, Telegram and WhatsApp.</Text>
         </div>
         <Tooltip label="Refresh">
           <ActionIcon
@@ -377,10 +382,13 @@ function UserCell({ target }: { target: KnownUserTarget }) {
 }
 
 function ObservedCell({ target }: { target: KnownUserTarget }) {
+  const raw = target.observedUserKey || target.observedUserId || '-';
   return (
     <Stack gap={2} className="known-users-cell">
       <Text truncate>{observedName(target)}</Text>
-      <Text size="xs" c="dimmed" truncate>{target.observedUserKey || '-'}</Text>
+      <Tooltip label={raw} disabled={raw === '-'}>
+        <Text size="xs" c="dimmed" truncate>{observedSecondaryText(target)}</Text>
+      </Tooltip>
     </Stack>
   );
 }
@@ -413,7 +421,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 function observedName(target: KnownUserTarget) {
-  return target.observedDisplayName || target.observedUsername || target.observedUserId || '-';
+  return observedPrimaryName(target);
 }
 
 function formatLastSeen(value: number | null) {
@@ -486,7 +494,7 @@ function groupTargets(targets: KnownUserTarget[]): ConnectionGroup[] {
       connection = {
         key: connectionKey,
         connectionId: target.connectionId,
-        connectionType,
+        connectionType: connectionTypeLabel(connectionType),
         network,
         channels: [],
         targetCount: 0,
@@ -529,6 +537,14 @@ function groupTargets(targets: KnownUserTarget[]): ConnectionGroup[] {
                 || sortText(left.channelName, right.channelName))
             .map((channel) => ({ ...channel })),
       }));
+}
+
+function connectionTypeLabel(connectionType: string) {
+  return connectionType
+      .replace(/_CONNECTION$/i, '')
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function sortTargets(targets: KnownUserTarget[], sort: RowSort) {

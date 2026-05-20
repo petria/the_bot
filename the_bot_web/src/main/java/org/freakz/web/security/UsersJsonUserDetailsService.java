@@ -2,6 +2,7 @@ package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.users.IrcClaimTokenStore;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.users.UsersJsonStore;
@@ -34,6 +35,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
 
   private final PasswordEncoder passwordEncoder;
   private final UsersJsonStore usersStore;
+  private final IrcClaimTokenStore ircClaimTokenStore;
   private final RestEngineClient restEngineClient;
 
   @Autowired
@@ -44,6 +46,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       ObjectProvider<RestEngineClient> restEngineClientProvider) {
     this.passwordEncoder = passwordEncoder;
     this.usersStore = new UsersJsonStore(Path.of(properties.getUsersFile()), jsonMapper);
+    this.ircClaimTokenStore = new IrcClaimTokenStore(Path.of(properties.getIrcClaimTokensFile()), jsonMapper);
     this.restEngineClient =
         restEngineClientProvider == null ? null : restEngineClientProvider.getIfAvailable();
   }
@@ -227,6 +230,13 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
   }
 
+  public IrcClaimTokenResponse createIrcClaimToken(String username) {
+    User user = findByUsername(username)
+        .orElseThrow(() -> new UsernameNotFoundException("No bot user found for username: " + username));
+    IrcClaimTokenStore.CreatedToken created = ircClaimTokenStore.createToken(user);
+    return new IrcClaimTokenResponse(created.token(), created.expiresAt());
+  }
+
   private BotUserPrincipal toPrincipal(User user) {
     if (isBlank(user.getPassword())) {
       throw new UsernameNotFoundException("Bot user has no password: " + user.getUsername());
@@ -287,6 +297,9 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String currentPassword,
       String newPassword,
       String confirmNewPassword) {
+  }
+
+  public record IrcClaimTokenResponse(String token, long expiresAt) {
   }
 
   public record AdminUserCreate(

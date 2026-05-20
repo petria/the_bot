@@ -18,6 +18,7 @@ import org.freakz.engine.commands.output.ReplyOutputService;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
@@ -83,6 +84,14 @@ public class BotEngine {
 
   public HokanServices getHokanServices() {
     return hokanServices;
+  }
+
+  public ConfigService getConfigService() {
+    return configService;
+  }
+
+  public UsersService getUsersService() {
+    return accessService.getUsersService();
   }
 
   public ReplyOutputService getReplyOutputService() {

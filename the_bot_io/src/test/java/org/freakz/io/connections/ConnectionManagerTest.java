@@ -7,6 +7,7 @@ import org.freakz.common.model.connectionmanager.SendMessageToKnownUserRequest;
 import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.junit.jupiter.api.Test;
 
 import org.freakz.common.model.feed.Message;
@@ -73,6 +74,7 @@ class ConnectionManagerTest {
         .ircNick("_Pete_")
         .discordId("265828694445129728")
         .telegramId("138695441")
+        .chatIdentities(List.of(ircIdentity("~petria@host.invalid")))
         .build();
     configuredUser.setId(42L);
     connectionManager.setConfiguredUsersForTesting(List.of(placeholderUser, configuredUser));
@@ -99,9 +101,9 @@ class ConnectionManagerTest {
         discordConnection,
         new BotConnectionChannel("1033431599708123278", "DISCORD-HOKANDEV", BotConnectionType.DISCORD_CONNECTION.name(), "Discord", "hokandev"));
 
-    connectionManager.markUserSeen(ircConnection, "IRC-HOKANDEV", "_Pete_", "_Pete_", "Petri Airio", "IRC_MESSAGE");
+    connectionManager.markUserSeen(ircConnection, "IRC-HOKANDEV", "~petria@host.invalid", "_Pete_", "Petri Airio", "IRC_MESSAGE");
     connectionManager.markUserSeen(discordConnection, "DISCORD-HOKANDEV", "265828694445129728", "petria", "Petri Airio", "DISCORD_MESSAGE");
-    connectionManager.markUserSeen(ircConnection, "PRIVATE-_Pete_", "_Pete_", "_Pete_", "Petri Airio", "IRC_PRIVATE_MESSAGE");
+    connectionManager.markUserSeen(ircConnection, "PRIVATE-_Pete_", "~petria@host.invalid", "_Pete_", "Petri Airio", "IRC_PRIVATE_MESSAGE");
 
     List<KnownUserTargetResponse> targets = connectionManager.findKnownUserTargets("petria");
 
@@ -111,7 +113,7 @@ class ConnectionManagerTest {
         .containsOnly("configured:42");
     assertThat(targets)
         .extracting(KnownUserTargetResponse::getMatchSource)
-        .containsExactlyInAnyOrder("IRC_NICK", "IRC_NICK", "DISCORD_ID");
+        .containsExactlyInAnyOrder("CHAT_IDENTITY", "CHAT_IDENTITY", "DISCORD_ID");
     assertThat(targets)
         .extracting(KnownUserTargetResponse::getEchoToAlias)
         .containsExactlyInAnyOrder("IRC-HOKANDEV", "DISCORD-HOKANDEV", "PRIVATE-_Pete_");
@@ -134,6 +136,7 @@ class ConnectionManagerTest {
         .username("petria")
         .name("Petri Airio")
         .ircNick("_Pete_")
+        .chatIdentities(List.of(ircIdentity("~petria@host.invalid")))
         .build();
     configuredUser.setId(42L);
     connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
@@ -143,7 +146,7 @@ class ConnectionManagerTest {
         BotConnectionType.IRC_CONNECTION,
         ircConnection,
         new BotConnectionChannel("irc-channel-id", "IRC-HOKANDEV", BotConnectionType.IRC_CONNECTION.name(), "IRCNet", "#HokanDEV"));
-    connectionManager.markUserSeen(ircConnection, "IRC-HOKANDEV", "_Pete_", "_Pete_", "Petri Airio", "IRC_MESSAGE");
+    connectionManager.markUserSeen(ircConnection, "IRC-HOKANDEV", "~petria@host.invalid", "_Pete_", "Petri Airio", "IRC_MESSAGE");
 
     SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
         SendMessageToKnownUserRequest.builder()
@@ -402,6 +405,16 @@ class ConnectionManagerTest {
     public void sendMessageTo(Message message) {
       this.lastMessage = message;
     }
+  }
+
+  private static UserChatIdentity ircIdentity(String userId) {
+    return UserChatIdentity.builder()
+        .connectionType("IRC_CONNECTION")
+        .network("IRCNet")
+        .userId(userId)
+        .username("_Pete_")
+        .source("IRC_TOKEN_CLAIM")
+        .build();
   }
 
   private static class CapturingWhatsAppConnection extends WhatsAppConnection {

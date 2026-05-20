@@ -172,7 +172,7 @@ public class EventPublisherService implements EventPublisher {
         msg.getSender(),
         msg.getTarget(),
         null,
-        msg.getSender(),
+        ircUserIdentity(event.getActor()),
         echoToAlias,
         true);
 
@@ -200,11 +200,25 @@ public class EventPublisherService implements EventPublisher {
         msg.getSender(),
         msg.getTarget(),
         null,
-        msg.getSender(),
+        ircUserIdentity(event.getActor()),
         echoToAlias,
         false);
 
     return new org.freakz.common.model.users.User();
+  }
+
+  private String ircUserIdentity(org.kitteh.irc.client.library.element.User user) {
+    if (user == null) {
+      return null;
+    }
+    String userString = user.getUserString();
+    String host = user.getHost();
+    if (userString == null || userString.isBlank() || host == null || host.isBlank()) {
+      return user.getNick();
+    }
+    return ChatIdentityUtil.sanitize(userString, "unknown")
+        + "@"
+        + ChatIdentityUtil.sanitize(host, "unknown");
   }
 
   private org.freakz.common.model.users.User publishTelegramEvent(

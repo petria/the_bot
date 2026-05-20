@@ -21,7 +21,12 @@ import { AlertCircle, CheckCircle2, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import { getConnectionsOverview, type BotConnectionChannel } from '../api/connections';
-import { getKnownUserTargets, type KnownUserTarget } from '../api/knownUsers';
+import {
+  getKnownUserTargets,
+  observedOptionLabel,
+  observedPrimaryName,
+  type KnownUserTarget,
+} from '../api/knownUsers';
 import {
   sendMessageByEchoToAlias,
   sendIrcPrivateMessage,
@@ -441,7 +446,7 @@ function PreviewCard({
             </Group>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <PreviewItem label="User" value={target.configuredName || target.configuredUsername || target.logicalUserKey} />
-              <PreviewItem label="Observed as" value={target.observedDisplayName || target.observedUsername || target.observedUserId} />
+              <PreviewItem label="Observed as" value={observedPrimaryName(target)} />
               <PreviewItem label="Network" value={target.network} />
               <PreviewItem label="Channel" value={target.channelName || target.channelId} />
             </SimpleGrid>
@@ -538,9 +543,10 @@ function targetKey(target: KnownUserTarget) {
 
 function userTargetLabel(target: KnownUserTarget) {
   const user = target.configuredName || target.configuredUsername || target.logicalUserKey || 'unknown user';
-  const observed = target.observedDisplayName || target.observedUsername || target.observedUserId || 'unknown observed user';
   const channel = target.channelName || target.echoToAlias || target.channelId || 'private';
-  return `${user} / ${observed} / ${target.connectionType || 'UNKNOWN'} / ${channel}`;
+  return target.matchedConfiguredUser
+    ? `${user} / ${observedPrimaryName(target)} / ${target.connectionType || 'UNKNOWN'} / ${channel}`
+    : observedOptionLabel(target);
 }
 
 function knownUserQuery(target: KnownUserTarget | null, query: string) {

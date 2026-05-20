@@ -58,6 +58,12 @@ public class MeController {
     return new PasswordChangeResponse(true);
   }
 
+  @PostMapping("/me/irc-claim-token")
+  public UsersJsonUserDetailsService.IrcClaimTokenResponse createIrcClaimToken(
+      @AuthenticationPrincipal BotUserPrincipal principal) {
+    return usersService.createIrcClaimToken(principal.getUsername());
+  }
+
   @GetMapping("/csrf")
   public CsrfResponse csrf(CsrfToken csrfToken) {
     return new CsrfResponse(csrfToken.getParameterName(), csrfToken.getHeaderName(), csrfToken.getToken());

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TheBotWebProperties {
 
   private String usersFile = "runtime/data/users.json";
+  private String ircClaimTokensFile = "runtime/data/irc-claim-tokens.json";
   private String botIoBaseUrl = "http://localhost:8090";
   private String botEngineBaseUrl = "http://localhost:8100";
   private boolean dockerStatusEnabled = false;
@@ -25,6 +26,14 @@ public class TheBotWebProperties {
 
   public void setUsersFile(String usersFile) {
     this.usersFile = usersFile;
+  }
+
+  public String getIrcClaimTokensFile() {
+    return ircClaimTokensFile;
+  }
+
+  public void setIrcClaimTokensFile(String ircClaimTokensFile) {
+    this.ircClaimTokensFile = ircClaimTokensFile;
   }
 
   public String getBotIoBaseUrl() {

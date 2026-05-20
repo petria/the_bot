@@ -2,6 +2,7 @@ package org.freakz.engine.data.service;
 
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
 import org.freakz.engine.data.repository.DataSavingService;
@@ -54,6 +55,11 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
       }
     }
     return (User) users.get(0);
+  }
+
+  @Override
+  public User addChatIdentity(long userId, UserChatIdentity identity, boolean moveIfOwned) {
+    return usersRepository.addChatIdentity(userId, identity, moveIfOwned);
   }
 
   @Override

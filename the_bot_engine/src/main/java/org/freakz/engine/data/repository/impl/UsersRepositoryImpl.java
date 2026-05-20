@@ -2,6 +2,7 @@ package org.freakz.engine.data.repository.impl;
 
 import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.users.UsersJsonStore;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.repository.DataSaverInfo;
@@ -50,6 +51,11 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl
   @Override
   public List<? extends DataNodeBase> findAll() {
     return usersStore.findAll();
+  }
+
+  @Override
+  public User addChatIdentity(long userId, UserChatIdentity identity, boolean moveIfOwned) {
+    return usersStore.addChatIdentity(userId, identity, moveIfOwned);
   }
 
   @Override

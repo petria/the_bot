@@ -2,6 +2,7 @@ package org.freakz.engine.commands;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.users.UserChatIdentityUtil;
 import org.freakz.engine.data.service.UsersService;
 import org.slf4j.Logger;
@@ -24,6 +25,10 @@ public class AccessService {
     this.usersService = usersService;
   }
 
+  public UsersService getUsersService() {
+    return usersService;
+  }
+
   public User getUser(EngineRequest request) {
     List<User> users = (List<User>) usersService.findAll();
     User foundUser = null;
@@ -36,8 +41,7 @@ public class AccessService {
           break;
         case "BOT_CLI_CLIENT":
         case "IRCNet":
-          if (UserChatIdentityUtil.matches(user, "IRC_CONNECTION", request.getNetwork(), null, request.getFromSender(), null)
-              || Objects.equals(request.getFromSender(), user.getIrcNick())) {
+          if (matchesVerifiedIrcIdentity(user, request)) {
             foundUser = user;
           }
           break;
@@ -70,6 +74,29 @@ public class AccessService {
     }
 
     return foundUser;
+  }
+
+  private boolean matchesVerifiedIrcIdentity(User user, EngineRequest request) {
+    if (user == null || user.getChatIdentities() == null || request.getFromSenderId() == null) {
+      return false;
+    }
+    for (UserChatIdentity identity : user.getChatIdentities()) {
+      if (identity == null) {
+        continue;
+      }
+      if (!"IRC_CONNECTION".equalsIgnoreCase(identity.getConnectionType())) {
+        continue;
+      }
+      String configuredNetwork = UserChatIdentityUtil.normalize(identity.getNetwork());
+      String observedNetwork = UserChatIdentityUtil.normalize(request.getNetwork());
+      if (configuredNetwork != null && observedNetwork != null && !configuredNetwork.equals(observedNetwork)) {
+        continue;
+      }
+      if (UserChatIdentityUtil.configuredValueMatchesObserved(identity.getUserId(), request.getFromSenderId())) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

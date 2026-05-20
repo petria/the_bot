@@ -1,12 +1,14 @@
-import { Alert, Button, Card, Group, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Card, Code, Group, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, Save } from 'lucide-react';
+import { KeyRound, Link, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
   changePassword,
+  createIrcClaimToken,
   getMe,
   updateProfile,
+  type IrcClaimTokenResponse,
   type MeResponse,
   type PasswordChangeRequest,
   type ProfileUpdateRequest,
@@ -36,6 +38,7 @@ export function ProfilePage() {
   const [profile, setProfile] = useState<ProfileUpdateRequest>(emptyProfile);
   const [passwordChange, setPasswordChange] = useState<PasswordChangeRequest>(emptyPasswordChange);
   const [passwordValidationError, setPasswordValidationError] = useState<string | null>(null);
+  const [ircClaimToken, setIrcClaimToken] = useState<IrcClaimTokenResponse | null>(null);
 
   useEffect(() => {
     if (meQuery.data) {
@@ -56,6 +59,11 @@ export function ProfilePage() {
       setPasswordChange(emptyPasswordChange);
       setPasswordValidationError(null);
     },
+  });
+
+  const ircClaimMutation = useMutation({
+    mutationFn: createIrcClaimToken,
+    onSuccess: (created) => setIrcClaimToken(created),
   });
 
   const setField = (field: keyof ProfileUpdateRequest, value: string) => {
@@ -158,6 +166,35 @@ export function ProfilePage() {
       <Card withBorder radius="sm">
         <Stack gap="md">
           <div>
+            <Title order={3}>IRC Identity Claim</Title>
+            <Text c="dimmed" size="sm">Create a one-time token and send it to the bot in an IRC private message.</Text>
+          </div>
+
+          {ircClaimMutation.isError && (
+            <Alert color="red" variant="light">Could not create IRC claim token.</Alert>
+          )}
+          {ircClaimToken && (
+            <Alert color="blue" variant="light">
+              Send <Code>!claim {ircClaimToken.token}</Code> to the bot in IRC private message before{' '}
+              {formatExpiresAt(ircClaimToken.expiresAt)}.
+            </Alert>
+          )}
+
+          <Group justify="flex-end">
+            <Button
+              leftSection={<Link size={18} />}
+              loading={ircClaimMutation.isPending}
+              onClick={() => ircClaimMutation.mutate()}
+            >
+              Create IRC claim token
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
+
+      <Card withBorder radius="sm">
+        <Stack gap="md">
+          <div>
             <Title order={3}>Change Password</Title>
             <Text c="dimmed" size="sm">Update the password used for web login.</Text>
           </div>
@@ -209,6 +246,18 @@ export function ProfilePage() {
       </Card>
     </Stack>
   );
+}
+
+function formatExpiresAt(expiresAt: number): string {
+  return new Date(expiresAt).toLocaleString(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 }
 
 function toProfileForm(me: MeResponse): ProfileUpdateRequest {

@@ -1,4 +1,4 @@
-import { getJson, putJson } from './client';
+import { getJson, postJson, putJson } from './client';
 
 export interface MeResponse {
   id: number | null;
@@ -42,4 +42,13 @@ export interface PasswordChangeResponse {
 
 export function changePassword(request: PasswordChangeRequest): Promise<PasswordChangeResponse> {
   return putJson<PasswordChangeResponse>('/api/web/me/password', request);
+}
+
+export interface IrcClaimTokenResponse {
+  token: string;
+  expiresAt: number;
+}
+
+export function createIrcClaimToken(): Promise<IrcClaimTokenResponse> {
+  return postJson<IrcClaimTokenResponse>('/api/web/me/irc-claim-token', {});
 }
