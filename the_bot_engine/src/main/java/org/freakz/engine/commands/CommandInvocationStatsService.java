@@ -2,6 +2,7 @@ package org.freakz.engine.commands;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Locale;
@@ -16,6 +17,7 @@ public class CommandInvocationStatsService {
   private final ConcurrentMap<String, LongAdder> providerCounts = new ConcurrentHashMap<>();
   private final MeterRegistry meterRegistry;
 
+  @Autowired
   public CommandInvocationStatsService(ObjectProvider<MeterRegistry> meterRegistryProvider) {
     this.meterRegistry = meterRegistryProvider.getIfAvailable();
   }
