@@ -1,6 +1,6 @@
 import { Alert, AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Stack, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, ChevronDown, LogOut, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, User, Users } from 'lucide-react';
+import { Bot, ChevronDown, ListTree, LogOut, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
+import { CommandsPage } from './pages/CommandsPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GeneratedPage } from './pages/GeneratedPage';
@@ -22,6 +23,7 @@ const navItems = [
   { label: 'Overview', path: '/overview', icon: Bot },
   { label: 'Known Users', path: '/users', icon: Users },
   { label: 'Connections', path: '/connections', icon: RadioTower },
+  { label: 'Commands', path: '/commands', icon: ListTree },
 ];
 
 const adminNavItems = [
@@ -136,6 +138,7 @@ function AuthenticatedApp() {
             <Route path="/" element={<RequireWebUser allowed={webUser}><SystemPage /></RequireWebUser>} />
             <Route path="/overview" element={<RequireWebUser allowed={webUser}><DashboardPage /></RequireWebUser>} />
             <Route path="/users" element={<RequireWebUser allowed={webUser}><KnownUsersPage /></RequireWebUser>} />
+            <Route path="/commands" element={<RequireWebUser allowed={webUser}><CommandsPage /></RequireWebUser>} />
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />

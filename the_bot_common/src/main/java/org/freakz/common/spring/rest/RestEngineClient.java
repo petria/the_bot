@@ -2,6 +2,7 @@ package org.freakz.common.spring.rest;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.commands.GetCommandsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,11 @@ public class RestEngineClient {
   public ResponseEntity<Void> reloadUsers() {
     String url = baseUrl + "/internal/users/reload";
     return restTemplate.exchange(url, HttpMethod.POST, null, Void.class);
+  }
+
+  public ResponseEntity<GetCommandsResponse> getCommands() {
+    String url = baseUrl + "/commands";
+    return restTemplate.getForEntity(url, GetCommandsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

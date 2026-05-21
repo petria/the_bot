@@ -7,6 +7,7 @@ import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.commands.CommandCatalogService;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
@@ -38,6 +39,7 @@ public class EngineController {
   private final ConfigService configService;
   private final OpenClawLogAccessService openClawLogAccessService;
   private final WebLoginSecurityAlertService webLoginSecurityAlertService;
+  private final CommandCatalogService commandCatalogService;
 
   public EngineController(
       BotEngine botEngine,
@@ -46,7 +48,8 @@ public class EngineController {
       ConnectionManagerService connectionManagerService,
       ConfigService configService,
       OpenClawLogAccessService openClawLogAccessService,
-      WebLoginSecurityAlertService webLoginSecurityAlertService) {
+      WebLoginSecurityAlertService webLoginSecurityAlertService,
+      CommandCatalogService commandCatalogService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -54,6 +57,7 @@ public class EngineController {
     this.configService = configService;
     this.openClawLogAccessService = openClawLogAccessService;
     this.webLoginSecurityAlertService = webLoginSecurityAlertService;
+    this.commandCatalogService = commandCatalogService;
   }
 
   @PostMapping("/handle_request")
@@ -119,6 +123,11 @@ public class EngineController {
     List<User> all = (List<User>) usersService.findAll();
     GetUsersResponse response = new GetUsersResponse(all);
     return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/commands")
+  public ResponseEntity<?> getCommands() {
+    return ResponseEntity.ok(commandCatalogService.getCommands());
   }
 
   @PostMapping("/internal/users/reload")
