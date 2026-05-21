@@ -21,9 +21,11 @@ public class CommandCatalogService {
   private static final Logger log = LoggerFactory.getLogger(CommandCatalogService.class);
 
   private final BotEngine botEngine;
+  private final CommandInvocationStatsService invocationStatsService;
 
-  public CommandCatalogService(BotEngine botEngine) {
+  public CommandCatalogService(BotEngine botEngine, CommandInvocationStatsService invocationStatsService) {
     this.botEngine = botEngine;
+    this.invocationStatsService = invocationStatsService;
   }
 
   public GetCommandsResponse getCommands() {
@@ -49,6 +51,7 @@ public class CommandCatalogService {
         namespace,
         provider.displayName(),
         provider.description(),
+        invocationStatsService.getProviderInvocationCount(namespace),
         commands);
   }
 
@@ -66,6 +69,7 @@ public class CommandCatalogService {
         handlerClass.getClazz().getName(),
         handlerClass.getRequiredPermission(),
         helpText(handlerClass),
+        invocationStatsService.getCommandInvocationCount(canonicalName),
         aliases);
   }
 

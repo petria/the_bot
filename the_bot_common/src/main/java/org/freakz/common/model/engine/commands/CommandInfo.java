@@ -11,6 +11,7 @@ public class CommandInfo {
   private String className;
   private String requiredPermission;
   private String help;
+  private long invocationCount;
   private List<CommandAliasInfo> aliases = new ArrayList<>();
 
   public CommandInfo() {
@@ -23,6 +24,7 @@ public class CommandInfo {
       String className,
       String requiredPermission,
       String help,
+      long invocationCount,
       List<CommandAliasInfo> aliases) {
     this.commandName = commandName;
     this.displayName = displayName;
@@ -30,6 +32,7 @@ public class CommandInfo {
     this.className = className;
     this.requiredPermission = requiredPermission;
     this.help = help;
+    this.invocationCount = invocationCount;
     this.aliases = aliases == null ? new ArrayList<>() : new ArrayList<>(aliases);
   }
 
@@ -79,6 +82,14 @@ public class CommandInfo {
 
   public void setHelp(String help) {
     this.help = help;
+  }
+
+  public long getInvocationCount() {
+    return invocationCount;
+  }
+
+  public void setInvocationCount(long invocationCount) {
+    this.invocationCount = invocationCount;
   }
 
   public List<CommandAliasInfo> getAliases() {

@@ -165,6 +165,10 @@ public class CommandHandlerLoader {
     return list;
   }
 
+  public HandlerClass getHandlerClassForCommand(String command) {
+    return this.handlersMap.get(canonicalNameFromCommandName(command));
+  }
+
   public AliasResolution resolveAlias(String message) {
     String normalizedMessage = normalizeMessage(message);
     if (normalizedMessage == null) {

@@ -9,6 +9,7 @@ public class CommandProviderInfo {
   private String displayName;
   private String description;
   private int commandCount;
+  private long invocationCount;
   private List<CommandInfo> commands = new ArrayList<>();
 
   public CommandProviderInfo() {
@@ -18,10 +19,12 @@ public class CommandProviderInfo {
       String namespace,
       String displayName,
       String description,
+      long invocationCount,
       List<CommandInfo> commands) {
     this.namespace = namespace;
     this.displayName = displayName;
     this.description = description;
+    this.invocationCount = invocationCount;
     this.commands = commands == null ? new ArrayList<>() : new ArrayList<>(commands);
     this.commandCount = this.commands.size();
   }
@@ -56,6 +59,14 @@ public class CommandProviderInfo {
 
   public void setCommandCount(int commandCount) {
     this.commandCount = commandCount;
+  }
+
+  public long getInvocationCount() {
+    return invocationCount;
+  }
+
+  public void setInvocationCount(long invocationCount) {
+    this.invocationCount = invocationCount;
   }
 
   public List<CommandInfo> getCommands() {

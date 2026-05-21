@@ -25,6 +25,7 @@ export function CommandsPage() {
   const providers = [...(commandsQuery.data?.providers ?? [])]
       .sort((left, right) => sortText(left.namespace || '', right.namespace || ''));
   const commandCount = providers.reduce((total, provider) => total + (provider.commands?.length ?? 0), 0);
+  const invocationCount = providers.reduce((total, provider) => total + (provider.invocationCount ?? 0), 0);
 
   return (
     <Stack gap="md">
@@ -62,6 +63,7 @@ export function CommandsPage() {
           <Group gap="xs">
             <Badge variant="light">{providers.length} providers</Badge>
             <Badge variant="light">{commandCount} commands</Badge>
+            <Badge variant="light">{invocationCount} invocations</Badge>
           </Group>
           {providers.map((provider) => (
             <ProviderCard key={provider.namespace || provider.displayName} provider={provider} />
@@ -89,7 +91,10 @@ function ProviderCard({ provider }: { provider: CommandProviderInfo }) {
               <Text size="sm" c="dimmed">{provider.description}</Text>
             )}
           </Stack>
-          <Badge variant="light">{commands.length} commands</Badge>
+          <Group gap="xs">
+            <Badge variant="light">{commands.length} commands</Badge>
+            <Badge variant="light">{provider.invocationCount ?? 0} invocations</Badge>
+          </Group>
         </Group>
 
         {commands.length === 0 ? (
@@ -112,6 +117,7 @@ function CommandsTable({ commands }: { commands: CommandInfo[] }) {
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Command</Table.Th>
+            <Table.Th>Invocations</Table.Th>
             <Table.Th>Aliases</Table.Th>
             <Table.Th>Permission</Table.Th>
             <Table.Th>Class</Table.Th>
@@ -122,6 +128,7 @@ function CommandsTable({ commands }: { commands: CommandInfo[] }) {
           {commands.map((command) => (
             <Table.Tr key={command.trigger || command.className}>
               <Table.Td><CommandTrigger command={command} /></Table.Td>
+              <Table.Td><Text fw={700}>{command.invocationCount ?? 0}</Text></Table.Td>
               <Table.Td><Aliases command={command} /></Table.Td>
               <Table.Td><PermissionBadge permission={command.requiredPermission} /></Table.Td>
               <Table.Td>
@@ -146,7 +153,10 @@ function CommandsCards({ commands }: { commands: CommandInfo[] }) {
           <Stack gap="xs">
             <Group justify="space-between" gap="xs" align="flex-start">
               <CommandTrigger command={command} />
-              <PermissionBadge permission={command.requiredPermission} />
+              <Group gap="xs">
+                <Badge variant="light">{command.invocationCount ?? 0} calls</Badge>
+                <PermissionBadge permission={command.requiredPermission} />
+              </Group>
             </Group>
             <Aliases command={command} />
             <Text size="sm" c="dimmed" ff="monospace">{shortClassName(command.className)}</Text>

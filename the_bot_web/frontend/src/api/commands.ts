@@ -13,6 +13,7 @@ export type CommandInfo = {
   className: string | null;
   requiredPermission: string | null;
   help: string | null;
+  invocationCount: number;
   aliases: CommandAliasInfo[] | null;
 };
 
@@ -21,6 +22,7 @@ export type CommandProviderInfo = {
   displayName: string | null;
   description: string | null;
   commandCount: number;
+  invocationCount: number;
   commands: CommandInfo[] | null;
 };
 

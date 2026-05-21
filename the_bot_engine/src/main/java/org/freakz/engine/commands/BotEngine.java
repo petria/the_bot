@@ -50,6 +50,7 @@ public class BotEngine {
   private final RestMessageSendClient restMessageSendClient;
   private final PrivateChatAlertService privateChatAlertService;
   private final ReplyOutputService replyOutputService;
+  private final CommandInvocationStatsService commandInvocationStatsService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -59,7 +60,8 @@ public class BotEngine {
       UrlMetadataService urlMetadataService,
       RestMessageSendClient restMessageSendClient,
       PrivateChatAlertService privateChatAlertService,
-      ReplyOutputService replyOutputService)
+      ReplyOutputService replyOutputService,
+      CommandInvocationStatsService commandInvocationStatsService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -69,6 +71,7 @@ public class BotEngine {
     this.restMessageSendClient = restMessageSendClient;
     this.privateChatAlertService = privateChatAlertService;
     this.replyOutputService = replyOutputService;
+    this.commandInvocationStatsService = commandInvocationStatsService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -231,8 +234,10 @@ public class BotEngine {
       args = new CommandArgs(message);
     }
 
+    HandlerClass handlerClass = this.commandHandlerLoader.getHandlerClassForCommand(args.getCommand());
     AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
     if (abstractCmd != null) {
+      commandInvocationStatsService.recordInvocation(handlerClass);
       request.setUser(user);
 
       String requiredPermission = abstractCmd.getRequiredPermission();
