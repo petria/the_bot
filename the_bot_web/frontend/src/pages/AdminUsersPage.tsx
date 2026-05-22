@@ -110,7 +110,7 @@ export function AdminUsersPage() {
     <Stack gap="md">
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
-          <Title order={2}>Admin Users</Title>
+          <Title order={2}>Manage Users</Title>
           <Text c="dimmed">Manage web login users and bot identity links.</Text>
         </div>
         <Group gap="xs">

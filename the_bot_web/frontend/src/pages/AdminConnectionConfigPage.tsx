@@ -141,7 +141,7 @@ export function AdminConnectionConfigPage() {
     <Stack gap="md">
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
-          <Title order={2}>Connection Config</Title>
+          <Title order={2}>Manage Connections</Title>
           <Text c="dimmed">
             Profile {configQuery.data?.profile || '-'} from {configQuery.data?.configFile}
           </Text>

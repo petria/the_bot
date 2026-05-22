@@ -28,8 +28,8 @@ const navItems = [
 
 const adminNavItems = [
   { label: 'Send', path: '/send', icon: Send },
-  { label: 'Admin Users', path: '/admin/users', icon: ShieldUser },
-  { label: 'Config', path: '/admin/config', icon: SlidersHorizontal },
+  { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
+  { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
 ];
 
 export function App() {
