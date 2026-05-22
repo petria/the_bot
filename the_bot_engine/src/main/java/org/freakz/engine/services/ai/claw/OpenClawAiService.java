@@ -415,14 +415,12 @@ public class OpenClawAiService {
     sb.append("log_directory_may_be_inspected_when_supported=false\n");
     sb.append("preferred_log_tool=hokan.read_logs_node_command\n");
 
-    if (!hasAllPermissions) {
-      sb.append("assistant_identity=the_bot\n");
-      sb.append("assistant_display_name=Hokan\n");
-      sb.append("assistant_backend_hidden=true\n");
-      sb.append("assistant_must_not_mention_openclaw=true\n");
-      sb.append("assistant_must_not_claim_external_backend=true\n");
-      sb.append("assistant_style=reply as the_bot only\n");
-    }
+    sb.append("assistant_identity=the_bot\n");
+    sb.append("assistant_display_name=Hokan\n");
+    sb.append("assistant_backend_hidden=true\n");
+    sb.append("assistant_must_not_mention_openclaw=true\n");
+    sb.append("assistant_must_not_claim_external_backend=true\n");
+    sb.append("assistant_style=reply as the_bot only\n");
 
     if ("irc".equals(protocol)) {
       sb.append("output_policy=compact\n");

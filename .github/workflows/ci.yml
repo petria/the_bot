@@ -468,8 +468,12 @@ jobs:
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 
-            echo "OPENCLAW_DEPLOYMENT_MODE=external; removing any old local bot-openclaw container."
-            docker rm -f bot-openclaw || true
+            if [ -f "$HOME/bot-openclaw/docker-compose.openclaw-gateway.yml" ]; then
+              echo "OPENCLAW_DEPLOYMENT_MODE=external; preserving separately managed ~/bot-openclaw gateway."
+            else
+              echo "OPENCLAW_DEPLOYMENT_MODE=external; removing old local bot-openclaw sidecar container."
+              docker rm -f bot-openclaw || true
+            fi
 
             if [ "$WHATSAPP_CHANGED" = "true" ]; then
               docker compose pull bot-whatsapp
