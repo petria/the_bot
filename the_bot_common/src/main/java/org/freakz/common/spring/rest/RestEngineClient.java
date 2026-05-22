@@ -3,6 +3,8 @@ package org.freakz.common.spring.rest;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
+import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,16 @@ public class RestEngineClient {
   public ResponseEntity<GetCommandsResponse> getCommands() {
     String url = baseUrl + "/commands";
     return restTemplate.getForEntity(url, GetCommandsResponse.class);
+  }
+
+  public ResponseEntity<OpenClawSettingsResponse> getOpenClawSettings() {
+    String url = baseUrl + "/internal/system/openclaw";
+    return restTemplate.getForEntity(url, OpenClawSettingsResponse.class);
+  }
+
+  public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(OpenClawSettingsRequest request) {
+    String url = baseUrl + "/internal/system/openclaw";
+    return restTemplate.postForEntity(url, request, OpenClawSettingsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

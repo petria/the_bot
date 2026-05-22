@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.freakz.web.system.ContainerStatus;
 import org.freakz.web.system.ContainerStatusProvider;
@@ -33,6 +35,7 @@ public class SystemController {
   private final Optional<BuildProperties> buildProperties;
   private final MeterRegistry meterRegistry;
   private final ContainerStatusProvider containerStatusProvider;
+  private final RestEngineClient engineClient;
 
   public SystemController(
       RestTemplate restTemplate,
@@ -40,13 +43,15 @@ public class SystemController {
       Environment environment,
       Optional<BuildProperties> buildProperties,
       MeterRegistry meterRegistry,
-      ContainerStatusProvider containerStatusProvider) {
+      ContainerStatusProvider containerStatusProvider,
+      RestEngineClient engineClient) {
     this.restTemplate = restTemplate;
     this.properties = properties;
     this.environment = environment;
     this.buildProperties = buildProperties;
     this.meterRegistry = meterRegistry;
     this.containerStatusProvider = containerStatusProvider;
+    this.engineClient = engineClient;
   }
 
   @GetMapping("/status")
@@ -170,15 +175,17 @@ public class SystemController {
   }
 
   private SystemComponentStatus localOpenClawComponentStatus(String mode, Instant checkedAt) {
+    OpenClawRuntimeSelection selection = openClawRuntimeSelection();
     SystemComponentStatus status = sidecarComponentStatus(
         "bot-openclaw",
         properties.getBotOpenclawContainerName(),
         checkedAt);
-    return status.withOpenClawDetails(mode, properties.getOpenclawGatewayWsUrl(), null);
+    return status.withOpenClawDetails(mode, selection.wsUrl(), null);
   }
 
   private SystemComponentStatus externalOpenClawComponentStatus(String mode, Instant checkedAt) {
     long startedNanos = System.nanoTime();
+    OpenClawRuntimeSelection selection = openClawRuntimeSelection();
     String healthUrl = null;
     String status = "UNKNOWN";
     String healthStatus = null;
@@ -186,7 +193,7 @@ public class SystemController {
     ContainerStatus containerStatus = externalContainerStatus(properties.getBotOpenclawContainerName());
 
     try {
-      healthUrl = openClawHealthUrl();
+      healthUrl = selection.healthUrl();
       if (healthUrl == null || healthUrl.isBlank()) {
         throw new IllegalStateException("OpenClaw health URL is not configured");
       }
@@ -207,7 +214,7 @@ public class SystemController {
         mode,
         healthUrl,
         healthStatus,
-        properties.getOpenclawGatewayWsUrl(),
+        selection.wsUrl(),
         null,
         null,
         null,
@@ -331,6 +338,26 @@ public class SystemController {
       return configuredHealthUrl.trim();
     }
     return healthUrlFromGatewayUrl(properties.getOpenclawGatewayWsUrl());
+  }
+
+  private OpenClawRuntimeSelection openClawRuntimeSelection() {
+    try {
+      ResponseEntity<OpenClawSettingsResponse> response = engineClient.getOpenClawSettings();
+      OpenClawSettingsResponse body = response.getBody();
+      if (response.getStatusCode().is2xxSuccessful()
+          && body != null
+          && body.currentWsUrl() != null
+          && !body.currentWsUrl().isBlank()) {
+        String healthUrl = body.currentHealthUrl();
+        if (healthUrl == null || healthUrl.isBlank()) {
+          healthUrl = healthUrlFromGatewayUrl(body.currentWsUrl());
+        }
+        return new OpenClawRuntimeSelection(body.currentWsUrl(), healthUrl);
+      }
+    } catch (RuntimeException ignored) {
+      // Keep System usable even when bot-engine is down.
+    }
+    return new OpenClawRuntimeSelection(properties.getOpenclawGatewayWsUrl(), openClawHealthUrl());
   }
 
   private String healthUrlFromGatewayUrl(String gatewayUrl) {
@@ -545,5 +572,8 @@ public class SystemController {
       String componentStatus,
       String healthStatus,
       String error) {
+  }
+
+  private record OpenClawRuntimeSelection(String wsUrl, String healthUrl) {
   }
 }

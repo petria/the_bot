@@ -8,18 +8,25 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.freakz.web.system.ContainerStatus;
 import org.freakz.web.system.ContainerStatusProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SystemControllerTest {
 
@@ -147,6 +154,39 @@ class SystemControllerTest {
   }
 
   @Test
+  void showsOpenClawBackendFromBotEngineRuntimeSettings() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    server.expect(once(), requestTo("http://docker.local:18889/health"))
+        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
+        "docker.local",
+        "ws://docker.local:18889",
+        "http://docker.local:18889",
+        "http://docker.local:18889/health",
+        List.of())));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> properties.setOpenclawDeploymentMode("external"),
+        containerName -> ContainerStatus.missing(containerName),
+        engineClient).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-openclaw"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.baseUrl()).isEqualTo("ws://docker.local:18889");
+          assertThat(component.healthUrl()).isEqualTo("http://docker.local:18889/health");
+        });
+    server.verify();
+  }
+
+  @Test
   void mapsExternalOpenClawHealthFailureToDown() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -249,13 +289,35 @@ class SystemControllerTest {
     properties.setDockerStatusEnabled(true);
     properties.setOpenclawDeploymentMode("local");
     propertiesCustomizer.accept(properties);
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
+        null,
+        properties.getOpenclawGatewayWsUrl(),
+        null,
+        null,
+        List.of())));
+    return controller(restTemplate, propertiesCustomizer, containerStatusProvider, engineClient);
+  }
+
+  private SystemController controller(
+      RestTemplate restTemplate,
+      Consumer<TheBotWebProperties> propertiesCustomizer,
+      ContainerStatusProvider containerStatusProvider,
+      RestEngineClient engineClient) {
+    TheBotWebProperties properties = new TheBotWebProperties();
+    properties.setBotIoBaseUrl("http://bot-io:8090");
+    properties.setBotEngineBaseUrl("http://bot-engine:8100");
+    properties.setDockerStatusEnabled(true);
+    properties.setOpenclawDeploymentMode("local");
+    propertiesCustomizer.accept(properties);
     return new SystemController(
         restTemplate,
         properties,
         new StandardEnvironment(),
         Optional.empty(),
         new SimpleMeterRegistry(),
-        containerStatusProvider);
+        containerStatusProvider,
+        engineClient);
   }
 
   private ContainerStatus containerStatus(String containerName, String state) {

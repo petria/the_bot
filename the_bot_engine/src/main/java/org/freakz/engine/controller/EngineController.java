@@ -3,6 +3,8 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
+import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
@@ -12,6 +14,7 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
+import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.topcounter.TopCountService;
@@ -40,6 +43,7 @@ public class EngineController {
   private final OpenClawLogAccessService openClawLogAccessService;
   private final WebLoginSecurityAlertService webLoginSecurityAlertService;
   private final CommandCatalogService commandCatalogService;
+  private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
 
   public EngineController(
       BotEngine botEngine,
@@ -49,7 +53,8 @@ public class EngineController {
       ConfigService configService,
       OpenClawLogAccessService openClawLogAccessService,
       WebLoginSecurityAlertService webLoginSecurityAlertService,
-      CommandCatalogService commandCatalogService) {
+      CommandCatalogService commandCatalogService,
+      OpenClawInstanceSettingsService openClawInstanceSettingsService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -58,6 +63,7 @@ public class EngineController {
     this.openClawLogAccessService = openClawLogAccessService;
     this.webLoginSecurityAlertService = webLoginSecurityAlertService;
     this.commandCatalogService = commandCatalogService;
+    this.openClawInstanceSettingsService = openClawInstanceSettingsService;
   }
 
   @PostMapping("/handle_request")
@@ -145,6 +151,16 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  @GetMapping("/internal/system/openclaw")
+  public ResponseEntity<OpenClawSettingsResponse> getOpenClawSettings() {
+    return ResponseEntity.ok(openClawInstanceSettingsService.getSettings());
+  }
+
+  @PostMapping("/internal/system/openclaw")
+  public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(@RequestBody OpenClawSettingsRequest request) {
+    return ResponseEntity.ok(openClawInstanceSettingsService.selectInstance(request.selectedInstanceId()));
   }
 
   @PostMapping("/internal/security/web-login-failed")

@@ -8,6 +8,7 @@ import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
+import { AdminSystemPage } from './pages/AdminSystemPage';
 import { CommandsPage } from './pages/CommandsPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -30,6 +31,7 @@ const adminNavItems = [
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
+  { label: 'Manage System', path: '/admin/system', icon: Settings },
 ];
 
 export function App() {
@@ -144,6 +146,7 @@ function AuthenticatedApp() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />
             <Route path="/admin/config" element={<RequireWebAdmin allowed={webAdmin}><AdminConnectionConfigPage /></RequireWebAdmin>} />
+            <Route path="/admin/system" element={<RequireWebAdmin allowed={webAdmin}><AdminSystemPage /></RequireWebAdmin>} />
           </Routes>
         </Box>
       </AppShell.Main>
