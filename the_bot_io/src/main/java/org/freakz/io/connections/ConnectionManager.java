@@ -486,7 +486,7 @@ public class ConnectionManager implements CommandLineRunner {
     log.debug(">> Connecting DISCORD");
     if (theBotConfig.getDiscordConfig() != null && theBotConfig.getDiscordConfig().isConnectStartup()) {
       DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
-      dsc.init(this, theBotConfig.getDiscordConfig());
+      dsc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
       addConnection(dsc);
     } else {
       log.warn("DISCORD Startup connect disabled: {}", theBotConfig.getDiscordConfig());
@@ -506,7 +506,7 @@ public class ConnectionManager implements CommandLineRunner {
     log.debug(">> Connecting WHATSAPP");
     if (theBotConfig.getWhatsappConfig() != null && theBotConfig.getWhatsappConfig().isConnectStartup()) {
       WhatsAppConnection wc = new WhatsAppConnection(this.eventPublisher);
-      wc.init(this, theBotConfig.getWhatsappConfig());
+      wc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getWhatsappConfig());
       addConnection(wc);
     } else {
       log.warn("WHATSAPP Startup connect disabled: {}", theBotConfig.getWhatsappConfig());

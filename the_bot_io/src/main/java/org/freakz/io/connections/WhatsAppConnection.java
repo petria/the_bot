@@ -1,7 +1,6 @@
 package org.freakz.io.connections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.WhatsAppConfig;
 import org.freakz.common.model.feed.Message;
@@ -13,7 +12,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class WhatsAppConnection extends BotConnection {
@@ -26,15 +24,17 @@ public class WhatsAppConnection extends BotConnection {
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private ConnectionManager connectionManager;
   private WhatsAppConfig config;
+  private String botName;
 
   public WhatsAppConnection(EventPublisher publisher) {
     super(BotConnectionType.WHATSAPP_CONNECTION);
     this.publisher = publisher;
   }
 
-  public void init(ConnectionManager connectionManager, WhatsAppConfig config) {
+  public void init(ConnectionManager connectionManager, String botName, WhatsAppConfig config) {
     this.connectionManager = connectionManager;
     this.config = config;
+    this.botName = botName;
     registerConfiguredChannels();
   }
 
@@ -201,27 +201,13 @@ public class WhatsAppConnection extends BotConnection {
 
   private void checkEchoTo(WacliWebhookMessageEvent event, String actorName) {
     Channel configured = resolveConfiguredChannel(event.getChatJid());
-    List<String> echoToAliases = configured == null ? null : configured.getEchoToAliases();
-    String text = event.getText();
-    boolean bridgeMessage = BridgeMessageGuard.shouldSkipEcho(text);
-    if (echoToAliases == null
-        || echoToAliases.isEmpty()
-        || text == null
-        || text.startsWith("!")
-        || bridgeMessage) {
-      if (bridgeMessage) {
-        log.debug("Skip WhatsApp bridge echo loop candidate");
-      }
-      return;
-    }
-    String msg = String.format("<%s@WhatsApp>: %s", actorName, text);
-    for (String echoToAlias : echoToAliases) {
-      try {
-        connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
-      } catch (InvalidEchoToAliasException e) {
-        log.error("Can not echo WhatsApp message to: {}", echoToAlias);
-      }
-    }
+    BridgeEchoService.echoToConfiguredTargets(
+        connectionManager,
+        configured,
+        "WhatsApp",
+        actorName,
+        event.getText(),
+        botName);
   }
 
   private String firstNonBlank(String... values) {

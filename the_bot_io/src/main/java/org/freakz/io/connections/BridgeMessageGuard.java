@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 final class BridgeMessageGuard {
 
   private static final Pattern BRIDGE_PREFIX = Pattern.compile(
-      "^[\\u0002\\s]*<[^>]+@(IRC|Discord|Dicord|Telegram|WhatsApp)>:\\s.*",
+      "^[\\u0002\\s]*<[^>]+@(IRC|Discord|Telegram|WhatsApp)>:\\s.*",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   private BridgeMessageGuard() {

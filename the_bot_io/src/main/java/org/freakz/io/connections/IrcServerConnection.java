@@ -3,7 +3,6 @@ package org.freakz.io.connections;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.exception.BotIOException;
-import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
@@ -169,7 +168,13 @@ public class IrcServerConnection extends BotConnection {
     markIrcUserSeen(echoToAlias, event.getActor(), "IRC_MESSAGE");
     publisher.publishEvent(this, event, echoToAlias);
     updateChannelMap(event.getChannel().getName());
-    checkEchoTo(this.config, this.connectionManager, event.getChannel().getName(), event.getActor().getNick(), event.getMessage());
+    BridgeEchoService.echoToConfiguredTargets(
+        this.connectionManager,
+        channel,
+        "IRC",
+        event.getActor().getNick(),
+        event.getMessage(),
+        botNick);
   }
 
   private void markIrcUserSeen(String echoToAlias, User user, String source) {
@@ -183,29 +188,6 @@ public class IrcServerConnection extends BotConnection {
         user.getNick(),
         user.getRealName().orElse(null),
         source);
-  }
-
-  protected void checkEchoTo(IrcServerConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
-    if (BridgeMessageGuard.shouldSkipEcho(message)) {
-      log.debug("Skip IRC bridge echo loop candidate");
-      return;
-    }
-    String name = channelName; //event.getChannel().getName();
-    config.getChannelList().forEach(ch -> {
-      if (ch.getName().equalsIgnoreCase(name)) {
-        if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
-          for (String echoToAlias : ch.getEchoToAliases()) {
-            log.debug("Echo to: {}", echoToAlias);
-            try {
-              String msg = String.format("<%s@IRC>: %s", actorName, message);
-              connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
-            } catch (InvalidEchoToAliasException e) {
-              log.error("Can not echo message to: {}", echoToAlias);
-            }
-          }
-        }
-      }
-    });
   }
 
   @Handler
@@ -318,10 +300,6 @@ public class IrcServerConnection extends BotConnection {
             String chatType = message.getTarget().startsWith("PRIVATE-") ? "dm" : "channel";
             String target = ChatIdentityUtil.sanitize(message.getTarget().replaceFirst("^PRIVATE-", ""), "unknown");
             publisher.logMessage(MessageSource.NONE, protocol, network + "/" + chatType + "/" + target, botNick, splitLine);
-            if (!message.getMessage().startsWith("\u0002" + "\u0002")) {
-              checkEchoTo(this.config, this.connectionManager, message.getTarget(), botNick, splitLine);
-            }
-
           }
         }
       }

@@ -1,6 +1,6 @@
 package org.freakz.io.connections;
 
-import org.freakz.common.exception.InvalidEchoToAliasException;
+import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.TelegramConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
@@ -113,12 +113,14 @@ public class TelegramConnection extends BotConnection {
     private final EventPublisher publisher;
     private final BotConnection connection;
     private final TelegramConfig config;
+    private final String commandBotName;
 
     private final ConnectionManager connectionManager;
 
     public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig config) {
       super(botToken);
       this.botName = config.getTelegramName();
+      this.commandBotName = botName;
       this.publisher = eventPublisher;
       this.connection = connection;
       this.config = config;
@@ -160,7 +162,8 @@ public class TelegramConnection extends BotConnection {
       if (update.hasMessage() && update.getMessage().hasText()) {
 //                log.debug("telegram update: {}", update);
 
-        String echoToAlias = resolveEchoToAlias(update);
+        Channel configuredChannel = resolveConfiguredChannel(update);
+        String echoToAlias = configuredChannel == null ? null : configuredChannel.getEchoToAlias();
         if (echoToAlias == null && update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
           echoToAlias = "PRIVATE-TELEGRAM-" + update.getMessage().getFrom().getId();
         }
@@ -185,7 +188,7 @@ public class TelegramConnection extends BotConnection {
           from = update.getMessage().getFrom().getFirstName() + update.getMessage().getFrom().getLastName();
         }
 
-        checkEchoTo(this.config, this.connectionManager, update.getMessage().getChat().getTitle(), from, update.getMessage().getText(), user);
+        checkEchoTo(configuredChannel, from, update.getMessage().getText(), user);
       }
 
     }
@@ -211,7 +214,7 @@ public class TelegramConnection extends BotConnection {
           channelName);
     }
 
-    private String resolveEchoToAlias(Update update) {
+    private Channel resolveConfiguredChannel(Update update) {
       if (!update.hasMessage() || update.getMessage().getChat() == null) {
         return null;
       }
@@ -221,7 +224,7 @@ public class TelegramConnection extends BotConnection {
       }
       for (org.freakz.common.model.botconfig.Channel channel : config.getChannelList()) {
         if (chatTitle.equalsIgnoreCase(channel.getName())) {
-          return channel.getEchoToAlias();
+          return channel;
         }
       }
       return null;
@@ -241,36 +244,15 @@ public class TelegramConnection extends BotConnection {
     }
 
 
-    protected void checkEchoTo(TelegramConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message, User user) {
-      if (BridgeMessageGuard.shouldSkipEcho(message)) {
-        log.debug("Skip Telegram bridge echo loop candidate");
-        return;
-      }
-      String msg;
-      if (user != null && user.getId() > 0) {
-        msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", user.getIrcNick(), message);
-      } else {
-        msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
-      }
-
-
-      String name = channelName;
-      config.getChannelList().forEach(ch -> {
-        if (ch.getName().equalsIgnoreCase(name)) {
-          if (ch.getEchoToAliases() != null && !ch.getEchoToAliases().isEmpty()) {
-            for (String echoToAlias : ch.getEchoToAliases()) {
-              log.debug("Echo to: {}", echoToAlias);
-              try {
-                if (!message.startsWith("!")) {
-                  connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
-                }
-              } catch (InvalidEchoToAliasException e) {
-                log.error("Can not echo message to: {}", echoToAlias);
-              }
-            }
-          }
-        }
-      });
+    protected void checkEchoTo(Channel configuredChannel, String actorName, String message, User user) {
+      String bridgeActor = user != null && user.getId() > 0 ? user.getIrcNick() : actorName;
+      BridgeEchoService.echoToConfiguredTargets(
+          connectionManager,
+          configuredChannel,
+          "Telegram",
+          bridgeActor,
+          message,
+          commandBotName);
     }
 
     @Override

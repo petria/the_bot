@@ -1,7 +1,6 @@
 package org.freakz.io.connections;
 
 import org.freakz.common.exception.BotIOException;
-import org.freakz.common.exception.InvalidEchoToAliasException;
 import org.freakz.common.model.botconfig.DiscordConfig;
 import org.freakz.common.model.feed.Message;
 import org.javacord.api.DiscordApi;
@@ -9,7 +8,6 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
-import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
@@ -28,6 +26,7 @@ public class DiscordServerConnection extends BotConnection {
   private DiscordApi api;
   private ConnectionManager connectionManager;
   private DiscordConfig config;
+  private String botName;
 
   public DiscordServerConnection(EventPublisher publisher) {
     super(BotConnectionType.DISCORD_CONNECTION);
@@ -39,10 +38,11 @@ public class DiscordServerConnection extends BotConnection {
     return "Discord";
   }
 
-  public void init(ConnectionManager connectionManager, DiscordConfig config) {
+  public void init(ConnectionManager connectionManager, String botName, DiscordConfig config) {
 
     this.connectionManager = connectionManager;
     this.config = config;
+    this.botName = botName;
 
     String token = config.getToken();
     this.api = new DiscordApiBuilder()
@@ -203,8 +203,6 @@ public class DiscordServerConnection extends BotConnection {
       throw new RuntimeException(e);
     }
 
-    TextChannel discordChannel = event.getChannel();
-
     String channelStr = event.getChannel().toString();
     // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
     int idx1 = channelStr.indexOf("name: ");
@@ -220,7 +218,13 @@ public class DiscordServerConnection extends BotConnection {
           messageTxt.append("]");
         }
       }
-      checkEchoTo(this.config, this.connectionManager, channelName, event.getMessageAuthor().getName(), messageTxt.toString());
+      BridgeEchoService.echoToConfiguredTargets(
+          this.connectionManager,
+          configuredChannel,
+          "Discord",
+          event.getMessageAuthor().getName(),
+          messageTxt.toString(),
+          botName);
     }
   }
 
@@ -265,32 +269,6 @@ public class DiscordServerConnection extends BotConnection {
       }
     }
     return null;
-  }
-
-  protected void checkEchoTo(DiscordConfig config, ConnectionManager connectionManager, String channelName, String actorName, String message) {
-    if (BridgeMessageGuard.shouldSkipEcho(message)) {
-      log.debug("Skip Discord bridge echo loop candidate");
-      return;
-    }
-    String name = channelName; //event.getChannel().getName();
-    config.getChannelList().forEach(ch -> {
-      if (ch.getName().equals(name)) {
-        if (ch.getEchoToAliases() != null && ch.getEchoToAliases().size() > 0) {
-          for (String echoToAlias : ch.getEchoToAliases()) {
-            log.debug("Echo to: {}", echoToAlias);
-            try {
-              if (!message.startsWith("!")) {
-                //                                    String msg = String.format("%s%s<%s@Telegram>: %s", "\u0002", "\u0002", actorName, message);
-                String msg = String.format("<%s@Dicord>: %s", actorName, message);
-                connectionManager.sendMessageByEchoToAlias(msg, echoToAlias);
-              }
-            } catch (InvalidEchoToAliasException e) {
-              log.error("Can not echo message to: {}", echoToAlias);
-            }
-          }
-        }
-      }
-    });
   }
 
   private String clean(String value) {
