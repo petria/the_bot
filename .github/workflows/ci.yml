@@ -472,7 +472,7 @@ jobs:
             openclaw.runtime-log-root=$OPENCLAW_RUNTIME_LOG_ROOT
             openclaw.runtime-log-root-local=$OPENCLAW_RUNTIME_LOG_ROOT_LOCAL
             hermes.base-url=$HERMES_BASE_URL
-            hermes.api-key=\${HERMES_API_KEY}
+            hermes.api-key=\${HERMES_API_KEY:}
             hermes.model=$HERMES_MODEL
             hermes.timeout-seconds=$HERMES_TIMEOUT_SECONDS
             spring.ai.openai.api-key=\${OPENAI_API_KEY}
