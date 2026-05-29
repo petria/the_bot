@@ -165,15 +165,25 @@ public class HermesAiService {
       return HermesRunResult.completed(runId.substring("__completed_directly__:".length()));
     }
 
+    log.info("Starting poll for run {}: timeout={}s", runId, timeoutSeconds);
     long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
+    long iterations = 0;
     while (System.currentTimeMillis() < deadline) {
+      iterations++;
       JsonNode node = fetchRunNode(client, runId, timeoutSeconds);
+      log.debug("Poll #{} for run {}: {}", iterations, runId, node.toPrettyString());
       String status = firstText(node, "status", "state").toLowerCase();
       if (isCompleted(status)) {
         String text = extractText(node);
+        log.info("Poll #{}: run {} completed (status={}), extractText returned len={}", iterations, runId, status, text.length());
         while (text.isBlank() && System.currentTimeMillis() < deadline) {
           sleep(250);
-          text = extractText(fetchRunNode(client, runId, timeoutSeconds));
+          JsonNode retryNode = fetchRunNode(client, runId, timeoutSeconds);
+          text = extractText(retryNode);
+          log.debug("Poll #{}: retry after blank text, status={}, text len={}", iterations, firstText(retryNode, "status", "state"), text.length());
+        }
+        if (text.isBlank()) {
+          log.warn("Poll #{}: run {} completed but extractText returned blank. All completed payloads seen this session printed above.", iterations, runId);
         }
         return HermesRunResult.completed(text);
       }
@@ -181,9 +191,11 @@ public class HermesAiService {
         return HermesRunResult.failed(firstText(node, "error", "message", "detail"));
       }
 
+      log.debug("Poll #{}: run {} status={}, continuing...", iterations, runId, status);
       sleep(POLL_INTERVAL_MILLIS);
     }
 
+    log.info("Polling {} for run {} exhausted after {} iterations", timeoutSeconds, runId, iterations);
     return HermesRunResult.timeout();
   }
 
