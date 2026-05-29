@@ -296,6 +296,10 @@ public class HermesAiService {
       }
     }
 
+    // None of the known text fields matched. Dump the actual JSON for diagnosis.
+    String jsonStr = node.toString();
+    log.info("ExtractText saw no matching text fields. JSON: {}", jsonStr.substring(0, Math.min(500, jsonStr.length())));
+
     return "";
   }
 
