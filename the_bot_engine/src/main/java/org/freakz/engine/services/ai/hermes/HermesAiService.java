@@ -56,6 +56,7 @@ public class HermesAiService {
       }
 
       String sessionId = buildSessionId(engineRequest);
+      String stableSessionId = buildStableSessionId(sessionId);
       WebClient.Builder clientBuilder = webClientBuilder
           .baseUrl(settings.baseUrl())
           .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
@@ -64,7 +65,7 @@ public class HermesAiService {
       }
       WebClient client = clientBuilder.build();
 
-      String runId = createRun(client, settings, sessionId, queryMessage);
+      String runId = createRun(client, settings, stableSessionId, queryMessage);
       if (runId.isBlank()) {
         processReply(engineRequest, "Hermes returned no response.");
         return;
@@ -116,7 +117,7 @@ public class HermesAiService {
     return "bot:" + botInstanceId + ":" + protocol + ":" + network + ":channel:" + chatTarget + ":user:" + senderKey;
   }
 
-  String buildSessionKeyHeader(String sessionId) {
+  String buildStableSessionId(String sessionId) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest((sessionId == null ? "" : sessionId).getBytes(StandardCharsets.UTF_8));
@@ -135,7 +136,7 @@ public class HermesAiService {
     String response = client.post()
         .uri("/v1/runs")
         .header("X-Hermes-Session-Id", sessionId)
-        .header("X-Hermes-Session-Key", buildSessionKeyHeader(sessionId))
+        .header("X-Hermes-Session-Key", buildStableSessionId(sessionId))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(body.toString())
         .retrieve()

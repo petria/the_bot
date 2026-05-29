@@ -52,11 +52,11 @@ class HermesAiServiceTest {
     HermesAiService service = newService();
     String longSessionId = "bot:hokan-develop:irc:ircnet:channel:#hokanthebot:user:-petria-5900x-ddns-net";
 
-    String header = service.buildSessionKeyHeader(longSessionId);
+    String header = service.buildStableSessionId(longSessionId);
 
     assertThat(header).startsWith("bot-");
     assertThat(header).hasSizeLessThanOrEqualTo(64);
-    assertThat(service.buildSessionKeyHeader(longSessionId)).isEqualTo(header);
+    assertThat(service.buildStableSessionId(longSessionId)).isEqualTo(header);
   }
 
   private HermesAiService newService() {
