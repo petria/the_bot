@@ -591,11 +591,7 @@ public class OpenClawNodeGatewayService {
 
     params.put("role", "node");
     params.withArray("caps").add("message");
-    params.withArray("commands").add(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
-    params.withArray("commands").add(NODE_COMMAND_READ_LOGS);
-    ObjectNode permissions = params.putObject("permissions");
-    permissions.put(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, true);
-    permissions.put(NODE_COMMAND_READ_LOGS, true);
+    addNodeCommandCapabilities(params);
 
     ObjectNode auth = params.putObject("auth");
     auth.put("token", identity.connectToken());
@@ -779,6 +775,16 @@ public class OpenClawNodeGatewayService {
     } catch (Exception e) {
       throw new IOException("failed to parse Ed25519 private key", e);
     }
+  }
+
+  void addNodeCommandCapabilities(ObjectNode params) {
+    params.withArray("commands").add(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
+    params.withArray("commands").add(NODE_COMMAND_READ_LOGS);
+    params.withArray("commands").add(NODE_COMMAND_SEARCH_LOGS);
+    ObjectNode permissions = params.putObject("permissions");
+    permissions.put(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, true);
+    permissions.put(NODE_COMMAND_READ_LOGS, true);
+    permissions.put(NODE_COMMAND_SEARCH_LOGS, true);
   }
 
   private String signDevicePayload(
