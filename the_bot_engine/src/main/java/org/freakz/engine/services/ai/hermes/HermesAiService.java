@@ -15,7 +15,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.HexFormat;
 
 @Service
 public class HermesAiService {
@@ -113,6 +116,16 @@ public class HermesAiService {
     return "bot:" + botInstanceId + ":" + protocol + ":" + network + ":channel:" + chatTarget + ":user:" + senderKey;
   }
 
+  String buildSessionKeyHeader(String sessionId) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest((sessionId == null ? "" : sessionId).getBytes(StandardCharsets.UTF_8));
+      return "bot-" + HexFormat.of().formatHex(hash).substring(0, 48);
+    } catch (Exception e) {
+      return "bot-" + Integer.toHexString((sessionId == null ? "" : sessionId).hashCode());
+    }
+  }
+
   private String createRun(WebClient client, HermesSettings settings, String sessionId, String queryMessage) throws Exception {
     ObjectNode body = objectMapper.createObjectNode();
     body.put("session_id", sessionId);
@@ -122,7 +135,7 @@ public class HermesAiService {
     String response = client.post()
         .uri("/v1/runs")
         .header("X-Hermes-Session-Id", sessionId)
-        .header("X-Hermes-Session-Key", sessionId)
+        .header("X-Hermes-Session-Key", buildSessionKeyHeader(sessionId))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(body.toString())
         .retrieve()

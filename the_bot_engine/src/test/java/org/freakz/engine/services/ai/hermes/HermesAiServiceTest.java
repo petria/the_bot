@@ -47,6 +47,18 @@ class HermesAiServiceTest {
         .isEqualTo("bot:hokan-test:irc:ircnet:channel:#amigafin:user:_pete_");
   }
 
+  @Test
+  void buildsShortStableSessionKeyHeaderForProviderPromptCache() {
+    HermesAiService service = newService();
+    String longSessionId = "bot:hokan-develop:irc:ircnet:channel:#hokanthebot:user:-petria-5900x-ddns-net";
+
+    String header = service.buildSessionKeyHeader(longSessionId);
+
+    assertThat(header).startsWith("bot-");
+    assertThat(header).hasSizeLessThanOrEqualTo(64);
+    assertThat(service.buildSessionKeyHeader(longSessionId)).isEqualTo(header);
+  }
+
   private HermesAiService newService() {
     return new HermesAiService(
         new TestConfigService(),
