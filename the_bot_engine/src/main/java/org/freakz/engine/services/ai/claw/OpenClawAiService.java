@@ -413,7 +413,7 @@ public class OpenClawAiService {
     sb.append("local_file_access_allowed=false\n");
     sb.append("log_file_may_be_read_directly=false\n");
     sb.append("log_directory_may_be_inspected_when_supported=false\n");
-    sb.append("preferred_log_tool=hokan.read_logs_node_command\n");
+    sb.append("preferred_log_tool=hokan.search_logs_node_command_for_history_or_search; hokan.read_logs_node_command_for_recent_context\n");
 
     sb.append("assistant_identity=the_bot\n");
     sb.append("assistant_display_name=Hokan\n");
@@ -442,16 +442,22 @@ public class OpenClawAiService {
     sb.append("final_reply_forbid_phrases=checking now|looking it up now|i will check|let me check|hold on while i check\n");
     sb.append("tool_usage_rule=if you decide to check, fetch, inspect, open, search, read, or verify something, do that work first and only then send the final user-visible reply\n");
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
-    sb.append("log_access_rule=do not read local log files directly and do not use HTTP for logs; request logs only by invoking hokan.read_logs through the OpenClaw nodes tool\n");
+    sb.append("log_access_rule=do not read local log files directly and do not use HTTP for logs; request logs only by invoking hokan.search_logs or hokan.read_logs through the OpenClaw nodes tool\n");
     sb.append("log_api_scope_rule=use current-chat by default; use broader scopes only when the user asks and the node command permits it\n");
     sb.append("directory_scan_rule=invoke hokan.read_logs without date to discover availableFiles for the permitted target\n");
     sb.append("tool_nodes_available=true\n");
+    sb.append("tool_nodes_log_search_command=hokan.search_logs\n");
+    sb.append("tool_nodes_log_search_command_params={\"hokanContextToken\":\"")
+        .append(hokanContextToken)
+        .append("\",\"scope\":\"current-chat\",\"query\":\"<phrase optional>\",\"allTerms\":[\"<term>\"],\"anyTerms\":[\"<term>\"],\"nick\":\"<nick optional>\",\"dateFrom\":\"<yyyy-mm-dd optional>\",\"dateTo\":\"<yyyy-mm-dd optional>\",\"maxDays\":30,\"maxMatches\":20,\"maxBytes\":16000}\n");
+    sb.append("tool_nodes_log_search_command_use=for historical questions, find/search requests, broad date ranges, or unknown dates, invoke hokan.search_logs first; use compact terms from the user question\n");
+    sb.append("tool_nodes_log_search_command_returns=json with searchedFiles, searchedLines, truncated, matches[{date,lineNumber,time,nick,text}]\n");
     sb.append("tool_nodes_log_command=hokan.read_logs\n");
     sb.append("tool_nodes_log_command_params={\"hokanContextToken\":\"")
         .append(hokanContextToken)
         .append("\",\"scope\":\"current-chat\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80}\n");
-    sb.append("tool_nodes_log_command_use=when logs are needed, prefer invoking hokan.read_logs through the OpenClaw nodes tool; omit date to read latest available log\n");
-    sb.append("tool_nodes_log_command_returns=json with content, found, date, availableFiles\n");
+    sb.append("tool_nodes_log_command_use=for recent chat context or exact dated tail reads, invoke hokan.read_logs through the OpenClaw nodes tool; omit date to read latest available log\n");
+    sb.append("tool_nodes_log_command_returns=json with content, found, date, availableFiles when requested or date omitted\n");
     sb.append("tool_nodes_preferred_command=hokan.send_message_by_echo_to_alias\n");
     sb.append("tool_nodes_preferred_command_params={\"echoToAlias\":\"<alias>\",\"message\":\"<text>\",\"hokanContextToken\":\"")
         .append(hokanContextToken)
@@ -477,7 +483,8 @@ public class OpenClawAiService {
     sb.append("recent_messages_source=controlled_log_api\n");
     sb.append("recent_messages:\n");
     sb.append("- not inlined by bot-engine\n");
-    sb.append("- if needed, invoke hokan.read_logs with hokanContextToken (latest lines first when date is omitted)\n");
+    sb.append("- if searching historical logs, invoke hokan.search_logs with hokanContextToken\n");
+    sb.append("- if reading recent context, invoke hokan.read_logs with hokanContextToken (latest lines first when date is omitted)\n");
     sb.append("- suggested range: last 80 lines\n");
     sb.append("[/HOKAN_CONTEXT]\n\n");
     sb.append("[USER_PROMPT]\n");
