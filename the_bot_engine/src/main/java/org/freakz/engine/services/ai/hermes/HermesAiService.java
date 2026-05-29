@@ -251,6 +251,10 @@ public class HermesAiService {
     if (node == null || node.isMissingNode() || node.isNull()) {
       return "";
     }
+    // If the node itself is a string value (e.g. {"output": "hello"}), return it directly.
+    if (node.isTextual()) {
+      return node.asText().trim();
+    }
 
     for (String field : new String[]{"output_text", "text", "reply", "message", "content", "response", "result", "final_response", "final_output", "answer"}) {
       String direct = textValue(node.path(field));
