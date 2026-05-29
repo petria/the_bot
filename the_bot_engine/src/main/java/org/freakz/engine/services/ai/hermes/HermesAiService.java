@@ -234,10 +234,43 @@ public class HermesAiService {
     }
 
     String prefix = request.getFromSender() + ": ";
+
+    // Prefix every line, not just the first one — long replies get split into multiple IRC messages
+    // by ReplyOutputService / BotEngine below via sendReplyMessage, so the prefix must be baked in
+    // before that splitting happens.
+    if (reply.contains("\n")) {
+      String[] lines = splitNewlines(reply);
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < lines.length; i++) {
+        if (i > 0) sb.append("\n");
+        if (!lines[i].isEmpty()) {
+          sb.append(prefix).append(lines[i]);
+        }
+      }
+      return sb.toString();
+    }
+
     if (reply.startsWith(prefix)) {
       return reply;
     }
     return prefix + reply;
+  }
+
+  // Replacement for splitNewlines used to avoid regex cost
+  private String[] splitNewlines(String reply) {
+    java.util.ArrayList<String> parts = new java.util.ArrayList<>();
+    StringBuilder buf = new StringBuilder();
+    for (int i = 0; i < reply.length(); i++) {
+      char c = reply.charAt(i);
+      if (c == '\n') {
+        parts.add(buf.toString());
+        buf.setLength(0);
+      } else if (c != '\r') {
+        buf.append(c);
+      }
+    }
+    parts.add(buf.toString());
+    return parts.toArray(new String[0]);
   }
 
   private JsonNode parseJson(String response) throws Exception {
@@ -256,7 +289,7 @@ public class HermesAiService {
       return node.asText().trim();
     }
 
-    for (String field : new String[]{"output_text", "text", "reply", "message", "content", "response", "result", "final_response", "final_output", "answer"}) {
+    for (String field : new String[]{"output", "output_text", "text", "reply", "message", "content", "response", "result", "final_response", "final_output", "answer"}) {
       String direct = textValue(node.path(field));
       if (!direct.isBlank()) {
         return direct;
