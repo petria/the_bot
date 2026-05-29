@@ -166,16 +166,15 @@ public class HermesAiService {
 
     long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
     while (System.currentTimeMillis() < deadline) {
-      String response = client.get()
-          .uri("/v1/runs/{runId}", runId)
-          .retrieve()
-          .bodyToMono(String.class)
-          .block(Duration.ofSeconds(Math.max(1, Math.min(10, timeoutSeconds))));
-
-      JsonNode node = parseJson(response);
+      JsonNode node = fetchRunNode(client, runId, timeoutSeconds);
       String status = firstText(node, "status", "state").toLowerCase();
       if (isCompleted(status)) {
-        return HermesRunResult.completed(extractText(node));
+        String text = extractText(node);
+        if (text.isBlank()) {
+          sleep(500);
+          text = extractText(fetchRunNode(client, runId, timeoutSeconds));
+        }
+        return HermesRunResult.completed(text);
       }
       if (isFailed(status)) {
         return HermesRunResult.failed(firstText(node, "error", "message", "detail"));
@@ -185,6 +184,15 @@ public class HermesAiService {
     }
 
     return HermesRunResult.timeout();
+  }
+
+  private JsonNode fetchRunNode(WebClient client, String runId, int timeoutSeconds) throws Exception {
+    String response = client.get()
+        .uri("/v1/runs/{runId}", runId)
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(Math.max(1, Math.min(10, timeoutSeconds))));
+    return parseJson(response);
   }
 
   private HermesSettings resolveSettings() {
@@ -231,7 +239,7 @@ public class HermesAiService {
       return "";
     }
 
-    for (String field : new String[]{"output_text", "text", "reply", "message", "content"}) {
+    for (String field : new String[]{"output_text", "text", "reply", "message", "content", "response", "result", "final_response", "final_output", "answer"}) {
       String direct = textValue(node.path(field));
       if (!direct.isBlank()) {
         return direct;
