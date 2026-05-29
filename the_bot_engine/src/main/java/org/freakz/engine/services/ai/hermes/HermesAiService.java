@@ -152,9 +152,10 @@ public class HermesAiService {
       runId = firstText(node.path("data"), "run_id", "runId", "id");
     }
     if (!runId.isBlank()) {
+      log.info("Hermes run created: {} -> {}", runId, sessionId.substring(0, Math.min(30, sessionId.length())) + "..." + sessionId.substring(sessionId.length() - 10));
       return runId;
     }
-
+    log.warn("Hermes returned no run_id. Raw POST response: {}", response);
     String directText = extractText(node);
     return directText.isBlank() ? "" : "__completed_directly__:" + directText;
   }
