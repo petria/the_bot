@@ -124,6 +124,20 @@ public class EngineController {
     }
   }
 
+  @PostMapping(
+      path = "/openclaw/logs/search",
+      consumes = MediaType.APPLICATION_JSON_VALUE
+  )
+  public ResponseEntity<?> searchLogsForOpenClaw(@RequestBody OpenClawLogAccessService.LogSearchRequest request) {
+    try {
+      return ResponseEntity.ok(openClawLogAccessService.searchLogs(request));
+    } catch (SecurityException e) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.badRequest().body(e.getMessage());
+    }
+  }
+
   @GetMapping("/get_users")
   public ResponseEntity<?> handleGetUsers() {
     List<User> all = (List<User>) usersService.findAll();

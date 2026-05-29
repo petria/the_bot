@@ -42,6 +42,7 @@ class OpenClawAiServiceTest {
     assertThat(envelope).contains("bot_instance_mount=/mnt/hokan/hokan-develop");
     assertThat(envelope).contains("session_key=bot:hokan-develop:irc:ircnet:channel:hokandev:user:petri");
     assertThat(envelope).contains("log_access_mode=controlled_node_command");
+    assertThat(envelope).contains("tool_nodes_log_search_command=hokan.search_logs");
     assertThat(envelope).contains("tool_nodes_log_command=hokan.read_logs");
     assertThat(envelope).doesNotContain("log_api_url=");
     assertThat(envelope).contains("local_file_access_allowed=false");

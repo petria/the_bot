@@ -29,6 +29,7 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +43,8 @@ public class OpenClawNodeGatewayService {
       "hokan.send_message_by_echo_to_alias";
   private static final String NODE_COMMAND_READ_LOGS =
       "hokan.read_logs";
+  private static final String NODE_COMMAND_SEARCH_LOGS =
+      "hokan.search_logs";
 
   private final ConfigService configService;
   private final JsonMapper objectMapper;
@@ -233,6 +236,10 @@ public class OpenClawNodeGatewayService {
       handleReadLogsInvoke(session, reqId, nodeId, commandParams, eventProtocol);
       return;
     }
+    if (NODE_COMMAND_SEARCH_LOGS.equals(command)) {
+      handleSearchLogsInvoke(session, reqId, nodeId, commandParams, eventProtocol);
+      return;
+    }
 
     if (!NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS.equals(command)) {
       session.send(Mono.just(session.textMessage(
@@ -388,7 +395,10 @@ public class OpenClawNodeGatewayService {
               commandParams.path("date").asString(null),
               commandParams.path("lines").isMissingNode() || commandParams.path("lines").isNull()
                   ? null
-                  : commandParams.path("lines").asInt()
+                  : commandParams.path("lines").asInt(),
+              commandParams.path("includeAvailableFiles").isMissingNode() || commandParams.path("includeAvailableFiles").isNull()
+                  ? null
+                  : commandParams.path("includeAvailableFiles").asBoolean()
           );
       OpenClawLogAccessService.LogReadResponse response = openClawLogAccessService.readLogs(request);
       session.send(Mono.just(session.textMessage(
@@ -403,6 +413,85 @@ public class OpenClawNodeGatewayService {
               : buildErrorResponse(reqId, e.getMessage())
       ))).subscribe();
     }
+  }
+
+  private void handleSearchLogsInvoke(
+      org.springframework.web.reactive.socket.WebSocketSession session,
+      String reqId,
+      String nodeId,
+      JsonNode commandParams,
+      boolean eventProtocol
+  ) {
+    String hokanContextToken = commandParams.path("hokanContextToken").asString("").trim();
+    if (hokanContextToken.isBlank()) {
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeErrorEvent(reqId, nodeId, "missing hokanContextToken")
+              : buildErrorResponse(reqId, "missing hokanContextToken")
+      ))).subscribe();
+      return;
+    }
+
+    try {
+      OpenClawLogAccessService.LogSearchRequest request =
+          new OpenClawLogAccessService.LogSearchRequest(
+              hokanContextToken,
+              commandParams.path("scope").asString(null),
+              commandParams.path("protocol").asString(null),
+              commandParams.path("network").asString(null),
+              commandParams.path("chatType").asString(null),
+              commandParams.path("chatTarget").asString(null),
+              commandParams.path("nick").asString(null),
+              commandParams.path("query").asString(null),
+              stringList(commandParams.path("anyTerms")),
+              stringList(commandParams.path("allTerms")),
+              commandParams.path("dateFrom").asString(null),
+              commandParams.path("dateTo").asString(null),
+              optionalInt(commandParams.path("maxDays")),
+              optionalInt(commandParams.path("maxMatches")),
+              optionalInt(commandParams.path("maxBytes"))
+          );
+      OpenClawLogAccessService.LogSearchResponse response = openClawLogAccessService.searchLogs(request);
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeSuccessEvent(reqId, nodeId, NODE_COMMAND_SEARCH_LOGS, objectMapper.valueToTree(response))
+              : buildSuccessResponse(reqId, NODE_COMMAND_SEARCH_LOGS, objectMapper.valueToTree(response))
+      ))).subscribe();
+    } catch (Exception e) {
+      session.send(Mono.just(session.textMessage(
+          eventProtocol
+              ? buildNodeInvokeErrorEvent(reqId, nodeId, e.getMessage())
+              : buildErrorResponse(reqId, e.getMessage())
+      ))).subscribe();
+    }
+  }
+
+  private Integer optionalInt(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return null;
+    }
+    return node.asInt();
+  }
+
+  private List<String> stringList(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return null;
+    }
+    if (node.isTextual()) {
+      String value = node.asString("").trim();
+      return value.isBlank() ? List.of() : List.of(value);
+    }
+    if (!node.isArray()) {
+      return List.of();
+    }
+    List<String> values = new ArrayList<>();
+    for (JsonNode item : node) {
+      String value = item.asString("").trim();
+      if (!value.isBlank()) {
+        values.add(value);
+      }
+    }
+    return values;
   }
 
   private String buildSuccessResponse(String reqId, SendMessageByEchoToAliasResponse response) {
