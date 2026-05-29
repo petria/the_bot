@@ -10,6 +10,7 @@ public final class BotPermission {
   public static final String USERS_MANAGE = "users.manage";
   public static final String CONFIG_EDIT = "config.edit";
   public static final String COMMANDS_ADMIN = "commands.admin";
+  public static final String HERMES_USE = "hermes.use";
   public static final String OPENCLAW_USE = "openclaw.use";
   public static final String OPENCLAW_SEND_MESSAGE = "openclaw.tools.send-message";
   public static final String LOGS_READ_CURRENT_CHAT = "logs.read.current-chat";
@@ -26,6 +27,7 @@ public final class BotPermission {
       USERS_MANAGE,
       CONFIG_EDIT,
       COMMANDS_ADMIN,
+      HERMES_USE,
       OPENCLAW_USE,
       OPENCLAW_SEND_MESSAGE,
       LOGS_READ_CURRENT_CHAT,
