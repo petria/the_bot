@@ -170,8 +170,8 @@ public class HermesAiService {
       String status = firstText(node, "status", "state").toLowerCase();
       if (isCompleted(status)) {
         String text = extractText(node);
-        if (text.isBlank()) {
-          sleep(500);
+        while (text.isBlank() && System.currentTimeMillis() < deadline) {
+          sleep(250);
           text = extractText(fetchRunNode(client, runId, timeoutSeconds));
         }
         return HermesRunResult.completed(text);
