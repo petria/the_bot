@@ -25,7 +25,9 @@ public class HermesAiService {
 
   private static final Logger log = LoggerFactory.getLogger(HermesAiService.class);
 
-  private static final String DEFAULT_MODEL = "hermes-agent";
+  private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
+  private static final String DEFAULT_MODEL = "hermes-chat";
+  private static final String DEFAULT_API_MODE = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int POLL_INTERVAL_MILLIS = 750;
 
@@ -57,13 +59,23 @@ public class HermesAiService {
 
       String sessionId = buildSessionId(engineRequest);
       String stableSessionId = buildStableSessionId(sessionId);
-      WebClient.Builder clientBuilder = webClientBuilder
+      WebClient.Builder clientBuilder = webClientBuilder.clone()
           .baseUrl(settings.baseUrl())
           .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
       if (settings.apiKey() != null && !settings.apiKey().isBlank()) {
         clientBuilder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey());
       }
       WebClient client = clientBuilder.build();
+
+      if (settings.useResponsesApi()) {
+        String text = createResponse(client, settings, stableSessionId, queryMessage);
+        if (text == null || text.isBlank()) {
+          processReply(engineRequest, "Hermes returned no response.");
+          return;
+        }
+        processReply(engineRequest, text);
+        return;
+      }
 
       String runId = createRun(client, settings, stableSessionId, queryMessage);
       if (runId.isBlank()) {
@@ -125,6 +137,30 @@ public class HermesAiService {
     } catch (Exception e) {
       return "bot-" + Integer.toHexString((sessionId == null ? "" : sessionId).hashCode());
     }
+  }
+
+  private String createResponse(WebClient client, HermesSettings settings, String sessionKey, String queryMessage) throws Exception {
+    ObjectNode body = objectMapper.createObjectNode();
+    body.put("model", settings.model());
+    body.put("conversation", sessionKey);
+    body.put("input", queryMessage == null ? "" : queryMessage);
+
+    String response = client.post()
+        .uri("/v1/responses")
+        .header("X-Hermes-Session-Id", sessionKey)
+        .header("X-Hermes-Session-Key", sessionKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body.toString())
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(settings.timeoutSeconds()));
+
+    JsonNode node = parseJson(response);
+    String text = extractText(node);
+    if (text.isBlank()) {
+      log.warn("Hermes /v1/responses returned no extractable text. Raw response: {}", response);
+    }
+    return text;
   }
 
   private String createRun(WebClient client, HermesSettings settings, String sessionId, String queryMessage) throws Exception {
@@ -209,14 +245,34 @@ public class HermesAiService {
   }
 
   private HermesSettings resolveSettings() {
-    String baseUrl = trimTrailingSlash(configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""));
-    String apiKey = configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "");
-    String model = configService.getConfigValue("hermes.model", "HERMES_MODEL", DEFAULT_MODEL);
+    String baseUrl = trimTrailingSlash(firstNonBlank(
+        configService.getConfigValue("hermes.chat.base-url", "HERMES_CHAT_BASE_URL", ""),
+        configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
+        DEFAULT_BASE_URL
+    ));
+    String apiKey = firstNonBlank(
+        configService.getConfigValue("hermes.chat.api-key", "HERMES_CHAT_API_KEY", ""),
+        configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "")
+    );
+    String model = firstNonBlank(
+        configService.getConfigValue("hermes.chat.model", "HERMES_CHAT_MODEL", ""),
+        configService.getConfigValue("hermes.model", "HERMES_MODEL", ""),
+        DEFAULT_MODEL
+    );
     int timeoutSeconds = parseInt(
-        configService.getConfigValue("hermes.timeout-seconds", "HERMES_TIMEOUT_SECONDS", Integer.toString(DEFAULT_TIMEOUT_SECONDS)),
+        firstNonBlank(
+            configService.getConfigValue("hermes.chat.timeout-seconds", "HERMES_CHAT_TIMEOUT_SECONDS", ""),
+            configService.getConfigValue("hermes.timeout-seconds", "HERMES_TIMEOUT_SECONDS", ""),
+            Integer.toString(DEFAULT_TIMEOUT_SECONDS)
+        ),
         DEFAULT_TIMEOUT_SECONDS
     );
-    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds);
+    String apiMode = firstNonBlank(
+        configService.getConfigValue("hermes.chat.api-mode", "HERMES_CHAT_API_MODE", ""),
+        configService.getConfigValue("hermes.api-mode", "HERMES_API_MODE", ""),
+        DEFAULT_API_MODE
+    );
+    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
   }
 
   private void processReply(EngineRequest request, String reply) {
@@ -393,6 +449,18 @@ public class HermesAiService {
     } catch (Exception e) {
       return defaultValue;
     }
+  }
+
+  private String firstNonBlank(String... values) {
+    if (values == null) {
+      return "";
+    }
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value.trim();
+      }
+    }
+    return "";
   }
 
   private String trimTrailingSlash(String value) {
