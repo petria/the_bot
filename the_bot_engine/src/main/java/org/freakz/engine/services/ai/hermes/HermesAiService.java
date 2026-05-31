@@ -28,6 +28,17 @@ public class HermesAiService {
   private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
   private static final String DEFAULT_MODEL = "hermes-chat";
   private static final String DEFAULT_API_MODE = "responses";
+  private static final String CHAT_INSTRUCTIONS = """
+      You are Hokan chat assistant for IRC, Discord, Telegram, and WhatsApp users.
+
+      You are a plain conversational assistant in this profile. You do not have shell tools,
+      file tools, browser tools, skill tools, memory tools, or command execution tools available.
+      Do not claim that you can run commands, inspect files, load skills, browse, edit files,
+      access the host, or use external tools.
+
+      If a user asks what tools you have, answer that this profile has no external tools exposed
+      and can only respond with text. Keep answers concise and suitable for chat.
+      """;
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int POLL_INTERVAL_MILLIS = 750;
 
@@ -143,6 +154,7 @@ public class HermesAiService {
     ObjectNode body = objectMapper.createObjectNode();
     body.put("model", settings.model());
     body.put("conversation", sessionKey);
+    body.put("instructions", CHAT_INSTRUCTIONS);
     body.put("input", queryMessage == null ? "" : queryMessage);
 
     String response = client.post()
