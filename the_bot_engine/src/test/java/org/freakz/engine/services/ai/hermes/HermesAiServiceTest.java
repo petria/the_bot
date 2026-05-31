@@ -59,6 +59,28 @@ class HermesAiServiceTest {
     assertThat(service.buildStableSessionId(longSessionId)).isEqualTo(header);
   }
 
+  @Test
+  void extractsOpenAiStyleResponseOutputText() {
+    HermesAiService service = newService();
+
+    assertThat(service.extractText(new JsonMapper().readTree("""
+        {
+          "output": [
+            {
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "output_text",
+                  "text": "OK"
+                }
+              ]
+            }
+          ]
+        }
+        """))).isEqualTo("OK");
+  }
+
   private HermesAiService newService() {
     return new HermesAiService(
         new TestConfigService(),

@@ -336,7 +336,7 @@ public class HermesAiService {
     return objectMapper.readTree(response);
   }
 
-  private String extractText(JsonNode node) {
+  String extractText(JsonNode node) {
     if (node == null || node.isMissingNode() || node.isNull()) {
       return "";
     }
@@ -344,11 +344,33 @@ public class HermesAiService {
     if (node.isTextual()) {
       return node.asText().trim();
     }
+    if (node.isArray()) {
+      String latest = "";
+      for (JsonNode item : node) {
+        String nested = extractText(item);
+        if (!nested.isBlank()) {
+          latest = nested;
+        }
+      }
+      if (!latest.isBlank()) {
+        return latest;
+      }
+    }
 
     for (String field : new String[]{"output", "output_text", "text", "reply", "message", "content", "response", "result", "final_response", "final_output", "answer"}) {
       String direct = textValue(node.path(field));
       if (!direct.isBlank()) {
         return direct;
+      }
+    }
+
+    for (String field : new String[]{"content", "message"}) {
+      JsonNode nestedNode = node.path(field);
+      if (!nestedNode.isMissingNode() && !nestedNode.isNull()) {
+        String nested = extractText(nestedNode);
+        if (!nested.isBlank()) {
+          return nested;
+        }
       }
     }
 
