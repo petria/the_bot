@@ -5,6 +5,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.dto.weather.WaterTemperatureResponse;
 import org.freakz.engine.services.ai.claw.OpenClawAiService;
+import org.freakz.engine.services.ai.hermes.HermesAiService;
 import org.freakz.engine.services.api.ServiceMessageHandlerMethod;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.api.ServiceRequestType;
@@ -33,14 +34,17 @@ public class AiCommandsHandlerService {
 
   private final OpenClawAiService openClawAiService;
 
+  private final HermesAiService hermesAiService;
+
   private final WaterTemperatureService waterTemperatureService;
 
 
-  public AiCommandsHandlerService(ConfigService configService, OllamaAiService ollamaAiService, OpenAiService openAiService, OpenClawAiService openClawAiService, WaterTemperatureService waterTemperatureService) {
+  public AiCommandsHandlerService(ConfigService configService, OllamaAiService ollamaAiService, OpenAiService openAiService, OpenClawAiService openClawAiService, HermesAiService hermesAiService, WaterTemperatureService waterTemperatureService) {
     this.configService = configService;
     this.ollamaAiService = ollamaAiService;
     this.openAiService = openAiService;
     this.openClawAiService = openClawAiService;
+    this.hermesAiService = hermesAiService;
     this.waterTemperatureService = waterTemperatureService;
   }
 
@@ -55,6 +59,21 @@ public class AiCommandsHandlerService {
     String queryMessage = args.joinArgs(0);
 
     openClawAiService.ask(request.getEngineRequest(), queryMessage);
+
+    return aiResponse;
+  }
+
+  @ServiceMessageHandlerMethod(ServiceRequestType = ServiceRequestType.HermesAiService)
+  public AiResponse handleHermesServiceRequest(ServiceRequest request) {
+
+    AiResponse aiResponse = AiResponse.builder().build();
+    aiResponse.setStatus("OK: Hermes AI!");
+
+    String message = request.getEngineRequest().getMessage();
+    CommandArgs args = new CommandArgs(message);
+    String queryMessage = args.joinArgs(0);
+
+    hermesAiService.ask(request.getEngineRequest(), queryMessage);
 
     return aiResponse;
   }

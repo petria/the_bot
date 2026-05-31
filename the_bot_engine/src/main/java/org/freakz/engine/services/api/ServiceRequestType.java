@@ -2,6 +2,7 @@ package org.freakz.engine.services.api;
 
 public enum ServiceRequestType {
   AiService,
+  HermesAiService,
 
 
   BuildInfoQuery,

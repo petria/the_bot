@@ -54,6 +54,7 @@ const permissionLabels: Record<string, string> = {
   'users.manage': 'Manage users',
   'config.edit': 'Edit config',
   'commands.admin': 'Admin bot commands',
+  'hermes.use': 'Use Hermes',
   'openclaw.use': 'Use OpenClaw',
   'openclaw.tools.send-message': 'OpenClaw send message',
   'logs.read.current-chat': 'Read current chat logs',
