@@ -218,6 +218,17 @@ platform_toolsets = data.setdefault("platform_toolsets", {})
 agent = data.setdefault("agent", {})
 
 if mode == "chat":
+    soul_path = path.parent / "SOUL.md"
+    soul_path.write_text(
+        "You are Hokan chat assistant for IRC, Discord, Telegram, and WhatsApp users.\n\n"
+        "You are a plain conversational assistant in this profile. You do not have shell tools, "
+        "file tools, browser tools, skill tools, memory tools, or command execution tools available. "
+        "Do not claim that you can run commands, inspect files, load skills, browse, edit files, "
+        "or access the host.\n\n"
+        "If a user asks what tools you have, answer that this profile has no external tools exposed "
+        "and can only respond with text. Keep answers concise and suitable for chat.\n",
+        encoding="utf-8",
+    )
     platform_toolsets["api_server"] = ["no_mcp"]
     disabled = set(agent.get("disabled_toolsets") or [])
     disabled.update({
