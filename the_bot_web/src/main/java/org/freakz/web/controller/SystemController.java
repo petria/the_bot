@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -62,6 +63,7 @@ public class SystemController {
     components.add(remoteComponentStatus("bot-io", properties.getBotIoBaseUrl(), checkedAt));
     components.add(remoteComponentStatus("bot-engine", properties.getBotEngineBaseUrl(), checkedAt));
     components.add(openClawComponentStatus(checkedAt));
+    components.add(hermesComponentStatus(checkedAt));
     components.add(sidecarComponentStatus("bot-whatsapp", properties.getBotWhatsappContainerName(), checkedAt));
     return new SystemStatusResponse(checkedAt, components);
   }
@@ -197,7 +199,7 @@ public class SystemController {
       if (healthUrl == null || healthUrl.isBlank()) {
         throw new IllegalStateException("OpenClaw health URL is not configured");
       }
-      OpenClawHealthResult health = getOpenClawHealth(healthUrl);
+      GatewayHealthResult health = getGatewayHealth(healthUrl, "OpenClaw");
       status = health.componentStatus();
       healthStatus = health.healthStatus();
       error = health.error();
@@ -233,6 +235,68 @@ public class SystemController {
         containerStatus == null ? null : containerStatus.startedAt(),
         containerStatus == null ? null : containerStatus.restartCount(),
         containerStatus == null ? null : containerStatus.error(),
+        error);
+  }
+
+  private SystemComponentStatus hermesComponentStatus(Instant checkedAt) {
+    long startedNanos = System.nanoTime();
+    String baseUrl = null;
+    String healthUrl = null;
+    String status = "UNKNOWN";
+    String healthStatus = null;
+    String model = null;
+    String apiMode = null;
+    String timeout = null;
+    String error = null;
+
+    try {
+      ResponseEntity<HermesSettingsResponse> response = engineClient.getHermesSettings();
+      HermesSettingsResponse settings = response.getBody();
+      if (!response.getStatusCode().is2xxSuccessful() || settings == null) {
+        throw new IllegalStateException("Invalid Hermes settings response from bot-engine");
+      }
+      baseUrl = settings.baseUrl();
+      model = settings.model();
+      apiMode = settings.apiMode();
+      timeout = settings.timeoutSeconds() == null ? null : settings.timeoutSeconds() + "s";
+      if (!settings.configured()) {
+        throw new IllegalStateException("Hermes is not configured");
+      }
+      healthUrl = healthUrlFromBaseUrl(baseUrl);
+      GatewayHealthResult health = getGatewayHealth(healthUrl, "Hermes");
+      status = health.componentStatus();
+      healthStatus = health.healthStatus();
+      error = health.error();
+    } catch (Exception e) {
+      status = "DOWN";
+      error = e.getMessage();
+    }
+
+    long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
+    return new SystemComponentStatus(
+        "bot-hermes",
+        status,
+        "HERMES_GATEWAY",
+        "external",
+        healthUrl,
+        healthStatus,
+        baseUrl,
+        apiMode,
+        timeout,
+        model,
+        null,
+        null,
+        null,
+        null,
+        responseTimeMs,
+        checkedAt,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         error);
   }
 
@@ -384,28 +448,50 @@ public class SystemController {
     }
   }
 
-  private OpenClawHealthResult getOpenClawHealth(String healthUrl) {
+  private GatewayHealthResult getGatewayHealth(String healthUrl, String componentName) {
     try {
       ResponseEntity<Map> response = restTemplate.getForEntity(healthUrl, Map.class);
       Map<?, ?> body = response.getBody();
       if (!response.getStatusCode().is2xxSuccessful() || body == null) {
-        throw new IllegalStateException("Invalid OpenClaw health response");
+        throw new IllegalStateException("Invalid " + componentName + " health response");
       }
       String rawStatus = firstNonBlank(stringValue(body.get("status")), stringValue(body.get("state")));
       Boolean ok = booleanValue(body.get("ok"));
       String healthStatus = firstNonBlank(rawStatus, ok == null ? null : ok.toString());
       if (Boolean.FALSE.equals(ok)) {
-        return new OpenClawHealthResult("DEGRADED", healthStatus, "OpenClaw health returned ok=false");
+        return new GatewayHealthResult("DEGRADED", healthStatus, componentName + " health returned ok=false");
       }
       if (rawStatus == null || rawStatus.isBlank()) {
-        return new OpenClawHealthResult("UP", healthStatus, null);
+        return new GatewayHealthResult("UP", healthStatus, null);
       }
-      if ("UP".equalsIgnoreCase(rawStatus) || "live".equalsIgnoreCase(rawStatus) || "running".equalsIgnoreCase(rawStatus)) {
-        return new OpenClawHealthResult("UP", rawStatus, null);
+      if ("UP".equalsIgnoreCase(rawStatus)
+          || "ok".equalsIgnoreCase(rawStatus)
+          || "live".equalsIgnoreCase(rawStatus)
+          || "running".equalsIgnoreCase(rawStatus)) {
+        return new GatewayHealthResult("UP", rawStatus, null);
       }
-      return new OpenClawHealthResult("DEGRADED", rawStatus, "OpenClaw health status is " + rawStatus);
+      return new GatewayHealthResult("DEGRADED", rawStatus, componentName + " health status is " + rawStatus);
     } catch (RestClientException e) {
       throw new IllegalStateException(e.getMessage(), e);
+    }
+  }
+
+  private String healthUrlFromBaseUrl(String baseUrl) {
+    if (baseUrl == null || baseUrl.isBlank()) {
+      return null;
+    }
+    try {
+      URI uri = new URI(baseUrl.trim());
+      return new URI(
+          uri.getScheme(),
+          uri.getUserInfo(),
+          uri.getHost(),
+          uri.getPort(),
+          "/health",
+          null,
+          null).toString();
+    } catch (URISyntaxException | IllegalArgumentException e) {
+      throw new IllegalStateException("Invalid Hermes base URL: " + baseUrl, e);
     }
   }
 
@@ -568,7 +654,7 @@ public class SystemController {
     }
   }
 
-  private record OpenClawHealthResult(
+  private record GatewayHealthResult(
       String componentStatus,
       String healthStatus,
       String error) {

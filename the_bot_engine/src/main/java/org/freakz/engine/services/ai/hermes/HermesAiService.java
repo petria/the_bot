@@ -3,7 +3,6 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -25,9 +24,6 @@ public class HermesAiService {
 
   private static final Logger log = LoggerFactory.getLogger(HermesAiService.class);
 
-  private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
-  private static final String DEFAULT_MODEL = "hermes-chat";
-  private static final String DEFAULT_API_MODE = "responses";
   private static final String CHAT_INSTRUCTIONS = """
       You are Hokan chat assistant for IRC, Discord, Telegram, and WhatsApp users.
 
@@ -39,21 +35,20 @@ public class HermesAiService {
       If a user asks what tools you have, answer that this profile has no external tools exposed
       and can only respond with text. Keep answers concise and suitable for chat.
       """;
-  private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int POLL_INTERVAL_MILLIS = 750;
 
-  private final ConfigService configService;
+  private final HermesSettingsService settingsService;
   private final JsonMapper objectMapper;
   private final BotEngine botEngine;
   private final WebClient.Builder webClientBuilder;
 
   public HermesAiService(
-      ConfigService configService,
+      HermesSettingsService settingsService,
       JsonMapper objectMapper,
       BotEngine botEngine,
       WebClient.Builder webClientBuilder
   ) {
-    this.configService = configService;
+    this.settingsService = settingsService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.webClientBuilder = webClientBuilder;
@@ -62,7 +57,7 @@ public class HermesAiService {
   @Async
   public void ask(EngineRequest engineRequest, String queryMessage) {
     try {
-      HermesSettings settings = resolveSettings();
+      HermesSettings settings = settingsService.resolveSettings();
       if (!settings.configured()) {
         processReply(engineRequest, "Hermes is not configured.");
         return;
@@ -116,7 +111,7 @@ public class HermesAiService {
   }
 
   String buildSessionId(EngineRequest request) {
-    String botInstanceId = configService.getConfigValue("hokan.bot.instance-id", "HOKAN_BOT_INSTANCE_ID", "dev");
+    String botInstanceId = settingsService.getBotInstanceId();
     String protocol = ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
     String network = ChatIdentityUtil.sanitize(request.getNetwork(), "unknown");
     String senderKey = ChatIdentityUtil.sanitize(request.getFromSenderId(), null);
@@ -254,37 +249,6 @@ public class HermesAiService {
         .bodyToMono(String.class)
         .block(Duration.ofSeconds(Math.max(1, Math.min(10, timeoutSeconds))));
     return parseJson(response);
-  }
-
-  private HermesSettings resolveSettings() {
-    String baseUrl = trimTrailingSlash(firstNonBlank(
-        configService.getConfigValue("hermes.chat.base-url", "HERMES_CHAT_BASE_URL", ""),
-        configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
-        DEFAULT_BASE_URL
-    ));
-    String apiKey = firstNonBlank(
-        configService.getConfigValue("hermes.chat.api-key", "HERMES_CHAT_API_KEY", ""),
-        configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "")
-    );
-    String model = firstNonBlank(
-        configService.getConfigValue("hermes.chat.model", "HERMES_CHAT_MODEL", ""),
-        configService.getConfigValue("hermes.model", "HERMES_MODEL", ""),
-        DEFAULT_MODEL
-    );
-    int timeoutSeconds = parseInt(
-        firstNonBlank(
-            configService.getConfigValue("hermes.chat.timeout-seconds", "HERMES_CHAT_TIMEOUT_SECONDS", ""),
-            configService.getConfigValue("hermes.timeout-seconds", "HERMES_TIMEOUT_SECONDS", ""),
-            Integer.toString(DEFAULT_TIMEOUT_SECONDS)
-        ),
-        DEFAULT_TIMEOUT_SECONDS
-    );
-    String apiMode = firstNonBlank(
-        configService.getConfigValue("hermes.chat.api-mode", "HERMES_CHAT_API_MODE", ""),
-        configService.getConfigValue("hermes.api-mode", "HERMES_API_MODE", ""),
-        DEFAULT_API_MODE
-    );
-    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
   }
 
   private void processReply(EngineRequest request, String reply) {
@@ -475,37 +439,6 @@ public class HermesAiService {
 
   private boolean isFailed(String status) {
     return "failed".equals(status) || "error".equals(status) || "cancelled".equals(status) || "canceled".equals(status);
-  }
-
-  private int parseInt(String value, int defaultValue) {
-    try {
-      return Integer.parseInt(value);
-    } catch (Exception e) {
-      return defaultValue;
-    }
-  }
-
-  private String firstNonBlank(String... values) {
-    if (values == null) {
-      return "";
-    }
-    for (String value : values) {
-      if (value != null && !value.isBlank()) {
-        return value.trim();
-      }
-    }
-    return "";
-  }
-
-  private String trimTrailingSlash(String value) {
-    if (value == null) {
-      return "";
-    }
-    String normalized = value.trim();
-    while (normalized.endsWith("/")) {
-      normalized = normalized.substring(0, normalized.length() - 1);
-    }
-    return normalized;
   }
 
   private void sleep(long millis) {

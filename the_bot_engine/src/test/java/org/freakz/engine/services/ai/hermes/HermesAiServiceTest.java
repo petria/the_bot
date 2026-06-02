@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class HermesAiServiceTest {
@@ -81,9 +83,30 @@ class HermesAiServiceTest {
         """))).isEqualTo("OK");
   }
 
+  @Test
+  void resolvesChatSpecificHermesSettingsBeforeGenericFallback() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.chat.base-url", "http://chat.example:8643/",
+        "hermes.base-url", "http://generic.example:8643",
+        "hermes.chat.model", "hermes-chat-custom",
+        "hermes.model", "generic-model",
+        "hermes.chat.timeout-seconds", "45",
+        "hermes.timeout-seconds", "120",
+        "hermes.chat.api-mode", "responses",
+        "hermes.api-mode", "runs"
+    )));
+
+    HermesSettings settings = service.resolveSettings();
+
+    assertThat(settings.baseUrl()).isEqualTo("http://chat.example:8643");
+    assertThat(settings.model()).isEqualTo("hermes-chat-custom");
+    assertThat(settings.timeoutSeconds()).isEqualTo(45);
+    assertThat(settings.apiMode()).isEqualTo("responses");
+  }
+
   private HermesAiService newService() {
     return new HermesAiService(
-        new TestConfigService(),
+        new HermesSettingsService(new TestConfigService()),
         new JsonMapper(),
         null,
         WebClient.builder()
@@ -91,10 +114,23 @@ class HermesAiServiceTest {
   }
 
   private static class TestConfigService extends ConfigService {
+    private final Map<String, String> values;
+
+    private TestConfigService() {
+      this(Map.of());
+    }
+
+    private TestConfigService(Map<String, String> values) {
+      this.values = values;
+    }
+
     @Override
     public String getConfigValue(String propertyKey, String envKey, String defaultValue) {
       if ("hokan.bot.instance-id".equals(propertyKey)) {
         return "hokan-test";
+      }
+      if (values.containsKey(propertyKey)) {
+        return values.get(propertyKey);
       }
       return defaultValue;
     }
