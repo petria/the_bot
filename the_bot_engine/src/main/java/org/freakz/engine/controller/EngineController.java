@@ -3,6 +3,7 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -16,6 +17,7 @@ import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
+import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
@@ -44,6 +46,7 @@ public class EngineController {
   private final WebLoginSecurityAlertService webLoginSecurityAlertService;
   private final CommandCatalogService commandCatalogService;
   private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
+  private final HermesSettingsService hermesSettingsService;
 
   public EngineController(
       BotEngine botEngine,
@@ -54,7 +57,8 @@ public class EngineController {
       OpenClawLogAccessService openClawLogAccessService,
       WebLoginSecurityAlertService webLoginSecurityAlertService,
       CommandCatalogService commandCatalogService,
-      OpenClawInstanceSettingsService openClawInstanceSettingsService) {
+      OpenClawInstanceSettingsService openClawInstanceSettingsService,
+      HermesSettingsService hermesSettingsService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -64,6 +68,7 @@ public class EngineController {
     this.webLoginSecurityAlertService = webLoginSecurityAlertService;
     this.commandCatalogService = commandCatalogService;
     this.openClawInstanceSettingsService = openClawInstanceSettingsService;
+    this.hermesSettingsService = hermesSettingsService;
   }
 
   @PostMapping("/handle_request")
@@ -175,6 +180,11 @@ public class EngineController {
   @PostMapping("/internal/system/openclaw")
   public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(@RequestBody OpenClawSettingsRequest request) {
     return ResponseEntity.ok(openClawInstanceSettingsService.selectInstance(request.selectedInstanceId()));
+  }
+
+  @GetMapping("/internal/system/hermes")
+  public ResponseEntity<HermesSettingsResponse> getHermesSettings() {
+    return ResponseEntity.ok(hermesSettingsService.getSettings());
   }
 
   @PostMapping("/internal/security/web-login-failed")

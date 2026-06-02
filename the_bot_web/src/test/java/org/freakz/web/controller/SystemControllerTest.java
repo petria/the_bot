@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -39,7 +40,7 @@ class SystemControllerTest {
 
     SystemController.SystemStatusResponse response = controller(restTemplate).getStatus();
 
-    assertThat(response.components()).hasSize(5);
+    assertThat(response.components()).hasSize(6);
     assertThat(response.components())
         .filteredOn(component -> component.name().equals("bot-io"))
         .singleElement()
@@ -64,6 +65,14 @@ class SystemControllerTest {
           assertThat(component.containerName()).isEqualTo("bot-whatsapp");
           assertThat(component.containerState()).isEqualTo("running");
           assertThat(component.image()).isEqualTo("image-bot-whatsapp");
+        });
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-hermes"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.componentType()).isEqualTo("HERMES_GATEWAY");
+          assertThat(component.error()).isEqualTo("Hermes is not configured");
         });
     server.verify();
   }
@@ -215,6 +224,91 @@ class SystemControllerTest {
   }
 
   @Test
+  void mapsHermesHealthFromBotEngineRuntimeSettings() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    server.expect(once(), requestTo("http://ubuntu-server.local:8643/health"))
+        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
+        null,
+        null,
+        null,
+        null,
+        List.of())));
+    when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
+        "http://ubuntu-server.local:8643",
+        "hermes-chat",
+        "responses",
+        120,
+        true)));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> properties.setOpenclawDeploymentMode("local"),
+        containerName -> containerStatus(containerName, "running"),
+        engineClient).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-hermes"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.componentType()).isEqualTo("HERMES_GATEWAY");
+          assertThat(component.runtimeMode()).isEqualTo("external");
+          assertThat(component.baseUrl()).isEqualTo("http://ubuntu-server.local:8643");
+          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server.local:8643/health");
+          assertThat(component.healthStatus()).isEqualTo("live");
+          assertThat(component.artifact()).isEqualTo("hermes-chat");
+          assertThat(component.profiles()).isEqualTo("responses");
+          assertThat(component.version()).isEqualTo("120s");
+          assertThat(component.error()).isNull();
+        });
+    server.verify();
+  }
+
+  @Test
+  void mapsHermesHealthFailureToDown() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    server.expect(once(), requestTo("http://ubuntu-server.local:8643/health"))
+        .andRespond(withException(new IOException("connection refused")));
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
+        null,
+        null,
+        null,
+        null,
+        List.of())));
+    when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
+        "http://ubuntu-server.local:8643",
+        "hermes-chat",
+        "responses",
+        120,
+        true)));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> properties.setOpenclawDeploymentMode("local"),
+        containerName -> containerStatus(containerName, "running"),
+        engineClient).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-hermes"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server.local:8643/health");
+          assertThat(component.error()).contains("connection refused");
+        });
+    server.verify();
+  }
+
+  @Test
   void mapsMissingSidecarContainerToDown() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -296,6 +390,12 @@ class SystemControllerTest {
         null,
         null,
         List.of())));
+    when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
+        null,
+        null,
+        null,
+        null,
+        false)));
     return controller(restTemplate, propertiesCustomizer, containerStatusProvider, engineClient);
   }
 

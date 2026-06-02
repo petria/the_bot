@@ -3,6 +3,7 @@ package org.freakz.common.spring.rest;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -61,6 +62,11 @@ public class RestEngineClient {
   public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(OpenClawSettingsRequest request) {
     String url = baseUrl + "/internal/system/openclaw";
     return restTemplate.postForEntity(url, request, OpenClawSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesSettingsResponse> getHermesSettings() {
+    String url = baseUrl + "/internal/system/hermes";
+    return restTemplate.getForEntity(url, HermesSettingsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

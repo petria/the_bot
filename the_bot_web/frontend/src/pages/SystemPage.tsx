@@ -56,6 +56,8 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
   const sidecar = component.componentType === 'SIDECAR';
   const springBoot = component.componentType === 'SPRING_BOOT';
   const openClawGateway = component.componentType === 'OPENCLAW_GATEWAY';
+  const hermesGateway = component.componentType === 'HERMES_GATEWAY';
+  const gateway = openClawGateway || hermesGateway;
   const showContainer = Boolean(component.containerName || component.containerState || component.image || component.containerError);
   return (
     <Card withBorder radius="sm" className="system-card">
@@ -80,9 +82,12 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
         <Stack gap={6}>
           <InfoLine label="Type" value={formatComponentType(component.componentType)} />
           {component.runtimeMode ? <InfoLine label="Mode" value={component.runtimeMode} /> : null}
-          {!sidecar ? <InfoLine label={openClawGateway ? 'Gateway' : 'Base URL'} value={component.baseUrl || '-'} /> : null}
+          {!sidecar ? <InfoLine label={gateway ? 'Gateway' : 'Base URL'} value={component.baseUrl || '-'} /> : null}
           {component.healthUrl ? <InfoLine label="Health URL" value={component.healthUrl} /> : null}
           {component.healthStatus ? <InfoLine label="Health" value={component.healthStatus} /> : null}
+          {hermesGateway ? <InfoLine label="Model" value={component.artifact || '-'} /> : null}
+          {hermesGateway ? <InfoLine label="API mode" value={component.profiles || '-'} /> : null}
+          {hermesGateway ? <InfoLine label="Timeout" value={component.version || '-'} /> : null}
           {springBoot ? <InfoLine label="Version" value={component.version || '-'} /> : null}
           {springBoot ? <InfoLine label="Profile" value={component.profiles || '-'} /> : null}
           <InfoLine label="Uptime" value={formatDuration(component.uptimeSeconds)} />
@@ -165,6 +170,9 @@ function formatComponentType(type: string | null) {
   }
   if (type === 'OPENCLAW_GATEWAY') {
     return 'OpenClaw Gateway';
+  }
+  if (type === 'HERMES_GATEWAY') {
+    return 'Hermes Gateway';
   }
   return type || '-';
 }
