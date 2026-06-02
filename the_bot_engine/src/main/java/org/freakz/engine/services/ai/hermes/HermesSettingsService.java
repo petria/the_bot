@@ -37,7 +37,9 @@ public class HermesSettingsService {
         configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
         DEFAULT_BASE_URL
     ));
+    String profileId = profileIdForBaseUrl(baseUrl);
     String apiKey = firstNonBlank(
+        apiKeyForProfile(profileId),
         configService.getConfigValue(API_KEY_KEY, "HERMES_CHAT_API_KEY", ""),
         configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "")
     );
@@ -112,8 +114,15 @@ public class HermesSettingsService {
     if (settings == null || settings.baseUrl() == null) {
       return null;
     }
+    return profileIdForBaseUrl(settings.baseUrl());
+  }
+
+  private String profileIdForBaseUrl(String baseUrl) {
+    if (baseUrl == null || baseUrl.isBlank()) {
+      return null;
+    }
     return profileConfigs(null).stream()
-        .filter(profile -> profile.option().baseUrl().equalsIgnoreCase(settings.baseUrl().trim()))
+        .filter(profile -> profile.option().baseUrl().equalsIgnoreCase(baseUrl.trim()))
         .map(profile -> profile.option().id())
         .findFirst()
         .orElse(null);
@@ -145,6 +154,9 @@ public class HermesSettingsService {
   }
 
   private String apiKeyForProfile(String id) {
+    if (id == null || id.isBlank()) {
+      return "";
+    }
     return switch (id) {
       case "chat" -> firstNonBlank(
           configService.getConfigValue("hermes.profiles.chat.api-key", "HERMES_CHAT_API_KEY", ""),
