@@ -191,6 +191,7 @@ wait_for_profile_health() {
 patch_profile_config() {
   local profile="$1" mode="$2"
   container_exec python3 - "$profile" "$mode" <<'PY'
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -243,6 +244,24 @@ if mode == "chat":
     agent.setdefault("max_turns", 10)
 else:
     platform_toolsets.setdefault("api_server", ["hermes-api-server"])
+    chat_config_path = Path(
+        subprocess.check_output(
+            ["hermes", "-p", "chat", "config", "path"],
+            text=True,
+        ).strip()
+    )
+    chat_auth_path = chat_config_path.parent / "auth.json"
+    profile_auth_path = path.parent / "auth.json"
+    if chat_auth_path.exists() and not profile_auth_path.exists():
+        profile_auth_path.write_bytes(chat_auth_path.read_bytes())
+        source_stat = chat_auth_path.stat()
+        os.chown(profile_auth_path, source_stat.st_uid, source_stat.st_gid)
+        profile_auth_path.chmod(0o600)
+    model = data.setdefault("model", {})
+    model["default"] = "gpt-5.5"
+    model["provider"] = "openai-codex"
+    model["base_url"] = "https://chatgpt.com/backend-api/codex"
+    model["context_length"] = 262144
 
 path.parent.mkdir(parents=True, exist_ok=True)
 path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
