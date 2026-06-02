@@ -127,6 +127,17 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void resolvesProfileApiKeyFromSelectedBaseUrl() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.chat.base-url", "http://ubuntu-server.local:8644",
+        "hermes.profiles.coder.api-key", "coder-secret",
+        "hermes.chat.api-key", "chat-secret"
+    )), mock(EnvValuesService.class));
+
+    assertThat(service.resolveSettings().apiKey()).isEqualTo("coder-secret");
+  }
+
+  @Test
   void selectingHermesProfileWritesRuntimeOverrides() {
     EnvValuesService envValuesService = mock(EnvValuesService.class);
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
