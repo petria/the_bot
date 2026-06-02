@@ -239,11 +239,14 @@ class SystemControllerTest {
         null,
         List.of())));
     when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
+        "chat",
         "http://ubuntu-server.local:8643",
         "hermes-chat",
         "responses",
         120,
-        true)));
+        true,
+        "http://ubuntu-server.local:8643/health",
+        List.of())));
 
     SystemController.SystemStatusResponse response = controller(
         restTemplate,
@@ -285,11 +288,14 @@ class SystemControllerTest {
         null,
         List.of())));
     when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
+        "chat",
         "http://ubuntu-server.local:8643",
         "hermes-chat",
         "responses",
         120,
-        true)));
+        true,
+        "http://ubuntu-server.local:8643/health",
+        List.of())));
 
     SystemController.SystemStatusResponse response = controller(
         restTemplate,
@@ -395,7 +401,10 @@ class SystemControllerTest {
         null,
         null,
         null,
-        false)));
+        null,
+        false,
+        null,
+        List.of())));
     return controller(restTemplate, propertiesCustomizer, containerStatusProvider, engineClient);
   }
 

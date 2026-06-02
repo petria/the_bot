@@ -3,6 +3,7 @@ package org.freakz.common.spring.rest;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
@@ -67,6 +68,11 @@ public class RestEngineClient {
   public ResponseEntity<HermesSettingsResponse> getHermesSettings() {
     String url = baseUrl + "/internal/system/hermes";
     return restTemplate.getForEntity(url, HermesSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesSettingsResponse> updateHermesSettings(HermesSettingsRequest request) {
+    String url = baseUrl + "/internal/system/hermes";
+    return restTemplate.postForEntity(url, request, HermesSettingsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

@@ -123,6 +123,7 @@ public class ConfigService {
   private boolean isRuntimeOverridable(String propertyKey) {
     return propertyKey != null
         && (propertyKey.startsWith("channel.")
+        || propertyKey.startsWith("hermes.")
         || "openclawGatewayWsUrl".equals(propertyKey)
         || "openclawGatewayWsOrigin".equals(propertyKey));
   }

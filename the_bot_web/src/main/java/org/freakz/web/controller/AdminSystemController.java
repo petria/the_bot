@@ -1,5 +1,7 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.engine.system.HermesSettingsRequest;
+import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -37,6 +39,24 @@ public class AdminSystemController {
     ResponseEntity<OpenClawSettingsResponse> response = engineClient.updateOpenClawSettings(request);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update OpenClaw settings in bot-engine");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/hermes")
+  public HermesSettingsResponse getHermesSettings() {
+    ResponseEntity<HermesSettingsResponse> response = engineClient.getHermesSettings();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load Hermes settings from bot-engine");
+    }
+    return response.getBody();
+  }
+
+  @PostMapping("/hermes")
+  public HermesSettingsResponse updateHermesSettings(@RequestBody HermesSettingsRequest request) {
+    ResponseEntity<HermesSettingsResponse> response = engineClient.updateHermesSettings(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not update Hermes settings in bot-engine");
     }
     return response.getBody();
   }

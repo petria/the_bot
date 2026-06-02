@@ -262,7 +262,7 @@ public class SystemController {
       if (!settings.configured()) {
         throw new IllegalStateException("Hermes is not configured");
       }
-      healthUrl = healthUrlFromBaseUrl(baseUrl);
+      healthUrl = firstNonBlank(settings.healthUrl(), healthUrlFromBaseUrl(baseUrl));
       GatewayHealthResult health = getGatewayHealth(healthUrl, "Hermes");
       status = health.componentStatus();
       healthStatus = health.healthStatus();
