@@ -1,14 +1,12 @@
 package org.freakz.common.model.engine.system;
 
-import java.util.List;
-
-public record HermesSettingsResponse(
-    String currentProfileId,
+public record HermesProfileOption(
+    String id,
+    String label,
     String baseUrl,
     String model,
     String apiMode,
     Integer timeoutSeconds,
-    boolean configured,
     String healthUrl,
-    List<HermesProfileOption> options) {
+    boolean selected) {
 }

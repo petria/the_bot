@@ -2,7 +2,10 @@ package org.freakz.engine.services.ai.hermes;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.system.HermesSettingsRequest;
+import org.freakz.common.model.users.User;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.data.service.EnvValuesService;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.json.JsonMapper;
@@ -10,6 +13,11 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class HermesAiServiceTest {
 
@@ -94,7 +102,7 @@ class HermesAiServiceTest {
         "hermes.timeout-seconds", "120",
         "hermes.chat.api-mode", "responses",
         "hermes.api-mode", "runs"
-    )));
+    )), mock(EnvValuesService.class));
 
     HermesSettings settings = service.resolveSettings();
 
@@ -104,9 +112,45 @@ class HermesAiServiceTest {
     assertThat(settings.apiMode()).isEqualTo("responses");
   }
 
+  @Test
+  void detectsCurrentHermesProfileFromBaseUrl() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.chat.base-url", "http://ubuntu-server.local:8644",
+        "hermes.chat.model", "hermes-coder"
+    )), mock(EnvValuesService.class));
+
+    assertThat(service.getSettings().currentProfileId()).isEqualTo("coder");
+    assertThat(service.getSettings().options())
+        .filteredOn(option -> option.id().equals("coder"))
+        .singleElement()
+        .satisfies(option -> assertThat(option.selected()).isTrue());
+  }
+
+  @Test
+  void selectingHermesProfileWritesRuntimeOverrides() {
+    EnvValuesService envValuesService = mock(EnvValuesService.class);
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(), envValuesService);
+
+    assertThat(service.selectProfile(new HermesSettingsRequest("coder")).currentProfileId()).isEqualTo("coder");
+
+    verify(envValuesService).setEnvValue(eq("hermes.chat.base-url"), eq("http://ubuntu-server.local:8644"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.model"), eq("hermes-coder"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.api-mode"), eq("responses"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.timeout-seconds"), eq("120"), any(User.class));
+  }
+
+  @Test
+  void selectingUnknownHermesProfileIsRejected() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(), mock(EnvValuesService.class));
+
+    assertThatThrownBy(() -> service.selectProfile(new HermesSettingsRequest("missing")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported Hermes profile");
+  }
+
   private HermesAiService newService() {
     return new HermesAiService(
-        new HermesSettingsService(new TestConfigService()),
+        new HermesSettingsService(new TestConfigService(), mock(EnvValuesService.class)),
         new JsonMapper(),
         null,
         WebClient.builder()

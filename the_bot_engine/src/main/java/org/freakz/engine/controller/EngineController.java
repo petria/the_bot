@@ -3,6 +3,7 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
@@ -185,6 +186,11 @@ public class EngineController {
   @GetMapping("/internal/system/hermes")
   public ResponseEntity<HermesSettingsResponse> getHermesSettings() {
     return ResponseEntity.ok(hermesSettingsService.getSettings());
+  }
+
+  @PostMapping("/internal/system/hermes")
+  public ResponseEntity<HermesSettingsResponse> updateHermesSettings(@RequestBody HermesSettingsRequest request) {
+    return ResponseEntity.ok(hermesSettingsService.selectProfile(request));
   }
 
   @PostMapping("/internal/security/web-login-failed")
