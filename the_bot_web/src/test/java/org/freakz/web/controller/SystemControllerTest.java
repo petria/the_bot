@@ -230,7 +230,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
     server.expect(once(), requestTo("http://ubuntu-server.local:8643/health"))
-        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
+        .andRespond(withSuccess("{\"ok\":true,\"status\":\"ok\"}", MediaType.APPLICATION_JSON));
     RestEngineClient engineClient = mock(RestEngineClient.class);
     when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
         null,
@@ -260,7 +260,7 @@ class SystemControllerTest {
           assertThat(component.runtimeMode()).isEqualTo("external");
           assertThat(component.baseUrl()).isEqualTo("http://ubuntu-server.local:8643");
           assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server.local:8643/health");
-          assertThat(component.healthStatus()).isEqualTo("live");
+          assertThat(component.healthStatus()).isEqualTo("ok");
           assertThat(component.artifact()).isEqualTo("hermes-chat");
           assertThat(component.profiles()).isEqualTo("responses");
           assertThat(component.version()).isEqualTo("120s");

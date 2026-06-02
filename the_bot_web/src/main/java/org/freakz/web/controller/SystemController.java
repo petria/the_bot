@@ -464,7 +464,10 @@ public class SystemController {
       if (rawStatus == null || rawStatus.isBlank()) {
         return new GatewayHealthResult("UP", healthStatus, null);
       }
-      if ("UP".equalsIgnoreCase(rawStatus) || "live".equalsIgnoreCase(rawStatus) || "running".equalsIgnoreCase(rawStatus)) {
+      if ("UP".equalsIgnoreCase(rawStatus)
+          || "ok".equalsIgnoreCase(rawStatus)
+          || "live".equalsIgnoreCase(rawStatus)
+          || "running".equalsIgnoreCase(rawStatus)) {
         return new GatewayHealthResult("UP", rawStatus, null);
       }
       return new GatewayHealthResult("DEGRADED", rawStatus, componentName + " health status is " + rawStatus);
