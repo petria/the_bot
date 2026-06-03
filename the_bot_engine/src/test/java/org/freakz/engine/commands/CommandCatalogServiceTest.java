@@ -1,7 +1,9 @@
 package org.freakz.engine.commands;
 
+import org.freakz.common.model.engine.aicommand.AiCommandConfig;
 import org.freakz.common.model.engine.commands.CommandInfo;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,7 +20,7 @@ class CommandCatalogServiceTest {
     BotEngine botEngine = mock(BotEngine.class);
     when(botEngine.getCommandHandlerLoader()).thenReturn(loader);
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
-    CommandCatalogService service = new CommandCatalogService(botEngine, statsService);
+    CommandCatalogService service = new CommandCatalogService(botEngine, statsService, aiCommandRegistryService());
 
     GetCommandsResponse response = service.getCommands();
     List<CommandInfo> commands = response.getProviders().stream()
@@ -46,7 +48,8 @@ class CommandCatalogServiceTest {
     when(botEngine.getCommandHandlerLoader()).thenReturn(loader);
     CommandCatalogService service = new CommandCatalogService(
         botEngine,
-        new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null));
+        new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null),
+        aiCommandRegistryService());
 
     GetCommandsResponse response = service.getCommands();
     List<CommandInfo> commands = response.getProviders().stream()
@@ -68,7 +71,7 @@ class CommandCatalogServiceTest {
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     statsService.recordInvocation(loader.getHandlerClassForCommand("!ping"));
     statsService.recordInvocation(loader.getHandlerClassForCommand("!ping"));
-    CommandCatalogService service = new CommandCatalogService(botEngine, statsService);
+    CommandCatalogService service = new CommandCatalogService(botEngine, statsService, aiCommandRegistryService());
 
     GetCommandsResponse response = service.getCommands();
 
@@ -88,5 +91,11 @@ class CommandCatalogServiceTest {
     return response.getProviders().stream()
         .flatMap(provider -> provider.getCommands().stream())
         .toList();
+  }
+
+  private AiCommandRegistryService aiCommandRegistryService() {
+    AiCommandRegistryService service = mock(AiCommandRegistryService.class);
+    when(service.currentConfig()).thenReturn(new AiCommandConfig(List.of()));
+    return service;
   }
 }

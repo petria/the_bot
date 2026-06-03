@@ -4,15 +4,18 @@ import org.freakz.common.model.botconfig.BotConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.output.ReplyOutputService;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -65,6 +68,8 @@ class BotEngineCommandInvocationStatsTest {
     unknownUser.setId(-1L);
     when(usersService.findAll()).thenReturn(List.of());
     when(usersService.getNotKnownUser()).thenReturn(unknownUser);
+    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
+    when(aiCommandRegistryService.resolve(org.mockito.ArgumentMatchers.anyString())).thenReturn(Optional.empty());
 
     return new BotEngine(
         new AccessService(usersService),
@@ -74,7 +79,9 @@ class BotEngineCommandInvocationStatsTest {
         null,
         mock(PrivateChatAlertService.class),
         mock(ReplyOutputService.class),
-        statsService);
+        statsService,
+        aiCommandRegistryService,
+        mock(HermesAiCommandService.class));
   }
 
   private EngineRequest request(String command) {

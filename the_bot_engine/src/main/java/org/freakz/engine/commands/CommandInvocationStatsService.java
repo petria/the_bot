@@ -48,6 +48,24 @@ public class CommandInvocationStatsService {
     }
   }
 
+  public void recordDynamicInvocation(String namespace, String commandName) {
+    String provider = normalize(namespace);
+    String command = normalize(commandName);
+    String canonicalName = provider + "::" + command;
+
+    commandCounts.computeIfAbsent(canonicalName, ignored -> new LongAdder()).increment();
+    providerCounts.computeIfAbsent(provider, ignored -> new LongAdder()).increment();
+
+    if (meterRegistry != null) {
+      meterRegistry.counter(
+          "thebot.command.invocations",
+          "provider", provider,
+          "command", command,
+          "class", "dynamic"
+      ).increment();
+    }
+  }
+
   public long getCommandInvocationCount(String canonicalName) {
     LongAdder count = commandCounts.get(canonicalName);
     return count == null ? 0 : count.sum();

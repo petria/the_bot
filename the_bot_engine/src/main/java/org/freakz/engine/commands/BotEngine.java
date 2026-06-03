@@ -9,9 +9,11 @@ import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
+import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.common.model.users.User;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.spring.rest.RestMessageSendClient;
+import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
 import org.freakz.engine.commands.output.ReplyOutputService;
@@ -20,6 +22,7 @@ import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlMetadataService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
@@ -51,6 +54,8 @@ public class BotEngine {
   private final PrivateChatAlertService privateChatAlertService;
   private final ReplyOutputService replyOutputService;
   private final CommandInvocationStatsService commandInvocationStatsService;
+  private final AiCommandRegistryService aiCommandRegistryService;
+  private final HermesAiCommandService hermesAiCommandService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -61,7 +66,9 @@ public class BotEngine {
       RestMessageSendClient restMessageSendClient,
       PrivateChatAlertService privateChatAlertService,
       ReplyOutputService replyOutputService,
-      CommandInvocationStatsService commandInvocationStatsService)
+      CommandInvocationStatsService commandInvocationStatsService,
+      AiCommandRegistryService aiCommandRegistryService,
+      HermesAiCommandService hermesAiCommandService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -72,6 +79,8 @@ public class BotEngine {
     this.privateChatAlertService = privateChatAlertService;
     this.replyOutputService = replyOutputService;
     this.commandInvocationStatsService = commandInvocationStatsService;
+    this.aiCommandRegistryService = aiCommandRegistryService;
+    this.hermesAiCommandService = hermesAiCommandService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -223,6 +232,10 @@ public class BotEngine {
     String message = request.getMessage();
     CommandArgs args = new CommandArgs(message);
 
+    if (executeAiCommandIfMatched(request, user, args, sendProcessingIndicator)) {
+      return null;
+    }
+
     CommandHandlerLoader.AliasResolution aliasResolution = getCommandHandlerLoader().resolveAlias(message);
     if (aliasResolution.isError()) {
       return aliasResolution.errorMessage();
@@ -232,6 +245,10 @@ public class BotEngine {
       log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
       message = aliasResolution.resolvedMessage();
       args = new CommandArgs(message);
+    }
+
+    if (executeAiCommandIfMatched(request, user, args, sendProcessingIndicator)) {
+      return null;
     }
 
     HandlerClass handlerClass = this.commandHandlerLoader.getHandlerClassForCommand(args.getCommand());
@@ -302,6 +319,37 @@ public class BotEngine {
       }
     }
     return null;
+  }
+
+  private boolean executeAiCommandIfMatched(
+      EngineRequest request,
+      User user,
+      CommandArgs args,
+      boolean sendProcessingIndicator) {
+    return aiCommandRegistryService.resolve(args.getCommand())
+        .map(command -> {
+          commandInvocationStatsService.recordDynamicInvocation(
+              AiCommandRegistryService.PROVIDER_NAMESPACE,
+              command.getName());
+          request.setUser(user);
+          if (!hasAiCommandPermission(user, command)) {
+            log.debug("User lacks required AI command permission: {}", command.getRequiredPermission());
+            return true;
+          }
+          if (sendProcessingIndicator) {
+            sendProcessingIndicator(request);
+          }
+          hermesAiCommandService.ask(request, command, args.joinArgs(0));
+          return true;
+        })
+        .orElse(false);
+  }
+
+  private boolean hasAiCommandPermission(User user, AiCommandDefinition command) {
+    String requiredPermission = command.getRequiredPermission();
+    return requiredPermission == null
+        || requiredPermission.isBlank()
+        || UserPermissions.has(user, requiredPermission);
   }
 
   private void sendProcessingIndicator(EngineRequest request) {

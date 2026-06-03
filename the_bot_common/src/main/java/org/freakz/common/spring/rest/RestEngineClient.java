@@ -2,6 +2,7 @@ package org.freakz.common.spring.rest;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
@@ -53,6 +54,16 @@ public class RestEngineClient {
   public ResponseEntity<GetCommandsResponse> getCommands() {
     String url = baseUrl + "/commands";
     return restTemplate.getForEntity(url, GetCommandsResponse.class);
+  }
+
+  public ResponseEntity<AiCommandConfigResponse> getAiCommands() {
+    String url = baseUrl + "/internal/ai-commands";
+    return restTemplate.getForEntity(url, AiCommandConfigResponse.class);
+  }
+
+  public ResponseEntity<AiCommandConfigResponse> reloadAiCommands() {
+    String url = baseUrl + "/internal/ai-commands/reload";
+    return restTemplate.exchange(url, HttpMethod.POST, null, AiCommandConfigResponse.class);
   }
 
   public ResponseEntity<OpenClawSettingsResponse> getOpenClawSettings() {
