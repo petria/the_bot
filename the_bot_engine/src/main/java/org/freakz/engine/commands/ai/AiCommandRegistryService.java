@@ -169,8 +169,11 @@ public class AiCommandRegistryService {
         """
             Interpret the user's arguments as a weather location.
             Use weather.current before answering.
-            Return one compact chat-safe weather line.
-            Do not mention tool internals.
+            If the user asks for feels-like temperature, pass feelsLike=true.
+            If the user asks for astronomy/sun/moon details, pass astronomy=true.
+            If the user asks for detailed place name, pass verbose=true.
+            When weather.current returns formattedText, return that value exactly as the final answer.
+            Do not reformat, translate, summarize, or add extra text.
             """,
         List.of("weather.current"),
         DEFAULT_MAX_TOOL_ITERATIONS);

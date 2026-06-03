@@ -73,24 +73,28 @@ public class AiCommandToolRegistry {
 
   private String weatherCurrent(JsonNode args) {
     String location = requiredText(args, "location", "city", ARG_PLACE);
+    boolean verbose = bool(args, "verbose");
+    boolean feelsLike = bool(args, "feelsLike", "feels_like");
+    boolean astronomy = bool(args, "astronomy");
     WeatherAPIService weatherAPIService = weatherAPIServiceProvider.getIfAvailable();
     if (weatherAPIService == null) {
       return error("Weather API service is not configured");
     }
     ServiceRequest request = ServiceRequest.builder().build();
-    request.setResults(new FakeJSAPResults(location, true));
+    request.setResults(new FakeJSAPResults(location, astronomy, feelsLike, verbose));
     WeatherAPIResponse response = weatherAPIService.handleWeatherCmdServiceRequest(request);
     ObjectNode out = jsonMapper.createObjectNode();
     out.put("tool", "weather.current");
     out.put("location", location);
     out.put("status", response.getStatus());
+    out.put("formattedText", WeatherUtils.formatWeatherResponse(response, location, verbose, feelsLike, astronomy));
     if (response.getStatus() != null && response.getStatus().startsWith("OK")) {
       ForecastResponse r = response.getForecastResponseModel();
-      out.put("name", WeatherUtils.formatName(r, true));
+      out.put("name", WeatherUtils.formatName(r, verbose));
       out.put("measureTime", WeatherUtils.formatTime(r));
       out.put("temperatureC", r.current().temp_c());
-      out.put("feelsLike", WeatherUtils.formatFeelsLike(r, true));
-      out.put("astronomy", WeatherUtils.formatAstronomy(response.getAstronomyResponse(), true));
+      out.put("feelsLike", WeatherUtils.formatFeelsLike(r, feelsLike));
+      out.put("astronomy", WeatherUtils.formatAstronomy(response.getAstronomyResponse(), astronomy));
     } else if (response.getErrorResponse() != null && response.getErrorResponse().error() != null) {
       out.put("error", response.getErrorResponse().error().message());
     }
@@ -293,6 +297,19 @@ public class AiCommandToolRegistry {
     return Math.max(1, Math.min(value, MAX_LIMIT));
   }
 
+  private boolean bool(JsonNode node, String... fields) {
+    if (node == null) {
+      return false;
+    }
+    for (String field : fields) {
+      JsonNode value = node.path(field);
+      if (!value.isMissingNode() && !value.isNull()) {
+        return value.asBoolean(false);
+      }
+    }
+    return false;
+  }
+
   private boolean contains(String value, String query) {
     return value != null && value.toLowerCase(Locale.ROOT).contains(query);
   }
@@ -303,11 +320,15 @@ public class AiCommandToolRegistry {
 
   private static class FakeJSAPResults extends JSAPResult {
     private final String result;
-    private final boolean boolResult;
+    private final boolean astronomy;
+    private final boolean feelsLike;
+    private final boolean verbose;
 
-    FakeJSAPResults(String result, boolean boolResult) {
+    FakeJSAPResults(String result, boolean astronomy, boolean feelsLike, boolean verbose) {
       this.result = result;
-      this.boolResult = boolResult;
+      this.astronomy = astronomy;
+      this.feelsLike = feelsLike;
+      this.verbose = verbose;
     }
 
     @Override
@@ -317,7 +338,12 @@ public class AiCommandToolRegistry {
 
     @Override
     public boolean getBoolean(String s) {
-      return boolResult;
+      return switch (s) {
+        case "astronomy" -> astronomy;
+        case "feelsLike" -> feelsLike;
+        case "verbose" -> verbose;
+        default -> false;
+      };
     }
   }
 }
