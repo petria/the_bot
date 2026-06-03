@@ -14,6 +14,7 @@ import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -32,17 +33,17 @@ public class AiCommandToolRegistry {
   private static final int DEFAULT_LIMIT = 20;
   private static final int MAX_LIMIT = 100;
 
-  private final WeatherAPIService weatherAPIService;
+  private final ObjectProvider<WeatherAPIService> weatherAPIServiceProvider;
   private final UsersService usersService;
   private final DataValuesService dataValuesService;
   private final JsonMapper jsonMapper;
 
   public AiCommandToolRegistry(
-      WeatherAPIService weatherAPIService,
+      ObjectProvider<WeatherAPIService> weatherAPIServiceProvider,
       UsersService usersService,
       DataValuesService dataValuesService,
       JsonMapper jsonMapper) {
-    this.weatherAPIService = weatherAPIService;
+    this.weatherAPIServiceProvider = weatherAPIServiceProvider;
     this.usersService = usersService;
     this.dataValuesService = dataValuesService;
     this.jsonMapper = jsonMapper;
@@ -72,6 +73,10 @@ public class AiCommandToolRegistry {
 
   private String weatherCurrent(JsonNode args) {
     String location = requiredText(args, "location", "city", ARG_PLACE);
+    WeatherAPIService weatherAPIService = weatherAPIServiceProvider.getIfAvailable();
+    if (weatherAPIService == null) {
+      return error("Weather API service is not configured");
+    }
     ServiceRequest request = ServiceRequest.builder().build();
     request.setResults(new FakeJSAPResults(location, true));
     WeatherAPIResponse response = weatherAPIService.handleWeatherCmdServiceRequest(request);
