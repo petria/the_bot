@@ -138,6 +138,51 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void resolvesAiCommandSettingsFromDedicatedInternalProfile() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.profiles.ai-command.api-key", "ai-command-secret"
+    )), mock(EnvValuesService.class));
+
+    HermesSettings settings = service.resolveAiCommandSettings();
+
+    assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8645");
+    assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
+    assertThat(settings.model()).isEqualTo("hermes-ai-command");
+    assertThat(settings.apiMode()).isEqualTo("responses");
+  }
+
+  @Test
+  void aiCommandProfileIsNotAvailableForNormalHermesSelection() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.profiles.ai-command.api-key", "ai-command-secret"
+    )), mock(EnvValuesService.class));
+
+    assertThat(service.getSettings().options())
+        .extracting("id")
+        .doesNotContain("ai-command");
+    assertThatThrownBy(() -> service.selectProfile(new HermesSettingsRequest("ai-command")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported Hermes profile");
+  }
+
+  @Test
+  void aiCommandSettingsCanOverrideInternalProfileConnectionFields() {
+    HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.ai-command.base-url", "http://ai.example:9000/",
+        "hermes.ai-command.api-key", "ai-direct-secret",
+        "hermes.ai-command.model", "custom-ai-command",
+        "hermes.ai-command.timeout-seconds", "30"
+    )), mock(EnvValuesService.class));
+
+    HermesSettings settings = service.resolveAiCommandSettings();
+
+    assertThat(settings.baseUrl()).isEqualTo("http://ai.example:9000");
+    assertThat(settings.apiKey()).isEqualTo("ai-direct-secret");
+    assertThat(settings.model()).isEqualTo("custom-ai-command");
+    assertThat(settings.timeoutSeconds()).isEqualTo(30);
+  }
+
+  @Test
   void selectingHermesProfileWritesRuntimeOverrides() {
     EnvValuesService envValuesService = mock(EnvValuesService.class);
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(

@@ -22,6 +22,15 @@ public class HermesSettingsService {
   private static final String MODEL_KEY = "hermes.chat.model";
   private static final String API_MODE_KEY = "hermes.chat.api-mode";
   private static final String TIMEOUT_SECONDS_KEY = "hermes.chat.timeout-seconds";
+  private static final String AI_COMMAND_PROFILE_ID = "ai-command";
+  private static final String AI_COMMAND_DEFAULT_BASE_URL = "http://ubuntu-server.local:8645";
+  private static final String AI_COMMAND_DEFAULT_MODEL = "hermes-ai-command";
+  private static final String AI_COMMAND_PROFILE_ID_KEY = "hermes.ai-command.profile-id";
+  private static final String AI_COMMAND_BASE_URL_KEY = "hermes.ai-command.base-url";
+  private static final String AI_COMMAND_API_KEY_KEY = "hermes.ai-command.api-key";
+  private static final String AI_COMMAND_MODEL_KEY = "hermes.ai-command.model";
+  private static final String AI_COMMAND_API_MODE_KEY = "hermes.ai-command.api-mode";
+  private static final String AI_COMMAND_TIMEOUT_SECONDS_KEY = "hermes.ai-command.timeout-seconds";
 
   private final ConfigService configService;
   private final EnvValuesService envValuesService;
@@ -31,7 +40,7 @@ public class HermesSettingsService {
     this.envValuesService = envValuesService;
   }
 
-  HermesSettings resolveSettings() {
+  public HermesSettings resolveSettings() {
     String baseUrl = trimTrailingSlash(firstNonBlank(
         configService.getConfigValue(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
         configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
@@ -61,6 +70,47 @@ public class HermesSettingsService {
         configService.getConfigValue("hermes.api-mode", "HERMES_API_MODE", ""),
         DEFAULT_API_MODE
     );
+    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
+  }
+
+  public HermesSettings resolveAiCommandSettings() {
+    String configuredProfileId = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_PROFILE_ID_KEY, "HERMES_AI_COMMAND_PROFILE_ID", ""),
+        AI_COMMAND_PROFILE_ID
+    );
+    HermesProfileConfig profileConfig = profileConfigById(configuredProfileId, true)
+        .orElseThrow(() -> new IllegalArgumentException("Unsupported Hermes AI command profile: " + configuredProfileId));
+
+    String baseUrl = trimTrailingSlash(firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", ""),
+        profileConfig.option().baseUrl()
+    ));
+    String profileId = profileIdForBaseUrl(baseUrl, true);
+    if (profileId == null || profileId.isBlank()) {
+      profileId = profileConfig.option().id();
+    }
+
+    String apiKey = firstNonBlank(
+        apiKeyForProfile(profileId),
+        configService.getConfigValue(AI_COMMAND_API_KEY_KEY, "HERMES_AI_COMMAND_API_KEY", ""),
+        profileConfig.apiKey()
+    );
+    String model = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_MODEL_KEY, "HERMES_AI_COMMAND_MODEL", ""),
+        profileConfig.option().model()
+    );
+    int timeoutSeconds = parseInt(
+        firstNonBlank(
+            configService.getConfigValue(AI_COMMAND_TIMEOUT_SECONDS_KEY, "HERMES_AI_COMMAND_TIMEOUT_SECONDS", ""),
+            Integer.toString(profileConfig.option().timeoutSeconds())
+        ),
+        profileConfig.option().timeoutSeconds()
+    );
+    String apiMode = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_API_MODE_KEY, "HERMES_AI_COMMAND_API_MODE", ""),
+        profileConfig.option().apiMode()
+    );
+
     return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
   }
 
@@ -106,7 +156,7 @@ public class HermesSettingsService {
         options(selected.option().id()));
   }
 
-  String getBotInstanceId() {
+  public String getBotInstanceId() {
     return configService.getConfigValue("hokan.bot.instance-id", "HOKAN_BOT_INSTANCE_ID", "dev");
   }
 
@@ -118,10 +168,14 @@ public class HermesSettingsService {
   }
 
   private String profileIdForBaseUrl(String baseUrl) {
+    return profileIdForBaseUrl(baseUrl, false);
+  }
+
+  private String profileIdForBaseUrl(String baseUrl, boolean includeInternalProfiles) {
     if (baseUrl == null || baseUrl.isBlank()) {
       return null;
     }
-    return profileConfigs(null).stream()
+    return profileConfigs(null, includeInternalProfiles).stream()
         .filter(profile -> profile.option().baseUrl().equalsIgnoreCase(baseUrl.trim()))
         .map(profile -> profile.option().id())
         .findFirst()
@@ -135,9 +189,29 @@ public class HermesSettingsService {
   }
 
   private List<HermesProfileConfig> profileConfigs(String selectedProfileId) {
-    return List.of(
+    return profileConfigs(selectedProfileId, false);
+  }
+
+  private List<HermesProfileConfig> profileConfigs(String selectedProfileId, boolean includeInternalProfiles) {
+    List<HermesProfileConfig> publicProfiles = List.of(
         profile("chat", "Chat profile", "http://ubuntu-server.local:8643", "hermes-chat", selectedProfileId),
         profile("coder", "Coder profile", "http://ubuntu-server.local:8644", "hermes-coder", selectedProfileId));
+    if (!includeInternalProfiles) {
+      return publicProfiles;
+    }
+    return List.of(
+        publicProfiles.get(0),
+        publicProfiles.get(1),
+        profile(AI_COMMAND_PROFILE_ID, "AI command profile", AI_COMMAND_DEFAULT_BASE_URL, AI_COMMAND_DEFAULT_MODEL, selectedProfileId));
+  }
+
+  private java.util.Optional<HermesProfileConfig> profileConfigById(String profileId, boolean includeInternalProfiles) {
+    if (profileId == null || profileId.isBlank()) {
+      return java.util.Optional.empty();
+    }
+    return profileConfigs(null, includeInternalProfiles).stream()
+        .filter(profile -> profile.option().id().equals(profileId))
+        .findFirst();
   }
 
   private HermesProfileConfig profile(String id, String label, String baseUrl, String model, String selectedProfileId) {
@@ -162,6 +236,7 @@ public class HermesSettingsService {
           configService.getConfigValue("hermes.profiles.chat.api-key", "HERMES_CHAT_API_KEY", ""),
           configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", ""));
       case "coder" -> configService.getConfigValue("hermes.profiles.coder.api-key", "HERMES_CODER_API_KEY", "");
+      case AI_COMMAND_PROFILE_ID -> configService.getConfigValue("hermes.profiles.ai-command.api-key", "HERMES_AI_COMMAND_API_KEY", "");
       default -> "";
     };
   }

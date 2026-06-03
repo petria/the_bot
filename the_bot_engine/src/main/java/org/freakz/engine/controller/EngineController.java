@@ -3,6 +3,7 @@ package org.freakz.engine.controller;
 import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasResponse;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
+import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
@@ -12,9 +13,11 @@ import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.commands.CommandCatalogService;
+import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
+import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
@@ -48,6 +51,8 @@ public class EngineController {
   private final CommandCatalogService commandCatalogService;
   private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
   private final HermesSettingsService hermesSettingsService;
+  private final AiCommandRegistryService aiCommandRegistryService;
+  private final AiCommandToolRegistry aiCommandToolRegistry;
 
   public EngineController(
       BotEngine botEngine,
@@ -59,7 +64,9 @@ public class EngineController {
       WebLoginSecurityAlertService webLoginSecurityAlertService,
       CommandCatalogService commandCatalogService,
       OpenClawInstanceSettingsService openClawInstanceSettingsService,
-      HermesSettingsService hermesSettingsService) {
+      HermesSettingsService hermesSettingsService,
+      AiCommandRegistryService aiCommandRegistryService,
+      AiCommandToolRegistry aiCommandToolRegistry) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -70,6 +77,8 @@ public class EngineController {
     this.commandCatalogService = commandCatalogService;
     this.openClawInstanceSettingsService = openClawInstanceSettingsService;
     this.hermesSettingsService = hermesSettingsService;
+    this.aiCommandRegistryService = aiCommandRegistryService;
+    this.aiCommandToolRegistry = aiCommandToolRegistry;
   }
 
   @PostMapping("/handle_request")
@@ -171,6 +180,22 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  @GetMapping("/internal/ai-commands")
+  public ResponseEntity<AiCommandConfigResponse> getAiCommands() {
+    return ResponseEntity.ok(new AiCommandConfigResponse(
+        aiCommandRegistryService.configFile().getAbsolutePath(),
+        aiCommandRegistryService.currentConfig(),
+        aiCommandToolRegistry.availableToolNames()));
+  }
+
+  @PostMapping("/internal/ai-commands/reload")
+  public ResponseEntity<AiCommandConfigResponse> reloadAiCommands() {
+    return ResponseEntity.ok(new AiCommandConfigResponse(
+        aiCommandRegistryService.configFile().getAbsolutePath(),
+        aiCommandRegistryService.reload(),
+        aiCommandToolRegistry.availableToolNames()));
   }
 
   @GetMapping("/internal/system/openclaw")

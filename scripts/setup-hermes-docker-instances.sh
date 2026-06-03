@@ -19,7 +19,7 @@ Examples:
   scripts/setup-hermes-docker-instances.sh \
     --target hokan@ubuntu-server.local \
     --directory ~/bot-hermes \
-    --profiles chat:8643:chat,coder:8644:agent \
+    --profiles chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command \
     --public-host ubuntu-server.local \
     --build \
     --start \
@@ -47,7 +47,7 @@ USAGE
 
 TARGET="local"
 DEPLOY_DIR='~/bot-hermes'
-PROFILES="chat:8643:chat,coder:8644:agent"
+PROFILES="chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command"
 REPO_URL="https://github.com/NousResearch/hermes-agent.git"
 REPO_REF="main"
 PUBLIC_HOST="localhost"

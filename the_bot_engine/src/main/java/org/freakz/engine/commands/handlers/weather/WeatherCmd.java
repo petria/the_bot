@@ -8,7 +8,6 @@ import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.util.WeatherUtils;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
-import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,19 +59,12 @@ public class WeatherCmd extends AbstractCmd {
 
     WeatherAPIResponse response =
         doServiceRequestMethods(engineRequest, results, ServiceRequestType.WeatherAPIService);
-    if (response.getStatus().startsWith("OK")) {
-      ForecastResponse r = response.getForecastResponseModel();
-      String time = WeatherUtils.formatTime(r);
-      String name = WeatherUtils.formatName(r, verbose);
-      String feelsLike = WeatherUtils.formatFeelsLike(r, doFeelsLike);
-      String astronomy = WeatherUtils.formatAstronomy(response.getAstronomyResponse(), doAstronomy);
-      return String.format(
-          "%s: %s, %s°C%s%s", name, time, r.current().temp_c(), feelsLike, astronomy);
-
-    } else {
-      return String.format(
-          "%s: %s", results.getString(ARG_PLACE), response.getErrorResponse().error().message());
-    }
+    return WeatherUtils.formatWeatherResponse(
+        response,
+        results.getString(ARG_PLACE),
+        verbose,
+        doFeelsLike,
+        doAstronomy);
   }
 
 }
