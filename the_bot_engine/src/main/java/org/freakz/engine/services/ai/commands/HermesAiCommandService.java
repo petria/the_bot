@@ -182,13 +182,18 @@ public class HermesAiCommandService {
         request.getFromSender());
   }
 
-  private AiCommandModelResponse parseModelResponse(String text) throws Exception {
+  AiCommandModelResponse parseModelResponse(String text) throws Exception {
     String cleaned = stripJsonFence(text);
     JsonNode node;
     try {
       node = jsonMapper.readTree(cleaned);
     } catch (Exception e) {
       return AiCommandModelResponse.finalAnswer(text);
+    }
+
+    AiCommandModelResponse wrapped = parseWrappedModelResponse(node);
+    if (wrapped != null) {
+      return wrapped;
     }
 
     String type = node.path("type").asString("").trim();
@@ -205,6 +210,23 @@ public class HermesAiCommandService {
     }
     String answer = firstText(node, "answer", "text", "message", "response");
     return answer.isBlank() ? AiCommandModelResponse.finalAnswer(cleaned) : AiCommandModelResponse.finalAnswer(answer);
+  }
+
+  private AiCommandModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {
+    String finalValue = textValue(node.path("final"));
+    if (!finalValue.isBlank()) {
+      return parseModelResponse(finalValue);
+    }
+
+    JsonNode toolNode = node.path("tool");
+    String toolValue = textValue(toolNode);
+    if (toolNode.isObject()) {
+      return parseModelResponse(toolNode.toString());
+    }
+    if (!toolValue.isBlank() && toolValue.trim().startsWith("{")) {
+      return parseModelResponse(toolValue);
+    }
+    return null;
   }
 
   private String stripJsonFence(String text) {
@@ -350,7 +372,7 @@ public class HermesAiCommandService {
     return "";
   }
 
-  private record AiCommandModelResponse(String finalAnswer, String toolName, JsonNode arguments) {
+  record AiCommandModelResponse(String finalAnswer, String toolName, JsonNode arguments) {
     static AiCommandModelResponse finalAnswer(String answer) {
       return new AiCommandModelResponse(answer == null ? "" : answer, null, null);
     }
