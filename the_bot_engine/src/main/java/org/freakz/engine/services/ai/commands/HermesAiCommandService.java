@@ -138,6 +138,7 @@ public class HermesAiCommandService {
     ObjectNode schema = jsonMapper.createObjectNode();
     schema.put("final", "{\"type\":\"final\",\"answer\":\"text to send back to chat\"}");
     schema.put("tool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"location\":\"Helsinki\"}}");
+    schema.put("multiTool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"locations\":[\"Helsinki\",\"Turku\"]}}");
     ArrayNode tools = jsonMapper.createArrayNode();
     for (String tool : command.getAllowedTools()) {
       tools.add(tool);
