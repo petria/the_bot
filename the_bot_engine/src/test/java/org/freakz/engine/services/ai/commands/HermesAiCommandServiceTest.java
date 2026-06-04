@@ -37,6 +37,30 @@ class HermesAiCommandServiceTest {
     assertThat(response.arguments().path("location").asString()).isEqualTo("Turku");
   }
 
+  @Test
+  void extractsFormattedTextFromToolResult() {
+    HermesAiCommandService service = newService();
+
+    String formattedText = service.extractFormattedText("""
+        {"tool":"weather.current","formattedText":"Turku: 21:40, 12.4°C"}
+        """);
+
+    assertThat(formattedText).isEqualTo("Turku: 21:40, 12.4°C");
+  }
+
+  @Test
+  void extractsMultilineFormattedTextFromToolResult() {
+    HermesAiCommandService service = newService();
+
+    String formattedText = service.extractFormattedText("""
+        {"tool":"weather.current","formattedText":"Turku: 21:40, 12.4°C\\nOulu: 21:40, 8.1°C"}
+        """);
+
+    assertThat(formattedText).isEqualTo("""
+        Turku: 21:40, 12.4°C
+        Oulu: 21:40, 8.1°C""");
+  }
+
   @SuppressWarnings("unchecked")
   private HermesAiCommandService newService() {
     return new HermesAiCommandService(

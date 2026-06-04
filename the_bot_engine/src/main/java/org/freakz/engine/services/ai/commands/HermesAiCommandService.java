@@ -86,6 +86,11 @@ public class HermesAiCommandService {
         }
 
         String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments());
+        String formattedText = extractFormattedText(toolResult);
+        if (!formattedText.isBlank()) {
+          processReply(request, formattedText);
+          return;
+        }
         input = "Tool result for " + modelResponse.toolName() + ":\n" + toolResult
             + "\nReturn next response as JSON only.";
       }
@@ -335,6 +340,19 @@ public class HermesAiCommandService {
       return choices;
     }
     return "";
+  }
+
+  String extractFormattedText(String toolResult) {
+    if (toolResult == null || toolResult.isBlank()) {
+      return "";
+    }
+    try {
+      JsonNode node = jsonMapper.readTree(toolResult);
+      return textValue(node.path("formattedText"));
+    } catch (Exception e) {
+      log.debug("Could not parse AI command tool result formattedText: {}", e.getMessage());
+      return "";
+    }
   }
 
   private String firstText(JsonNode node, String... fields) {
