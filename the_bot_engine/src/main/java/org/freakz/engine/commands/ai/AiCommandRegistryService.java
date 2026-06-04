@@ -154,9 +154,20 @@ public class AiCommandRegistryService {
         clean(command.getDescription()),
         aliases,
         defaultIfBlank(command.getRequiredPermission(), BotPermission.HERMES_USE),
-        clean(command.getInstructions()),
+        normalizeInstructions(name, tools, command.getInstructions()),
         tools,
         maxIterations);
+  }
+
+  private String normalizeInstructions(String name, List<String> tools, String instructions) {
+    String cleaned = clean(instructions);
+    if ("weather".equals(name)
+        && tools.contains("weather.current")
+        && (cleaned == null || !cleaned.toLowerCase(Locale.ROOT).contains("multiple locations"))) {
+      String prefix = cleaned == null ? "" : cleaned.stripTrailing() + "\n";
+      return prefix + "If the user gives multiple locations, call weather.current with locations array.";
+    }
+    return cleaned;
   }
 
   private AiCommandConfig bootstrapConfig() {
@@ -169,6 +180,7 @@ public class AiCommandRegistryService {
         """
             Interpret the user's arguments as a weather location.
             Use weather.current before answering.
+            If the user gives multiple locations, call weather.current with locations array.
             If the user asks for feels-like temperature, pass feelsLike=true.
             If the user asks for astronomy/sun/moon details, pass astronomy=true.
             If the user asks for detailed place name, pass verbose=true.

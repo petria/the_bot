@@ -21,9 +21,12 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PLACE;
 
@@ -32,6 +35,7 @@ public class AiCommandToolRegistry {
 
   private static final int DEFAULT_LIMIT = 20;
   private static final int MAX_LIMIT = 100;
+  private static final int MAX_WEATHER_LOCATIONS = 8;
 
   private final ObjectProvider<WeatherAPIService> weatherAPIServiceProvider;
   private final UsersService usersService;
@@ -72,7 +76,10 @@ public class AiCommandToolRegistry {
   }
 
   private String weatherCurrent(JsonNode args) {
-    String location = requiredText(args, "location", "city", ARG_PLACE);
+    List<String> locations = weatherLocations(args);
+    if (locations.size() > MAX_WEATHER_LOCATIONS) {
+      return error("Too many weather locations, maximum is " + MAX_WEATHER_LOCATIONS);
+    }
     boolean verbose = bool(args, "verbose");
     boolean feelsLike = bool(args, "feelsLike", "feels_like");
     boolean astronomy = bool(args, "astronomy");
@@ -80,11 +87,52 @@ public class AiCommandToolRegistry {
     if (weatherAPIService == null) {
       return error("Weather API service is not configured");
     }
-    ServiceRequest request = ServiceRequest.builder().build();
-    request.setResults(new FakeJSAPResults(location, astronomy, feelsLike, verbose));
-    WeatherAPIResponse response = weatherAPIService.handleWeatherCmdServiceRequest(request);
+
+    if (locations.size() == 1) {
+      String location = locations.getFirst();
+      WeatherAPIResponse response = queryWeather(weatherAPIService, location, astronomy, feelsLike, verbose);
+      ObjectNode out = weatherResult(location, response, verbose, feelsLike, astronomy);
+      out.put("tool", "weather.current");
+      return out.toString();
+    }
+
+    ArrayNode locationValues = jsonMapper.createArrayNode();
+    ArrayNode results = jsonMapper.createArrayNode();
+    List<String> formattedLines = new ArrayList<>();
+    for (String location : locations) {
+      locationValues.add(location);
+      WeatherAPIResponse response = queryWeather(weatherAPIService, location, astronomy, feelsLike, verbose);
+      ObjectNode result = weatherResult(location, response, verbose, feelsLike, astronomy);
+      results.add(result);
+      formattedLines.add(result.path("formattedText").asString());
+    }
+
     ObjectNode out = jsonMapper.createObjectNode();
     out.put("tool", "weather.current");
+    out.set("locations", locationValues);
+    out.set("results", results);
+    out.put("formattedText", String.join("\n", formattedLines));
+    return out.toString();
+  }
+
+  private WeatherAPIResponse queryWeather(
+      WeatherAPIService weatherAPIService,
+      String location,
+      boolean astronomy,
+      boolean feelsLike,
+      boolean verbose) {
+    ServiceRequest request = ServiceRequest.builder().build();
+    request.setResults(new FakeJSAPResults(location, astronomy, feelsLike, verbose));
+    return weatherAPIService.handleWeatherCmdServiceRequest(request);
+  }
+
+  private ObjectNode weatherResult(
+      String location,
+      WeatherAPIResponse response,
+      boolean verbose,
+      boolean feelsLike,
+      boolean astronomy) {
+    ObjectNode out = jsonMapper.createObjectNode();
     out.put("location", location);
     out.put("status", response.getStatus());
     out.put("formattedText", WeatherUtils.formatWeatherResponse(response, location, verbose, feelsLike, astronomy));
@@ -98,7 +146,7 @@ public class AiCommandToolRegistry {
     } else if (response.getErrorResponse() != null && response.getErrorResponse().error() != null) {
       out.put("error", response.getErrorResponse().error().message());
     }
-    return out.toString();
+    return out;
   }
 
   private String usersSearch(JsonNode args) {
@@ -190,6 +238,50 @@ public class AiCommandToolRegistry {
     out.put("key", key);
     out.put("output", stats == null ? "" : stats.getOutput());
     return out.toString();
+  }
+
+  private List<String> weatherLocations(JsonNode args) {
+    Set<String> locations = new LinkedHashSet<>();
+    collectTextValues(locations, args == null ? null : args.path("locations"));
+    collectTextValues(locations, args == null ? null : args.path("cities"));
+    if (locations.isEmpty()) {
+      collectTextValues(locations, args == null ? null : args.path("location"));
+    }
+    if (locations.isEmpty()) {
+      collectTextValues(locations, args == null ? null : args.path("city"));
+    }
+    if (locations.isEmpty()) {
+      collectTextValues(locations, args == null ? null : args.path(ARG_PLACE));
+    }
+    if (locations.isEmpty()) {
+      locations.add(requiredText(args, "location", "city", ARG_PLACE));
+    }
+    return List.copyOf(locations);
+  }
+
+  private void collectTextValues(Set<String> values, JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return;
+    }
+    if (node.isArray()) {
+      for (JsonNode item : node) {
+        addSplitText(values, item.asString(""));
+      }
+      return;
+    }
+    addSplitText(values, node.asString(""));
+  }
+
+  private void addSplitText(Set<String> values, String value) {
+    if (value == null || value.isBlank()) {
+      return;
+    }
+    for (String item : value.split("[,;\\n]")) {
+      String cleaned = item.trim();
+      if (!cleaned.isBlank()) {
+        values.add(cleaned);
+      }
+    }
   }
 
   private List<User> allUsers() {
