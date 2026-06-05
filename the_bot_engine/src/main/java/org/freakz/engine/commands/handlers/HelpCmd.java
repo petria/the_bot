@@ -11,6 +11,7 @@ import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HandlerClass;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
+import org.freakz.engine.commands.providers.CommandProvider;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,34 +52,23 @@ public class HelpCmd extends AbstractCmd {
       Map<String, HandlerClass> handlersMap = getBotEngine().getCommandHandlerLoader().getHandlersMap();
 
       List<String> entries = new ArrayList<>();
-      List<HandlerClass> handlerClasses = handlersMap.values().stream()
-          .sorted(Comparator.comparing(HandlerClass::getDisplayName, String.CASE_INSENSITIVE_ORDER))
+      Map<String, List<HandlerClass>> handlerClassesByProvider = handlersMap.values().stream()
+          .filter(handlerClass -> isAllowed(request, handlerClass))
+          .collect(java.util.stream.Collectors.groupingBy(HandlerClass::getNamespace, java.util.TreeMap::new, java.util.stream.Collectors.toList()));
+      Map<String, CommandProvider> commandProviders = getBotEngine().getCommandHandlerLoader().getCommandProviderMap();
+      for (Map.Entry<String, List<HandlerClass>> entry : handlerClassesByProvider.entrySet()) {
+        List<String> commandNames = entry.getValue().stream()
+          .sorted(Comparator.comparing(HandlerClass::getCommandName, String.CASE_INSENSITIVE_ORDER))
+          .map(this::formatSummaryCommand)
           .toList();
-      for (HandlerClass handlerClass : handlerClasses) {
-        String requiredPermission = handlerClass.getRequiredPermission();
-        if (requiredPermission != null && !requiredPermission.isBlank() && !UserPermissions.has(request.getUser(), requiredPermission)) {
-          continue;
+        if (!commandNames.isEmpty()) {
+          entries.add(formatProviderName(entry.getKey(), commandProviders) + ": " + String.join(", ", commandNames));
         }
-        String cmdName = handlerClass.getDisplayName();
-        StringBuilder entry = new StringBuilder(cmdName);
-
-        String flags = "";
-        if (requiredPermission != null && !requiredPermission.isBlank()) {
-          flags += "P";
-        }
-        if (!flags.isEmpty()) {
-          entry.append("[").append(flags).append("]");
-        }
-        String aliases = formatAliasesForCommand(handlerClass.getCanonicalName(), false);
-        if (!aliases.isBlank()) {
-          entry.append(" aliases: ").append(aliases);
-        }
-        entries.add(entry.toString());
       }
       boolean irc = getBotEngine().getReplyOutputService().isIrc(request);
       return getBotEngine().getReplyOutputService().formatList(
           request,
-          irc ? "HELP:" : "== HELP: COMMAND NAMES ==",
+          irc ? "HELP BY PROVIDER:" : "== HELP: COMMANDS BY PROVIDER ==",
           entries,
           irc
               ? "Use !help <commandName> for details."
@@ -114,6 +104,28 @@ public class HelpCmd extends AbstractCmd {
     }
 
     return sb.toString();
+  }
+
+  private boolean isAllowed(EngineRequest request, HandlerClass handlerClass) {
+    String requiredPermission = handlerClass.getRequiredPermission();
+    return requiredPermission == null || requiredPermission.isBlank() || UserPermissions.has(request.getUser(), requiredPermission);
+  }
+
+  private String formatSummaryCommand(HandlerClass handlerClass) {
+    StringBuilder sb = new StringBuilder(handlerClass.getCommandName().toLowerCase());
+    String requiredPermission = handlerClass.getRequiredPermission();
+    if (requiredPermission != null && !requiredPermission.isBlank()) {
+      sb.append("[P]");
+    }
+    return sb.toString();
+  }
+
+  private String formatProviderName(String namespace, Map<String, CommandProvider> commandProviders) {
+    CommandProvider provider = commandProviders.get(namespace);
+    if (provider != null && provider.displayName() != null && !provider.displayName().isBlank()) {
+      return provider.displayName();
+    }
+    return namespace;
   }
 
   private String formatHelpCommandName(String requestedCommand, AbstractCmd cmd) {
