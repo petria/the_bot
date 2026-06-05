@@ -8,7 +8,6 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient;
@@ -20,17 +19,12 @@ import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyFactory;
 import java.security.PrivateKey;
-import java.security.Signature;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -112,19 +106,23 @@ public class OpenClawNodeGatewayService {
   }
 
   private void connectNodeOnce() throws IOException {
-    String wsUrl = getConfigValue("openclawGatewayWsUrl", "OPENCLAW_GATEWAY_WS_URL", "ws://localhost:18890");
-    int timeoutSeconds = parseIntConfig("openclawWsTimeoutSeconds", "OPENCLAW_WS_TIMEOUT_SECONDS", 300);
+    String wsUrl =
+        OpenClawConfigSupport.getConfigValue(
+            configService, "openclawGatewayWsUrl", "OPENCLAW_GATEWAY_WS_URL", "ws://localhost:18890");
+    int timeoutSeconds =
+        OpenClawConfigSupport.parseIntConfig(
+            configService, "openclawWsTimeoutSeconds", "OPENCLAW_WS_TIMEOUT_SECONDS", 300);
     NodeWsIdentity identity = resolveNodeIdentity();
 
     if (identity.gatewayToken().isBlank()) {
       throw new IOException("OpenClaw node WS gateway token missing");
     }
 
-    String urlWithToken = appendTokenToUrl(wsUrl, identity.gatewayToken());
+    String urlWithToken = OpenClawWebSocketSupport.appendTokenToUrl(wsUrl, identity.gatewayToken());
 
     AtomicBoolean connectSent = new AtomicBoolean(false);
 
-    webSocketClient.execute(URI.create(urlWithToken), createWebSocketHeaders(), session ->
+    webSocketClient.execute(URI.create(urlWithToken), OpenClawWebSocketSupport.createWebSocketHeaders(configService), session ->
         session.receive()
             .map(WebSocketMessage::getPayloadAsText)
             .doOnNext(payload -> {
@@ -600,7 +598,7 @@ public class OpenClawNodeGatewayService {
     ObjectNode device = params.putObject("device");
     device.put("id", identity.deviceId());
     device.put("publicKey", identity.publicKey());
-    device.put("signature", signDevicePayload(
+    device.put("signature", OpenClawDeviceCrypto.signDevicePayload(
         identity.privateKey(),
         identity.deviceId(),
         identity.clientId(),
@@ -609,7 +607,8 @@ public class OpenClawNodeGatewayService {
         List.of(),
         signedAt,
         identity.connectToken(),
-        nonce
+        nonce,
+        "failed to sign OpenClaw node WS payload"
     ));
     device.put("signedAt", signedAt);
     device.put("nonce", nonce == null ? "" : nonce);
@@ -618,15 +617,15 @@ public class OpenClawNodeGatewayService {
   }
 
   private NodeWsIdentity resolveNodeIdentity() throws IOException {
-    Path stateDir = getStateDirPath();
+    Path stateDir = OpenClawWebSocketSupport.getStateDirPath(configService);
     Path identityPath = stateDir.resolve(Path.of("identity", "device.json"));
     Path deviceAuthPath = stateDir.resolve(Path.of("identity", "device-auth.json"));
     Path pairedDevicesPath = stateDir.resolve(Path.of("devices", "paired.json"));
 
-    JsonNode identityNode = readJsonFile(identityPath);
-    JsonNode deviceAuthNode = readJsonFile(deviceAuthPath);
+    JsonNode identityNode = OpenClawWebSocketSupport.readJsonFile(objectMapper, identityPath);
+    JsonNode deviceAuthNode = OpenClawWebSocketSupport.readJsonFile(objectMapper, deviceAuthPath);
     JsonNode pairedDevicesNode = Files.exists(pairedDevicesPath)
-        ? readJsonFile(pairedDevicesPath)
+        ? OpenClawWebSocketSupport.readJsonFile(objectMapper, pairedDevicesPath)
         : objectMapper.createObjectNode();
 
     String deviceId = identityNode.path("deviceId").asString("").trim();
@@ -634,22 +633,30 @@ public class OpenClawNodeGatewayService {
       throw new IOException("missing deviceId in " + identityPath);
     }
 
-    String gatewayToken = getConfigValue("openclawGatewayToken", "OPENCLAW_GATEWAY_TOKEN", "").trim();
+    String gatewayToken =
+        OpenClawConfigSupport.getConfigValue(
+            configService, "openclawGatewayToken", "OPENCLAW_GATEWAY_TOKEN", "").trim();
     String nodeToken = deviceAuthNode.path("tokens").path("node").path("token").asString("").trim();
     JsonNode pairedNode = pairedDevicesNode.path(deviceId);
 
     String publicKey = pairedNode.path("publicKey").asString("").trim();
     if (publicKey.isBlank()) {
-      publicKey = extractRawPublicKey(identityNode.path("publicKeyPem").asString(""));
+      publicKey = OpenClawDeviceCrypto.extractRawPublicKey(identityNode.path("publicKeyPem").asString(""));
     }
     if (publicKey.isBlank()) {
       throw new IOException("missing publicKey for device " + deviceId);
     }
 
     String clientId = normalizeNodeClientId(
-        getConfigValue("openclawNodeClientId", "OPENCLAW_NODE_CLIENT_ID", "node-host")
+        OpenClawConfigSupport.getConfigValue(
+            configService, "openclawNodeClientId", "OPENCLAW_NODE_CLIENT_ID", "node-host")
     );
-    String platform = getConfigValue("openclawWsClientPlatform", "OPENCLAW_WS_CLIENT_PLATFORM", pairedNode.path("platform").asString("linux"));
+    String platform =
+        OpenClawConfigSupport.getConfigValue(
+            configService,
+            "openclawWsClientPlatform",
+            "OPENCLAW_WS_CLIENT_PLATFORM",
+            pairedNode.path("platform").asString("linux"));
     String connectToken = !gatewayToken.isBlank() ? gatewayToken : nodeToken;
 
     return new NodeWsIdentity(
@@ -657,7 +664,7 @@ public class OpenClawNodeGatewayService {
         connectToken,
         deviceId,
         publicKey,
-        parsePrivateKey(identityNode.path("privateKeyPem").asString("")),
+        OpenClawDeviceCrypto.parsePrivateKey(identityNode.path("privateKeyPem").asString("")),
         clientId,
         "node",
         platform
@@ -666,8 +673,10 @@ public class OpenClawNodeGatewayService {
 
   private void persistNodeToken(String deviceToken) {
     try {
-      Path deviceAuthPath = getStateDirPath().resolve(Path.of("identity", "device-auth.json"));
-      JsonNode existingRoot = Files.exists(deviceAuthPath) ? readJsonFile(deviceAuthPath) : objectMapper.createObjectNode();
+      Path deviceAuthPath = OpenClawWebSocketSupport.getStateDirPath(configService).resolve(Path.of("identity", "device-auth.json"));
+      JsonNode existingRoot = Files.exists(deviceAuthPath)
+          ? OpenClawWebSocketSupport.readJsonFile(objectMapper, deviceAuthPath)
+          : objectMapper.createObjectNode();
       ObjectNode root = existingRoot.isObject() ? (ObjectNode) existingRoot : objectMapper.createObjectNode();
       ObjectNode tokens = root.has("tokens") && root.path("tokens").isObject()
           ? (ObjectNode) root.path("tokens")
@@ -690,50 +699,6 @@ public class OpenClawNodeGatewayService {
     return configService.getConfigBooleanValue("openclaw.node-bridge-enabled", "OPENCLAW_NODE_BRIDGE_ENABLED", true);
   }
 
-  private String appendTokenToUrl(String url, String token) {
-    if (url.contains("token=")) {
-      return url;
-    }
-    String sep = url.contains("?") ? "&" : "?";
-    return url + sep + "token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
-  }
-
-  private String getConfigValue(String key, String envKey, String defaultValue) {
-    return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
-  }
-
-  private HttpHeaders createWebSocketHeaders() {
-    HttpHeaders headers = new HttpHeaders();
-    String origin = getConfigValue("openclawGatewayWsOrigin", "OPENCLAW_GATEWAY_WS_ORIGIN", "null");
-    if (origin != null && !origin.isBlank() && !"none".equalsIgnoreCase(origin.trim())) {
-      headers.setOrigin(origin.trim());
-    }
-    return headers;
-  }
-
-  private int parseIntConfig(String key, String envKey, int defaultValue) {
-    String value = getConfigValue(key, envKey, Integer.toString(defaultValue));
-    try {
-      return Integer.parseInt(value);
-    } catch (Exception e) {
-      return defaultValue;
-    }
-  }
-
-  private Path getStateDirPath() {
-    String configured = getConfigValue("openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
-    return Path.of(configured);
-  }
-
-  private String toBootstrapPropertyKey(String key) {
-    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
-    if (normalized.isBlank()) {
-      return "openclaw";
-    }
-    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
-    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
-  }
-
   private String normalizeNodeClientId(String value) {
     String normalized = value == null ? "" : value.trim();
     if (normalized.isBlank()) {
@@ -752,31 +717,6 @@ public class OpenClawNodeGatewayService {
     return "node-host";
   }
 
-  private JsonNode readJsonFile(Path path) throws IOException {
-    if (!Files.exists(path)) {
-      throw new IOException("missing file " + path);
-    }
-    return objectMapper.readTree(Files.readString(path));
-  }
-
-  private PrivateKey parsePrivateKey(String privateKeyPem) throws IOException {
-    if (privateKeyPem == null || privateKeyPem.isBlank()) {
-      throw new IOException("missing private key PEM");
-    }
-
-    try {
-      String sanitized = privateKeyPem
-          .replace("-----BEGIN PRIVATE KEY-----", "")
-          .replace("-----END PRIVATE KEY-----", "")
-          .replaceAll("\\s+", "");
-      byte[] keyBytes = Base64.getDecoder().decode(sanitized);
-      PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-      return KeyFactory.getInstance("Ed25519").generatePrivate(spec);
-    } catch (Exception e) {
-      throw new IOException("failed to parse Ed25519 private key", e);
-    }
-  }
-
   void addNodeCommandCapabilities(ObjectNode params) {
     params.withArray("commands").add(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS);
     params.withArray("commands").add(NODE_COMMAND_READ_LOGS);
@@ -785,78 +725,6 @@ public class OpenClawNodeGatewayService {
     permissions.put(NODE_COMMAND_SEND_MESSAGE_BY_ECHO_TO_ALIAS, true);
     permissions.put(NODE_COMMAND_READ_LOGS, true);
     permissions.put(NODE_COMMAND_SEARCH_LOGS, true);
-  }
-
-  private String signDevicePayload(
-      PrivateKey privateKey,
-      String deviceId,
-      String clientId,
-      String clientMode,
-      String role,
-      List<String> scopes,
-      long signedAtMs,
-      String token,
-      String nonce
-  ) {
-    try {
-      String payload = buildDeviceSignaturePayload(deviceId, clientId, clientMode, role, scopes, signedAtMs, token, nonce);
-      Signature signature = Signature.getInstance("Ed25519");
-      signature.initSign(privateKey);
-      signature.update(payload.getBytes(StandardCharsets.UTF_8));
-      return Base64.getUrlEncoder().withoutPadding().encodeToString(signature.sign());
-    } catch (Exception e) {
-      throw new IllegalStateException("failed to sign OpenClaw node WS payload", e);
-    }
-  }
-
-  private String buildDeviceSignaturePayload(
-      String deviceId,
-      String clientId,
-      String clientMode,
-      String role,
-      List<String> scopes,
-      long signedAtMs,
-      String token,
-      String nonce
-  ) {
-    String joinedScopes = scopes == null || scopes.isEmpty() ? "" : String.join(",", scopes);
-    return String.join("|",
-        "v2",
-        nullToEmpty(deviceId),
-        nullToEmpty(clientId),
-        nullToEmpty(clientMode),
-        nullToEmpty(role),
-        joinedScopes,
-        Long.toString(signedAtMs),
-        nullToEmpty(token),
-        nullToEmpty(nonce)
-    );
-  }
-
-  private String extractRawPublicKey(String publicKeyPem) throws IOException {
-    if (publicKeyPem == null || publicKeyPem.isBlank()) {
-      return "";
-    }
-
-    try {
-      String sanitized = publicKeyPem
-          .replace("-----BEGIN PUBLIC KEY-----", "")
-          .replace("-----END PUBLIC KEY-----", "")
-          .replaceAll("\\s+", "");
-      byte[] encoded = Base64.getDecoder().decode(sanitized);
-      if (encoded.length < 32) {
-        throw new IOException("unexpected public key length");
-      }
-      byte[] raw = new byte[32];
-      System.arraycopy(encoded, encoded.length - 32, raw, 0, 32);
-      return Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-    } catch (Exception e) {
-      throw new IOException("failed to parse device public key", e);
-    }
-  }
-
-  private String nullToEmpty(String value) {
-    return value == null ? "" : value;
   }
 
   private void sleep(long millis) {

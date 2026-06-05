@@ -67,7 +67,9 @@ public class OpenClawAiService {
     String sessionKey = buildSessionKey(engineRequest);
     String envelope = buildOpenClawEnvelope(engineRequest, sessionKey, queryMessage);
     long startMillis = System.currentTimeMillis();
-    int waitReplyTimeoutSeconds = parseIntConfig("openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 45);
+    int waitReplyTimeoutSeconds =
+        OpenClawConfigSupport.parseIntConfig(
+            configService, "openclawWaitReplyTimeoutSeconds", "OPENCLAW_WAIT_REPLY_TIMEOUT_SECONDS", 45);
 
     log.debug("OpenClawAiService.ask({})", sessionKey);
 
@@ -236,7 +238,9 @@ public class OpenClawAiService {
   }
 
   private Path getStateDirHostPath() {
-    String base = getConfigValue("openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
+    String base =
+        OpenClawConfigSupport.getConfigValue(
+            configService, "openclawStateDirHost", "OPENCLAW_STATE_DIR_HOST", "./openclaw/state");
     return Path.of(base);
   }
 
@@ -367,7 +371,9 @@ public class OpenClawAiService {
         ? request.getUser().getName().replaceAll("[\\r\\n]+", " ").trim()
         : senderNick;
 
-    String runtimeLogRootLocal = getConfigValue("openclawRuntimeLogRootLocal", "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL", "/runtime/logs");
+    String runtimeLogRootLocal =
+        OpenClawConfigSupport.getConfigValue(
+            configService, "openclawRuntimeLogRootLocal", "OPENCLAW_RUNTIME_LOG_ROOT_LOCAL", "/runtime/logs");
     List<String> availableLogFiles = listAvailableLogFiles(Path.of(runtimeLogRootLocal), protocol, network, chatType, chatTarget);
     String hokanContextToken = hokanNodeContextTokenService.createToken(request, sessionKey);
     String requestedByUsername = request.getUser() == null ? "" : safePromptValue(request.getUser().getUsername());
@@ -515,19 +521,6 @@ public class OpenClawAiService {
     }
   }
 
-  private String getConfigValue(String key, String envKey, String defaultValue) {
-    return configService.getConfigValue(toBootstrapPropertyKey(key), envKey, defaultValue);
-  }
-
-  private int parseIntConfig(String key, String envKey, int defaultValue) {
-    String value = getConfigValue(key, envKey, Integer.toString(defaultValue));
-    try {
-      return Integer.parseInt(value);
-    } catch (Exception e) {
-      return defaultValue;
-    }
-  }
-
   private void sleep(long millis) {
     try {
       Thread.sleep(millis);
@@ -542,16 +535,6 @@ public class OpenClawAiService {
     }
     return value.replaceAll("[\\r\\n]+", " ").trim();
   }
-
-  private String toBootstrapPropertyKey(String key) {
-    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
-    if (normalized.isBlank()) {
-      return "openclaw";
-    }
-    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
-    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
-  }
-
 
   private final class SessionLogTail {
     private final Path path;

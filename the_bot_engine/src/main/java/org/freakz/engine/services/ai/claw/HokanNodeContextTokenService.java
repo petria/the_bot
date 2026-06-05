@@ -5,6 +5,7 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserPermissions;
+import org.freakz.common.util.TextUtils;
 import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -47,8 +48,8 @@ public class HokanNodeContextTokenService {
       payload.put("botInstanceId", botInstanceIdentityService.getInstanceId());
       payload.put("issuedAt", issuedAt);
       payload.put("expiresAt", issuedAt + ttlSeconds);
-      payload.put("sessionKey", nullToEmpty(sessionKey));
-      payload.put("sourceEchoToAlias", nullToEmpty(request.getEchoToAlias()));
+      payload.put("sessionKey", TextUtils.nullToEmpty(sessionKey));
+      payload.put("sourceEchoToAlias", TextUtils.nullToEmpty(request.getEchoToAlias()));
       String protocol = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 0, request.getChatProtocol()), ChatIdentityUtil.resolveProtocol(request.getNetwork()));
       String network = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 1, request.getNetwork()), "unknown");
       String chatType = ChatIdentityUtil.sanitize(chatIdPart(request.getChatId(), 2, request.getChatType()), request.isPrivateChannel() ? "dm" : "channel");
@@ -63,12 +64,12 @@ public class HokanNodeContextTokenService {
       User user = request.getUser();
       payload.put("permissions", String.join(",", UserPermissions.effective(user)));
       ObjectNode userNode = payload.putObject("user");
-      userNode.put("username", user == null ? "" : nullToEmpty(user.getUsername()));
-      userNode.put("name", user == null ? "" : nullToEmpty(user.getName()));
-      userNode.put("ircNick", user == null ? "" : nullToEmpty(user.getIrcNick()));
-      userNode.put("telegramId", user == null ? "" : nullToEmpty(user.getTelegramId()));
-      userNode.put("discordId", user == null ? "" : nullToEmpty(user.getDiscordId()));
-      userNode.put("whatsappId", user == null ? "" : nullToEmpty(user.getWhatsappId()));
+      userNode.put("username", user == null ? "" : TextUtils.nullToEmpty(user.getUsername()));
+      userNode.put("name", user == null ? "" : TextUtils.nullToEmpty(user.getName()));
+      userNode.put("ircNick", user == null ? "" : TextUtils.nullToEmpty(user.getIrcNick()));
+      userNode.put("telegramId", user == null ? "" : TextUtils.nullToEmpty(user.getTelegramId()));
+      userNode.put("discordId", user == null ? "" : TextUtils.nullToEmpty(user.getDiscordId()));
+      userNode.put("whatsappId", user == null ? "" : TextUtils.nullToEmpty(user.getWhatsappId()));
 
       String payloadJson = objectMapper.writeValueAsString(payload);
       String payloadB64 = base64Url(payloadJson.getBytes(StandardCharsets.UTF_8));
@@ -139,7 +140,7 @@ public class HokanNodeContextTokenService {
 
   private String resolveSecret() {
     String configured =
-        firstNonBlank(
+        TextUtils.firstNonBlank(
             configService.getConfigValue("openclaw.node-context-secret", "OPENCLAW_NODE_CONTEXT_SECRET", null),
             configService.getConfigValue("hokan.ai.openclaw.hooks.token", "OPENCLAW_HOOKS_TOKEN", null),
             configService.getConfigValue("openclaw.gateway-token", "OPENCLAW_GATEWAY_TOKEN", null)
@@ -150,38 +151,12 @@ public class HokanNodeContextTokenService {
     return configured;
   }
 
-  private String firstNonBlank(String... values) {
-    for (String value : values) {
-      if (value != null && !value.isBlank()) {
-        return value;
-      }
-    }
-    return null;
-  }
-
   private long parseLongConfig(String key, String envKey, long defaultValue) {
-    String value = configService.getConfigValue(toBootstrapPropertyKey(key), envKey, null);
-    if (value == null || value.isBlank()) {
-      return defaultValue;
-    }
-    try {
-      return Long.parseLong(value);
-    } catch (Exception e) {
-      return defaultValue;
-    }
+    return OpenClawConfigSupport.parseLongConfig(configService, key, envKey, defaultValue);
   }
 
   private String base64Url(byte[] bytes) {
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-  }
-
-  private String toBootstrapPropertyKey(String key) {
-    String normalized = key.startsWith("openclaw") ? key.substring("openclaw".length()) : key;
-    if (normalized.isBlank()) {
-      return "openclaw";
-    }
-    normalized = Character.toLowerCase(normalized.charAt(0)) + normalized.substring(1);
-    return "openclaw." + normalized.replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase();
   }
 
   private boolean constantTimeEquals(String a, String b) {
@@ -195,17 +170,13 @@ public class HokanNodeContextTokenService {
     return result == 0;
   }
 
-  private String nullToEmpty(String value) {
-    return value == null ? "" : value;
-  }
-
   private String resolveChatTarget(EngineRequest request, String protocol, String network, String chatType) {
     String chatId = request.getChatId();
     if (chatId != null && !chatId.isBlank() && chatId.contains("/")) {
       return ChatIdentityUtil.extractTargetFromChatId(chatId, "unknown");
     }
     String fallback = "dm".equals(chatType)
-        ? firstNonBlank(request.getFromSenderId(), request.getFromSender(), request.getReplyTo())
+        ? TextUtils.firstNonBlank(request.getFromSenderId(), request.getFromSender(), request.getReplyTo())
         : request.getReplyTo();
     return ChatIdentityUtil.extractTargetFromChatId(
         ChatIdentityUtil.buildChatId(protocol, network, chatType, fallback),
