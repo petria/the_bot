@@ -135,7 +135,7 @@ public class AiCommandJsonStore {
         true,
         "Hermes-backed weather command",
         List.of("saa", "sää", "foreca", "keli"),
-        BotPermission.HERMES_USE,
+        null,
         """
             Interpret the user's arguments as a weather location.
             Use weather.current before answering.
@@ -176,10 +176,22 @@ public class AiCommandJsonStore {
         command.isEnabled(),
         clean(command.getDescription()),
         aliases,
-        defaultIfBlank(command.getRequiredPermission(), BotPermission.HERMES_USE),
+        normalizePermission(command.getRequiredPermission()),
         normalizeInstructions(name, tools, command.getInstructions()),
         tools,
         maxIterations);
+  }
+
+  private String normalizePermission(String permission) {
+    String cleaned = clean(permission);
+    if (cleaned == null || cleaned.isBlank()) {
+      return null;
+    }
+    String normalized = cleaned.toLowerCase(Locale.ROOT);
+    if (BotPermission.HERMES_USE.equals(normalized)) {
+      return null;
+    }
+    return normalized;
   }
 
   private String normalizeInstructions(String name, List<String> tools, String instructions) {
@@ -195,10 +207,6 @@ public class AiCommandJsonStore {
 
   private static String clean(String value) {
     return value == null ? null : value.trim();
-  }
-
-  private String defaultIfBlank(String value, String defaultValue) {
-    return value == null || value.isBlank() ? defaultValue : value.trim();
   }
 
   private void moveIntoPlace(Path tempFile) throws IOException {
