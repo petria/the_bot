@@ -26,11 +26,8 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
-
-import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_CHANNEL;
 
 @ServiceMessageHandler(ServiceRequestType = ServiceRequestType.GenerateGluggaWeekdayPage)
 public class GenerateGluggaWeekdayPageService extends AbstractService {
@@ -46,8 +43,8 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
   public <T extends org.freakz.engine.services.api.ServiceResponse> GeneratedPageResponse handleServiceRequest(
       ServiceRequest request) {
     EngineRequest engineRequest = request.getEngineRequest();
-    String channel = resolveChannel(request);
-    String network = normalize(engineRequest.getNetwork());
+    String channel = GeneratedPageServiceSupport.resolveChannel(request);
+    String network = GeneratedPageServiceSupport.normalize(engineRequest.getNetwork());
 
     DataValuesService dataValuesService = request.getApplicationContext().getBean(DataValuesService.class);
     List<DataValues> dataValues =
@@ -67,7 +64,7 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
               "the.bot.webPublicBaseUrl",
               "THE_BOT_WEB_PUBLIC_BASE_URL",
               properties.getWebPublicBaseUrl());
-      String url = buildUrl(publicBaseUrl, created.id(), created.token());
+      String url = GeneratedPageServiceSupport.buildUrl(publicBaseUrl, created.id(), created.token());
       GeneratedPageResponse response =
           new GeneratedPageResponse(url, ((Number) props.get("nickCount")).intValue());
       response.setStatus("OK");
@@ -77,19 +74,6 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
       response.setStatus("NOK: " + e.getMessage());
       return response;
     }
-  }
-
-  private String resolveChannel(ServiceRequest request) {
-    EngineRequest engineRequest = request.getEngineRequest();
-    if (engineRequest.isPrivateChannel()) {
-      return "#amigafin";
-    }
-    String channel = request.getResults().getString(ARG_CHANNEL, engineRequest.getReplyTo());
-    return normalize(channel);
-  }
-
-  private String normalize(String value) {
-    return value == null ? "" : value.toLowerCase(Locale.ROOT);
   }
 
   private Map<String, Object> createProps(
@@ -103,7 +87,7 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
 
     for (DataValues dataValue : dataValues) {
       DayOfWeek day = parseDayOfWeek(dataValue.getKeyName());
-      int count = parseCount(dataValue.getValue());
+      int count = GeneratedPageServiceSupport.parseCount(dataValue.getValue());
       if (day == null || count <= 0) {
         skippedRows++;
         continue;
@@ -204,14 +188,6 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
     }
   }
 
-  private int parseCount(String value) {
-    try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      return 0;
-    }
-  }
-
   private String dayLabel(DayOfWeek day) {
     return switch (day) {
       case MONDAY -> "Mon";
@@ -224,11 +200,4 @@ public class GenerateGluggaWeekdayPageService extends AbstractService {
     };
   }
 
-  private String buildUrl(String baseUrl, String id, String token) {
-    String trimmed = baseUrl == null || baseUrl.isBlank() ? "http://localhost:8091" : baseUrl.trim();
-    if (trimmed.endsWith("/")) {
-      trimmed = trimmed.substring(0, trimmed.length() - 1);
-    }
-    return trimmed + "/generated/" + id + "?token=" + token;
-  }
 }

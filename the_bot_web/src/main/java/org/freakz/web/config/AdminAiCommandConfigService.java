@@ -1,5 +1,6 @@
 package org.freakz.web.config;
 
+import org.freakz.common.aicommand.AiCommandJsonStore;
 import org.freakz.common.config.BotRuntimeBootstrapConfig;
 import org.freakz.common.config.BotRuntimeBootstrapLoader;
 import org.freakz.common.config.TheBotProperties;
@@ -11,14 +12,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 @Service
 public class AdminAiCommandConfigService {
 
-  private static final String AI_COMMANDS_FILE = "ai-commands.json";
   private static final BotRuntimeBootstrapLoader BOOTSTRAP_LOADER = new BotRuntimeBootstrapLoader();
   private static final List<String> AVAILABLE_TOOLS = List.of(
       "weather.current",
@@ -47,10 +46,11 @@ public class AdminAiCommandConfigService {
   public AiCommandConfigResponse readConfig() {
     try {
       Path path = resolveConfigFile();
-      if (Files.exists(path)) {
+      if (path.toFile().exists()) {
+        AiCommandJsonStore store = new AiCommandJsonStore(path, jsonMapper);
         return new AiCommandConfigResponse(
             path.toString(),
-            jsonMapper.readValue(path.toFile(), AiCommandConfig.class),
+            store.reloadOrBootstrap(),
             AVAILABLE_TOOLS);
       }
       ResponseEntity<AiCommandConfigResponse> engineResponse = engineClient.getAiCommands();
@@ -66,8 +66,8 @@ public class AdminAiCommandConfigService {
   public synchronized AiCommandConfigResponse saveConfig(AiCommandConfig config) {
     try {
       Path path = resolveConfigFile();
-      Files.createDirectories(path.getParent());
-      Files.writeString(path, jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config));
+      AiCommandJsonStore store = new AiCommandJsonStore(path, jsonMapper);
+      store.save(config);
       ResponseEntity<AiCommandConfigResponse> reloadResponse = engineClient.reloadAiCommands();
       if (!reloadResponse.getStatusCode().is2xxSuccessful() || reloadResponse.getBody() == null) {
         throw new IllegalStateException("Could not reload AI commands in bot-engine");
@@ -89,6 +89,6 @@ public class AdminAiCommandConfigService {
     if (dataDir == null || dataDir.isBlank()) {
       dataDir = "runtime/data/";
     }
-    return Path.of(dataDir).resolve(AI_COMMANDS_FILE).toAbsolutePath().normalize();
+    return Path.of(dataDir).resolve(AiCommandJsonStore.AI_COMMANDS_FILE).toAbsolutePath().normalize();
   }
 }

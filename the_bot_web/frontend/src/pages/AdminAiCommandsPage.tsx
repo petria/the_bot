@@ -27,6 +27,8 @@ import {
 } from '../api/adminAiCommands';
 import { getCommands } from '../api/commands';
 
+const ADMIN_ONLY_PERMISSION = 'commands.admin';
+
 export function AdminAiCommandsPage() {
   const queryClient = useQueryClient();
   const aiCommandsQuery = useQuery({
@@ -76,10 +78,10 @@ export function AdminAiCommandsPage() {
         ...current.commands,
         {
           name: '',
-          enabled: false,
+          enabled: true,
           description: '',
           aliases: [],
-          requiredPermission: 'hermes.use',
+          requiredPermission: null,
           instructions: '',
           allowedTools: [],
           maxToolIterations: 3,
@@ -135,6 +137,7 @@ export function AdminAiCommandsPage() {
                   <Group gap="xs">
                     <Title order={3}>!{command.name || 'new-command'}</Title>
                     {command.enabled ? <Badge color="green">enabled</Badge> : <Badge color="gray">disabled</Badge>}
+                    {isAdminOnly(command) ? <Badge color="red">admin only</Badge> : null}
                     {overridesStaticCommand ? <Badge color="yellow">overrides main::{normalizedName}</Badge> : null}
                   </Group>
                   <Text size="sm" c="dimmed">{command.description || 'No description'}</Text>
@@ -150,11 +153,6 @@ export function AdminAiCommandsPage() {
                   value={command.name}
                   onChange={(event) => updateCommand(index, { name: event.currentTarget.value })}
                 />
-                <TextInput
-                  label="Required permission"
-                  value={command.requiredPermission || ''}
-                  onChange={(event) => updateCommand(index, { requiredPermission: event.currentTarget.value })}
-                />
                 <NumberInput
                   label="Max tool iterations"
                   min={1}
@@ -168,6 +166,14 @@ export function AdminAiCommandsPage() {
                 label="Enabled"
                 checked={command.enabled}
                 onChange={(event) => updateCommand(index, { enabled: event.currentTarget.checked })}
+              />
+
+              <Switch
+                label="Admin only"
+                checked={isAdminOnly(command)}
+                onChange={(event) => updateCommand(index, {
+                  requiredPermission: event.currentTarget.checked ? ADMIN_ONLY_PERMISSION : null,
+                })}
               />
 
               <TextInput
@@ -212,6 +218,10 @@ function splitList(value: string): string[] {
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean);
+}
+
+function isAdminOnly(command: AiCommandDefinition): boolean {
+  return (command.requiredPermission || '').trim().toLowerCase() === ADMIN_ONLY_PERMISSION;
 }
 
 function PageError({ error }: { error: Error }) {

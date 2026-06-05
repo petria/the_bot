@@ -2,6 +2,7 @@ package org.freakz.engine.services.ai.claw;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.users.BotPermission;
+import org.freakz.common.util.TextUtils;
 import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
 
@@ -187,10 +188,10 @@ public class OpenClawLogAccessService {
       HokanNodeContextTokenService.VerifiedNodeContext context,
       LogReadRequest request) {
     String scope = sanitizeScope(request.scope());
-    String protocol = segment(firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
-    String network = segment(firstNonBlank(request.network(), context.network()), "unknown");
-    String chatType = segment(firstNonBlank(request.chatType(), context.chatType()), "channel");
-    String chatTarget = segment(firstNonBlank(request.chatTarget(), context.chatTarget()), "unknown");
+    String protocol = segment(TextUtils.firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
+    String network = segment(TextUtils.firstNonBlank(request.network(), context.network()), "unknown");
+    String chatType = segment(TextUtils.firstNonBlank(request.chatType(), context.chatType()), "channel");
+    String chatTarget = segment(TextUtils.firstNonBlank(request.chatTarget(), context.chatTarget()), "unknown");
     return new LogTarget(scope, protocol, network, chatType, chatTarget);
   }
 
@@ -198,12 +199,12 @@ public class OpenClawLogAccessService {
       HokanNodeContextTokenService.VerifiedNodeContext context,
       LogSearchRequest request) {
     String scope = sanitizeScope(request.scope());
-    String protocol = segment(firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
-    String network = segment(firstNonBlank(request.network(), context.network()), "unknown");
-    String chatType = segment(firstNonBlank(request.chatType(), context.chatType()), "channel");
+    String protocol = segment(TextUtils.firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
+    String network = segment(TextUtils.firstNonBlank(request.network(), context.network()), "unknown");
+    String chatType = segment(TextUtils.firstNonBlank(request.chatType(), context.chatType()), "channel");
     String chatTarget = "all-public-channels".equals(scope) && (request.chatTarget() == null || request.chatTarget().isBlank())
         ? "*"
-        : segment(firstNonBlank(request.chatTarget(), context.chatTarget()), "unknown");
+        : segment(TextUtils.firstNonBlank(request.chatTarget(), context.chatTarget()), "unknown");
     return new LogTarget(scope, protocol, network, chatType, chatTarget);
   }
 
@@ -473,15 +474,6 @@ public class OpenClawLogAccessService {
       throw new IllegalArgumentException("invalid log target segment");
     }
     return sanitized;
-  }
-
-  private String firstNonBlank(String... values) {
-    for (String value : values) {
-      if (value != null && !value.isBlank()) {
-        return value;
-      }
-    }
-    return null;
   }
 
   private record LogTarget(String scope, String protocol, String network, String chatType, String chatTarget) {
