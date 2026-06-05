@@ -110,6 +110,10 @@ public class BotEngine {
     return replyOutputService;
   }
 
+  public AiCommandRegistryService getAiCommandRegistryService() {
+    return aiCommandRegistryService;
+  }
+
   public UserAndReply handleEngineRequest(EngineRequest request, boolean doWholeLineTriggerCheck) throws Exception {
 
     request.setBotConfig(configService.readBotConfig());

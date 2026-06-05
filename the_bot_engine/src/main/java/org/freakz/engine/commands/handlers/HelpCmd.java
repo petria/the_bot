@@ -9,9 +9,11 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HandlerClass;
+import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.providers.CommandProvider;
+import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -64,6 +66,10 @@ public class HelpCmd extends AbstractCmd {
         if (!commandNames.isEmpty()) {
           entries.add(formatProviderName(entry.getKey(), commandProviders) + ": " + String.join(", ", commandNames));
         }
+      }
+      String aiCommands = formatAiCommands(request);
+      if (!aiCommands.isBlank()) {
+        entries.add("Hermes AI Commands: " + aiCommands);
       }
       boolean irc = getBotEngine().getReplyOutputService().isIrc(request);
       return getBotEngine().getReplyOutputService().formatList(
@@ -126,6 +132,32 @@ public class HelpCmd extends AbstractCmd {
       return provider.displayName();
     }
     return namespace;
+  }
+
+  private String formatAiCommands(EngineRequest request) {
+    return getBotEngine().getAiCommandRegistryService().currentConfig().getCommands().stream()
+        .filter(command -> isAllowed(request, command))
+        .sorted(Comparator.comparing(AiCommandDefinition::getName, String.CASE_INSENSITIVE_ORDER))
+        .map(this::formatAiCommand)
+        .reduce((left, right) -> left + ", " + right)
+        .orElse("");
+  }
+
+  private boolean isAllowed(EngineRequest request, AiCommandDefinition command) {
+    String requiredPermission = command.getRequiredPermission();
+    return requiredPermission == null || requiredPermission.isBlank() || UserPermissions.has(request.getUser(), requiredPermission);
+  }
+
+  private String formatAiCommand(AiCommandDefinition command) {
+    StringBuilder sb = new StringBuilder(command.getName().toLowerCase());
+    if (!command.isEnabled()) {
+      sb.append("[D]");
+    }
+    String requiredPermission = command.getRequiredPermission();
+    if (requiredPermission != null && !requiredPermission.isBlank()) {
+      sb.append("[P]");
+    }
+    return sb.toString();
   }
 
   private String formatHelpCommandName(String requestedCommand, AbstractCmd cmd) {
