@@ -4,6 +4,8 @@ package org.freakz.common.config;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -40,10 +42,30 @@ public class RuntimeConfigReader {
 
     Path path = Path.of(cfgFile);
     String json = Files.readString(path);
-    String replacedJson = replaceEnvPlaceholders(json);
+    String sanitizedJson = sanitizeDeprecatedFields(mapper, json);
+    String replacedJson = replaceEnvPlaceholders(sanitizedJson);
 
     TheBotConfig theConfig = mapper.readValue(replacedJson, TheBotConfig.class);
     return theConfig;
+  }
+
+  private String sanitizeDeprecatedFields(JsonMapper mapper, String json) throws IOException {
+    JsonNode root = mapper.readTree(json);
+    if (root == null || !root.isObject()) {
+      return json;
+    }
+
+    JsonNode botConfig = root.get("botConfig");
+    if (!(botConfig instanceof ObjectNode botConfigObject)) {
+      return json;
+    }
+
+    if (botConfigObject.remove("openAiApiKey") != null) {
+      log.info("Removed deprecated botConfig.openAiApiKey from runtime config during load");
+      return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+    }
+
+    return json;
   }
 
   private String replaceEnvPlaceholders(String text) {

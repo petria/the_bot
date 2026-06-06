@@ -571,6 +571,7 @@ public class AdminConnectionConfigService {
 
   private ObjectNode botConfigToNode(ObjectNode existing, BotConfigDto config) {
     ObjectNode node = existing == null ? jsonMapper.createObjectNode() : existing.deepCopy();
+    node.remove("openAiApiKey");
     putNullable(node, "botName", config.botName());
     putNullable(node, "ircRealName", config.ircRealName());
     return node;

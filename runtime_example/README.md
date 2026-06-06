@@ -9,7 +9,7 @@ For IDEA local development, launch both `bot-io` and `bot-engine` with:
 The shared bootstrap properties file points both modules to the same runtime config.
 Path values in `dev.properties` are resolved relative to the properties file, so `./DEV.the_bot_config.json` means `runtime/DEV.the_bot_config.json` when `BOT_CONFIG_FILE=./runtime/dev.properties`.
 
-The same `dev.properties` file also carries engine runtime settings such as OpenClaw, weather and OpenAI config. Optional placeholders can use `${ENV_NAME:default}`. Required placeholders use `${ENV_NAME}` and fail fast when missing.
+The same `dev.properties` file also carries engine runtime settings such as OpenClaw, Hermes and weather config. Optional placeholders can use `${ENV_NAME:default}`. Required placeholders use `${ENV_NAME}` and fail fast when missing.
 
 ## Runtime config precedence
 
@@ -29,16 +29,17 @@ Examples:
 `channel.do.url.topic`
 `channel.do.sys.notify`
 
-Secrets and infrastructure values such as `OPENAI_API_KEY`, `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file. Do not use `*.secret.properties` files for new config.
+Secrets and infrastructure values such as `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file. Do not use `*.secret.properties` files for new config.
 
 Minimum IDEA environment variables for local bot testing:
 
 `BOT_CONFIG_FILE=./runtime/dev.properties`
 `OPENCLAW_HOOKS_TOKEN`
-`OPENAI_API_KEY`
 `WEATHER_API_KEY`
 `DISCORD_SECRET`
 `TELEGRAM_SECRET`
+
+`OPENAI_API_KEY` is only required when you also run the shared OpenClaw gateway locally.
 
 Optional local overrides:
 

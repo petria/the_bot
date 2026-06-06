@@ -70,6 +70,25 @@ class BotConfigServiceTest {
         .hasMessageContaining("Missing environment variable for config placeholder: MISSING_TEST_VALUE");
   }
 
+  @Test
+  void ignoresDeprecatedOpenAiApiKeyInRuntimeJson() throws Exception {
+    Path runtimeConfig = tempDir.resolve("TEST.the_bot_config.json");
+    Files.writeString(runtimeConfig, """
+        {
+          "botConfig": {
+            "botName": "TestBot",
+            "openAiApiKey": "${OPENAI_API_KEY}"
+          }
+        }
+        """);
+
+    BotConfigService service = service("", null, null);
+
+    service.reloadConfig();
+
+    assertThat(service.readBotConfig().getBotConfig().getBotName()).isEqualTo("TestBot");
+  }
+
   private BotConfigService service(String extraProperties, String envKey, String envValue) throws Exception {
     return service(extraProperties, envKey, envValue, BotConfigOverrideSource.NONE);
   }
