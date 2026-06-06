@@ -51,11 +51,19 @@ public class AiCommandRegistryService {
   }
 
   public Optional<AiCommandDefinition> resolve(String trigger) {
+    return resolveIn(enabledCommands(), trigger);
+  }
+
+  public Optional<AiCommandDefinition> resolveAny(String trigger) {
+    return resolveIn(currentConfig().getCommands(), trigger);
+  }
+
+  private Optional<AiCommandDefinition> resolveIn(List<AiCommandDefinition> commands, String trigger) {
     String normalized = AiCommandJsonStore.normalizeTrigger(trigger);
     if (normalized == null || normalized.contains("::")) {
       return Optional.empty();
     }
-    for (AiCommandDefinition command : enabledCommands()) {
+    for (AiCommandDefinition command : commands) {
       if (AiCommandJsonStore.normalizeName(command.getName()).equals(normalized)) {
         return Optional.of(command);
       }

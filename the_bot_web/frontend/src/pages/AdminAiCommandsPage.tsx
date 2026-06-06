@@ -80,6 +80,7 @@ export function AdminAiCommandsPage() {
           name: '',
           enabled: true,
           description: '',
+          usage: '',
           aliases: [],
           requiredPermission: null,
           instructions: '',
@@ -180,6 +181,13 @@ export function AdminAiCommandsPage() {
                 label="Description"
                 value={command.description || ''}
                 onChange={(event) => updateCommand(index, { description: event.currentTarget.value })}
+              />
+
+              <TextInput
+                label="Usage"
+                description="Shown by !command ? and !help command"
+                value={command.usage || ''}
+                onChange={(event) => updateCommand(index, { usage: event.currentTarget.value })}
               />
 
               <TextInput

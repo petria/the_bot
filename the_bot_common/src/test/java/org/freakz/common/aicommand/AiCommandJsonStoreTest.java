@@ -32,6 +32,7 @@ class AiCommandJsonStoreTest {
     AiCommandDefinition weather = config.getCommands().getFirst();
     assertThat(weather.getName()).isEqualTo("weather");
     assertThat(weather.isEnabled()).isTrue();
+    assertThat(weather.getUsage()).isEqualTo("!weather <location[, location2, ...]>");
     assertThat(weather.getAliases()).contains("!saa", "!sää", "!foreca", "!keli");
     assertThat(weather.getRequiredPermission()).isNull();
     assertThat(weather.getAllowedTools()).containsExactly("weather.current");
@@ -45,6 +46,7 @@ class AiCommandJsonStoreTest {
         "!DynPing",
         true,
         "  test command  ",
+        "  !DynPing <text>  ",
         List.of("ping-ai", "!PONG-AI"),
         null,
         "  Return pong  ",
@@ -56,6 +58,7 @@ class AiCommandJsonStoreTest {
     AiCommandDefinition command = saved.getCommands().getFirst();
     assertThat(command.getName()).isEqualTo("dynping");
     assertThat(command.getDescription()).isEqualTo("test command");
+    assertThat(command.getUsage()).isEqualTo("!DynPing <text>");
     assertThat(command.getAliases()).containsExactly("!ping-ai", "!PONG-AI");
     assertThat(command.getRequiredPermission()).isNull();
     assertThat(command.getInstructions()).isEqualTo("Return pong");
@@ -71,6 +74,7 @@ class AiCommandJsonStoreTest {
         "adminping",
         true,
         "",
+        "!adminping",
         List.of(),
         BotPermission.COMMANDS_ADMIN,
         "Return pong",
@@ -80,6 +84,7 @@ class AiCommandJsonStoreTest {
     AiCommandConfig saved = store.save(input);
 
     assertThat(saved.getCommands().getFirst().getRequiredPermission()).isEqualTo(BotPermission.COMMANDS_ADMIN);
+    assertThat(saved.getCommands().getFirst().getUsage()).isEqualTo("!adminping");
   }
 
   @Test
@@ -90,6 +95,7 @@ class AiCommandJsonStoreTest {
         "dynping",
         true,
         "",
+        null,
         List.of(),
         BotPermission.HERMES_USE,
         "Return pong",
@@ -119,6 +125,7 @@ class AiCommandJsonStoreTest {
         name,
         true,
         "",
+        null,
         List.of(alias),
         "hermes.use",
         "Return final.",

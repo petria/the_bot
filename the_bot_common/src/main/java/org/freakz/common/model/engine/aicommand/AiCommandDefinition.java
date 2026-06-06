@@ -8,6 +8,7 @@ public class AiCommandDefinition {
   private String name;
   private boolean enabled;
   private String description;
+  private String usage;
   private List<String> aliases = new ArrayList<>();
   private String requiredPermission;
   private String instructions;
@@ -21,6 +22,7 @@ public class AiCommandDefinition {
       String name,
       boolean enabled,
       String description,
+      String usage,
       List<String> aliases,
       String requiredPermission,
       String instructions,
@@ -29,6 +31,7 @@ public class AiCommandDefinition {
     this.name = name;
     this.enabled = enabled;
     this.description = description;
+    this.usage = usage;
     this.aliases = aliases == null ? new ArrayList<>() : new ArrayList<>(aliases);
     this.requiredPermission = requiredPermission;
     this.instructions = instructions;
@@ -58,6 +61,14 @@ public class AiCommandDefinition {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  public String getUsage() {
+    return usage;
+  }
+
+  public void setUsage(String usage) {
+    this.usage = usage;
   }
 
   public List<String> getAliases() {

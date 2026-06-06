@@ -4,6 +4,7 @@ export type AiCommandDefinition = {
   name: string;
   enabled: boolean;
   description: string | null;
+  usage: string | null;
   aliases: string[];
   requiredPermission: string | null;
   instructions: string | null;

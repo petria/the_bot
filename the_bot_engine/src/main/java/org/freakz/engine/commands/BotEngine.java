@@ -13,6 +13,7 @@ import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.common.model.users.User;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.spring.rest.RestMessageSendClient;
+import org.freakz.engine.commands.ai.AiCommandHelpFormatter;
 import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.api.HokanCmd;
@@ -236,8 +237,9 @@ public class BotEngine {
     String message = request.getMessage();
     CommandArgs args = new CommandArgs(message);
 
-    if (executeAiCommandIfMatched(request, user, args, sendProcessingIndicator)) {
-      return null;
+    AiCommandExecutionResult aiMatch = executeAiCommandIfMatched(request, user, args, sendProcessingIndicator);
+    if (aiMatch.matched()) {
+      return aiMatch.reply();
     }
 
     CommandHandlerLoader.AliasResolution aliasResolution = getCommandHandlerLoader().resolveAlias(message);
@@ -251,8 +253,9 @@ public class BotEngine {
       args = new CommandArgs(message);
     }
 
-    if (executeAiCommandIfMatched(request, user, args, sendProcessingIndicator)) {
-      return null;
+    aiMatch = executeAiCommandIfMatched(request, user, args, sendProcessingIndicator);
+    if (aiMatch.matched()) {
+      return aiMatch.reply();
     }
 
     HandlerClass handlerClass = this.commandHandlerLoader.getHandlerClassForCommand(args.getCommand());
@@ -325,7 +328,7 @@ public class BotEngine {
     return null;
   }
 
-  private boolean executeAiCommandIfMatched(
+  private AiCommandExecutionResult executeAiCommandIfMatched(
       EngineRequest request,
       User user,
       CommandArgs args,
@@ -338,15 +341,19 @@ public class BotEngine {
           request.setUser(user);
           if (!hasAiCommandPermission(user, command)) {
             log.debug("User lacks required AI command permission: {}", command.getRequiredPermission());
-            return true;
+            return AiCommandExecutionResult.matched(null);
+          }
+          if (args.hasArgs() && "?".equals(args.getArg(0))) {
+            return AiCommandExecutionResult.matched(
+                sendReplyMessage(request, AiCommandHelpFormatter.formatDetailed(command)));
           }
           if (sendProcessingIndicator) {
             sendProcessingIndicator(request);
           }
           hermesAiCommandService.ask(request, command, args.joinArgs(0));
-          return true;
+          return AiCommandExecutionResult.matched(null);
         })
-        .orElse(false);
+        .orElse(AiCommandExecutionResult.notMatched());
   }
 
   private boolean hasAiCommandPermission(User user, AiCommandDefinition command) {
@@ -455,5 +462,15 @@ public class BotEngine {
       e.printStackTrace();
     }
     return null;
+  }
+
+  private record AiCommandExecutionResult(boolean matched, String reply) {
+    private static AiCommandExecutionResult matched(String reply) {
+      return new AiCommandExecutionResult(true, reply);
+    }
+
+    private static AiCommandExecutionResult notMatched() {
+      return new AiCommandExecutionResult(false, null);
+    }
   }
 }

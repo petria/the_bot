@@ -3,6 +3,7 @@ package org.freakz.engine.commands;
 import org.freakz.common.model.botconfig.BotConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.output.ReplyOutputService;
@@ -18,7 +19,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class BotEngineCommandInvocationStatsTest {
@@ -55,7 +60,51 @@ class BotEngineCommandInvocationStatsTest {
     assertThat(statsService.getProviderInvocationCount("main")).isZero();
   }
 
+  @Test
+  void dynamicAiQuestionReturnsUsageWithoutCallingHermes() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
+    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
+    when(aiCommandRegistryService.resolve(anyString())).thenAnswer(invocation ->
+        "!dynping".equals(invocation.getArgument(0)) ? Optional.of(dynping) : Optional.empty());
+    HermesAiCommandService hermesAiCommandService = mock(HermesAiCommandService.class);
+    BotEngine botEngine = botEngine(statsService, aiCommandRegistryService, hermesAiCommandService);
+
+    String reply = botEngine.handleEngineRequest(request("!dynping ?"), true).getReplyMessage();
+
+    assertThat(reply).contains("Usage    : !dynping <text>");
+    assertThat(reply).contains("Help     : Test dynamic command.");
+    assertThat(statsService.getCommandInvocationCount("ai::dynping")).isEqualTo(1);
+    assertThat(statsService.getProviderInvocationCount("ai")).isEqualTo(1);
+    verify(hermesAiCommandService, never()).ask(any(), any(), anyString());
+  }
+
+  @Test
+  void helpShowsDynamicAiCommandDetails() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
+    dynping.setAliases(List.of("!pong-ai"));
+    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
+    when(aiCommandRegistryService.resolve(anyString())).thenReturn(Optional.empty());
+    when(aiCommandRegistryService.resolveAny("dynping")).thenReturn(Optional.of(dynping));
+    HermesAiCommandService hermesAiCommandService = mock(HermesAiCommandService.class);
+    BotEngine botEngine = botEngine(statsService, aiCommandRegistryService, hermesAiCommandService);
+
+    String reply = botEngine.handleEngineRequest(request("!help dynping"), true).getReplyMessage();
+
+    assertThat(reply).contains("Usage    : !dynping <text>");
+    assertThat(reply).contains("Aliases  : !pong-ai");
+    assertThat(reply).contains("Help     : Test dynamic command.");
+  }
+
   private BotEngine botEngine(CommandInvocationStatsService statsService) throws Exception {
+    return botEngine(statsService, emptyAiRegistry(), mock(HermesAiCommandService.class));
+  }
+
+  private BotEngine botEngine(
+      CommandInvocationStatsService statsService,
+      AiCommandRegistryService aiCommandRegistryService,
+      HermesAiCommandService hermesAiCommandService) throws Exception {
     ConfigService configService = mock(ConfigService.class);
     when(configService.getActiveProfile()).thenReturn("DEV");
     when(configService.readBotConfig()).thenReturn(
@@ -68,8 +117,6 @@ class BotEngineCommandInvocationStatsTest {
     unknownUser.setId(-1L);
     when(usersService.findAll()).thenReturn(List.of());
     when(usersService.getNotKnownUser()).thenReturn(unknownUser);
-    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
-    when(aiCommandRegistryService.resolve(org.mockito.ArgumentMatchers.anyString())).thenReturn(Optional.empty());
 
     return new BotEngine(
         new AccessService(usersService),
@@ -81,7 +128,14 @@ class BotEngineCommandInvocationStatsTest {
         mock(ReplyOutputService.class),
         statsService,
         aiCommandRegistryService,
-        mock(HermesAiCommandService.class));
+        hermesAiCommandService);
+  }
+
+  private AiCommandRegistryService emptyAiRegistry() {
+    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
+    when(aiCommandRegistryService.resolve(anyString())).thenReturn(Optional.empty());
+    when(aiCommandRegistryService.resolveAny(anyString())).thenReturn(Optional.empty());
+    return aiCommandRegistryService;
   }
 
   private EngineRequest request(String command) {
@@ -93,5 +147,18 @@ class BotEngineCommandInvocationStatsTest {
         .replyTo("tester")
         .fromConnectionId(-1)
         .build();
+  }
+
+  private AiCommandDefinition aiCommand(String name, String usage, String description) {
+    return new AiCommandDefinition(
+        name,
+        true,
+        description,
+        usage,
+        List.of(),
+        null,
+        "Return final.",
+        List.of(),
+        3);
   }
 }

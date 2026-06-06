@@ -134,6 +134,7 @@ public class AiCommandJsonStore {
         "weather",
         true,
         "Hermes-backed weather command",
+        "!weather <location[, location2, ...]>",
         List.of("saa", "sää", "foreca", "keli"),
         null,
         """
@@ -175,6 +176,7 @@ public class AiCommandJsonStore {
         name,
         command.isEnabled(),
         clean(command.getDescription()),
+        normalizeUsage(name, command.getUsage()),
         aliases,
         normalizePermission(command.getRequiredPermission()),
         normalizeInstructions(name, tools, command.getInstructions()),
@@ -192,6 +194,14 @@ public class AiCommandJsonStore {
       return null;
     }
     return normalized;
+  }
+
+  private String normalizeUsage(String name, String usage) {
+    String cleaned = clean(usage);
+    if (cleaned == null || cleaned.isBlank()) {
+      return name == null || name.isBlank() ? null : "!" + name;
+    }
+    return cleaned;
   }
 
   private String normalizeInstructions(String name, List<String> tools, String instructions) {
