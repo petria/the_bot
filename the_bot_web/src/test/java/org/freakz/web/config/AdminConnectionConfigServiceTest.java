@@ -41,6 +41,7 @@ class AdminConnectionConfigServiceTest {
         .doesNotContain("telegram-secret")
         .doesNotContain("whatsapp-send-secret")
         .doesNotContain("whatsapp-webhook-secret")
+        .doesNotContain("openai-secret")
         .contains("IRCDEV");
   }
 
@@ -60,6 +61,7 @@ class AdminConnectionConfigServiceTest {
 
     String saved = Files.readString(files.runtimeConfigFile());
     assertThat(saved)
+        .doesNotContain("\"openAiApiKey\"")
         .contains("discord-secret")
         .contains("telegram-secret")
         .contains("whatsapp-send-secret")
@@ -144,7 +146,7 @@ class AdminConnectionConfigServiceTest {
     assertThat(saved)
         .contains("\"ircRealName\" : \"The Bot Test IRC Name\"")
         .contains("api-secret")
-        .contains("openai-secret");
+        .doesNotContain("\"openAiApiKey\"");
   }
 
   @Test
@@ -247,8 +249,7 @@ class AdminConnectionConfigServiceTest {
           "botConfig": {
             "botName": "devbot",
             "ircRealName": "Old IRC Name",
-            "apiKey": "api-secret",
-            "openAiApiKey": "openai-secret"
+            "apiKey": "api-secret"
           },
           "discordConfig": {
             "token": "discord-secret",
