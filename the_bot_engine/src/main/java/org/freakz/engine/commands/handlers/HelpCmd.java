@@ -10,6 +10,7 @@ import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HandlerClass;
+import org.freakz.engine.commands.ai.AiCommandHelpFormatter;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.providers.CommandProvider;
@@ -83,7 +84,12 @@ public class HelpCmd extends AbstractCmd {
     } else {
       List<AbstractCmd> list = getBotEngine().getCommandHandlerLoader().getMatchingCommandInstances(command);
       if (list == null || list.isEmpty()) {
-        sb.append(String.format("Help: with '%s' did not match any command. ", command));
+        AiCommandDefinition aiCommand = getBotEngine().getAiCommandRegistryService().resolveAny(command).orElse(null);
+        if (aiCommand == null) {
+          sb.append(String.format("Help: with '%s' did not match any command. ", command));
+        } else {
+          sb.append(AiCommandHelpFormatter.formatDetailed(aiCommand));
+        }
       } else {
         for (AbstractCmd cmd : list) {
 

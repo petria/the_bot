@@ -8,6 +8,7 @@ import org.freakz.common.model.engine.commands.GetCommandsResponse;
 import org.freakz.engine.commands.ai.AiCommandRegistryService;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.commands.providers.CommandProvider;
+import org.freakz.engine.commands.ai.AiCommandHelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -118,6 +119,8 @@ public class CommandCatalogService {
         .sorted(Comparator.comparing(CommandAliasInfo::getAlias, String.CASE_INSENSITIVE_ORDER))
         .toList();
     String help = (command.isEnabled() ? "Enabled" : "Disabled")
+        + "\n"
+        + "Usage: " + AiCommandHelpFormatter.formatUsage(command)
         + "\n"
         + (command.getDescription() == null ? "" : command.getDescription())
         + "\nAllowed tools: "

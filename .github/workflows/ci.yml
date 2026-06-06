@@ -531,15 +531,11 @@ jobs:
             hermes.model=$HERMES_MODEL
             hermes.timeout-seconds=$HERMES_TIMEOUT_SECONDS
             hermes.api-mode=$HERMES_API_MODE
-            spring.ai.openai.api-key=\${OPENAI_API_KEY}
             weather.api-key=\${WEATHER_API_KEY}
             weather.api-url=$WEATHER_API_URL
             channel.do.public.ai=
             channel.do.url.topic=
             channel.do.sys.notify=
-            ollama.water.host=http://bot-ollama:11434
-            ollama.water.model=qwen3-vl:235b-cloud
-            water.use.ollama=false
             EOF
 
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
