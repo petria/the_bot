@@ -1,6 +1,5 @@
 package org.freakz.engine.services.weather.weatherapi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
@@ -13,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +116,7 @@ public class WeatherAPIService {
       String json = msg.substring(idx1);
       if (json.startsWith("\"") && json.endsWith("\"")) {
         json = json.substring(1, json.length() - 1);
-        ObjectMapper mapper = new ObjectMapper();
+        JsonMapper mapper = JsonMapper.builder().build();
         error = mapper.readValue(json, ErrorResponse.class);
         int foo = 0;
       } else {
