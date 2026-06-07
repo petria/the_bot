@@ -15,8 +15,8 @@ import java.time.Duration;
 public class UrlProviderClientConfiguration {
 
   @Bean
-  YouTubeApiClient youTubeApiClient(RestClient.Builder builder, UrlResolverProperties properties) {
-    RestClient restClient = providerRestClient(builder, properties)
+  YouTubeApiClient youTubeApiClient(UrlResolverProperties properties) {
+    RestClient restClient = providerRestClient(properties)
         .baseUrl("https://www.googleapis.com")
         .build();
     HttpServiceProxyFactory factory = HttpServiceProxyFactory
@@ -26,22 +26,20 @@ public class UrlProviderClientConfiguration {
   }
 
   @Bean
-  WikipediaApiClient wikipediaApiClient(RestClient.Builder builder, UrlResolverProperties properties) {
+  WikipediaApiClient wikipediaApiClient(UrlResolverProperties properties) {
     HttpServiceProxyFactory factory = HttpServiceProxyFactory
-        .builderFor(RestClientAdapter.create(providerRestClient(builder, properties).build()))
+        .builderFor(RestClientAdapter.create(providerRestClient(properties).build()))
         .build();
     return factory.createClient(WikipediaApiClient.class);
   }
 
-  private RestClient.Builder providerRestClient(
-      RestClient.Builder builder,
-      UrlResolverProperties properties) {
+  private RestClient.Builder providerRestClient(UrlResolverProperties properties) {
     HttpClient httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofMillis(properties.getConnectTimeoutMillis()))
         .followRedirects(HttpClient.Redirect.NEVER)
         .build();
     JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
     requestFactory.setReadTimeout(Duration.ofMillis(properties.getReadTimeoutMillis()));
-    return builder.clone().requestFactory(requestFactory);
+    return RestClient.builder().requestFactory(requestFactory);
   }
 }
