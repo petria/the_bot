@@ -45,6 +45,7 @@ const emptyChannel: AdminConfigChannel = {
   joinOnStart: false,
   publicAiEnabled: false,
   allowAnonymousAiCommands: false,
+  resolveUrls: false,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -509,6 +510,11 @@ function ChannelsEditor({
               label="Allow unknown users to use AI"
               checked={channel.allowAnonymousAiCommands}
               onChange={(event) => updateChannel(channels, index, { allowAnonymousAiCommands: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Resolve URLs"
+              checked={channel.resolveUrls}
+              onChange={(event) => updateChannel(channels, index, { resolveUrls: event.currentTarget.checked }, onChange)}
             />
           </Stack>
         </Card>
