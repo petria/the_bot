@@ -14,15 +14,20 @@ public class Channel {
   private boolean joinOnStart;
   private Boolean publicAiEnabled;
   private Boolean allowAnonymousAiCommands;
+  private Boolean resolveUrls;
 
   public Channel() {
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled) {
-    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, null);
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, null, null);
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands) {
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, null);
+  }
+
+  public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls) {
     this.id = id;
     this.description = description;
     this.name = name;
@@ -32,6 +37,7 @@ public class Channel {
     this.joinOnStart = joinOnStart;
     this.publicAiEnabled = publicAiEnabled;
     this.allowAnonymousAiCommands = allowAnonymousAiCommands;
+    this.resolveUrls = resolveUrls;
   }
 
   public static Builder builder() {
@@ -110,17 +116,25 @@ public class Channel {
     this.allowAnonymousAiCommands = allowAnonymousAiCommands;
   }
 
+  public Boolean getResolveUrls() {
+    return resolveUrls;
+  }
+
+  public void setResolveUrls(Boolean resolveUrls) {
+    this.resolveUrls = resolveUrls;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Channel channel = (Channel) o;
-    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
+    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands);
+    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls);
   }
 
   @Override
@@ -135,6 +149,7 @@ public class Channel {
         ", joinOnStart=" + joinOnStart +
         ", publicAiEnabled=" + publicAiEnabled +
         ", allowAnonymousAiCommands=" + allowAnonymousAiCommands +
+        ", resolveUrls=" + resolveUrls +
         '}';
   }
 
@@ -148,6 +163,7 @@ public class Channel {
     private boolean joinOnStart;
     private Boolean publicAiEnabled;
     private Boolean allowAnonymousAiCommands;
+    private Boolean resolveUrls;
 
     public Builder id(String id) {
       this.id = id;
@@ -194,8 +210,13 @@ public class Channel {
       return this;
     }
 
+    public Builder resolveUrls(Boolean resolveUrls) {
+      this.resolveUrls = resolveUrls;
+      return this;
+    }
+
     public Channel build() {
-      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands);
+      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls);
     }
   }
 }

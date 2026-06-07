@@ -130,6 +130,7 @@ export function ConnectionsPage() {
                   joinOnStart: false,
                   publicAiEnabled: false,
                   allowAnonymousAiCommands: false,
+                  resolveUrls: false,
                 },
               })}
             />

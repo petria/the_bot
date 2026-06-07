@@ -26,7 +26,6 @@ Currently only `channel.*` keys are runtime-mutable through the bot env-value co
 
 Examples:
 
-`channel.do.url.topic`
 `channel.do.sys.notify`
 
 Secrets and infrastructure values such as `OPENCLAW_HOOKS_TOKEN`, `OPENCLAW_GATEWAY_TOKEN`, OpenClaw URLs and state paths are not runtime-mutable. They must come from CI/deploy environment, local IDEA environment, or the selected bootstrap properties file. Do not use `*.secret.properties` files for new config.

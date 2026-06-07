@@ -7,7 +7,6 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.botconfig.Channel;
-import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.common.model.users.User;
@@ -21,11 +20,12 @@ import org.freakz.engine.commands.output.ReplyOutputService;
 import org.freakz.engine.commands.util.CommandArgs;
 import org.freakz.engine.commands.util.UserAndReply;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.config.ConfiguredChannelResolver;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
-import org.freakz.engine.services.urls.UrlMetadataService;
+import org.freakz.engine.services.urls.UrlResolutionService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ public class BotEngine {
   private final CommandHandlerLoader commandHandlerLoader;
   private final HokanServices hokanServices;
   private final ConfigService configService;
-  private final UrlMetadataService urlMetadataService;
+  private final UrlResolutionService urlResolutionService;
   private final WholeLineTriggers wholeLineTriggers;
   private final RestMessageSendClient restMessageSendClient;
   private final PrivateChatAlertService privateChatAlertService;
@@ -57,31 +57,34 @@ public class BotEngine {
   private final CommandInvocationStatsService commandInvocationStatsService;
   private final AiCommandRegistryService aiCommandRegistryService;
   private final HermesAiCommandService hermesAiCommandService;
+  private final ConfiguredChannelResolver configuredChannelResolver;
   private String botName = "HokanTheBot";
 
   public BotEngine(
       AccessService accessService,
       HokanServices hokanServices,
       ConfigService configService,
-      UrlMetadataService urlMetadataService,
+      UrlResolutionService urlResolutionService,
       RestMessageSendClient restMessageSendClient,
       PrivateChatAlertService privateChatAlertService,
       ReplyOutputService replyOutputService,
       CommandInvocationStatsService commandInvocationStatsService,
       AiCommandRegistryService aiCommandRegistryService,
-      HermesAiCommandService hermesAiCommandService)
+      HermesAiCommandService hermesAiCommandService,
+      ConfiguredChannelResolver configuredChannelResolver)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
     this.configService = configService;
 //    this.countInterceptor = countInterceptor;
-    this.urlMetadataService = urlMetadataService;
+    this.urlResolutionService = urlResolutionService;
     this.restMessageSendClient = restMessageSendClient;
     this.privateChatAlertService = privateChatAlertService;
     this.replyOutputService = replyOutputService;
     this.commandInvocationStatsService = commandInvocationStatsService;
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.hermesAiCommandService = hermesAiCommandService;
+    this.configuredChannelResolver = configuredChannelResolver;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -138,7 +141,7 @@ public class BotEngine {
     }
 
     if (!request.getCommand().startsWith(this.botName) && !implicitOpenClawChat) {
-      this.urlMetadataService.handleEngineRequest(request, this);
+      this.urlResolutionService.handleEngineRequest(request, this);
     }
 
     String replyMessage = null;
@@ -165,7 +168,7 @@ public class BotEngine {
     }
 
     TheBotConfig botConfig = request.getBotConfig();
-    Channel configuredChannel = findChannelByEchoToAlias(botConfig, echoToAlias);
+    Channel configuredChannel = configuredChannelResolver.findByEchoToAlias(botConfig, echoToAlias);
     if (configuredChannel == null || !Boolean.TRUE.equals(configuredChannel.getPublicAiEnabled())) {
       return false;
     }
@@ -176,46 +179,6 @@ public class BotEngine {
     }
 
     return message.contains("?") || containsBotMention(message);
-  }
-
-  private Channel findChannelByEchoToAlias(TheBotConfig botConfig, String echoToAlias) {
-    if (botConfig == null || echoToAlias == null || echoToAlias.isBlank()) {
-      return null;
-    }
-    for (IrcServerConfig ircConfig : nullSafe(botConfig.getIrcServerConfigs())) {
-      Channel channel = findChannelInList(ircConfig == null ? null : ircConfig.getChannelList(), echoToAlias);
-      if (channel != null) {
-        return channel;
-      }
-    }
-    Channel discordChannel = findChannelInList(
-        botConfig.getDiscordConfig() == null ? null : botConfig.getDiscordConfig().getChannelList(),
-        echoToAlias);
-    if (discordChannel != null) {
-      return discordChannel;
-    }
-    Channel telegramChannel = findChannelInList(
-        botConfig.getTelegramConfig() == null ? null : botConfig.getTelegramConfig().getChannelList(),
-        echoToAlias);
-    if (telegramChannel != null) {
-      return telegramChannel;
-    }
-    return findChannelInList(
-        botConfig.getWhatsappConfig() == null ? null : botConfig.getWhatsappConfig().getChannelList(),
-        echoToAlias);
-  }
-
-  private Channel findChannelInList(List<Channel> channels, String echoToAlias) {
-    for (Channel channel : nullSafe(channels)) {
-      if (channel != null && channel.getEchoToAlias() != null && channel.getEchoToAlias().equalsIgnoreCase(echoToAlias)) {
-        return channel;
-      }
-    }
-    return null;
-  }
-
-  private <T> List<T> nullSafe(List<T> values) {
-    return values == null ? List.of() : values;
   }
 
   private boolean containsBotMention(String message) {
@@ -395,7 +358,7 @@ public class BotEngine {
       return false;
     }
 
-    Channel configuredChannel = findChannelByEchoToAlias(request.getBotConfig(), request.getEchoToAlias());
+    Channel configuredChannel = configuredChannelResolver.findByEchoToAlias(request.getBotConfig(), request.getEchoToAlias());
     return configuredChannel != null
         && Boolean.TRUE.equals(configuredChannel.getPublicAiEnabled())
         && Boolean.TRUE.equals(configuredChannel.getAllowAnonymousAiCommands());

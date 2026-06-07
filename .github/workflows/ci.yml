@@ -530,7 +530,6 @@ jobs:
             weather.api-key=\${WEATHER_API_KEY}
             weather.api-url=$WEATHER_API_URL
             channel.do.public.ai=
-            channel.do.url.topic=
             channel.do.sys.notify=
             EOF
 

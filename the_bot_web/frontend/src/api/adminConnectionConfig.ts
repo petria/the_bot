@@ -10,6 +10,7 @@ export type AdminConfigChannel = {
   joinOnStart: boolean;
   publicAiEnabled: boolean;
   allowAnonymousAiCommands: boolean;
+  resolveUrls: boolean;
 };
 
 export type AdminIrcServerConfig = {
