@@ -28,4 +28,11 @@ class UrlExtractorTest {
         URI.create("https://example.com/1"),
         URI.create("https://example.com/2"));
   }
+
+  @Test
+  void removesUrlsWithoutRemovingQuestionMarksFromHumanText() {
+    assertThat(UrlExtractor.removeUrls(
+        "testi https://www.youtube.com/watch?v=_IZBMQS3JGE is this useful?"))
+        .isEqualTo("testi   is this useful?");
+  }
 }

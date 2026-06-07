@@ -25,6 +25,7 @@ import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
+import org.freakz.engine.services.urls.UrlExtractor;
 import org.freakz.engine.services.urls.UrlResolutionService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggersImpl;
@@ -178,7 +179,8 @@ public class BotEngine {
       return false;
     }
 
-    return message.contains("?") || containsBotMention(message);
+    String messageWithoutUrls = UrlExtractor.removeUrls(message);
+    return messageWithoutUrls.contains("?") || containsBotMention(messageWithoutUrls);
   }
 
   private boolean containsBotMention(String message) {

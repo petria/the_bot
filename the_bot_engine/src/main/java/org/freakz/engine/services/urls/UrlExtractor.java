@@ -18,6 +18,13 @@ public class UrlExtractor {
       Pattern.compile("(?i)(?:https?://|www\\.)[^\\s<>]+");
   private static final String TRAILING_PUNCTUATION = ".,!?;:'\"";
 
+  public static String removeUrls(String message) {
+    if (message == null || message.isBlank()) {
+      return message;
+    }
+    return URL_PATTERN.matcher(message).replaceAll(" ");
+  }
+
   public List<URI> extract(String message, int limit) {
     if (message == null || message.isBlank() || limit <= 0) {
       return List.of();
