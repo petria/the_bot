@@ -1,6 +1,8 @@
 package org.freakz.engine.commands;
 
 import org.freakz.common.model.botconfig.BotConfig;
+import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.botconfig.DiscordConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
@@ -62,6 +64,23 @@ class BotEngineCommandInvocationStatsTest {
   }
 
   @Test
+  void youtubeQueryStringDoesNotTriggerImplicitPublicAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    botEngine.handleEngineRequest(publicRequest(
+        "testi https://www.youtube.com/watch?v=_IZBMQS3JGE"), true);
+
+    verify(urlResolutionService).handleEngineRequest(any(), any());
+  }
+
+  @Test
   void dynamicAiQuestionReturnsUsageWithoutCallingHermes() throws Exception {
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
@@ -106,12 +125,25 @@ class BotEngineCommandInvocationStatsTest {
       CommandInvocationStatsService statsService,
       AiCommandRegistryService aiCommandRegistryService,
       HermesAiCommandService hermesAiCommandService) throws Exception {
-    ConfigService configService = mock(ConfigService.class);
-    when(configService.getActiveProfile()).thenReturn("DEV");
-    when(configService.readBotConfig()).thenReturn(
+    return botEngine(
+        statsService,
+        aiCommandRegistryService,
+        hermesAiCommandService,
         TheBotConfig.builder()
             .botConfig(BotConfig.builder().botName("HokanDEV").build())
-            .build());
+            .build(),
+        mock(UrlResolutionService.class));
+  }
+
+  private BotEngine botEngine(
+      CommandInvocationStatsService statsService,
+      AiCommandRegistryService aiCommandRegistryService,
+      HermesAiCommandService hermesAiCommandService,
+      TheBotConfig botConfig,
+      UrlResolutionService urlResolutionService) throws Exception {
+    ConfigService configService = mock(ConfigService.class);
+    when(configService.getActiveProfile()).thenReturn("DEV");
+    when(configService.readBotConfig()).thenReturn(botConfig);
 
     UsersService usersService = mock(UsersService.class);
     User unknownUser = User.builder().username("unknown").permissions(List.of()).build();
@@ -123,7 +155,7 @@ class BotEngineCommandInvocationStatsTest {
         new AccessService(usersService),
         mock(HokanServices.class),
         configService,
-        mock(UrlResolutionService.class),
+        urlResolutionService,
         null,
         mock(PrivateChatAlertService.class),
         mock(ReplyOutputService.class),
@@ -148,6 +180,30 @@ class BotEngineCommandInvocationStatsTest {
         .fromSenderId("tester")
         .replyTo("tester")
         .fromConnectionId(-1)
+        .build();
+  }
+
+  private EngineRequest publicRequest(String command) {
+    return EngineRequest.builder()
+        .command(command)
+        .network("IRCNet")
+        .fromSender("tester")
+        .fromSenderId("tester")
+        .replyTo("#test")
+        .echoToAlias("IRC-TEST")
+        .fromConnectionId(1)
+        .build();
+  }
+
+  private TheBotConfig publicAiConfig() {
+    Channel channel = Channel.builder()
+        .echoToAlias("IRC-TEST")
+        .publicAiEnabled(true)
+        .resolveUrls(true)
+        .build();
+    return TheBotConfig.builder()
+        .botConfig(BotConfig.builder().botName("HokanDEV").build())
+        .discordConfig(DiscordConfig.builder().channelList(List.of(channel)).build())
         .build();
   }
 
