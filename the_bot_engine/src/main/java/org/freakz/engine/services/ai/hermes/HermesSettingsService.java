@@ -22,6 +22,7 @@ public class HermesSettingsService {
   private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
   private static final String DEFAULT_MODEL = "hermes-chat";
   private static final String DEFAULT_API_MODE = "responses";
+  private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final String BASE_URL_KEY = "hermes.chat.base-url";
   private static final String API_KEY_KEY = "hermes.chat.api-key";
@@ -75,7 +76,7 @@ public class HermesSettingsService {
           "",
           firstNonBlank(override.model(), local.model()),
           local.timeoutSeconds(),
-          DEFAULT_API_MODE);
+          CHAT_COMPLETIONS_API_MODE);
     }
     return local;
   }
@@ -89,7 +90,7 @@ public class HermesSettingsService {
           "",
           firstNonBlank(override.model(), local.model()),
           local.timeoutSeconds(),
-          DEFAULT_API_MODE);
+          CHAT_COMPLETIONS_API_MODE);
     }
     return local;
   }

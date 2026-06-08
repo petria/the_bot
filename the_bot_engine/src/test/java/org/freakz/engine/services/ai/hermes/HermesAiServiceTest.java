@@ -215,13 +215,13 @@ class HermesAiServiceTest {
     assertThat(chatSettings.baseUrl()).isEqualTo("http://ollama.example:11434");
     assertThat(chatSettings.apiKey()).isBlank();
     assertThat(chatSettings.model()).isEqualTo("qwen3.6:35b-a3b");
-    assertThat(chatSettings.apiMode()).isEqualTo("responses");
+    assertThat(chatSettings.apiMode()).isEqualTo("chat-completions");
     assertThat(chatSettings.timeoutSeconds()).isEqualTo(45);
 
     assertThat(aiCommandSettings.baseUrl()).isEqualTo("http://ollama.example:11434");
     assertThat(aiCommandSettings.apiKey()).isBlank();
     assertThat(aiCommandSettings.model()).isEqualTo("qwen3.6:35b-a3b");
-    assertThat(aiCommandSettings.apiMode()).isEqualTo("responses");
+    assertThat(aiCommandSettings.apiMode()).isEqualTo("chat-completions");
     assertThat(aiCommandSettings.timeoutSeconds()).isEqualTo(31);
   }
 
