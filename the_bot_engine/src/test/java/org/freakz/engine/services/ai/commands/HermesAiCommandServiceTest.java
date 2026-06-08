@@ -61,6 +61,27 @@ class HermesAiCommandServiceTest {
         Oulu: 21:40, 8.1°C""");
   }
 
+  @Test
+  void extractsChatCompletionMessageContent() throws Exception {
+    HermesAiCommandService service = newService();
+    String text = service.extractText(new JsonMapper().readTree("""
+        {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "{\\"type\\":\\"final\\",\\"answer\\":\\"pong\\"}"
+              }
+            }
+          ]
+        }
+        """));
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse(text);
+
+    assertThat(response.finalAnswer()).isEqualTo("pong");
+  }
+
   @SuppressWarnings("unchecked")
   private HermesAiCommandService newService() {
     return new HermesAiCommandService(

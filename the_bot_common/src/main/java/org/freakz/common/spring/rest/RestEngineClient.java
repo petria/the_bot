@@ -6,6 +6,9 @@ import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -18,12 +21,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import java.time.Duration;
 
 @Component
 public class RestEngineClient {
 
   private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
   private final RestTemplate restTemplate;
+  private final RestTemplate longRunningRestTemplate;
   private final String baseUrl;
 
   @Autowired
@@ -31,6 +37,11 @@ public class RestEngineClient {
       RestTemplate restTemplate,
       @Value("${the.bot.rest.bot-engine-base-url:http://bot-engine:8100}") String botEngineBaseUrl) {
     this.restTemplate = restTemplate;
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(Duration.ofSeconds(3));
+    requestFactory.setReadTimeout(Duration.ofMinutes(5));
+    this.longRunningRestTemplate = new RestTemplate(requestFactory);
+    this.longRunningRestTemplate.setInterceptors(restTemplate.getInterceptors());
     this.baseUrl = trimTrailingSlash(botEngineBaseUrl) + "/api/hokan/engine";
   }
 
@@ -84,6 +95,28 @@ public class RestEngineClient {
   public ResponseEntity<HermesSettingsResponse> updateHermesSettings(HermesSettingsRequest request) {
     String url = baseUrl + "/internal/system/hermes";
     return restTemplate.postForEntity(url, request, HermesSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesFallbackSettingsResponse> getHermesFallback() {
+    return restTemplate.getForEntity(baseUrl + "/internal/system/hermes/fallback", HermesFallbackSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(String baseUrl) {
+    String url = org.springframework.web.util.UriComponentsBuilder
+        .fromUriString(this.baseUrl + "/internal/system/hermes/fallback/models")
+        .queryParam("baseUrl", baseUrl)
+        .build()
+        .encode()
+        .toUriString();
+    return restTemplate.getForEntity(url, HermesFallbackModelsResponse.class);
+  }
+
+  public ResponseEntity<HermesFallbackSettingsResponse> updateHermesFallback(HermesFallbackUpdateRequest request) {
+    return longRunningRestTemplate.exchange(
+        baseUrl + "/internal/system/hermes/fallback",
+        HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(request),
+        HermesFallbackSettingsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

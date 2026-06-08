@@ -1,0 +1,19 @@
+services:
+  bot-hermes-manager:
+    image: ghcr.io/petria/the_bot-hermes-manager:${HERMES_MANAGER_IMAGE_TAG:-latest}
+    container_name: bot-hermes-manager
+    restart: unless-stopped
+    user: "${PUID:-1002}:${PGID:-1002}"
+    group_add:
+      - "${DOCKER_GID:-989}"
+    network_mode: host
+    volumes:
+      - ${HERMES_DATA_DIR:-/home/hokan/bot-hermes/data}:/hermes-data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Europe/Helsinki
+      - HERMES_MANAGER_DATA_DIR=/hermes-data
+      - HERMES_CONTAINER_NAME=${HERMES_CONTAINER_NAME:-bot-hermes}
+      - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_TOKEN}
+      - HERMES_FALLBACK_BASE_URL=${HERMES_FALLBACK_BASE_URL:-http://192.168.0.55:11434/v1}
+      - HERMES_FALLBACK_MODEL=${HERMES_FALLBACK_MODEL:-qwen3.6:35b-a3b}

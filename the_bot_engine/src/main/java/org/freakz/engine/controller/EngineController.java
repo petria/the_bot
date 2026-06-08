@@ -6,6 +6,9 @@ import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -22,6 +25,7 @@ import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
+import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
@@ -51,6 +55,7 @@ public class EngineController {
   private final CommandCatalogService commandCatalogService;
   private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
   private final HermesSettingsService hermesSettingsService;
+  private final HermesFallbackManagerService hermesFallbackManagerService;
   private final AiCommandRegistryService aiCommandRegistryService;
   private final AiCommandToolRegistry aiCommandToolRegistry;
 
@@ -65,6 +70,7 @@ public class EngineController {
       CommandCatalogService commandCatalogService,
       OpenClawInstanceSettingsService openClawInstanceSettingsService,
       HermesSettingsService hermesSettingsService,
+      HermesFallbackManagerService hermesFallbackManagerService,
       AiCommandRegistryService aiCommandRegistryService,
       AiCommandToolRegistry aiCommandToolRegistry) {
     this.botEngine = botEngine;
@@ -77,6 +83,7 @@ public class EngineController {
     this.commandCatalogService = commandCatalogService;
     this.openClawInstanceSettingsService = openClawInstanceSettingsService;
     this.hermesSettingsService = hermesSettingsService;
+    this.hermesFallbackManagerService = hermesFallbackManagerService;
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.aiCommandToolRegistry = aiCommandToolRegistry;
   }
@@ -216,6 +223,22 @@ public class EngineController {
   @PostMapping("/internal/system/hermes")
   public ResponseEntity<HermesSettingsResponse> updateHermesSettings(@RequestBody HermesSettingsRequest request) {
     return ResponseEntity.ok(hermesSettingsService.selectProfile(request));
+  }
+
+  @GetMapping("/internal/system/hermes/fallback")
+  public ResponseEntity<HermesFallbackSettingsResponse> getHermesFallback() {
+    return ResponseEntity.ok(hermesFallbackManagerService.getSettings());
+  }
+
+  @GetMapping("/internal/system/hermes/fallback/models")
+  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(@RequestParam String baseUrl) {
+    return ResponseEntity.ok(hermesFallbackManagerService.getModels(baseUrl));
+  }
+
+  @PutMapping("/internal/system/hermes/fallback")
+  public ResponseEntity<HermesFallbackSettingsResponse> updateHermesFallback(
+      @RequestBody HermesFallbackUpdateRequest request) {
+    return ResponseEntity.ok(hermesFallbackManagerService.update(request));
   }
 
   @PostMapping("/internal/security/web-login-failed")

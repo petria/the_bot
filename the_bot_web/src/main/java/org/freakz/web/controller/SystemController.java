@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -240,6 +242,11 @@ public class SystemController {
 
   private SystemComponentStatus hermesComponentStatus(Instant checkedAt) {
     long startedNanos = System.nanoTime();
+    HermesFallbackSettingsResponse fallback = loadHermesFallbackSettings();
+    if (fallback != null && Boolean.TRUE.equals(fallback.enabled())) {
+      return forcedHermesFallbackComponentStatus(fallback, checkedAt, startedNanos);
+    }
+
     String baseUrl = null;
     String healthUrl = null;
     String status = "UNKNOWN";
@@ -298,6 +305,92 @@ public class SystemController {
         null,
         null,
         error);
+  }
+
+  private HermesFallbackSettingsResponse loadHermesFallbackSettings() {
+    try {
+      ResponseEntity<HermesFallbackSettingsResponse> response = engineClient.getHermesFallback();
+      if (response != null && response.getStatusCode().is2xxSuccessful()) {
+        return response.getBody();
+      }
+    } catch (RuntimeException ignored) {
+      // Older bot-engine builds did not expose fallback state; keep the legacy Hermes check usable.
+    }
+    return null;
+  }
+
+  private SystemComponentStatus forcedHermesFallbackComponentStatus(
+      HermesFallbackSettingsResponse fallback,
+      Instant checkedAt,
+      long startedNanos) {
+    List<HermesFallbackProfileStatus> profiles = fallback.profiles() == null ? List.of() : fallback.profiles();
+    List<HermesFallbackProfileStatus> forcedProfiles = profiles.stream()
+        .filter(profile -> "OLLAMA_FORCED".equalsIgnoreCase(profile.expectedRoute()))
+        .toList();
+    List<HermesFallbackProfileStatus> effectiveProfiles = forcedProfiles.isEmpty() ? profiles : forcedProfiles;
+    long healthyCount = effectiveProfiles.stream()
+        .filter(HermesFallbackProfileStatus::healthy)
+        .count();
+    String status;
+    String healthStatus;
+    String error = null;
+
+    if (effectiveProfiles.isEmpty()) {
+      status = "DEGRADED";
+      healthStatus = "OLLAMA_FORCED no profile health";
+      error = "No Hermes fallback profile health is available";
+    } else if (healthyCount == effectiveProfiles.size()) {
+      status = "UP";
+      healthStatus = "OLLAMA_FORCED healthy " + healthyCount + "/" + effectiveProfiles.size();
+    } else if (healthyCount > 0) {
+      status = "DEGRADED";
+      healthStatus = "OLLAMA_FORCED healthy " + healthyCount + "/" + effectiveProfiles.size();
+      error = fallbackProfileErrors(effectiveProfiles);
+    } else {
+      status = "DOWN";
+      healthStatus = "OLLAMA_FORCED healthy 0/" + effectiveProfiles.size();
+      error = fallbackProfileErrors(effectiveProfiles);
+    }
+
+    long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
+    return new SystemComponentStatus(
+        "bot-hermes",
+        status,
+        "HERMES_MANAGER",
+        "ollama-forced",
+        null,
+        healthStatus,
+        fallback.baseUrl(),
+        "ollama-forced",
+        null,
+        fallback.model(),
+        null,
+        null,
+        null,
+        null,
+        responseTimeMs,
+        checkedAt,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        error);
+  }
+
+  private String fallbackProfileErrors(List<HermesFallbackProfileStatus> profiles) {
+    String detail = profiles.stream()
+        .filter(profile -> !profile.healthy())
+        .map(profile -> firstNonBlank(profile.detail(), profile.profileId() + " is unhealthy"))
+        .filter(value -> value != null && !value.isBlank())
+        .findFirst()
+        .orElse(null);
+    if (detail != null) {
+      return detail;
+    }
+    return "One or more Hermes fallback profiles are unhealthy";
   }
 
   private SystemComponentStatus sidecarComponentStatus(String name, String containerName, Instant checkedAt) {

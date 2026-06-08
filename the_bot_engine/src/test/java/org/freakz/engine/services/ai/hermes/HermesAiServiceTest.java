@@ -2,14 +2,18 @@ package org.freakz.engine.services.ai.hermes;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.users.User;
+import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 class HermesAiServiceTest {
@@ -183,6 +188,44 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void hermesOverrideForcesOllamaForNormalChatAndAiCommandSettings() {
+    RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
+    when(managerClient.getFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(
+        true,
+        "http://ollama.example:11434/v1/",
+        "qwen3.6:35b-a3b",
+        List.of()
+    )));
+
+    HermesSettingsService service = new HermesSettingsService(
+        new TestConfigService(Map.of(
+            "hermes.chat.base-url", "http://chat.example:8643",
+            "hermes.chat.api-key", "chat-secret",
+            "hermes.chat.model", "hermes-chat-custom",
+            "hermes.chat.timeout-seconds", "45",
+            "hermes.profiles.ai-command.api-key", "ai-command-secret",
+            "hermes.ai-command.timeout-seconds", "31"
+        )),
+        mock(EnvValuesService.class),
+        managerClient);
+
+    HermesSettings chatSettings = service.resolveSettings();
+    HermesSettings aiCommandSettings = service.resolveAiCommandSettings();
+
+    assertThat(chatSettings.baseUrl()).isEqualTo("http://ollama.example:11434");
+    assertThat(chatSettings.apiKey()).isBlank();
+    assertThat(chatSettings.model()).isEqualTo("qwen3.6:35b-a3b");
+    assertThat(chatSettings.apiMode()).isEqualTo("chat-completions");
+    assertThat(chatSettings.timeoutSeconds()).isEqualTo(45);
+
+    assertThat(aiCommandSettings.baseUrl()).isEqualTo("http://ollama.example:11434");
+    assertThat(aiCommandSettings.apiKey()).isBlank();
+    assertThat(aiCommandSettings.model()).isEqualTo("qwen3.6:35b-a3b");
+    assertThat(aiCommandSettings.apiMode()).isEqualTo("chat-completions");
+    assertThat(aiCommandSettings.timeoutSeconds()).isEqualTo(31);
+  }
+
+  @Test
   void selectingHermesProfileWritesRuntimeOverrides() {
     EnvValuesService envValuesService = mock(EnvValuesService.class);
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
@@ -225,14 +268,14 @@ class HermesAiServiceTest {
     );
   }
 
-  private static class TestConfigService extends ConfigService {
+  static class TestConfigService extends ConfigService {
     private final Map<String, String> values;
 
-    private TestConfigService() {
+    TestConfigService() {
       this(Map.of());
     }
 
-    private TestConfigService(Map<String, String> values) {
+    TestConfigService(Map<String, String> values) {
       this.values = values;
     }
 

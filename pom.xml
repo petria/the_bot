@@ -40,6 +40,7 @@
         <module>the_bot_io</module>
         <module>the_bot_engine</module>
         <module>the_bot_web</module>
+        <module>the_bot_hermes_manager</module>
     </modules>
 
     <build>

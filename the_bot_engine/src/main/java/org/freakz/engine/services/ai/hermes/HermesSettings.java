@@ -9,4 +9,8 @@ public record HermesSettings(String baseUrl, String apiKey, String model, int ti
   public boolean useResponsesApi() {
     return apiMode == null || apiMode.isBlank() || "responses".equalsIgnoreCase(apiMode);
   }
+
+  public boolean useChatCompletionsApi() {
+    return "chat-completions".equalsIgnoreCase(apiMode) || "chat_completions".equalsIgnoreCase(apiMode);
+  }
 }

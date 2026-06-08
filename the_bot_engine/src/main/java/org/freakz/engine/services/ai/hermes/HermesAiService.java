@@ -83,6 +83,16 @@ public class HermesAiService {
         return;
       }
 
+      if (settings.useChatCompletionsApi()) {
+        String text = createChatCompletion(client, settings, stableSessionId, queryMessage);
+        if (text == null || text.isBlank()) {
+          processReply(engineRequest, "Hermes returned no response.");
+          return;
+        }
+        processReply(engineRequest, text);
+        return;
+      }
+
       String runId = createRun(client, settings, stableSessionId, queryMessage);
       if (runId.isBlank()) {
         processReply(engineRequest, "Hermes returned no response.");
@@ -201,6 +211,37 @@ public class HermesAiService {
     log.warn("Hermes returned no run_id. Raw POST response: {}", response);
     String directText = extractText(node);
     return directText.isBlank() ? "" : "__completed_directly__:" + directText;
+  }
+
+  private String createChatCompletion(WebClient client, HermesSettings settings, String sessionKey, String queryMessage) throws Exception {
+    ObjectNode systemMessage = objectMapper.createObjectNode();
+    systemMessage.put("role", "system");
+    systemMessage.put("content", CHAT_INSTRUCTIONS);
+
+    ObjectNode userMessage = objectMapper.createObjectNode();
+    userMessage.put("role", "user");
+    userMessage.put("content", queryMessage == null ? "" : queryMessage);
+
+    ObjectNode body = objectMapper.createObjectNode();
+    body.put("model", settings.model());
+    body.putArray("messages").add(systemMessage).add(userMessage);
+
+    String response = client.post()
+        .uri("/v1/chat/completions")
+        .header("X-Hermes-Session-Id", sessionKey)
+        .header("X-Hermes-Session-Key", sessionKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body.toString())
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(settings.timeoutSeconds()));
+
+    JsonNode node = parseJson(response);
+    String text = extractText(node);
+    if (text.isBlank()) {
+      log.warn("Hermes /v1/chat/completions returned no extractable text. Raw response: {}", response);
+    }
+    return text;
   }
 
   private HermesRunResult pollRun(WebClient client, String runId, int timeoutSeconds) throws Exception {

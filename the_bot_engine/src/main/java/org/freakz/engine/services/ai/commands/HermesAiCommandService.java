@@ -57,8 +57,8 @@ public class HermesAiCommandService {
         processReply(request, "Hermes is not configured.");
         return;
       }
-      if (!settings.useResponsesApi()) {
-        processReply(request, "AI commands require Hermes responses API mode.");
+      if (!settings.useResponsesApi() && !settings.useChatCompletionsApi()) {
+        processReply(request, "AI commands require Hermes responses or chat-completions API mode.");
         return;
       }
 
@@ -70,7 +70,7 @@ public class HermesAiCommandService {
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
 
       for (int i = 0; i < maxIterations; i++) {
-        String responseText = createResponse(client, settings, sessionKey, instructions, input);
+        String responseText = createModelResponse(client, settings, sessionKey, instructions, input);
         AiCommandModelResponse modelResponse = parseModelResponse(responseText);
         if (modelResponse.finalAnswer() != null) {
           processReply(request, modelResponse.finalAnswer());
@@ -126,6 +126,51 @@ public class HermesAiCommandService {
 
     String response = client.post()
         .uri("/v1/responses")
+        .header("X-Hermes-Session-Id", sessionKey)
+        .header("X-Hermes-Session-Key", sessionKey)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(body.toString())
+        .retrieve()
+        .bodyToMono(String.class)
+        .block(Duration.ofSeconds(settings.timeoutSeconds()));
+
+    JsonNode node = parseJson(response);
+    String text = extractText(node);
+    return text == null ? "" : text.trim();
+  }
+
+  private String createModelResponse(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
+      String instructions,
+      String input) throws Exception {
+    if (settings.useChatCompletionsApi()) {
+      return createChatCompletion(client, settings, sessionKey, instructions, input);
+    }
+    return createResponse(client, settings, sessionKey, instructions, input);
+  }
+
+  private String createChatCompletion(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
+      String instructions,
+      String input) throws Exception {
+    ObjectNode systemMessage = jsonMapper.createObjectNode();
+    systemMessage.put("role", "system");
+    systemMessage.put("content", instructions);
+
+    ObjectNode userMessage = jsonMapper.createObjectNode();
+    userMessage.put("role", "user");
+    userMessage.put("content", input == null ? "" : input);
+
+    ObjectNode body = jsonMapper.createObjectNode();
+    body.put("model", settings.model());
+    body.putArray("messages").add(systemMessage).add(userMessage);
+
+    String response = client.post()
+        .uri("/v1/chat/completions")
         .header("X-Hermes-Session-Id", sessionKey)
         .header("X-Hermes-Session-Key", sessionKey)
         .contentType(MediaType.APPLICATION_JSON)
@@ -304,7 +349,7 @@ public class HermesAiCommandService {
     return jsonMapper.readTree(response);
   }
 
-  private String extractText(JsonNode node) {
+  String extractText(JsonNode node) {
     if (node == null || node.isMissingNode() || node.isNull()) {
       return "";
     }
