@@ -13,6 +13,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -315,6 +317,51 @@ class SystemControllerTest {
   }
 
   @Test
+  void mapsForcedOllamaHermesFallbackHealthFromBotEngineState() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
+        null,
+        null,
+        null,
+        null,
+        List.of())));
+    when(engineClient.getHermesFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(
+        true,
+        "http://192.168.0.55:11434",
+        "qwen3:8b",
+        List.of(
+            new HermesFallbackProfileStatus("chat", "OLLAMA_FORCED", true, false, null, "ok"),
+            new HermesFallbackProfileStatus("coder", "OLLAMA_FORCED", true, false, null, "ok"),
+            new HermesFallbackProfileStatus("ai-command", "OLLAMA_FORCED", true, false, null, "ok")))));
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        properties -> properties.setOpenclawDeploymentMode("local"),
+        containerName -> containerStatus(containerName, "running"),
+        engineClient).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-hermes"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("UP");
+          assertThat(component.componentType()).isEqualTo("HERMES_MANAGER");
+          assertThat(component.runtimeMode()).isEqualTo("ollama-forced");
+          assertThat(component.baseUrl()).isEqualTo("http://192.168.0.55:11434");
+          assertThat(component.healthUrl()).isNull();
+          assertThat(component.healthStatus()).isEqualTo("OLLAMA_FORCED healthy 3/3");
+          assertThat(component.artifact()).isEqualTo("qwen3:8b");
+          assertThat(component.profiles()).isEqualTo("ollama-forced");
+          assertThat(component.error()).isNull();
+        });
+    server.verify();
+  }
+
+  @Test
   void mapsMissingSidecarContainerToDown() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -403,6 +450,11 @@ class SystemControllerTest {
         null,
         null,
         false,
+        null,
+        List.of())));
+    when(engineClient.getHermesFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(
+        false,
+        null,
         null,
         List.of())));
     return controller(restTemplate, propertiesCustomizer, containerStatusProvider, engineClient);
