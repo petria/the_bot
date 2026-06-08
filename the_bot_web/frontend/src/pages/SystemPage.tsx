@@ -59,6 +59,7 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
   const hermesGateway = component.componentType === 'HERMES_GATEWAY';
   const hermesManager = component.componentType === 'HERMES_MANAGER';
   const gateway = openClawGateway || hermesGateway || hermesManager;
+  const endpointLabel = hermesManager ? 'Backend' : gateway ? 'Gateway' : 'Base URL';
   const showContainer = Boolean(component.containerName || component.containerState || component.image || component.containerError);
   return (
     <Card withBorder radius="sm" className="system-card">
@@ -83,7 +84,7 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
         <Stack gap={6}>
           <InfoLine label="Type" value={formatComponentType(component.componentType)} />
           {component.runtimeMode ? <InfoLine label="Mode" value={component.runtimeMode} /> : null}
-          {!sidecar ? <InfoLine label={gateway ? 'Gateway' : 'Base URL'} value={component.baseUrl || '-'} /> : null}
+          {!sidecar ? <InfoLine label={endpointLabel} value={component.baseUrl || '-'} /> : null}
           {component.healthUrl ? <InfoLine label="Health URL" value={component.healthUrl} /> : null}
           {component.healthStatus ? <InfoLine label="Health" value={component.healthStatus} /> : null}
           {hermesGateway || hermesManager ? <InfoLine label="Model" value={component.artifact || '-'} /> : null}
