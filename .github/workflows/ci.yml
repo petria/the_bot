@@ -605,11 +605,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
     environment:
       name: openclaw-gateway
     concurrency:
-      group: deploy-hermes-manager
+      group: deploy-hermes-manager-${{ github.ref_name }}
       cancel-in-progress: false
     steps:
       - name: Checkout repository
