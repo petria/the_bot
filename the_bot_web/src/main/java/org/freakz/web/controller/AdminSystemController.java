@@ -2,6 +2,9 @@ package org.freakz.web.controller;
 
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -10,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -57,6 +62,33 @@ public class AdminSystemController {
     ResponseEntity<HermesSettingsResponse> response = engineClient.updateHermesSettings(request);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update Hermes settings in bot-engine");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/hermes/fallback")
+  public HermesFallbackSettingsResponse getHermesFallback() {
+    ResponseEntity<HermesFallbackSettingsResponse> response = engineClient.getHermesFallback();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load Hermes fallback settings");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/hermes/fallback/models")
+  public HermesFallbackModelsResponse getHermesFallbackModels(@RequestParam String baseUrl) {
+    ResponseEntity<HermesFallbackModelsResponse> response = engineClient.getHermesFallbackModels(baseUrl);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load Ollama models");
+    }
+    return response.getBody();
+  }
+
+  @PutMapping("/hermes/fallback")
+  public HermesFallbackSettingsResponse updateHermesFallback(@RequestBody HermesFallbackUpdateRequest request) {
+    ResponseEntity<HermesFallbackSettingsResponse> response = engineClient.updateHermesFallback(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not update Hermes fallback settings");
     }
     return response.getBody();
   }

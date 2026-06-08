@@ -244,19 +244,6 @@ if mode == "chat":
     agent.setdefault("max_turns", 10)
 else:
     platform_toolsets.setdefault("api_server", ["hermes-api-server"])
-    chat_config_path = Path(
-        subprocess.check_output(
-            ["hermes", "-p", "chat", "config", "path"],
-            text=True,
-        ).strip()
-    )
-    chat_auth_path = chat_config_path.parent / "auth.json"
-    profile_auth_path = path.parent / "auth.json"
-    if chat_auth_path.exists() and not profile_auth_path.exists():
-        profile_auth_path.write_bytes(chat_auth_path.read_bytes())
-        source_stat = chat_auth_path.stat()
-        os.chown(profile_auth_path, source_stat.st_uid, source_stat.st_gid)
-        profile_auth_path.chmod(0o600)
     model = data.setdefault("model", {})
     model["default"] = "gpt-5.5"
     model["provider"] = "openai-codex"
