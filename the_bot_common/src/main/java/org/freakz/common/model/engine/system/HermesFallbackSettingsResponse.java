@@ -3,8 +3,12 @@ package org.freakz.common.model.engine.system;
 import java.util.List;
 
 public record HermesFallbackSettingsResponse(
-    boolean enabled,
+    Boolean enabled,
     String baseUrl,
     String model,
     List<HermesFallbackProfileStatus> profiles) {
+
+  public HermesFallbackSettingsResponse {
+    enabled = enabled != null && enabled;
+  }
 }
