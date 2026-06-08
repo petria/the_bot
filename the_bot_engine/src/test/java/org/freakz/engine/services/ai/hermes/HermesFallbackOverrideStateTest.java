@@ -66,7 +66,7 @@ class HermesFallbackOverrideStateTest {
 
     HermesSettings settings = service.resolveAiCommandSettings();
 
-    assertThat(settings.baseUrl()).isEqualTo("http://ollama.example:11434/v1");
+    assertThat(settings.baseUrl()).isEqualTo("http://ollama.example:11434");
     assertThat(settings.apiKey()).isBlank();
     assertThat(settings.model()).isEqualTo("qwen3.6:35b-a3b");
   }

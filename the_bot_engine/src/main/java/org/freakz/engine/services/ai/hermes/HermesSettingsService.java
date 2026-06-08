@@ -71,7 +71,7 @@ public class HermesSettingsService {
     HermesFallbackSettingsResponse override = loadHermesOverride();
     if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
-          trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
+          normalizeApiRoot(firstNonBlank(override.baseUrl(), local.baseUrl())),
           "",
           firstNonBlank(override.model(), local.model()),
           local.timeoutSeconds(),
@@ -85,7 +85,7 @@ public class HermesSettingsService {
     HermesFallbackSettingsResponse override = loadHermesOverride();
     if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
-          trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
+          normalizeApiRoot(firstNonBlank(override.baseUrl(), local.baseUrl())),
           "",
           firstNonBlank(override.model(), local.model()),
           local.timeoutSeconds(),
@@ -141,7 +141,7 @@ public class HermesSettingsService {
   }
 
   private HermesSettings resolveLocalSettings() {
-    String baseUrl = trimTrailingSlash(firstNonBlank(
+    String baseUrl = normalizeApiRoot(firstNonBlank(
         configService.getConfigValue(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
         configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
         DEFAULT_BASE_URL
@@ -181,7 +181,7 @@ public class HermesSettingsService {
     HermesProfileConfig profileConfig = profileConfigById(configuredProfileId, true)
         .orElseThrow(() -> new IllegalArgumentException("Unsupported Hermes AI command profile: " + configuredProfileId));
 
-    String baseUrl = trimTrailingSlash(firstNonBlank(
+    String baseUrl = normalizeApiRoot(firstNonBlank(
         configService.getConfigValue(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", ""),
         profileConfig.option().baseUrl()
     ));
@@ -316,6 +316,14 @@ public class HermesSettingsService {
       return null;
     }
     return value.trim().replaceFirst("/+$", "");
+  }
+
+  private String normalizeApiRoot(String value) {
+    String trimmed = trimTrailingSlash(value);
+    if (trimmed == null) {
+      return null;
+    }
+    return trimmed.replaceFirst("(?i)/v1$", "");
   }
 
   private HermesFallbackSettingsResponse loadHermesOverride() {
