@@ -66,7 +66,7 @@ public class HermesFallbackService implements ApplicationRunner {
       return;
     }
     try {
-      update(new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel()));
+      update(new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel(), false));
       log.info("Applied initial Hermes fallback configuration");
     } catch (Exception e) {
       log.error("Could not apply initial Hermes fallback configuration: {}", e.getMessage());
@@ -92,6 +92,7 @@ public class HermesFallbackService implements ApplicationRunner {
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
     URI baseUrl = validatedBaseUrl(request == null ? null : request.baseUrl());
     String model = requireValue(request == null ? null : request.model(), "model");
+    boolean enabled = request != null && request.enabled();
     validateToolCall(baseUrl, model);
 
     updateLock.lock();
@@ -104,7 +105,7 @@ public class HermesFallbackService implements ApplicationRunner {
       }
       restartAndVerify();
       HermesFallbackUpdateRequest saved = new HermesFallbackUpdateRequest(
-          baseUrl.toString().replaceFirst("/+$", ""), model);
+          baseUrl.toString().replaceFirst("/+$", ""), model, enabled);
       writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(saved));
       return response(saved);
     } catch (Exception e) {
@@ -174,13 +175,17 @@ public class HermesFallbackService implements ApplicationRunner {
           CredentialStatus credential = credentialStatus(profile);
           try {
             restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
+            String route = settings.enabled() ? "OLLAMA_FORCED"
+                : credential.openAiAvailable() ? "OPENAI_PRIMARY" : "OLLAMA_FALLBACK";
             return new HermesFallbackProfileStatus(
                 profile,
-                credential.openAiAvailable() ? "OPENAI_PRIMARY" : "OLLAMA_FALLBACK",
+                route,
                 true,
                 credential.openAiAvailable(),
                 credential.cooldownUntil(),
-                credential.detail());
+                settings.enabled()
+                    ? credential.detail() + " / Shared Ollama override enabled"
+                    : credential.detail());
           } catch (Exception e) {
             return new HermesFallbackProfileStatus(
                 profile, "UNAVAILABLE", false, credential.openAiAvailable(), credential.cooldownUntil(),
@@ -188,7 +193,7 @@ public class HermesFallbackService implements ApplicationRunner {
           }
         })
         .toList();
-    return new HermesFallbackSettingsResponse(settings.baseUrl(), settings.model(), statuses);
+    return new HermesFallbackSettingsResponse(settings.enabled(), settings.baseUrl(), settings.model(), statuses);
   }
 
   private CredentialStatus credentialStatus(String profile) {
@@ -242,7 +247,7 @@ public class HermesFallbackService implements ApplicationRunner {
         throw new IllegalStateException("Could not read " + path, e);
       }
     }
-    return new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel());
+    return new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel(), false);
   }
 
   private Path findProfileConfig(String profile) throws IOException {

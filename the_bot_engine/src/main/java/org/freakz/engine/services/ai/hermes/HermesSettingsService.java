@@ -3,16 +3,22 @@ package org.freakz.engine.services.ai.hermes;
 import java.util.List;
 
 import org.freakz.common.model.engine.system.HermesProfileOption;
+import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.users.User;
+import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.EnvValuesService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class HermesSettingsService {
 
+  private static final Logger log = LoggerFactory.getLogger(HermesSettingsService.class);
   private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
   private static final String DEFAULT_MODEL = "hermes-chat";
   private static final String DEFAULT_API_MODE = "responses";
@@ -34,84 +40,48 @@ public class HermesSettingsService {
 
   private final ConfigService configService;
   private final EnvValuesService envValuesService;
+  private final RestHermesManagerClient hermesManagerClient;
 
   public HermesSettingsService(ConfigService configService, EnvValuesService envValuesService) {
+    this(configService, envValuesService, null);
+  }
+
+  @Autowired
+  public HermesSettingsService(
+      ConfigService configService,
+      EnvValuesService envValuesService,
+      RestHermesManagerClient hermesManagerClient) {
     this.configService = configService;
     this.envValuesService = envValuesService;
+    this.hermesManagerClient = hermesManagerClient;
   }
 
   public HermesSettings resolveSettings() {
-    String baseUrl = trimTrailingSlash(firstNonBlank(
-        configService.getConfigValue(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
-        configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
-        DEFAULT_BASE_URL
-    ));
-    String profileId = profileIdForBaseUrl(baseUrl);
-    String apiKey = firstNonBlank(
-        apiKeyForProfile(profileId),
-        configService.getConfigValue(API_KEY_KEY, "HERMES_CHAT_API_KEY", ""),
-        configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "")
-    );
-    String model = firstNonBlank(
-        configService.getConfigValue(MODEL_KEY, "HERMES_CHAT_MODEL", ""),
-        configService.getConfigValue("hermes.model", "HERMES_MODEL", ""),
-        DEFAULT_MODEL
-    );
-    int timeoutSeconds = parseInt(
-        firstNonBlank(
-            configService.getConfigValue(TIMEOUT_SECONDS_KEY, "HERMES_CHAT_TIMEOUT_SECONDS", ""),
-            configService.getConfigValue("hermes.timeout-seconds", "HERMES_TIMEOUT_SECONDS", ""),
-            Integer.toString(DEFAULT_TIMEOUT_SECONDS)
-        ),
-        DEFAULT_TIMEOUT_SECONDS
-    );
-    String apiMode = firstNonBlank(
-        configService.getConfigValue(API_MODE_KEY, "HERMES_CHAT_API_MODE", ""),
-        configService.getConfigValue("hermes.api-mode", "HERMES_API_MODE", ""),
-        DEFAULT_API_MODE
-    );
-    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
+    HermesSettings local = resolveLocalSettings();
+    HermesFallbackSettingsResponse override = loadHermesOverride();
+    if (override != null && override.enabled()) {
+      return new HermesSettings(
+          trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
+          "",
+          firstNonBlank(override.model(), local.model()),
+          local.timeoutSeconds(),
+          DEFAULT_API_MODE);
+    }
+    return local;
   }
 
   public HermesSettings resolveAiCommandSettings() {
-    String configuredProfileId = firstNonBlank(
-        configService.getConfigValue(AI_COMMAND_PROFILE_ID_KEY, "HERMES_AI_COMMAND_PROFILE_ID", ""),
-        AI_COMMAND_PROFILE_ID
-    );
-    HermesProfileConfig profileConfig = profileConfigById(configuredProfileId, true)
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported Hermes AI command profile: " + configuredProfileId));
-
-    String baseUrl = trimTrailingSlash(firstNonBlank(
-        configService.getConfigValue(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", ""),
-        profileConfig.option().baseUrl()
-    ));
-    String profileId = profileIdForBaseUrl(baseUrl, true);
-    if (profileId == null || profileId.isBlank()) {
-      profileId = profileConfig.option().id();
+    HermesSettings local = resolveLocalAiCommandSettings();
+    HermesFallbackSettingsResponse override = loadHermesOverride();
+    if (override != null && override.enabled()) {
+      return new HermesSettings(
+          trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
+          "",
+          firstNonBlank(override.model(), local.model()),
+          local.timeoutSeconds(),
+          DEFAULT_API_MODE);
     }
-
-    String apiKey = firstNonBlank(
-        apiKeyForProfile(profileId),
-        configService.getConfigValue(AI_COMMAND_API_KEY_KEY, "HERMES_AI_COMMAND_API_KEY", ""),
-        profileConfig.apiKey()
-    );
-    String model = firstNonBlank(
-        configService.getConfigValue(AI_COMMAND_MODEL_KEY, "HERMES_AI_COMMAND_MODEL", ""),
-        profileConfig.option().model()
-    );
-    int timeoutSeconds = parseInt(
-        firstNonBlank(
-            configService.getConfigValue(AI_COMMAND_TIMEOUT_SECONDS_KEY, "HERMES_AI_COMMAND_TIMEOUT_SECONDS", ""),
-            Integer.toString(profileConfig.option().timeoutSeconds())
-        ),
-        profileConfig.option().timeoutSeconds()
-    );
-    String apiMode = firstNonBlank(
-        configService.getConfigValue(AI_COMMAND_API_MODE_KEY, "HERMES_AI_COMMAND_API_MODE", ""),
-        profileConfig.option().apiMode()
-    );
-
-    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
+    return local;
   }
 
   public HermesSettingsResponse getSettings() {
@@ -158,6 +128,80 @@ public class HermesSettingsService {
 
   public String getBotInstanceId() {
     return configService.getConfigValue("hokan.bot.instance-id", "HOKAN_BOT_INSTANCE_ID", "dev");
+  }
+
+  private HermesSettings resolveLocalSettings() {
+    String baseUrl = trimTrailingSlash(firstNonBlank(
+        configService.getConfigValue(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
+        configService.getConfigValue("hermes.base-url", "HERMES_BASE_URL", ""),
+        DEFAULT_BASE_URL
+    ));
+    String profileId = profileIdForBaseUrl(baseUrl);
+    String apiKey = firstNonBlank(
+        apiKeyForProfile(profileId),
+        configService.getConfigValue(API_KEY_KEY, "HERMES_CHAT_API_KEY", ""),
+        configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", "")
+    );
+    String model = firstNonBlank(
+        configService.getConfigValue(MODEL_KEY, "HERMES_CHAT_MODEL", ""),
+        configService.getConfigValue("hermes.model", "HERMES_MODEL", ""),
+        DEFAULT_MODEL
+    );
+    int timeoutSeconds = parseInt(
+        firstNonBlank(
+            configService.getConfigValue(TIMEOUT_SECONDS_KEY, "HERMES_CHAT_TIMEOUT_SECONDS", ""),
+            configService.getConfigValue("hermes.timeout-seconds", "HERMES_TIMEOUT_SECONDS", ""),
+            Integer.toString(DEFAULT_TIMEOUT_SECONDS)
+        ),
+        DEFAULT_TIMEOUT_SECONDS
+    );
+    String apiMode = firstNonBlank(
+        configService.getConfigValue(API_MODE_KEY, "HERMES_CHAT_API_MODE", ""),
+        configService.getConfigValue("hermes.api-mode", "HERMES_API_MODE", ""),
+        DEFAULT_API_MODE
+    );
+    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
+  }
+
+  private HermesSettings resolveLocalAiCommandSettings() {
+    String configuredProfileId = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_PROFILE_ID_KEY, "HERMES_AI_COMMAND_PROFILE_ID", ""),
+        AI_COMMAND_PROFILE_ID
+    );
+    HermesProfileConfig profileConfig = profileConfigById(configuredProfileId, true)
+        .orElseThrow(() -> new IllegalArgumentException("Unsupported Hermes AI command profile: " + configuredProfileId));
+
+    String baseUrl = trimTrailingSlash(firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", ""),
+        profileConfig.option().baseUrl()
+    ));
+    String profileId = profileIdForBaseUrl(baseUrl, true);
+    if (profileId == null || profileId.isBlank()) {
+      profileId = profileConfig.option().id();
+    }
+
+    String apiKey = firstNonBlank(
+        apiKeyForProfile(profileId),
+        configService.getConfigValue(AI_COMMAND_API_KEY_KEY, "HERMES_AI_COMMAND_API_KEY", ""),
+        profileConfig.apiKey()
+    );
+    String model = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_MODEL_KEY, "HERMES_AI_COMMAND_MODEL", ""),
+        profileConfig.option().model()
+    );
+    int timeoutSeconds = parseInt(
+        firstNonBlank(
+            configService.getConfigValue(AI_COMMAND_TIMEOUT_SECONDS_KEY, "HERMES_AI_COMMAND_TIMEOUT_SECONDS", ""),
+            Integer.toString(profileConfig.option().timeoutSeconds())
+        ),
+        profileConfig.option().timeoutSeconds()
+    );
+    String apiMode = firstNonBlank(
+        configService.getConfigValue(AI_COMMAND_API_MODE_KEY, "HERMES_AI_COMMAND_API_MODE", ""),
+        profileConfig.option().apiMode()
+    );
+
+    return new HermesSettings(baseUrl, apiKey == null ? "" : apiKey.trim(), model, timeoutSeconds, apiMode);
   }
 
   private String profileIdForSettings(HermesSettings settings) {
@@ -262,6 +306,18 @@ public class HermesSettingsService {
       return null;
     }
     return value.trim().replaceFirst("/+$", "");
+  }
+
+  private HermesFallbackSettingsResponse loadHermesOverride() {
+    if (hermesManagerClient == null) {
+      return null;
+    }
+    try {
+      return hermesManagerClient.getFallback().getBody();
+    } catch (Exception e) {
+      log.debug("Could not load Hermes override state: {}", e.getMessage());
+      return null;
+    }
   }
 
   private int parseInt(String value, int defaultValue) {

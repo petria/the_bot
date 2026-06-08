@@ -50,6 +50,7 @@ export type HermesFallbackProfileStatus = {
 };
 
 export type HermesFallbackSettingsResponse = {
+  enabled: boolean;
   baseUrl: string;
   model: string;
   profiles: HermesFallbackProfileStatus[];
@@ -81,6 +82,6 @@ export function getHermesFallbackModels(baseUrl: string): Promise<string[]> {
   ).then((response) => response.models);
 }
 
-export function updateHermesFallback(baseUrl: string, model: string): Promise<HermesFallbackSettingsResponse> {
-  return putJson<HermesFallbackSettingsResponse>('/api/web/admin/system/hermes/fallback', { baseUrl, model });
+export function updateHermesFallback(baseUrl: string, model: string, enabled: boolean): Promise<HermesFallbackSettingsResponse> {
+  return putJson<HermesFallbackSettingsResponse>('/api/web/admin/system/hermes/fallback', { baseUrl, model, enabled });
 }

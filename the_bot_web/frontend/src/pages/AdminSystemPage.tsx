@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, Radio, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, Radio, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -31,6 +31,7 @@ export function AdminSystemPage() {
   const [selectedHermesProfileId, setSelectedHermesProfileId] = useState<string>('');
   const [fallbackBaseUrl, setFallbackBaseUrl] = useState('');
   const [fallbackModel, setFallbackModel] = useState('');
+  const [fallbackEnabled, setFallbackEnabled] = useState(false);
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function AdminSystemPage() {
 
   useEffect(() => {
     if (hermesFallbackQuery.data) {
+      setFallbackEnabled(hermesFallbackQuery.data.enabled);
       setFallbackBaseUrl(hermesFallbackQuery.data.baseUrl);
       setFallbackModel(hermesFallbackQuery.data.model);
     }
@@ -71,7 +73,7 @@ export function AdminSystemPage() {
     onSuccess: setFallbackModels,
   });
   const updateFallbackMutation = useMutation({
-    mutationFn: () => updateHermesFallback(fallbackBaseUrl, fallbackModel),
+    mutationFn: () => updateHermesFallback(fallbackBaseUrl, fallbackModel, fallbackEnabled),
     onSuccess: (response) => {
       queryClient.setQueryData(['admin-system-hermes-fallback'], response);
     },
@@ -83,7 +85,11 @@ export function AdminSystemPage() {
   );
   const hasFallbackChanges = Boolean(
     fallbackBaseUrl && fallbackModel
-      && (fallbackBaseUrl !== hermesFallbackQuery.data?.baseUrl || fallbackModel !== hermesFallbackQuery.data?.model)
+      && (
+        fallbackBaseUrl !== hermesFallbackQuery.data?.baseUrl
+        || fallbackModel !== hermesFallbackQuery.data?.model
+        || fallbackEnabled !== hermesFallbackQuery.data?.enabled
+      )
   );
 
   return (
@@ -222,6 +228,12 @@ export function AdminSystemPage() {
                 Shared fallback used by chat, coder, and AI command profiles when OpenAI is unavailable.
               </Text>
             </div>
+            <Switch
+              label="Force Ollama for all Hermes calls"
+              description="When enabled, bot-engine routes every Hermes request through the shared Ollama backend."
+              checked={fallbackEnabled}
+              onChange={(event) => setFallbackEnabled(event.currentTarget.checked)}
+            />
 
             <TextInput
               label="Ollama OpenAI-compatible base URL"
@@ -265,7 +277,9 @@ export function AdminSystemPage() {
                       <Text size="xs" c="dimmed">Cooldown until {profile.cooldownUntil}</Text>
                     ) : null}
                   </div>
-                  <Badge color={profile.healthy ? 'green' : 'red'}>{profile.expectedRoute}</Badge>
+                  <Badge color={profile.healthy ? (hermesFallbackQuery.data.enabled ? 'orange' : 'green') : 'red'}>
+                    {profile.expectedRoute}
+                  </Badge>
                 </Group>
               ))}
             </Stack>
