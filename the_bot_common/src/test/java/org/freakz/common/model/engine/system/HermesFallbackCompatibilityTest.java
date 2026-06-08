@@ -10,7 +10,7 @@ class HermesFallbackCompatibilityTest {
   private final JsonMapper mapper = JsonMapper.builder().build();
 
   @Test
-  void defaultsMissingResponseEnabledToFalse() throws Exception {
+  void allowsMissingResponseEnabled() throws Exception {
     HermesFallbackSettingsResponse response = mapper.readValue("""
         {
           "baseUrl": "http://192.168.0.55:11434/v1",
@@ -19,11 +19,11 @@ class HermesFallbackCompatibilityTest {
         }
         """, HermesFallbackSettingsResponse.class);
 
-    assertThat(response.enabled()).isFalse();
+    assertThat(response.enabled()).isNull();
   }
 
   @Test
-  void defaultsMissingUpdateEnabledToFalse() throws Exception {
+  void allowsMissingUpdateEnabled() throws Exception {
     HermesFallbackUpdateRequest request = mapper.readValue("""
         {
           "baseUrl": "http://192.168.0.55:11434/v1",
@@ -31,6 +31,6 @@ class HermesFallbackCompatibilityTest {
         }
         """, HermesFallbackUpdateRequest.class);
 
-    assertThat(request.enabled()).isFalse();
+    assertThat(request.enabled()).isNull();
   }
 }

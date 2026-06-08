@@ -7,8 +7,4 @@ public record HermesFallbackSettingsResponse(
     String baseUrl,
     String model,
     List<HermesFallbackProfileStatus> profiles) {
-
-  public HermesFallbackSettingsResponse {
-    enabled = enabled != null && enabled;
-  }
 }

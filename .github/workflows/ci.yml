@@ -607,7 +607,7 @@ jobs:
       contents: read
     if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED != 'false' }}
     environment:
-      name: openclaw-gateway
+      name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
       group: deploy-hermes-manager-${{ github.ref_name }}
       cancel-in-progress: false
@@ -617,9 +617,12 @@ jobs:
       - name: Copy Hermes manager compose file
         uses: appleboy/scp-action@master
         with:
-          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server' }}
+          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
           username: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
-          key: ${{ secrets.OPENCLAW_VM_SSH_KEY }}
+          key: ${{ secrets.OPENCLAW_VM_SSH_KEY || secrets.VM_SSH_KEY }}
+          proxy_host: ${{ secrets.VM_HOST }}
+          proxy_username: ${{ secrets.VM_USER }}
+          proxy_key: ${{ secrets.VM_SSH_KEY }}
           source: docker-compose.hermes-manager.yml
           target: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
           overwrite: true
@@ -632,9 +635,12 @@ jobs:
           PUID: ${{ vars.PUID }}
           PGID: ${{ vars.PGID }}
         with:
-          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server' }}
+          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
           username: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
-          key: ${{ secrets.OPENCLAW_VM_SSH_KEY }}
+          key: ${{ secrets.OPENCLAW_VM_SSH_KEY || secrets.VM_SSH_KEY }}
+          proxy_host: ${{ secrets.VM_HOST }}
+          proxy_username: ${{ secrets.VM_USER }}
+          proxy_key: ${{ secrets.VM_SSH_KEY }}
           envs: DEPLOY_SHA,HERMES_MANAGER_TOKEN,HERMES_DEPLOY_WORKDIR,PUID,PGID
           script: |
             cd "${HERMES_DEPLOY_WORKDIR:-/home/hokan/bot-hermes}"

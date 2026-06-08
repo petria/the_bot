@@ -268,14 +268,14 @@ class HermesAiServiceTest {
     );
   }
 
-  private static class TestConfigService extends ConfigService {
+  static class TestConfigService extends ConfigService {
     private final Map<String, String> values;
 
-    private TestConfigService() {
+    TestConfigService() {
       this(Map.of());
     }
 
-    private TestConfigService(Map<String, String> values) {
+    TestConfigService(Map<String, String> values) {
       this.values = values;
     }
 

@@ -41,25 +41,35 @@ public class HermesSettingsService {
   private final ConfigService configService;
   private final EnvValuesService envValuesService;
   private final RestHermesManagerClient hermesManagerClient;
+  private final HermesFallbackOverrideState hermesFallbackOverrideState;
 
   public HermesSettingsService(ConfigService configService, EnvValuesService envValuesService) {
-    this(configService, envValuesService, null);
+    this(configService, envValuesService, null, new HermesFallbackOverrideState());
   }
 
   @Autowired
   public HermesSettingsService(
       ConfigService configService,
       EnvValuesService envValuesService,
-      RestHermesManagerClient hermesManagerClient) {
+      RestHermesManagerClient hermesManagerClient,
+      HermesFallbackOverrideState hermesFallbackOverrideState) {
     this.configService = configService;
     this.envValuesService = envValuesService;
     this.hermesManagerClient = hermesManagerClient;
+    this.hermesFallbackOverrideState = hermesFallbackOverrideState;
+  }
+
+  public HermesSettingsService(
+      ConfigService configService,
+      EnvValuesService envValuesService,
+      RestHermesManagerClient hermesManagerClient) {
+    this(configService, envValuesService, hermesManagerClient, new HermesFallbackOverrideState());
   }
 
   public HermesSettings resolveSettings() {
     HermesSettings local = resolveLocalSettings();
     HermesFallbackSettingsResponse override = loadHermesOverride();
-    if (override != null && override.enabled()) {
+    if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
           trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
           "",
@@ -73,7 +83,7 @@ public class HermesSettingsService {
   public HermesSettings resolveAiCommandSettings() {
     HermesSettings local = resolveLocalAiCommandSettings();
     HermesFallbackSettingsResponse override = loadHermesOverride();
-    if (override != null && override.enabled()) {
+    if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
           trimTrailingSlash(firstNonBlank(override.baseUrl(), local.baseUrl())),
           "",
@@ -313,7 +323,7 @@ public class HermesSettingsService {
       return null;
     }
     try {
-      return hermesManagerClient.getFallback().getBody();
+      return hermesFallbackOverrideState.apply(hermesManagerClient.getFallback().getBody());
     } catch (Exception e) {
       log.debug("Could not load Hermes override state: {}", e.getMessage());
       return null;
