@@ -605,7 +605,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED != 'false' }}
+    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
