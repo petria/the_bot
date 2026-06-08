@@ -1,4 +1,4 @@
-FROM amazoncorretto:25
+FROM amazoncorretto:26
 VOLUME /tmp
 ENV TZ=Europe/Helsinki
 COPY target/*.jar app.jar
