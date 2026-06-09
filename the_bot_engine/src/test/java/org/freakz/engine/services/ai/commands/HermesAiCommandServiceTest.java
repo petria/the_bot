@@ -1,6 +1,7 @@
 package org.freakz.engine.services.ai.commands;
 
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -36,6 +37,20 @@ class HermesAiCommandServiceTest {
     assertThat(response.toolName()).isEqualTo("weather.current");
     assertThat(response.arguments().path("location").asString()).isEqualTo("Turku");
   }
+
+  @Test
+  void parsesWrappedMultiToolResponse() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"multiTool":"{\\"type\\":\\"tool\\",\\"tool\\":\\"weather.current\\",\\"arguments\\":{\\"locations\\":[\\"Oulu\\",\\"Jaipur\\"]}}"}
+        """);
+
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.current");
+    assertThat(response.arguments().path("locations")).hasSize(2);
+  }
+
 
   @Test
   void extractsFormattedTextFromToolResult() {
@@ -89,6 +104,7 @@ class HermesAiCommandServiceTest {
         mock(AiCommandToolRegistry.class),
         new JsonMapper(),
         mock(ObjectProvider.class),
+        mock(HermesPromptContextService.class),
         WebClient.builder());
   }
 }

@@ -4,6 +4,7 @@ import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettings;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ public class HermesAiCommandService {
   private final AiCommandToolRegistry toolRegistry;
   private final JsonMapper jsonMapper;
   private final ObjectProvider<BotEngine> botEngineProvider;
+  private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
 
   public HermesAiCommandService(
@@ -41,11 +43,13 @@ public class HermesAiCommandService {
       AiCommandToolRegistry toolRegistry,
       JsonMapper jsonMapper,
       ObjectProvider<BotEngine> botEngineProvider,
+      HermesPromptContextService promptContextService,
       WebClient.Builder webClientBuilder) {
     this.settingsService = settingsService;
     this.toolRegistry = toolRegistry;
     this.jsonMapper = jsonMapper;
     this.botEngineProvider = botEngineProvider;
+    this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
   }
 
@@ -65,8 +69,8 @@ public class HermesAiCommandService {
       WebClient client = buildClient(settings);
       String sessionKey = buildStableSessionId(buildSessionId(request, command));
       String instructions = buildInstructions(command);
-      String input = buildInitialInput(request, command, argumentsText);
       List<String> allowedTools = command.getAllowedTools() == null ? List.of() : command.getAllowedTools();
+      String input = buildInitialInput(request, command, argumentsText, sessionKey, allowedTools);
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
 
       for (int i = 0; i < maxIterations; i++) {
@@ -85,7 +89,7 @@ public class HermesAiCommandService {
           return;
         }
 
-        String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments());
+        String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
         String formattedText = extractFormattedText(toolResult);
         if (!formattedText.isBlank()) {
           processReply(request, formattedText);
@@ -200,6 +204,8 @@ public class HermesAiCommandService {
         Use one of these shapes:
         %s
         Allowed tools: %s
+        Tool argument reference:
+        %s
         If no tool is needed, return final immediately.
         Keep final answers concise and suitable for IRC, Discord, Telegram, and WhatsApp.
 
@@ -210,27 +216,36 @@ public class HermesAiCommandService {
         """.formatted(
         schema,
         tools,
+        toolReference(command.getAllowedTools()),
         command.getName(),
         command.getDescription() == null ? "" : command.getDescription(),
         command.getInstructions() == null ? "" : command.getInstructions());
   }
 
-  private String buildInitialInput(EngineRequest request, AiCommandDefinition command, String argumentsText) {
-    return """
-        User invoked !%s.
-        Arguments: %s
-        Chat protocol: %s
-        Network: %s
-        Channel/private target: %s
-        Sender nick/name: %s
-        Return JSON only.
-        """.formatted(
-        command.getName(),
-        argumentsText == null ? "" : argumentsText,
-        request.getChatProtocol(),
-        request.getNetwork(),
-        request.getReplyTo(),
-        request.getFromSender());
+  private String toolReference(List<String> allowedTools) {
+    if (allowedTools == null || allowedTools.isEmpty()) {
+      return "- none";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (String tool : allowedTools) {
+      switch (tool) {
+        case "logs.read" -> sb.append("- logs.read: arguments may include scope, date, lines, includeAvailableFiles, chatTarget. Default scope is current-chat.\n");
+        case "logs.search" -> sb.append("- logs.search: arguments may include query, nick, anyTerms, allTerms, dateFrom, dateTo, maxDays, maxMatches, chatTarget. Default scope is current-chat.\n");
+        case "weather.current" -> sb.append("- weather.current: arguments may include location or locations.\n");
+        default -> sb.append("- ").append(tool).append(": use concise JSON arguments.\n");
+      }
+    }
+    return sb.toString().trim();
+  }
+
+  private String buildInitialInput(
+      EngineRequest request,
+      AiCommandDefinition command,
+      String argumentsText,
+      String sessionKey,
+      List<String> allowedTools) {
+    return promptContextService.buildAiCommandInput(request, sessionKey, command.getName(), argumentsText, allowedTools)
+        + "\nReturn JSON only.";
   }
 
   AiCommandModelResponse parseModelResponse(String text) throws Exception {
@@ -276,6 +291,14 @@ public class HermesAiCommandService {
     }
     if (!toolValue.isBlank() && toolValue.trim().startsWith("{")) {
       return parseModelResponse(toolValue);
+    }
+    JsonNode multiToolNode = node.path("multiTool");
+    String multiToolValue = textValue(multiToolNode);
+    if (multiToolNode.isObject()) {
+      return parseModelResponse(multiToolNode.toString());
+    }
+    if (!multiToolValue.isBlank() && multiToolValue.trim().startsWith("{")) {
+      return parseModelResponse(multiToolValue);
     }
     return null;
   }

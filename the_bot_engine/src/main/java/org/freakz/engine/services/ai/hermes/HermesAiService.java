@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.List;
 
 @Service
 public class HermesAiService {
@@ -32,25 +34,39 @@ public class HermesAiService {
       Do not claim that you can run commands, inspect files, load skills, browse, edit files,
       access the host, or use external tools.
 
+      You may request controlled chat log tools when logs are needed to answer the user's question.
+      Return JSON only for tool requests: {"type":"tool","tool":"logs.search","arguments":{"query":"text","maxMatches":10}}
+      or {"type":"tool","tool":"logs.read","arguments":{"lines":80}}.
+      For final answers after a tool result, reply normally or return {"type":"final","answer":"text"}.
+      Default log scope is the current chat. Broader scopes require user permissions and may be denied.
+
       If a user asks what tools you have, answer that this profile has no external tools exposed
-      and can only respond with text. Keep answers concise and suitable for chat.
+      except controlled chat log read/search tools. Keep answers concise and suitable for chat.
       """;
+  private static final List<String> CHAT_TOOL_NAMES = List.of("logs.read", "logs.search");
+  private static final int MAX_TOOL_ITERATIONS = 4;
   private static final int POLL_INTERVAL_MILLIS = 750;
 
   private final HermesSettingsService settingsService;
   private final JsonMapper objectMapper;
   private final BotEngine botEngine;
+  private final AiCommandToolRegistry toolRegistry;
+  private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
 
   public HermesAiService(
       HermesSettingsService settingsService,
       JsonMapper objectMapper,
       BotEngine botEngine,
+      AiCommandToolRegistry toolRegistry,
+      HermesPromptContextService promptContextService,
       WebClient.Builder webClientBuilder
   ) {
     this.settingsService = settingsService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
+    this.toolRegistry = toolRegistry;
+    this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
   }
 
@@ -72,9 +88,10 @@ public class HermesAiService {
         clientBuilder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey());
       }
       WebClient client = clientBuilder.build();
+      String promptInput = promptContextService.buildChatInput(engineRequest, stableSessionId, queryMessage);
 
       if (settings.useResponsesApi()) {
-        String text = createResponse(client, settings, stableSessionId, queryMessage);
+        String text = createToolAwareResponse(client, settings, stableSessionId, engineRequest, queryMessage, promptInput);
         if (text == null || text.isBlank()) {
           processReply(engineRequest, "Hermes returned no response.");
           return;
@@ -84,7 +101,7 @@ public class HermesAiService {
       }
 
       if (settings.useChatCompletionsApi()) {
-        String text = createChatCompletion(client, settings, stableSessionId, queryMessage);
+        String text = createToolAwareChatCompletion(client, settings, stableSessionId, engineRequest, queryMessage, promptInput);
         if (text == null || text.isBlank()) {
           processReply(engineRequest, "Hermes returned no response.");
           return;
@@ -93,7 +110,7 @@ public class HermesAiService {
         return;
       }
 
-      String runId = createRun(client, settings, stableSessionId, queryMessage);
+      String runId = createRun(client, settings, stableSessionId, promptInput);
       if (runId.isBlank()) {
         processReply(engineRequest, "Hermes returned no response.");
         return;
@@ -153,6 +170,56 @@ public class HermesAiService {
     } catch (Exception e) {
       return "bot-" + Integer.toHexString((sessionId == null ? "" : sessionId).hashCode());
     }
+  }
+
+  private String createToolAwareResponse(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
+      EngineRequest request,
+      String queryMessage,
+      String promptInput) throws Exception {
+    String input = promptInput == null ? "" : promptInput;
+    for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      String text = createResponse(client, settings, sessionKey, input);
+      ChatModelResponse modelResponse = parseModelResponse(text);
+      if (modelResponse.finalAnswer() != null) {
+        return modelResponse.finalAnswer();
+      }
+      if (!CHAT_TOOL_NAMES.contains(modelResponse.toolName())) {
+        return "Hermes requested tool that is not allowed: " + modelResponse.toolName();
+      }
+      String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
+      input = "Original user question:\n" + (queryMessage == null ? "" : queryMessage)
+          + "\n\nTool result for " + modelResponse.toolName() + ":\n" + toolResult
+          + "\nAnswer the original user question concisely for chat.";
+    }
+    return "Hermes stopped before producing a final answer.";
+  }
+
+  private String createToolAwareChatCompletion(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
+      EngineRequest request,
+      String queryMessage,
+      String promptInput) throws Exception {
+    String input = promptInput == null ? "" : promptInput;
+    for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      String text = createChatCompletion(client, settings, sessionKey, input);
+      ChatModelResponse modelResponse = parseModelResponse(text);
+      if (modelResponse.finalAnswer() != null) {
+        return modelResponse.finalAnswer();
+      }
+      if (!CHAT_TOOL_NAMES.contains(modelResponse.toolName())) {
+        return "Hermes requested tool that is not allowed: " + modelResponse.toolName();
+      }
+      String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
+      input = "Original user question:\n" + (queryMessage == null ? "" : queryMessage)
+          + "\n\nTool result for " + modelResponse.toolName() + ":\n" + toolResult
+          + "\nAnswer the original user question concisely for chat.";
+    }
+    return "Hermes stopped before producing a final answer.";
   }
 
   private String createResponse(WebClient client, HermesSettings settings, String sessionKey, String queryMessage) throws Exception {
@@ -353,6 +420,69 @@ public class HermesAiService {
     return objectMapper.readTree(response);
   }
 
+  private ChatModelResponse parseModelResponse(String text) throws Exception {
+    String cleaned = stripJsonFence(text);
+    JsonNode node;
+    try {
+      node = objectMapper.readTree(cleaned);
+    } catch (Exception e) {
+      return ChatModelResponse.finalAnswer(text);
+    }
+
+    ChatModelResponse wrapped = parseWrappedModelResponse(node);
+    if (wrapped != null) {
+      return wrapped;
+    }
+
+    String type = node.path("type").asString("").trim();
+    if ("final".equalsIgnoreCase(type)) {
+      String answer = firstText(node, "answer", "text", "message", "response");
+      return ChatModelResponse.finalAnswer(answer.isBlank() ? cleaned : answer);
+    }
+    if ("tool".equalsIgnoreCase(type)) {
+      JsonNode arguments = node.path("arguments");
+      if (arguments == null || arguments.isMissingNode() || arguments.isNull()) {
+        arguments = objectMapper.createObjectNode();
+      }
+      return ChatModelResponse.tool(firstText(node, "tool", "name"), arguments);
+    }
+    String answer = firstText(node, "answer", "text", "message", "response");
+    return answer.isBlank() ? ChatModelResponse.finalAnswer(cleaned) : ChatModelResponse.finalAnswer(answer);
+  }
+
+  private ChatModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {
+    String finalValue = textValue(node.path("final"));
+    if (!finalValue.isBlank()) {
+      return parseModelResponse(finalValue);
+    }
+
+    JsonNode toolNode = node.path("tool");
+    String toolValue = textValue(toolNode);
+    if (toolNode.isObject()) {
+      return parseModelResponse(toolNode.toString());
+    }
+    if (!toolValue.isBlank() && toolValue.trim().startsWith("{")) {
+      return parseModelResponse(toolValue);
+    }
+    return null;
+  }
+
+  private String stripJsonFence(String text) {
+    if (text == null) {
+      return "";
+    }
+    String cleaned = text.trim();
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.substring("```json".length()).trim();
+    } else if (cleaned.startsWith("```")) {
+      cleaned = cleaned.substring("```".length()).trim();
+    }
+    if (cleaned.endsWith("```")) {
+      cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
+    }
+    return cleaned;
+  }
+
   String extractText(JsonNode node) {
     if (node == null || node.isMissingNode() || node.isNull()) {
       return "";
@@ -487,6 +617,16 @@ public class HermesAiService {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  private record ChatModelResponse(String finalAnswer, String toolName, JsonNode arguments) {
+    static ChatModelResponse finalAnswer(String answer) {
+      return new ChatModelResponse(answer == null ? "" : answer, null, null);
+    }
+
+    static ChatModelResponse tool(String toolName, JsonNode arguments) {
+      return new ChatModelResponse(null, toolName, arguments);
     }
   }
 }
