@@ -292,6 +292,14 @@ public class HermesAiCommandService {
     if (!toolValue.isBlank() && toolValue.trim().startsWith("{")) {
       return parseModelResponse(toolValue);
     }
+    JsonNode multiToolNode = node.path("multiTool");
+    String multiToolValue = textValue(multiToolNode);
+    if (multiToolNode.isObject()) {
+      return parseModelResponse(multiToolNode.toString());
+    }
+    if (!multiToolValue.isBlank() && multiToolValue.trim().startsWith("{")) {
+      return parseModelResponse(multiToolValue);
+    }
     return null;
   }
 

@@ -39,6 +39,20 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void parsesWrappedMultiToolResponse() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"multiTool":"{\\"type\\":\\"tool\\",\\"tool\\":\\"weather.current\\",\\"arguments\\":{\\"locations\\":[\\"Oulu\\",\\"Jaipur\\"]}}"}
+        """);
+
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.current");
+    assertThat(response.arguments().path("locations")).hasSize(2);
+  }
+
+
+  @Test
   void extractsFormattedTextFromToolResult() {
     HermesAiCommandService service = newService();
 
