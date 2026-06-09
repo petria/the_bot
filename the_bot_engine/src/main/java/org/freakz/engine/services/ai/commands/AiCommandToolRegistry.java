@@ -279,6 +279,30 @@ public class AiCommandToolRegistry {
 
   private String logsSearch(JsonNode args, EngineRequest request) {
     EngineRequest contextRequest = requireRequestContext(request);
+    if (!hasLogSearchTerms(args)) {
+      Integer lines = optionalInt(args, "lines");
+      Boolean includeAvailableFiles = optionalBool(args, "includeAvailableFiles", "include_available_files");
+      ChatLogAccessService.LogReadRequest readRequest =
+          new ChatLogAccessService.LogReadRequest(
+              tokenService.createToken(contextRequest, "ai-command-tool:logs.read"),
+              textOrNull(args, "scope"),
+              textOrNull(args, "protocol"),
+              textOrNull(args, "network"),
+              textOrNull(args, "chatType", "chat_type"),
+              textOrNull(args, "chatTarget", "chat_target", "target", "channel"),
+              textOrNull(args, "date"),
+              lines == null ? 120 : lines,
+              includeAvailableFiles != null && includeAvailableFiles
+          );
+
+      ObjectNode out = jsonMapper.createObjectNode();
+      out.put("tool", "logs.read");
+      out.put("fallbackFrom", "logs.search");
+      out.put("fallbackReason", "missing search terms");
+      out.set("result", jsonMapper.valueToTree(chatLogAccessService.readLogs(readRequest)));
+      return out.toString();
+    }
+
     ChatLogAccessService.LogSearchRequest searchRequest =
         new ChatLogAccessService.LogSearchRequest(
             tokenService.createToken(contextRequest, "ai-command-tool:logs.search"),
@@ -301,6 +325,18 @@ public class AiCommandToolRegistry {
     out.put("tool", "logs.search");
     out.set("result", jsonMapper.valueToTree(chatLogAccessService.searchLogs(searchRequest)));
     return out.toString();
+  }
+
+  private boolean hasLogSearchTerms(JsonNode args) {
+    return textOrNull(args, "nick") != null
+        || textOrNull(args, "query") != null
+        || !safeTextList(firstNode(args, "anyTerms", "any_terms")).isEmpty()
+        || !safeTextList(firstNode(args, "allTerms", "all_terms")).isEmpty();
+  }
+
+  private List<String> safeTextList(JsonNode node) {
+    List<String> values = textList(node);
+    return values == null ? List.of() : values;
   }
 
   private List<String> weatherLocations(JsonNode args) {

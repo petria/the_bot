@@ -99,6 +99,47 @@ class AiCommandToolRegistryTest {
     assertThat(result.path("result").path("content").asString()).isEqualTo("one\ntwo");
   }
 
+  @Test
+  void logsSearchWithoutTermsFallsBackToCurrentLogRead() throws Exception {
+    ObjectProvider<WeatherAPIService> weatherProvider = mock(ObjectProvider.class);
+    ChatLogAccessService chatLogAccessService = mock(ChatLogAccessService.class);
+    HokanNodeContextTokenService tokenService = mock(HokanNodeContextTokenService.class);
+    EngineRequest request = EngineRequest.builder()
+        .chatProtocol("irc")
+        .network("IRCNet")
+        .chatType("channel")
+        .replyTo("#lowlife")
+        .build();
+    when(tokenService.createToken(eq(request), eq("ai-command-tool:logs.read"))).thenReturn("ctx-token");
+    when(chatLogAccessService.readLogs(any(ChatLogAccessService.LogReadRequest.class)))
+        .thenReturn(new ChatLogAccessService.LogReadResponse(
+            "current-chat", "irc", "ircnet", "channel", "lowlife",
+            "2026-06-09", true, 2, List.of(), "one\ntwo"));
+
+    AiCommandToolRegistry registry = new AiCommandToolRegistry(
+        weatherProvider,
+        mock(UsersService.class),
+        mock(DataValuesService.class),
+        chatLogAccessService,
+        tokenService,
+        jsonMapper);
+    JsonNode args = jsonMapper.readTree("""
+        {"scope":"current-chat","query":"","maxMatches":20}
+        """);
+
+    JsonNode result = jsonMapper.readTree(registry.execute("logs.search", args, request));
+
+    var captor = forClass(ChatLogAccessService.LogReadRequest.class);
+    verify(chatLogAccessService).readLogs(captor.capture());
+    assertThat(captor.getValue().hokanContextToken()).isEqualTo("ctx-token");
+    assertThat(captor.getValue().scope()).isEqualTo("current-chat");
+    assertThat(captor.getValue().lines()).isEqualTo(120);
+    assertThat(result.path("tool").asString()).isEqualTo("logs.read");
+    assertThat(result.path("fallbackFrom").asString()).isEqualTo("logs.search");
+    assertThat(result.path("fallbackReason").asString()).isEqualTo("missing search terms");
+    assertThat(result.path("result").path("content").asString()).isEqualTo("one\ntwo");
+  }
+
   @SuppressWarnings("unchecked")
   private AiCommandToolRegistry newRegistry(WeatherAPIService weatherAPIService) {
     ObjectProvider<WeatherAPIService> weatherProvider = mock(ObjectProvider.class);
