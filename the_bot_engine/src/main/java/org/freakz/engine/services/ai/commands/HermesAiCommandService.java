@@ -85,7 +85,7 @@ public class HermesAiCommandService {
           return;
         }
 
-        String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments());
+        String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
         String formattedText = extractFormattedText(toolResult);
         if (!formattedText.isBlank()) {
           processReply(request, formattedText);
@@ -200,6 +200,8 @@ public class HermesAiCommandService {
         Use one of these shapes:
         %s
         Allowed tools: %s
+        Tool argument reference:
+        %s
         If no tool is needed, return final immediately.
         Keep final answers concise and suitable for IRC, Discord, Telegram, and WhatsApp.
 
@@ -210,9 +212,26 @@ public class HermesAiCommandService {
         """.formatted(
         schema,
         tools,
+        toolReference(command.getAllowedTools()),
         command.getName(),
         command.getDescription() == null ? "" : command.getDescription(),
         command.getInstructions() == null ? "" : command.getInstructions());
+  }
+
+  private String toolReference(List<String> allowedTools) {
+    if (allowedTools == null || allowedTools.isEmpty()) {
+      return "- none";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (String tool : allowedTools) {
+      switch (tool) {
+        case "logs.read" -> sb.append("- logs.read: arguments may include scope, date, lines, includeAvailableFiles, chatTarget. Default scope is current-chat.\n");
+        case "logs.search" -> sb.append("- logs.search: arguments may include query, nick, anyTerms, allTerms, dateFrom, dateTo, maxDays, maxMatches, chatTarget. Default scope is current-chat.\n");
+        case "weather.current" -> sb.append("- weather.current: arguments may include location or locations.\n");
+        default -> sb.append("- ").append(tool).append(": use concise JSON arguments.\n");
+      }
+    }
+    return sb.toString().trim();
   }
 
   private String buildInitialInput(EngineRequest request, AiCommandDefinition command, String argumentsText) {

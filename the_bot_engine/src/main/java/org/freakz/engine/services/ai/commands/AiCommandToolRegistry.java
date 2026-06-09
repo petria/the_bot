@@ -5,13 +5,16 @@ import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.dto.DataValueStatsModel;
 import org.freakz.common.model.dto.DataValues;
 import org.freakz.common.model.dto.DataValuesModel;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.engine.commands.util.WeatherUtils;
 import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
+import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
 import org.freakz.engine.services.api.ServiceRequest;
+import org.freakz.engine.services.logs.ChatLogAccessService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
 import org.freakz.engine.services.weather.weatherapi.model.ForecastResponse;
 import org.springframework.beans.factory.ObjectProvider;
@@ -40,16 +43,22 @@ public class AiCommandToolRegistry {
   private final ObjectProvider<WeatherAPIService> weatherAPIServiceProvider;
   private final UsersService usersService;
   private final DataValuesService dataValuesService;
+  private final ChatLogAccessService chatLogAccessService;
+  private final HokanNodeContextTokenService tokenService;
   private final JsonMapper jsonMapper;
 
   public AiCommandToolRegistry(
       ObjectProvider<WeatherAPIService> weatherAPIServiceProvider,
       UsersService usersService,
       DataValuesService dataValuesService,
+      ChatLogAccessService chatLogAccessService,
+      HokanNodeContextTokenService tokenService,
       JsonMapper jsonMapper) {
     this.weatherAPIServiceProvider = weatherAPIServiceProvider;
     this.usersService = usersService;
     this.dataValuesService = dataValuesService;
+    this.chatLogAccessService = chatLogAccessService;
+    this.tokenService = tokenService;
     this.jsonMapper = jsonMapper;
   }
 
@@ -60,10 +69,16 @@ public class AiCommandToolRegistry {
         "users.get",
         "dataValues.query",
         "dataValues.aggregate",
-        "dataValues.stats");
+        "dataValues.stats",
+        "logs.read",
+        "logs.search");
   }
 
   public String execute(String toolName, JsonNode arguments) {
+    return execute(toolName, arguments, null);
+  }
+
+  public String execute(String toolName, JsonNode arguments, EngineRequest request) {
     return switch (toolName == null ? "" : toolName.trim()) {
       case "weather.current" -> weatherCurrent(arguments);
       case "users.search" -> usersSearch(arguments);
@@ -71,6 +86,8 @@ public class AiCommandToolRegistry {
       case "dataValues.query" -> dataValuesQuery(arguments);
       case "dataValues.aggregate" -> dataValuesAggregate(arguments);
       case "dataValues.stats" -> dataValuesStats(arguments);
+      case "logs.read" -> logsRead(arguments, request);
+      case "logs.search" -> logsSearch(arguments, request);
       default -> error("Unknown AI command tool: " + toolName);
     };
   }
@@ -240,6 +257,52 @@ public class AiCommandToolRegistry {
     return out.toString();
   }
 
+  private String logsRead(JsonNode args, EngineRequest request) {
+    EngineRequest contextRequest = requireRequestContext(request);
+    ChatLogAccessService.LogReadRequest readRequest =
+        new ChatLogAccessService.LogReadRequest(
+            tokenService.createToken(contextRequest, "ai-command-tool:logs.read"),
+            textOrNull(args, "scope"),
+            textOrNull(args, "protocol"),
+            textOrNull(args, "network"),
+            textOrNull(args, "chatType", "chat_type"),
+            textOrNull(args, "chatTarget", "chat_target", "target", "channel"),
+            textOrNull(args, "date"),
+            optionalInt(args, "lines"),
+            optionalBool(args, "includeAvailableFiles", "include_available_files")
+        );
+    ObjectNode out = jsonMapper.createObjectNode();
+    out.put("tool", "logs.read");
+    out.set("result", jsonMapper.valueToTree(chatLogAccessService.readLogs(readRequest)));
+    return out.toString();
+  }
+
+  private String logsSearch(JsonNode args, EngineRequest request) {
+    EngineRequest contextRequest = requireRequestContext(request);
+    ChatLogAccessService.LogSearchRequest searchRequest =
+        new ChatLogAccessService.LogSearchRequest(
+            tokenService.createToken(contextRequest, "ai-command-tool:logs.search"),
+            textOrNull(args, "scope"),
+            textOrNull(args, "protocol"),
+            textOrNull(args, "network"),
+            textOrNull(args, "chatType", "chat_type"),
+            textOrNull(args, "chatTarget", "chat_target", "target", "channel"),
+            textOrNull(args, "nick"),
+            textOrNull(args, "query"),
+            textList(firstNode(args, "anyTerms", "any_terms")),
+            textList(firstNode(args, "allTerms", "all_terms")),
+            textOrNull(args, "dateFrom", "date_from"),
+            textOrNull(args, "dateTo", "date_to", "date"),
+            optionalInt(args, "maxDays", "max_days"),
+            optionalInt(args, "maxMatches", "max_matches", "limit"),
+            optionalInt(args, "maxBytes", "max_bytes")
+        );
+    ObjectNode out = jsonMapper.createObjectNode();
+    out.put("tool", "logs.search");
+    out.set("result", jsonMapper.valueToTree(chatLogAccessService.searchLogs(searchRequest)));
+    return out.toString();
+  }
+
   private List<String> weatherLocations(JsonNode args) {
     Set<String> locations = new LinkedHashSet<>();
     collectTextValues(locations, args == null ? null : args.path("locations"));
@@ -371,6 +434,18 @@ public class AiCommandToolRegistry {
     return value;
   }
 
+  private EngineRequest requireRequestContext(EngineRequest request) {
+    if (request == null) {
+      throw new IllegalArgumentException("Tool requires current chat request context");
+    }
+    return request;
+  }
+
+  private String textOrNull(JsonNode node, String... fields) {
+    String value = text(node, fields);
+    return value.isBlank() ? null : value;
+  }
+
   private String text(JsonNode node, String... fields) {
     if (node == null) {
       return "";
@@ -382,6 +457,53 @@ public class AiCommandToolRegistry {
       }
     }
     return "";
+  }
+
+  private Integer optionalInt(JsonNode node, String... fields) {
+    JsonNode value = firstNode(node, fields);
+    if (value == null || value.isMissingNode() || value.isNull()) {
+      return null;
+    }
+    return value.asInt();
+  }
+
+  private Boolean optionalBool(JsonNode node, String... fields) {
+    JsonNode value = firstNode(node, fields);
+    if (value == null || value.isMissingNode() || value.isNull()) {
+      return null;
+    }
+    return value.asBoolean();
+  }
+
+  private List<String> textList(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return null;
+    }
+    List<String> values = new ArrayList<>();
+    if (node.isArray()) {
+      for (JsonNode item : node) {
+        String value = item.asString("").trim();
+        if (!value.isBlank()) {
+          values.add(value);
+        }
+      }
+      return values;
+    }
+    String value = node.asString("").trim();
+    return value.isBlank() ? List.of() : List.of(value);
+  }
+
+  private JsonNode firstNode(JsonNode node, String... fields) {
+    if (node == null) {
+      return null;
+    }
+    for (String field : fields) {
+      JsonNode value = node.path(field);
+      if (!value.isMissingNode() && !value.isNull()) {
+        return value;
+      }
+    }
+    return null;
   }
 
   private int limit(JsonNode args) {

@@ -8,6 +8,7 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.EnvValuesService;
+import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -264,6 +265,7 @@ class HermesAiServiceTest {
         new HermesSettingsService(new TestConfigService(), mock(EnvValuesService.class)),
         new JsonMapper(),
         null,
+        mock(AiCommandToolRegistry.class),
         WebClient.builder()
     );
   }
