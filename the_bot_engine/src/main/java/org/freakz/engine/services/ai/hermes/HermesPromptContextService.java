@@ -144,14 +144,14 @@ public class HermesPromptContextService {
     sb.append("hermes_log_tools_available=").append(logsRead || logsSearch).append("\n");
     if (logsSearch) {
       sb.append("hermes_log_search_tool=logs.search\n");
-      sb.append("hermes_log_search_tool_params={\"scope\":\"current-chat\",\"query\":\"<phrase optional>\",\"allTerms\":[\"<term>\"],\"anyTerms\":[\"<term>\"],\"nick\":\"<nick optional>\",\"dateFrom\":\"<yyyy-mm-dd optional>\",\"dateTo\":\"<yyyy-mm-dd optional>\",\"maxDays\":30,\"maxMatches\":20,\"maxBytes\":16000}\n");
-      sb.append("hermes_log_search_tool_use=for historical questions, find/search requests, broad date ranges, or unknown dates, request logs.search first; use compact terms from the user question\n");
+      sb.append("hermes_log_search_tool_params={\"scope\":\"current-chat\",\"query\":\"<required phrase>\",\"allTerms\":[\"<term>\"],\"anyTerms\":[\"<term>\"],\"nick\":\"<nick optional>\",\"dateFrom\":\"<yyyy-mm-dd optional>\",\"dateTo\":\"<yyyy-mm-dd optional>\",\"maxDays\":30,\"maxMatches\":20,\"maxBytes\":16000}\n");
+      sb.append("hermes_log_search_tool_use=for historical questions with concrete words, names, phrases, or nicks, request logs.search first; use compact terms from the user question\n");
       sb.append("hermes_log_search_tool_returns=json with result.searchedFiles, result.searchedLines, result.truncated, result.matches[{date,lineNumber,time,nick,text}]\n");
     }
     if (logsRead) {
       sb.append("hermes_log_read_tool=logs.read\n");
       sb.append("hermes_log_read_tool_params={\"scope\":\"current-chat\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80,\"includeAvailableFiles\":false}\n");
-      sb.append("hermes_log_read_tool_use=for recent chat context or exact dated tail reads, request logs.read; omit date to read latest available log\n");
+      sb.append("hermes_log_read_tool_use=for recent chat context, broad channel analysis, ranking questions, or exact dated tail reads, request logs.read; omit date to read latest available log\n");
       sb.append("hermes_log_read_tool_returns=json with result.content, result.found, result.date, result.availableFiles when requested or date omitted\n");
     }
     sb.append("recent_messages_source=controlled_hermes_log_tool\n");
