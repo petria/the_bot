@@ -26,13 +26,13 @@ public class HokanCmd extends AbstractCmd {
   private static final Logger log = LoggerFactory.getLogger(HokanCmd.class);
 
   public HokanCmd() {
-    setRequiredPermission(BotPermission.OPENCLAW_USE);
+    setRequiredPermission(BotPermission.HERMES_USE);
   }
 
   @Override
   public void initCommandOptions(JSAP jsap) throws JSAPException {
 
-    jsap.setHelp("Ask something from Hokan 'AI'.");
+    jsap.setHelp("Ask something from Hokan Hermes AI.");
 
     UnflaggedOption opt = new UnflaggedOption(ARG_PROMPT)
         .setList(true)
@@ -53,7 +53,7 @@ public class HokanCmd extends AbstractCmd {
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
 
-    AiResponse aiResponse = doServiceRequestMethods(request, results, ServiceRequestType.AiService);
+    AiResponse aiResponse = doServiceRequestMethods(request, results, ServiceRequestType.HermesAiService);
     if (aiResponse.getStatus().startsWith("NOK")) {
       return "Something Went Wrong: " + aiResponse.getStatus();
     }
