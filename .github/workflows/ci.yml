@@ -238,8 +238,8 @@ jobs:
           HERMES_MODEL: ${{ vars.HERMES_MODEL }}
           HERMES_TIMEOUT_SECONDS: ${{ vars.HERMES_TIMEOUT_SECONDS }}
           HERMES_API_MODE: ${{ vars.HERMES_API_MODE }}
-          HERMES_MANAGER_MAIN_BASE_URL: ${{ vars.HERMES_MANAGER_MAIN_BASE_URL || "http://ubuntu-server.local:8651" }}
-          HERMES_MANAGER_DEVELOP_BASE_URL: ${{ vars.HERMES_MANAGER_DEVELOP_BASE_URL || "http://ubuntu-server.local:8652" }}
+          HERMES_MANAGER_MAIN_BASE_URL: ${{ vars.HERMES_MANAGER_MAIN_BASE_URL || 'http://ubuntu-server.local:8651' }}
+          HERMES_MANAGER_DEVELOP_BASE_URL: ${{ vars.HERMES_MANAGER_DEVELOP_BASE_URL || 'http://ubuntu-server.local:8652' }}
           HERMES_MANAGER_TOKEN: ${{ secrets.HERMES_MANAGER_TOKEN }}
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
