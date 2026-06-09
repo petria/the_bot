@@ -20,6 +20,8 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class HermesAiService {
@@ -46,6 +48,8 @@ public class HermesAiService {
   private static final List<String> CHAT_TOOL_NAMES = List.of("logs.read", "logs.search");
   private static final int MAX_TOOL_ITERATIONS = 4;
   private static final int POLL_INTERVAL_MILLIS = 750;
+  private static final Pattern REASONING_TOOL_PATTERN = Pattern.compile(
+      "(?is)(?:tool_name|tool|name)\\s*`?\\s*[:=]\\s*`?([a-z0-9_.-]+)");
 
   private final HermesSettingsService settingsService;
   private final JsonMapper objectMapper;
@@ -306,6 +310,9 @@ public class HermesAiService {
     JsonNode node = parseJson(response);
     String text = extractText(node);
     if (text.isBlank()) {
+      text = extractReasoningToolRequest(node);
+    }
+    if (text.isBlank()) {
       log.warn("Hermes /v1/chat/completions returned no extractable text. Raw response: {}", response);
     }
     return text;
@@ -563,6 +570,119 @@ public class HermesAiService {
     log.info("ExtractText saw no matching text fields. JSON: {}", jsonStr.substring(0, Math.min(500, jsonStr.length())));
 
     return "";
+  }
+
+  String extractReasoningToolRequest(JsonNode node) throws Exception {
+    String reasoning = extractReasoningText(node);
+    if (reasoning.isBlank()) {
+      return "";
+    }
+
+    String toolName = extractReasoningToolName(reasoning);
+    if (!CHAT_TOOL_NAMES.contains(toolName)) {
+      return "";
+    }
+
+    JsonNode arguments = extractReasoningArguments(reasoning);
+    if (arguments == null || arguments.isMissingNode() || arguments.isNull()) {
+      arguments = objectMapper.createObjectNode();
+    }
+
+    ObjectNode toolRequest = objectMapper.createObjectNode();
+    toolRequest.put("type", "tool");
+    toolRequest.put("tool", toolName);
+    toolRequest.set("arguments", arguments);
+    log.info("Recovered Hermes tool request from reasoning field: {}", toolName);
+    return toolRequest.toString();
+  }
+
+  private String extractReasoningText(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return "";
+    }
+    if (node.isArray()) {
+      String latest = "";
+      for (JsonNode item : node) {
+        String nested = extractReasoningText(item);
+        if (!nested.isBlank()) {
+          latest = nested;
+        }
+      }
+      return latest;
+    }
+
+    String direct = textValue(node.path("reasoning"));
+    if (!direct.isBlank()) {
+      return direct;
+    }
+
+    for (String field : new String[]{"message", "choices", "output", "data"}) {
+      String nested = extractReasoningText(node.path(field));
+      if (!nested.isBlank()) {
+        return nested;
+      }
+    }
+    return "";
+  }
+
+  private String extractReasoningToolName(String reasoning) {
+    Matcher matcher = REASONING_TOOL_PATTERN.matcher(reasoning);
+    while (matcher.find()) {
+      String candidate = matcher.group(1).trim();
+      if (CHAT_TOOL_NAMES.contains(candidate)) {
+        return candidate;
+      }
+    }
+    for (String toolName : CHAT_TOOL_NAMES) {
+      if (reasoning.contains("`" + toolName + "`") || reasoning.contains("\"" + toolName + "\"")) {
+        return toolName;
+      }
+    }
+    return "";
+  }
+
+  private JsonNode extractReasoningArguments(String reasoning) throws Exception {
+    int argumentsIndex = reasoning.toLowerCase().indexOf("arguments");
+    if (argumentsIndex < 0) {
+      return objectMapper.createObjectNode();
+    }
+
+    int start = reasoning.indexOf('{', argumentsIndex);
+    if (start < 0) {
+      return objectMapper.createObjectNode();
+    }
+
+    int depth = 0;
+    boolean inString = false;
+    boolean escaped = false;
+    for (int i = start; i < reasoning.length(); i++) {
+      char c = reasoning.charAt(i);
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (c == '\\') {
+        escaped = true;
+        continue;
+      }
+      if (c == '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) {
+        continue;
+      }
+      if (c == '{') {
+        depth++;
+      } else if (c == '}') {
+        depth--;
+        if (depth == 0) {
+          return objectMapper.readTree(reasoning.substring(start, i + 1));
+        }
+      }
+    }
+
+    return objectMapper.createObjectNode();
   }
 
   private String firstText(JsonNode node, String... fields) {
