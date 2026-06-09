@@ -4,6 +4,7 @@ import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettings;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ public class HermesAiCommandService {
   private final AiCommandToolRegistry toolRegistry;
   private final JsonMapper jsonMapper;
   private final ObjectProvider<BotEngine> botEngineProvider;
+  private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
 
   public HermesAiCommandService(
@@ -41,11 +43,13 @@ public class HermesAiCommandService {
       AiCommandToolRegistry toolRegistry,
       JsonMapper jsonMapper,
       ObjectProvider<BotEngine> botEngineProvider,
+      HermesPromptContextService promptContextService,
       WebClient.Builder webClientBuilder) {
     this.settingsService = settingsService;
     this.toolRegistry = toolRegistry;
     this.jsonMapper = jsonMapper;
     this.botEngineProvider = botEngineProvider;
+    this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
   }
 
@@ -65,8 +69,8 @@ public class HermesAiCommandService {
       WebClient client = buildClient(settings);
       String sessionKey = buildStableSessionId(buildSessionId(request, command));
       String instructions = buildInstructions(command);
-      String input = buildInitialInput(request, command, argumentsText);
       List<String> allowedTools = command.getAllowedTools() == null ? List.of() : command.getAllowedTools();
+      String input = buildInitialInput(request, command, argumentsText, sessionKey, allowedTools);
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
 
       for (int i = 0; i < maxIterations; i++) {
@@ -234,22 +238,14 @@ public class HermesAiCommandService {
     return sb.toString().trim();
   }
 
-  private String buildInitialInput(EngineRequest request, AiCommandDefinition command, String argumentsText) {
-    return """
-        User invoked !%s.
-        Arguments: %s
-        Chat protocol: %s
-        Network: %s
-        Channel/private target: %s
-        Sender nick/name: %s
-        Return JSON only.
-        """.formatted(
-        command.getName(),
-        argumentsText == null ? "" : argumentsText,
-        request.getChatProtocol(),
-        request.getNetwork(),
-        request.getReplyTo(),
-        request.getFromSender());
+  private String buildInitialInput(
+      EngineRequest request,
+      AiCommandDefinition command,
+      String argumentsText,
+      String sessionKey,
+      List<String> allowedTools) {
+    return promptContextService.buildAiCommandInput(request, sessionKey, command.getName(), argumentsText, allowedTools)
+        + "\nReturn JSON only.";
   }
 
   AiCommandModelResponse parseModelResponse(String text) throws Exception {

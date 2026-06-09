@@ -266,6 +266,7 @@ class HermesAiServiceTest {
         new JsonMapper(),
         null,
         mock(AiCommandToolRegistry.class),
+        mock(HermesPromptContextService.class),
         WebClient.builder()
     );
   }

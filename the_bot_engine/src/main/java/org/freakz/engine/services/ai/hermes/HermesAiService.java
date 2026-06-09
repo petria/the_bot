@@ -51,6 +51,7 @@ public class HermesAiService {
   private final JsonMapper objectMapper;
   private final BotEngine botEngine;
   private final AiCommandToolRegistry toolRegistry;
+  private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
 
   public HermesAiService(
@@ -58,12 +59,14 @@ public class HermesAiService {
       JsonMapper objectMapper,
       BotEngine botEngine,
       AiCommandToolRegistry toolRegistry,
+      HermesPromptContextService promptContextService,
       WebClient.Builder webClientBuilder
   ) {
     this.settingsService = settingsService;
     this.objectMapper = objectMapper;
     this.botEngine = botEngine;
     this.toolRegistry = toolRegistry;
+    this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
   }
 
@@ -85,9 +88,10 @@ public class HermesAiService {
         clientBuilder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey());
       }
       WebClient client = clientBuilder.build();
+      String promptInput = promptContextService.buildChatInput(engineRequest, stableSessionId, queryMessage);
 
       if (settings.useResponsesApi()) {
-        String text = createToolAwareResponse(client, settings, stableSessionId, engineRequest, queryMessage);
+        String text = createToolAwareResponse(client, settings, stableSessionId, engineRequest, queryMessage, promptInput);
         if (text == null || text.isBlank()) {
           processReply(engineRequest, "Hermes returned no response.");
           return;
@@ -97,7 +101,7 @@ public class HermesAiService {
       }
 
       if (settings.useChatCompletionsApi()) {
-        String text = createToolAwareChatCompletion(client, settings, stableSessionId, engineRequest, queryMessage);
+        String text = createToolAwareChatCompletion(client, settings, stableSessionId, engineRequest, queryMessage, promptInput);
         if (text == null || text.isBlank()) {
           processReply(engineRequest, "Hermes returned no response.");
           return;
@@ -106,7 +110,7 @@ public class HermesAiService {
         return;
       }
 
-      String runId = createRun(client, settings, stableSessionId, queryMessage);
+      String runId = createRun(client, settings, stableSessionId, promptInput);
       if (runId.isBlank()) {
         processReply(engineRequest, "Hermes returned no response.");
         return;
@@ -173,8 +177,9 @@ public class HermesAiService {
       HermesSettings settings,
       String sessionKey,
       EngineRequest request,
-      String queryMessage) throws Exception {
-    String input = queryMessage == null ? "" : queryMessage;
+      String queryMessage,
+      String promptInput) throws Exception {
+    String input = promptInput == null ? "" : promptInput;
     for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       String text = createResponse(client, settings, sessionKey, input);
       ChatModelResponse modelResponse = parseModelResponse(text);
@@ -197,8 +202,9 @@ public class HermesAiService {
       HermesSettings settings,
       String sessionKey,
       EngineRequest request,
-      String queryMessage) throws Exception {
-    String input = queryMessage == null ? "" : queryMessage;
+      String queryMessage,
+      String promptInput) throws Exception {
+    String input = promptInput == null ? "" : promptInput;
     for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       String text = createChatCompletion(client, settings, sessionKey, input);
       ChatModelResponse modelResponse = parseModelResponse(text);

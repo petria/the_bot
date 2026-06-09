@@ -1,6 +1,7 @@
 package org.freakz.engine.services.ai.commands;
 
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -89,6 +90,7 @@ class HermesAiCommandServiceTest {
         mock(AiCommandToolRegistry.class),
         new JsonMapper(),
         mock(ObjectProvider.class),
+        mock(HermesPromptContextService.class),
         WebClient.builder());
   }
 }
