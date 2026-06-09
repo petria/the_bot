@@ -11,7 +11,8 @@ export function SystemPage() {
     refetchInterval: 5000,
   });
 
-  const components = systemQuery.data?.components ?? [];
+  const components = (systemQuery.data?.components ?? [])
+    .filter((component) => component.componentType !== 'OPENCLAW_GATEWAY');
 
   return (
     <Stack gap="md">
@@ -55,10 +56,9 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
   const degraded = component.status === 'DEGRADED';
   const sidecar = component.componentType === 'SIDECAR';
   const springBoot = component.componentType === 'SPRING_BOOT';
-  const openClawGateway = component.componentType === 'OPENCLAW_GATEWAY';
   const hermesGateway = component.componentType === 'HERMES_GATEWAY';
   const hermesManager = component.componentType === 'HERMES_MANAGER';
-  const gateway = openClawGateway || hermesGateway || hermesManager;
+  const gateway = hermesGateway || hermesManager;
   const endpointLabel = hermesManager ? 'Backend' : gateway ? 'Gateway' : 'Base URL';
   const showContainer = Boolean(component.containerName || component.containerState || component.image || component.containerError);
   return (
@@ -169,9 +169,6 @@ function formatComponentType(type: string | null) {
   }
   if (type === 'SIDECAR') {
     return 'Sidecar';
-  }
-  if (type === 'OPENCLAW_GATEWAY') {
-    return 'OpenClaw Gateway';
   }
   if (type === 'HERMES_GATEWAY') {
     return 'Hermes Gateway';
