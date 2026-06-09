@@ -98,6 +98,28 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void recoversToolRequestFromOllamaReasoningWhenContentIsBlank() throws Exception {
+    HermesAiService service = newService();
+
+    String recovered = service.extractReasoningToolRequest(new JsonMapper().readTree("""
+        {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "",
+                "reasoning": "Construct Tool Call:\\n* `tool_name`: `logs.search`\\n* `arguments`: `{\\"scope\\":\\"current-chat\\",\\"query\\":\\"pätiä\\",\\"maxMatches\\":20}`"
+              },
+              "finish_reason": "stop"
+            }
+          ]
+        }
+        """));
+
+    assertThat(recovered).isEqualTo("{\"type\":\"tool\",\"tool\":\"logs.search\",\"arguments\":{\"scope\":\"current-chat\",\"query\":\"pätiä\",\"maxMatches\":20}}");
+  }
+
+  @Test
   void resolvesChatSpecificHermesSettingsBeforeGenericFallback() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
         "hermes.chat.base-url", "http://chat.example:8643/",
