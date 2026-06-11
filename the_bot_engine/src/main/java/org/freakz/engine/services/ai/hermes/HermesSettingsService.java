@@ -3,6 +3,8 @@ package org.freakz.engine.services.ai.hermes;
 import java.util.List;
 
 import org.freakz.common.model.engine.system.HermesProfileOption;
+import org.freakz.common.model.engine.system.HermesAiRoute;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
@@ -69,6 +71,10 @@ public class HermesSettingsService {
 
   public HermesSettings resolveSettings() {
     HermesSettings local = resolveLocalSettings();
+    HermesSettings managed = resolveManagedRoute("chat", local);
+    if (managed != null) {
+      return managed;
+    }
     HermesFallbackSettingsResponse override = loadHermesOverride();
     if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
@@ -83,6 +89,10 @@ public class HermesSettingsService {
 
   public HermesSettings resolveAiCommandSettings() {
     HermesSettings local = resolveLocalAiCommandSettings();
+    HermesSettings managed = resolveManagedRoute(AI_COMMAND_PROFILE_ID, local);
+    if (managed != null) {
+      return managed;
+    }
     HermesFallbackSettingsResponse override = loadHermesOverride();
     if (override != null && Boolean.TRUE.equals(override.enabled())) {
       return new HermesSettings(
@@ -335,6 +345,38 @@ public class HermesSettingsService {
       return hermesFallbackOverrideState.apply(hermesManagerClient.getFallback().getBody());
     } catch (Exception e) {
       log.debug("Could not load Hermes override state: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  private HermesSettings resolveManagedRoute(String routeId, HermesSettings local) {
+    if (hermesManagerClient == null) {
+      return null;
+    }
+    try {
+      HermesBackendConfigResponse config = hermesManagerClient.getBackendConfig().getBody();
+      if (config == null || config.routes() == null) {
+        return null;
+      }
+      HermesAiRoute route = config.routes().stream()
+          .filter(candidate -> routeId.equals(candidate.routeId()))
+          .findFirst()
+          .orElse(null);
+      if (route == null || route.baseUrl() == null || route.baseUrl().isBlank()
+          || route.model() == null || route.model().isBlank()) {
+        return null;
+      }
+      String apiMode = firstNonBlank(route.apiMode(), local.apiMode());
+      int timeoutSeconds = route.timeoutSeconds() == null ? local.timeoutSeconds() : route.timeoutSeconds();
+      String apiKey = apiKeyForProfile(route.backendProfileId());
+      return new HermesSettings(
+          normalizeApiRoot(route.baseUrl()),
+          apiKey == null ? "" : apiKey.trim(),
+          route.model(),
+          timeoutSeconds,
+          apiMode);
+    } catch (Exception e) {
+      log.debug("Could not load Hermes route {} from manager: {}", routeId, e.getMessage());
       return null;
     }
   }

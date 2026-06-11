@@ -38,6 +38,38 @@ export type HermesFallbackSettingsResponse = {
   profiles: HermesFallbackProfileStatus[];
 };
 
+export type HermesBackendProfile = {
+  id: string;
+  label: string;
+  type: string;
+  baseUrl: string;
+  model: string;
+  apiMode: string;
+  timeoutSeconds: number | null;
+  healthUrl: string | null;
+  healthy: boolean | null;
+  toolCapable: boolean | null;
+  detail: string | null;
+};
+
+export type HermesAiRoute = {
+  routeId: string;
+  label: string;
+  backendProfileId: string;
+  baseUrl: string | null;
+  model: string | null;
+  apiMode: string | null;
+  timeoutSeconds: number | null;
+  healthUrl: string | null;
+  healthy: boolean | null;
+  detail: string | null;
+};
+
+export type HermesBackendConfigResponse = {
+  profiles: HermesBackendProfile[];
+  routes: HermesAiRoute[];
+};
+
 export function getHermesSettings(): Promise<HermesSettingsResponse> {
   return getJson<HermesSettingsResponse>('/api/web/admin/system/hermes');
 }
@@ -58,4 +90,12 @@ export function getHermesFallbackModels(baseUrl: string): Promise<string[]> {
 
 export function updateHermesFallback(baseUrl: string, model: string, enabled: boolean): Promise<HermesFallbackSettingsResponse> {
   return putJson<HermesFallbackSettingsResponse>('/api/web/admin/system/hermes/fallback', { baseUrl, model, enabled });
+}
+
+export function getHermesBackendConfig(): Promise<HermesBackendConfigResponse> {
+  return getJson<HermesBackendConfigResponse>('/api/web/admin/system/hermes/backends');
+}
+
+export function updateHermesBackendConfig(config: HermesBackendConfigResponse): Promise<HermesBackendConfigResponse> {
+  return putJson<HermesBackendConfigResponse>('/api/web/admin/system/hermes/backends', config);
 }

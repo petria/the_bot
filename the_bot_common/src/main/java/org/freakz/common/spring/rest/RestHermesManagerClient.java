@@ -6,6 +6,8 @@ import java.time.Duration;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -51,6 +53,14 @@ public class RestHermesManagerClient {
 
   public ResponseEntity<HermesFallbackSettingsResponse> updateFallback(HermesFallbackUpdateRequest request) {
     return exchange("/api/hermes/fallback", HttpMethod.PUT, request, HermesFallbackSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesBackendConfigResponse> getBackendConfig() {
+    return exchange("/api/hermes/backends", HttpMethod.GET, null, HermesBackendConfigResponse.class);
+  }
+
+  public ResponseEntity<HermesBackendConfigResponse> updateBackendConfig(HermesBackendConfigUpdateRequest request) {
+    return exchange("/api/hermes/backends", HttpMethod.PUT, request, HermesBackendConfigResponse.class);
   }
 
   private <T> ResponseEntity<T> exchange(String path, HttpMethod method, Object body, Class<T> responseType) {

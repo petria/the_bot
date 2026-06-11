@@ -9,6 +9,8 @@ import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -239,6 +241,17 @@ public class EngineController {
   public ResponseEntity<HermesFallbackSettingsResponse> updateHermesFallback(
       @RequestBody HermesFallbackUpdateRequest request) {
     return ResponseEntity.ok(hermesFallbackManagerService.update(request));
+  }
+
+  @GetMapping("/internal/system/hermes/backends")
+  public ResponseEntity<HermesBackendConfigResponse> getHermesBackendConfig() {
+    return ResponseEntity.ok(hermesFallbackManagerService.getBackendConfig());
+  }
+
+  @PutMapping("/internal/system/hermes/backends")
+  public ResponseEntity<HermesBackendConfigResponse> updateHermesBackendConfig(
+      @RequestBody HermesBackendConfigUpdateRequest request) {
+    return ResponseEntity.ok(hermesFallbackManagerService.updateBackendConfig(request));
   }
 
   @PostMapping("/internal/security/web-login-failed")

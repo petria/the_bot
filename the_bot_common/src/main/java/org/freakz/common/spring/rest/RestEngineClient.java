@@ -9,6 +9,8 @@ import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -117,6 +119,18 @@ public class RestEngineClient {
         HttpMethod.PUT,
         new org.springframework.http.HttpEntity<>(request),
         HermesFallbackSettingsResponse.class);
+  }
+
+  public ResponseEntity<HermesBackendConfigResponse> getHermesBackendConfig() {
+    return restTemplate.getForEntity(baseUrl + "/internal/system/hermes/backends", HermesBackendConfigResponse.class);
+  }
+
+  public ResponseEntity<HermesBackendConfigResponse> updateHermesBackendConfig(HermesBackendConfigUpdateRequest request) {
+    return longRunningRestTemplate.exchange(
+        baseUrl + "/internal/system/hermes/backends",
+        HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(request),
+        HermesBackendConfigResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

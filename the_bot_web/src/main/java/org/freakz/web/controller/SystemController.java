@@ -13,6 +13,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
+import org.freakz.common.model.engine.system.HermesAiRoute;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -242,6 +244,11 @@ public class SystemController {
 
   private SystemComponentStatus hermesComponentStatus(Instant checkedAt) {
     long startedNanos = System.nanoTime();
+    SystemComponentStatus backendStatus = hermesBackendComponentStatus(checkedAt, startedNanos);
+    if (backendStatus != null) {
+      return backendStatus;
+    }
+
     HermesFallbackSettingsResponse fallback = loadHermesFallbackSettings();
     if (fallback != null && Boolean.TRUE.equals(fallback.enabled())) {
       return forcedHermesFallbackComponentStatus(fallback, checkedAt, startedNanos);
@@ -305,6 +312,66 @@ public class SystemController {
         null,
         null,
         error);
+  }
+
+  private SystemComponentStatus hermesBackendComponentStatus(Instant checkedAt, long startedNanos) {
+    try {
+      ResponseEntity<HermesBackendConfigResponse> response = engineClient.getHermesBackendConfig();
+      HermesBackendConfigResponse config = response.getBody();
+      if (!response.getStatusCode().is2xxSuccessful() || config == null || config.routes() == null) {
+        return null;
+      }
+      List<HermesAiRoute> routes = config.routes();
+      long healthyCount = routes.stream()
+          .filter(route -> !Boolean.FALSE.equals(route.healthy()))
+          .count();
+      HermesAiRoute chatRoute = routes.stream()
+          .filter(route -> "chat".equals(route.routeId()))
+          .findFirst()
+          .orElse(routes.isEmpty() ? null : routes.get(0));
+      String status;
+      String error = null;
+      if (routes.isEmpty()) {
+        status = "DEGRADED";
+        error = "No Hermes routes configured";
+      } else if (healthyCount == routes.size()) {
+        status = "UP";
+      } else if (healthyCount > 0) {
+        status = "DEGRADED";
+        error = hermesRouteErrors(routes);
+      } else {
+        status = "DOWN";
+        error = hermesRouteErrors(routes);
+      }
+      long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
+      return new SystemComponentStatus(
+          "bot-hermes",
+          status,
+          "HERMES_MANAGER",
+          "route-bindings",
+          chatRoute == null ? null : chatRoute.healthUrl(),
+          "routes healthy " + healthyCount + "/" + routes.size(),
+          chatRoute == null ? null : chatRoute.baseUrl(),
+          chatRoute == null ? null : chatRoute.backendProfileId(),
+          null,
+          chatRoute == null ? null : chatRoute.model(),
+          null,
+          null,
+          null,
+          null,
+          responseTimeMs,
+          checkedAt,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          error);
+    } catch (RuntimeException ignored) {
+      return null;
+    }
   }
 
   private HermesFallbackSettingsResponse loadHermesFallbackSettings() {
@@ -391,6 +458,15 @@ public class SystemController {
       return detail;
     }
     return "One or more Hermes fallback profiles are unhealthy";
+  }
+
+  private String hermesRouteErrors(List<HermesAiRoute> routes) {
+    return routes.stream()
+        .filter(route -> Boolean.FALSE.equals(route.healthy()))
+        .map(route -> firstNonBlank(route.detail(), route.routeId() + " route is unhealthy"))
+        .filter(value -> value != null && !value.isBlank())
+        .findFirst()
+        .orElse(null);
   }
 
   private SystemComponentStatus sidecarComponentStatus(String name, String containerName, Instant checkedAt) {

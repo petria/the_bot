@@ -18,6 +18,10 @@ import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesAiRoute;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendProfile;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +40,10 @@ import tools.jackson.dataformat.yaml.YAMLMapper;
 public class HermesFallbackService implements ApplicationRunner {
 
   private static final String SETTINGS_FILE = "the_bot_fallback.json";
+  private static final String BACKEND_SETTINGS_FILE = "the_bot_hermes_backends.json";
+  private static final String OLLAMA_PROFILE_ID = "ollama-default";
+  private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
+  private static final String RESPONSES_API_MODE = "responses";
   private static final Logger log = LoggerFactory.getLogger(HermesFallbackService.class);
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
@@ -56,8 +64,7 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   public HermesFallbackSettingsResponse getSettings() {
-    HermesFallbackUpdateRequest settings = readSettings();
-    return response(settings);
+    return fallbackResponse(readBackendConfig());
   }
 
   @Override
@@ -107,10 +114,42 @@ public class HermesFallbackService implements ApplicationRunner {
       HermesFallbackUpdateRequest saved = new HermesFallbackUpdateRequest(
           baseUrl.toString().replaceFirst("/+$", ""), model, enabled);
       writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(saved));
-      return response(saved);
+      writeBackendConfig(backendConfigForFallback(saved));
+      return fallbackResponse(readBackendConfig());
     } catch (Exception e) {
       rollback(backups);
       throw new IllegalStateException("Could not apply Hermes fallback configuration: " + e.getMessage(), e);
+    } finally {
+      updateLock.unlock();
+    }
+  }
+
+  public HermesBackendConfigResponse getBackendConfig() {
+    return backendResponse(readBackendConfig());
+  }
+
+  public HermesBackendConfigResponse updateBackendConfig(HermesBackendConfigUpdateRequest request) {
+    StoredBackendConfig config = sanitizeBackendConfig(request);
+    validateRoutes(config);
+    updateLock.lock();
+    try {
+      for (StoredRoute route : config.routes()) {
+        if (requiresTools(route.routeId())) {
+          StoredProfile profile = profileById(config, route.backendProfileId());
+          if (profile != null && "OPENAI_COMPATIBLE".equalsIgnoreCase(profile.type())) {
+            validateToolCall(validatedBaseUrl(profile.baseUrl()), profile.model());
+          }
+        }
+      }
+      StoredProfile fallback = firstOpenAiCompatible(config);
+      if (fallback != null) {
+        applyFallbackProvider(fallback);
+      }
+      writeBackendConfig(config);
+      writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(fallbackRequest(config)));
+      return backendResponse(config);
+    } catch (Exception e) {
+      throw new IllegalStateException("Could not apply Hermes backend configuration: " + e.getMessage(), e);
     } finally {
       updateLock.unlock();
     }
@@ -168,14 +207,16 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private HermesFallbackSettingsResponse response(HermesFallbackUpdateRequest settings) {
+  private HermesFallbackSettingsResponse fallbackResponse(StoredBackendConfig config) {
+    HermesFallbackUpdateRequest settings = fallbackRequest(config);
     List<HermesFallbackProfileStatus> statuses = properties.profiles().stream()
         .map(profile -> {
           int port = properties.ports().getOrDefault(profile, 0);
           CredentialStatus credential = credentialStatus(profile);
           try {
             restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
-            String route = settings.enabled() ? "OLLAMA_FORCED"
+            boolean forced = routeUsesProfile(config, profile, OLLAMA_PROFILE_ID);
+            String route = forced ? "OLLAMA_FORCED"
                 : credential.openAiAvailable() ? "OPENAI_PRIMARY" : "OLLAMA_FALLBACK";
             return new HermesFallbackProfileStatus(
                 profile,
@@ -183,7 +224,7 @@ public class HermesFallbackService implements ApplicationRunner {
                 true,
                 credential.openAiAvailable(),
                 credential.cooldownUntil(),
-                settings.enabled()
+                forced
                     ? credential.detail() + " / Shared Ollama override enabled"
                     : credential.detail());
           } catch (Exception e) {
@@ -194,6 +235,52 @@ public class HermesFallbackService implements ApplicationRunner {
         })
         .toList();
     return new HermesFallbackSettingsResponse(settings.enabled(), settings.baseUrl(), settings.model(), statuses);
+  }
+
+  private HermesBackendConfigResponse backendResponse(StoredBackendConfig config) {
+    List<HermesBackendProfile> profiles = config.profiles().stream()
+        .map(profile -> profileResponse(profile))
+        .toList();
+    List<HermesAiRoute> routes = config.routes().stream()
+        .map(route -> routeResponse(config, route))
+        .toList();
+    return new HermesBackendConfigResponse(profiles, routes);
+  }
+
+  private HermesBackendProfile profileResponse(StoredProfile profile) {
+    ProfileHealth health = profileHealth(profile);
+    return new HermesBackendProfile(
+        profile.id(),
+        profile.label(),
+        profile.type(),
+        profile.baseUrl(),
+        profile.model(),
+        profile.apiMode(),
+        profile.timeoutSeconds(),
+        healthUrl(profile.baseUrl()),
+        health.healthy(),
+        health.toolCapable(),
+        health.detail());
+  }
+
+  private HermesAiRoute routeResponse(StoredBackendConfig config, StoredRoute route) {
+    StoredProfile profile = profileById(config, route.backendProfileId());
+    if (profile == null) {
+      return new HermesAiRoute(route.routeId(), routeLabel(route.routeId()), route.backendProfileId(),
+          null, null, null, route.timeoutSeconds(), null, false, "Backend profile is missing");
+    }
+    ProfileHealth health = profileHealth(profile);
+    return new HermesAiRoute(
+        route.routeId(),
+        routeLabel(route.routeId()),
+        route.backendProfileId(),
+        profile.baseUrl(),
+        profile.model(),
+        profile.apiMode(),
+        route.timeoutSeconds() == null ? profile.timeoutSeconds() : route.timeoutSeconds(),
+        healthUrl(profile.baseUrl()),
+        health.healthy(),
+        health.detail());
   }
 
   private CredentialStatus credentialStatus(String profile) {
@@ -248,6 +335,214 @@ public class HermesFallbackService implements ApplicationRunner {
       }
     }
     return new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel(), false);
+  }
+
+  private StoredBackendConfig readBackendConfig() {
+    Path path = backendSettingsPath();
+    if (Files.exists(path)) {
+      try {
+        return normalizeBackendConfig(jsonMapper.readValue(Files.readAllBytes(path), StoredBackendConfig.class));
+      } catch (IOException e) {
+        throw new IllegalStateException("Could not read " + path, e);
+      }
+    }
+    return backendConfigForFallback(readSettings());
+  }
+
+  private void writeBackendConfig(StoredBackendConfig config) throws IOException {
+    writeAtomically(backendSettingsPath(), jsonMapper.writeValueAsBytes(normalizeBackendConfig(config)));
+  }
+
+  private StoredBackendConfig backendConfigForFallback(HermesFallbackUpdateRequest settings) {
+    String baseUrl = firstNonBlank(settings == null ? null : settings.baseUrl(), properties.defaultBaseUrl());
+    String model = firstNonBlank(settings == null ? null : settings.model(), properties.defaultModel());
+    boolean enabled = settings != null && Boolean.TRUE.equals(settings.enabled());
+    List<StoredProfile> profiles = new ArrayList<>();
+    profiles.add(profile("chat", "Hermes chat", "HERMES_PROFILE", "http://ubuntu-server.local:8643", "hermes-chat", RESPONSES_API_MODE, 120));
+    profiles.add(profile("coder", "Hermes coder", "HERMES_PROFILE", "http://ubuntu-server.local:8644", "hermes-coder", RESPONSES_API_MODE, 120));
+    profiles.add(profile("ai-command", "Hermes AI command", "HERMES_PROFILE", "http://ubuntu-server.local:8645", "hermes-ai-command", RESPONSES_API_MODE, 120));
+    profiles.add(profile(OLLAMA_PROFILE_ID, "Ollama default", "OPENAI_COMPATIBLE", baseUrl, model, CHAT_COMPLETIONS_API_MODE, 120));
+    return normalizeBackendConfig(new StoredBackendConfig(profiles, defaultRoutes(enabled)));
+  }
+
+  private StoredBackendConfig sanitizeBackendConfig(HermesBackendConfigUpdateRequest request) {
+    if (request == null) {
+      throw new IllegalArgumentException("request is required");
+    }
+    List<StoredProfile> profiles = request.profiles() == null ? List.of() : request.profiles().stream()
+        .map(profile -> profile(
+            requireValue(profile.id(), "profile id"),
+            requireValue(profile.label(), "profile label"),
+            requireValue(profile.type(), "profile type"),
+            requireValue(profile.baseUrl(), "profile baseUrl"),
+            requireValue(profile.model(), "profile model"),
+            firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
+            profile.timeoutSeconds() == null ? 120 : profile.timeoutSeconds()))
+        .toList();
+    List<StoredRoute> routes = request.routes() == null ? List.of() : request.routes().stream()
+        .map(route -> new StoredRoute(
+            requireValue(route.routeId(), "route id"),
+            requireValue(route.backendProfileId(), "route backendProfileId"),
+            route.timeoutSeconds()))
+        .toList();
+    return normalizeBackendConfig(new StoredBackendConfig(profiles, routes));
+  }
+
+  private StoredBackendConfig normalizeBackendConfig(StoredBackendConfig config) {
+    StoredBackendConfig defaults = backendConfigForDefaultsOnly();
+    List<StoredProfile> profiles = new ArrayList<>();
+    if (config != null && config.profiles() != null) {
+      profiles.addAll(config.profiles());
+    }
+    for (StoredProfile profile : defaults.profiles()) {
+      if (profiles.stream().noneMatch(existing -> profile.id().equals(existing.id()))) {
+        profiles.add(profile);
+      }
+    }
+    List<StoredRoute> routes = new ArrayList<>();
+    if (config != null && config.routes() != null) {
+      routes.addAll(config.routes());
+    }
+    for (StoredRoute route : defaults.routes()) {
+      if (routes.stream().noneMatch(existing -> route.routeId().equals(existing.routeId()))) {
+        routes.add(route);
+      }
+    }
+    return new StoredBackendConfig(profiles, routes);
+  }
+
+  private StoredBackendConfig backendConfigForDefaultsOnly() {
+    List<StoredProfile> profiles = List.of(
+        profile("chat", "Hermes chat", "HERMES_PROFILE", "http://ubuntu-server.local:8643", "hermes-chat", RESPONSES_API_MODE, 120),
+        profile("coder", "Hermes coder", "HERMES_PROFILE", "http://ubuntu-server.local:8644", "hermes-coder", RESPONSES_API_MODE, 120),
+        profile("ai-command", "Hermes AI command", "HERMES_PROFILE", "http://ubuntu-server.local:8645", "hermes-ai-command", RESPONSES_API_MODE, 120),
+        profile(OLLAMA_PROFILE_ID, "Ollama default", "OPENAI_COMPATIBLE", properties.defaultBaseUrl(), properties.defaultModel(), CHAT_COMPLETIONS_API_MODE, 120));
+    return new StoredBackendConfig(profiles, defaultRoutes(false));
+  }
+
+  private void validateRoutes(StoredBackendConfig config) {
+    if (config.profiles().isEmpty()) {
+      throw new IllegalArgumentException("At least one backend profile is required");
+    }
+    for (StoredRoute route : config.routes()) {
+      if (profileById(config, route.backendProfileId()) == null) {
+        throw new IllegalArgumentException("Route " + route.routeId() + " references missing profile " + route.backendProfileId());
+      }
+    }
+  }
+
+  private void applyFallbackProvider(StoredProfile profile) throws IOException {
+    Map<Path, byte[]> backups = new LinkedHashMap<>();
+    try {
+      for (String hermesProfile : properties.profiles()) {
+        Path config = findProfileConfig(hermesProfile);
+        backups.put(config, Files.readAllBytes(config));
+        updateYaml(config, validatedBaseUrl(profile.baseUrl()).toString().replaceFirst("/+$", ""), profile.model());
+      }
+      restartAndVerify();
+    } catch (Exception e) {
+      rollback(backups);
+      throw e;
+    }
+  }
+
+  private ProfileHealth profileHealth(StoredProfile profile) {
+    if ("HERMES_PROFILE".equalsIgnoreCase(profile.type())) {
+      Integer port = properties.ports().get(profile.id());
+      if (port == null) {
+        return new ProfileHealth(false, true, "Hermes profile port is not configured");
+      }
+      try {
+        restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
+        return new ProfileHealth(true, true, "Hermes profile healthy");
+      } catch (Exception e) {
+        return new ProfileHealth(false, true, "Hermes profile health check failed");
+      }
+    }
+    try {
+      getModels(profile.baseUrl());
+      return new ProfileHealth(true, null, "OpenAI-compatible backend reachable");
+    } catch (Exception e) {
+      return new ProfileHealth(false, null, "OpenAI-compatible backend check failed");
+    }
+  }
+
+  private HermesFallbackUpdateRequest fallbackRequest(StoredBackendConfig config) {
+    StoredProfile fallback = profileById(config, OLLAMA_PROFILE_ID);
+    if (fallback == null) {
+      fallback = firstOpenAiCompatible(config);
+    }
+    StoredProfile effectiveFallback = fallback;
+    boolean enabled = config.routes().stream()
+        .filter(route -> properties.profiles().contains(route.routeId()))
+        .allMatch(route -> effectiveFallback != null && effectiveFallback.id().equals(route.backendProfileId()));
+    return new HermesFallbackUpdateRequest(
+        fallback == null ? properties.defaultBaseUrl() : fallback.baseUrl(),
+        fallback == null ? properties.defaultModel() : fallback.model(),
+        enabled);
+  }
+
+  private List<StoredRoute> defaultRoutes(boolean ollamaForced) {
+    String target = ollamaForced ? OLLAMA_PROFILE_ID : null;
+    return List.of(
+        new StoredRoute("chat", target == null ? "chat" : target, 120),
+        new StoredRoute("coder", target == null ? "coder" : target, 120),
+        new StoredRoute("ai-command", target == null ? "ai-command" : target, 120));
+  }
+
+  private StoredProfile firstOpenAiCompatible(StoredBackendConfig config) {
+    return config.profiles().stream()
+        .filter(profile -> "OPENAI_COMPATIBLE".equalsIgnoreCase(profile.type()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private StoredProfile profileById(StoredBackendConfig config, String id) {
+    if (config == null || config.profiles() == null || id == null) {
+      return null;
+    }
+    return config.profiles().stream()
+        .filter(profile -> id.equals(profile.id()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private boolean routeUsesProfile(StoredBackendConfig config, String routeId, String profileId) {
+    return config.routes().stream()
+        .anyMatch(route -> routeId.equals(route.routeId()) && profileId.equals(route.backendProfileId()));
+  }
+
+  private boolean requiresTools(String routeId) {
+    return "ai-command".equals(routeId) || "chat".equals(routeId);
+  }
+
+  private String routeLabel(String routeId) {
+    return switch (routeId) {
+      case "chat" -> "Chat";
+      case "coder" -> "Coder";
+      case "ai-command" -> "AI command";
+      default -> routeId;
+    };
+  }
+
+  private StoredProfile profile(String id, String label, String type, String baseUrl, String model, String apiMode, Integer timeoutSeconds) {
+    return new StoredProfile(id, label, type, baseUrl == null ? null : baseUrl.replaceFirst("/+$", ""), model, apiMode, timeoutSeconds);
+  }
+
+  private String healthUrl(String baseUrl) {
+    return baseUrl == null || baseUrl.isBlank() ? null : baseUrl.replaceFirst("/+$", "") + "/health";
+  }
+
+  private String firstNonBlank(String... values) {
+    if (values == null) {
+      return null;
+    }
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value.trim();
+      }
+    }
+    return null;
   }
 
   private Path findProfileConfig(String profile) throws IOException {
@@ -311,6 +606,10 @@ public class HermesFallbackService implements ApplicationRunner {
     return properties.dataDir().resolve(SETTINGS_FILE);
   }
 
+  private Path backendSettingsPath() {
+    return properties.dataDir().resolve(BACKEND_SETTINGS_FILE);
+  }
+
   private void sleep() {
     try {
       Thread.sleep(Duration.ofSeconds(1));
@@ -320,5 +619,24 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private record CredentialStatus(boolean openAiAvailable, String cooldownUntil, String detail) {
+  }
+
+  private record ProfileHealth(Boolean healthy, Boolean toolCapable, String detail) {
+  }
+
+  private record StoredBackendConfig(List<StoredProfile> profiles, List<StoredRoute> routes) {
+  }
+
+  private record StoredProfile(
+      String id,
+      String label,
+      String type,
+      String baseUrl,
+      String model,
+      String apiMode,
+      Integer timeoutSeconds) {
+  }
+
+  private record StoredRoute(String routeId, String backendProfileId, Integer timeoutSeconds) {
   }
 }
