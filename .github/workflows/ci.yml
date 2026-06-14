@@ -673,10 +673,18 @@ jobs:
             export PGID=\"\$(id -g)\" &&
             export DOCKER_GID=\"\$(stat -c '%g' /var/run/docker.sock)\" &&
             export ${TOKEN_EXPORT}='${HERMES_MANAGER_TOKEN}' &&
+            export HERMES_MANAGER_TOKEN='${HERMES_MANAGER_TOKEN}' &&
             docker login ghcr.io -u '${{ github.actor }}' -p '${VM_GH_TOKEN}' &&
             docker compose -f docker-compose.hermes-manager.yml pull '${SERVICE_NAME}' &&
             docker compose -f docker-compose.hermes-manager.yml up -d '${SERVICE_NAME}' &&
-            curl -fsS 'http://127.0.0.1:${HEALTH_PORT}/actuator/health'
+            for attempt in \$(seq 1 30); do
+              if curl -fsS 'http://127.0.0.1:${HEALTH_PORT}/actuator/health'; then
+                exit 0
+              fi
+              sleep 2
+            done
+            echo 'Hermes manager did not become healthy in time.'
+            exit 1
           "
 
   deploy-hermes-gateway:
