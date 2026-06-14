@@ -130,7 +130,11 @@ public class HermesFallbackService implements ApplicationRunner {
           URI baseUrl = validatedBaseUrl(profile.baseUrl());
           getModels(baseUrl.toString());
           if (requiresTools(profile.id())) {
-            validateToolCall(baseUrl, profile.model());
+            try {
+              validateToolCall(baseUrl, profile.model());
+            } catch (Exception e) {
+              log.warn("Hermes profile {} is reachable but tool-call validation failed: {}", profile.id(), e.getMessage());
+            }
           }
         }
       }
@@ -227,8 +231,12 @@ public class HermesFallbackService implements ApplicationRunner {
       URI baseUrl = validatedBaseUrl(profile.baseUrl());
       getModels(baseUrl.toString());
       if (requiresTools(profile.id())) {
-        validateToolCall(baseUrl, profile.model());
-        return new ProfileHealth(true, true, "Ollama backend reachable and tool-capable");
+        try {
+          validateToolCall(baseUrl, profile.model());
+          return new ProfileHealth(true, true, "Ollama backend reachable and tool-capable");
+        } catch (Exception e) {
+          return new ProfileHealth(true, false, "Ollama backend reachable, tool-call validation failed");
+        }
       }
       return new ProfileHealth(true, null, "Ollama backend reachable");
     } catch (Exception e) {
