@@ -35,11 +35,11 @@ public class AccessService {
     for (User user : users) {
       switch (request.getNetwork()) {
         case "BOT_WEB_CLIENT":
+        case "BOT_CLI_CLIENT":
           if (Objects.equals(request.getFromSender(), user.getUsername())) {
             foundUser = user;
           }
           break;
-        case "BOT_CLI_CLIENT":
         case "IRCNet":
           if (matchesVerifiedIrcIdentity(user, request)) {
             foundUser = user;
