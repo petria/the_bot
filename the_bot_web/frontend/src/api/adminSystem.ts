@@ -38,36 +38,22 @@ export type HermesFallbackSettingsResponse = {
   profiles: HermesFallbackProfileStatus[];
 };
 
-export type HermesBackendProfile = {
+export type HermesProfile = {
   id: string;
   label: string;
-  type: string;
-  baseUrl: string;
+  provider: string;
+  baseUrl: string | null;
   model: string;
   apiMode: string;
   timeoutSeconds: number | null;
-  healthUrl: string | null;
   healthy: boolean | null;
   toolCapable: boolean | null;
   detail: string | null;
-};
-
-export type HermesAiRoute = {
-  routeId: string;
-  label: string;
-  backendProfileId: string;
-  baseUrl: string | null;
-  model: string | null;
-  apiMode: string | null;
-  timeoutSeconds: number | null;
-  healthUrl: string | null;
-  healthy: boolean | null;
-  detail: string | null;
+  contextWindow: number | null;
 };
 
 export type HermesBackendConfigResponse = {
-  profiles: HermesBackendProfile[];
-  routes: HermesAiRoute[];
+  profiles: HermesProfile[];
 };
 
 export function getHermesSettings(): Promise<HermesSettingsResponse> {

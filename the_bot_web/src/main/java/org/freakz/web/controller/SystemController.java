@@ -13,8 +13,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
-import org.freakz.common.model.engine.system.HermesAiRoute;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -318,43 +318,43 @@ public class SystemController {
     try {
       ResponseEntity<HermesBackendConfigResponse> response = engineClient.getHermesBackendConfig();
       HermesBackendConfigResponse config = response.getBody();
-      if (!response.getStatusCode().is2xxSuccessful() || config == null || config.routes() == null) {
+      if (!response.getStatusCode().is2xxSuccessful() || config == null || config.profiles() == null) {
         return null;
       }
-      List<HermesAiRoute> routes = config.routes();
-      long healthyCount = routes.stream()
-          .filter(route -> !Boolean.FALSE.equals(route.healthy()))
+      List<HermesProfile> profiles = config.profiles();
+      long healthyCount = profiles.stream()
+          .filter(profile -> !Boolean.FALSE.equals(profile.healthy()))
           .count();
-      HermesAiRoute chatRoute = routes.stream()
-          .filter(route -> "chat".equals(route.routeId()))
+      HermesProfile chatProfile = profiles.stream()
+          .filter(profile -> "chat".equals(profile.id()))
           .findFirst()
-          .orElse(routes.isEmpty() ? null : routes.get(0));
+          .orElse(profiles.isEmpty() ? null : profiles.get(0));
       String status;
       String error = null;
-      if (routes.isEmpty()) {
+      if (profiles.isEmpty()) {
         status = "DEGRADED";
-        error = "No Hermes routes configured";
-      } else if (healthyCount == routes.size()) {
+        error = "No Hermes profiles configured";
+      } else if (healthyCount == profiles.size()) {
         status = "UP";
       } else if (healthyCount > 0) {
         status = "DEGRADED";
-        error = hermesRouteErrors(routes);
+        error = hermesProfileErrors(profiles);
       } else {
         status = "DOWN";
-        error = hermesRouteErrors(routes);
+        error = hermesProfileErrors(profiles);
       }
       long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
       return new SystemComponentStatus(
           "bot-hermes",
           status,
           "HERMES_MANAGER",
-          "route-bindings",
-          chatRoute == null ? null : chatRoute.healthUrl(),
-          "routes healthy " + healthyCount + "/" + routes.size(),
-          chatRoute == null ? null : chatRoute.baseUrl(),
-          chatRoute == null ? null : chatRoute.backendProfileId(),
+          "managed-profiles",
           null,
-          chatRoute == null ? null : chatRoute.model(),
+          "profiles healthy " + healthyCount + "/" + profiles.size(),
+          chatProfile == null ? null : chatProfile.baseUrl(),
+          chatProfile == null ? null : chatProfile.provider(),
+          null,
+          chatProfile == null ? null : chatProfile.model(),
           null,
           null,
           null,
@@ -460,10 +460,10 @@ public class SystemController {
     return "One or more Hermes fallback profiles are unhealthy";
   }
 
-  private String hermesRouteErrors(List<HermesAiRoute> routes) {
-    return routes.stream()
-        .filter(route -> Boolean.FALSE.equals(route.healthy()))
-        .map(route -> firstNonBlank(route.detail(), route.routeId() + " route is unhealthy"))
+  private String hermesProfileErrors(List<HermesProfile> profiles) {
+    return profiles.stream()
+        .filter(profile -> Boolean.FALSE.equals(profile.healthy()))
+        .map(profile -> firstNonBlank(profile.detail(), profile.id() + " profile is unhealthy"))
         .filter(value -> value != null && !value.isBlank())
         .findFirst()
         .orElse(null);

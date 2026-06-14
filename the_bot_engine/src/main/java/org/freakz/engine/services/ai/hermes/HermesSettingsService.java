@@ -3,9 +3,9 @@ package org.freakz.engine.services.ai.hermes;
 import java.util.List;
 
 import org.freakz.common.model.engine.system.HermesProfileOption;
-import org.freakz.common.model.engine.system.HermesAiRoute;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.users.User;
@@ -71,7 +71,7 @@ public class HermesSettingsService {
 
   public HermesSettings resolveSettings() {
     HermesSettings local = resolveLocalSettings();
-    HermesSettings managed = resolveManagedRoute("chat", local);
+    HermesSettings managed = resolveManagedProfile("chat", local);
     if (managed != null) {
       return managed;
     }
@@ -89,7 +89,7 @@ public class HermesSettingsService {
 
   public HermesSettings resolveAiCommandSettings() {
     HermesSettings local = resolveLocalAiCommandSettings();
-    HermesSettings managed = resolveManagedRoute(AI_COMMAND_PROFILE_ID, local);
+    HermesSettings managed = resolveManagedProfile(AI_COMMAND_PROFILE_ID, local);
     if (managed != null) {
       return managed;
     }
@@ -349,36 +349,51 @@ public class HermesSettingsService {
     }
   }
 
-  private HermesSettings resolveManagedRoute(String routeId, HermesSettings local) {
+  private HermesSettings resolveManagedProfile(String profileId, HermesSettings local) {
     if (hermesManagerClient == null) {
       return null;
     }
     try {
       HermesBackendConfigResponse config = hermesManagerClient.getBackendConfig().getBody();
-      if (config == null || config.routes() == null) {
+      if (config == null || config.profiles() == null) {
         return null;
       }
-      HermesAiRoute route = config.routes().stream()
-          .filter(candidate -> routeId.equals(candidate.routeId()))
+      HermesProfile profile = config.profiles().stream()
+          .filter(candidate -> profileId.equals(candidate.id()))
           .findFirst()
           .orElse(null);
-      if (route == null || route.baseUrl() == null || route.baseUrl().isBlank()
-          || route.model() == null || route.model().isBlank()) {
+      if (profile == null || profile.model() == null || profile.model().isBlank()) {
         return null;
       }
-      String apiMode = firstNonBlank(route.apiMode(), local.apiMode());
-      int timeoutSeconds = route.timeoutSeconds() == null ? local.timeoutSeconds() : route.timeoutSeconds();
-      String apiKey = apiKeyForProfile(route.backendProfileId());
+      String provider = firstNonBlank(profile.provider(), "openai");
+      String apiMode = firstNonBlank(profile.apiMode(), local.apiMode());
+      int timeoutSeconds = profile.timeoutSeconds() == null ? local.timeoutSeconds() : profile.timeoutSeconds();
+      String baseUrl = "ollama".equalsIgnoreCase(provider)
+          ? normalizeApiRoot(firstNonBlank(profile.baseUrl(), local.baseUrl()))
+          : normalizeApiRoot(profileGatewayBaseUrl(profile.id(), local.baseUrl()));
+      if (baseUrl == null || baseUrl.isBlank()) {
+        return null;
+      }
+      String apiKey = "ollama".equalsIgnoreCase(provider) ? "" : apiKeyForProfile(profile.id());
       return new HermesSettings(
-          normalizeApiRoot(route.baseUrl()),
+          baseUrl,
           apiKey == null ? "" : apiKey.trim(),
-          route.model(),
+          profile.model(),
           timeoutSeconds,
           apiMode);
     } catch (Exception e) {
-      log.debug("Could not load Hermes route {} from manager: {}", routeId, e.getMessage());
+      log.debug("Could not load Hermes profile {} from manager: {}", profileId, e.getMessage());
       return null;
     }
+  }
+
+  private String profileGatewayBaseUrl(String profileId, String localBaseUrl) {
+    return switch (profileId) {
+      case "chat" -> firstNonBlank(localBaseUrl, DEFAULT_BASE_URL);
+      case "coder" -> "http://ubuntu-server.local:8644";
+      case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_BASE_URL;
+      default -> localBaseUrl;
+    };
   }
 
   private int parseInt(String value, int defaultValue) {

@@ -40,35 +40,24 @@ class HermesFallbackCompatibilityTest {
         {
           "profiles": [
             {
-              "id": "ollama-default",
-              "label": "Ollama default",
-              "type": "OPENAI_COMPATIBLE",
+              "id": "ai-command",
+              "label": "Hermes AI command",
+              "provider": "ollama",
               "baseUrl": "http://192.168.0.55:11434/v1",
               "model": "qwen3.6:35b-a3b",
               "apiMode": "chat-completions",
               "timeoutSeconds": 120,
               "healthy": true,
-              "toolCapable": true
-            }
-          ],
-          "routes": [
-            {
-              "routeId": "ai-command",
-              "label": "AI command",
-              "backendProfileId": "ollama-default",
-              "baseUrl": "http://192.168.0.55:11434/v1",
-              "model": "qwen3.6:35b-a3b",
-              "apiMode": "chat-completions",
-              "timeoutSeconds": 120,
-              "healthy": true
+              "toolCapable": true,
+              "contextWindow": 32768
             }
           ]
         }
         """, HermesBackendConfigResponse.class);
 
     assertThat(response.profiles()).hasSize(1);
-    assertThat(response.profiles().get(0).id()).isEqualTo("ollama-default");
-    assertThat(response.routes()).hasSize(1);
-    assertThat(response.routes().get(0).routeId()).isEqualTo("ai-command");
+    assertThat(response.profiles().get(0).id()).isEqualTo("ai-command");
+    assertThat(response.profiles().get(0).provider()).isEqualTo("ollama");
+    assertThat(response.profiles().get(0).contextWindow()).isEqualTo(32768);
   }
 }
