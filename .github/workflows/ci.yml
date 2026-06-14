@@ -611,7 +611,7 @@ jobs:
   deploy-hermes-manager:
     name: Deploy shared Hermes manager
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
     if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
@@ -624,44 +624,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
       - name: Copy Hermes manager compose file
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
-          username: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
-          key: ${{ secrets.OPENCLAW_VM_SSH_KEY || secrets.VM_SSH_KEY }}
-          proxy_host: ${{ secrets.VM_HOST }}
-          proxy_username: ${{ secrets.VM_USER }}
-          proxy_key: ${{ secrets.VM_SSH_KEY }}
-          source: docker-compose.hermes-manager.yml
-          target: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
-          overwrite: true
+        env:
+          HERMES_SHARED_HOST: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
+          HERMES_SHARED_USER: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
+          HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
+        run: |
+          scp docker-compose.hermes-manager.yml "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}:${HERMES_DEPLOY_WORKDIR}/docker-compose.hermes-manager.yml"
       - name: Deploy Hermes manager
-        uses: appleboy/ssh-action@master
         env:
           DEPLOY_SHA: ${{ github.sha }}
-          HERMES_MANAGER_TOKEN: ${{ secrets.HERMES_MANAGER_TOKEN }}
-          HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          HERMES_SHARED_HOST: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
+          HERMES_SHARED_USER: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
+          HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
           PUID: ${{ vars.PUID }}
           PGID: ${{ vars.PGID }}
-        with:
-          host: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
-          username: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
-          key: ${{ secrets.OPENCLAW_VM_SSH_KEY || secrets.VM_SSH_KEY }}
-          proxy_host: ${{ secrets.VM_HOST }}
-          proxy_username: ${{ secrets.VM_USER }}
-          proxy_key: ${{ secrets.VM_SSH_KEY }}
-          envs: DEPLOY_SHA,HERMES_MANAGER_TOKEN,HERMES_DEPLOY_WORKDIR,PUID,PGID
-          script: |
-            cd "${HERMES_DEPLOY_WORKDIR:-/home/hokan/bot-hermes}"
-            export HERMES_MANAGER_IMAGE_TAG="$DEPLOY_SHA"
-            export HERMES_MANAGER_TOKEN
-            export PUID="${PUID:-$(id -u)}"
-            export PGID="${PGID:-$(id -g)}"
-            export DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
-            docker compose -f docker-compose.hermes-manager.yml pull
-            docker compose -f docker-compose.hermes-manager.yml up -d
-            curl -fsS http://127.0.0.1:8650/actuator/health
+          VM_GH_TOKEN: ${{ secrets.VM_GH_TOKEN }}
+        run: |
+          case "$DEPLOY_BRANCH" in
+            main)
+              SERVICE_NAME="bot-hermes-manager-main"
+              HEALTH_PORT="8651"
+              IMAGE_TAG="${DEPLOY_SHA}"
+              ;;
+            develop)
+              SERVICE_NAME="bot-hermes-manager-develop"
+              HEALTH_PORT="8652"
+              IMAGE_TAG="${DEPLOY_SHA}"
+              ;;
+            *)
+              echo "Unsupported branch for Hermes manager deploy: $DEPLOY_BRANCH"
+              exit 1
+              ;;
+          esac
+
+          ssh "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}" "
+            cd '${HERMES_DEPLOY_WORKDIR}' &&
+            export HERMES_MANAGER_IMAGE_TAG='${IMAGE_TAG}' &&
+            export PUID='${PUID:-1000}' &&
+            export PGID='${PGID:-1000}' &&
+            export DOCKER_GID=\"\$(stat -c '%g' /var/run/docker.sock)\" &&
+            docker login ghcr.io -u '${{ github.actor }}' -p '${VM_GH_TOKEN}' &&
+            docker compose -f docker-compose.hermes-manager.yml pull '${SERVICE_NAME}' &&
+            docker compose -f docker-compose.hermes-manager.yml up -d '${SERVICE_NAME}' &&
+            curl -fsS 'http://127.0.0.1:${HEALTH_PORT}/actuator/health'
+          "
 
   deploy-openclaw-gateway:
     name: Deploy shared OpenClaw gateway

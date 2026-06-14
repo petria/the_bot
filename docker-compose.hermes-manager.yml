@@ -1,20 +1,42 @@
 services:
-  bot-hermes-manager:
+  bot-hermes-manager-main:
     image: ghcr.io/petria/the_bot-hermes-manager:${HERMES_MANAGER_IMAGE_TAG:-latest}
-    container_name: bot-hermes-manager
+    container_name: bot-hermes-manager-main
     restart: unless-stopped
     user: "${PUID:-1001}:${PGID:-1001}"
     group_add:
       - "${DOCKER_GID:-107}"
     network_mode: host
     volumes:
-      - ${HERMES_MANAGER_STATE_DIR:-/home/hokan/bot-hermes/data}:/hermes-data
-      - ${HERMES_PROFILES_DIR:-/home/hokan/bot-hermes/data/profiles}:/hermes-data/profiles
+      - ${HERMES_MANAGER_MAIN_STATE_DIR:-/home/hokan/bot-hermes/data-main}:/hermes-data-main
+      - ${HERMES_PROFILES_DIR:-/home/hokan/bot-hermes/data/profiles}:/hermes-data-main/profiles
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
-      - HERMES_MANAGER_DATA_DIR=/hermes-data
+      - SERVER_PORT=8651
+      - HERMES_MANAGER_DATA_DIR=/hermes-data-main
       - HERMES_CONTAINER_NAME=${HERMES_CONTAINER_NAME:-bot-hermes}
-      - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_TOKEN}
+      - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_MAIN_TOKEN:-${HERMES_MANAGER_TOKEN}}
+      - HERMES_FALLBACK_BASE_URL=${HERMES_FALLBACK_BASE_URL:-http://192.168.0.55:11434/v1}
+      - HERMES_FALLBACK_MODEL=${HERMES_FALLBACK_MODEL:-qwen3.6:35b-a3b}
+
+  bot-hermes-manager-develop:
+    image: ghcr.io/petria/the_bot-hermes-manager:${HERMES_MANAGER_IMAGE_TAG:-develop}
+    container_name: bot-hermes-manager-develop
+    restart: unless-stopped
+    user: "${PUID:-1001}:${PGID:-1001}"
+    group_add:
+      - "${DOCKER_GID:-107}"
+    network_mode: host
+    volumes:
+      - ${HERMES_MANAGER_DEVELOP_STATE_DIR:-/home/hokan/bot-hermes/data-develop}:/hermes-data-develop
+      - ${HERMES_PROFILES_DIR:-/home/hokan/bot-hermes/data/profiles}:/hermes-data-develop/profiles
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Europe/Helsinki
+      - SERVER_PORT=8652
+      - HERMES_MANAGER_DATA_DIR=/hermes-data-develop
+      - HERMES_CONTAINER_NAME=${HERMES_CONTAINER_NAME:-bot-hermes}
+      - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_DEVELOP_TOKEN:-${HERMES_MANAGER_TOKEN}}
       - HERMES_FALLBACK_BASE_URL=${HERMES_FALLBACK_BASE_URL:-http://192.168.0.55:11434/v1}
       - HERMES_FALLBACK_MODEL=${HERMES_FALLBACK_MODEL:-qwen3.6:35b-a3b}
