@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -32,13 +34,16 @@ public class SecurityConfig {
     http
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-            .ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/logout"))
+            .ignoringRequestMatchers(
+                PathPatternRequestMatcher.pathPattern("/logout"),
+                PathPatternRequestMatcher.pathPattern("/api/web/cli/**"))
         )
         .authorizeHttpRequests(authorize -> authorize
             .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
             .requestMatchers("/assets/**", "/index.html", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
+            .requestMatchers("/api/web/cli/login").permitAll()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
             .requestMatchers("/api/web/**").hasAnyAuthority(BotPermission.WEB_USER, BotPermission.WEB_ADMIN, BotPermission.ALL)
@@ -75,6 +80,12 @@ public class SecurityConfig {
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+      throws Exception {
+    return authenticationConfiguration.getAuthenticationManager();
   }
 
   @Bean
