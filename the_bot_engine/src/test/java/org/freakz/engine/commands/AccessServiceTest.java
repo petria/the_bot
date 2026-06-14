@@ -61,12 +61,39 @@ class AccessServiceTest {
     assertThat(resolved.getUsername()).isEqualTo("johndoe");
   }
 
+  @Test
+  void cliClientResolvesByAuthenticatedUsername() {
+    AccessService accessService = new AccessService(new FixedUsersService(List.of(
+        user("test", "SomeoneElse", List.of(UserChatIdentity.builder()
+            .connectionType("IRC_CONNECTION")
+            .network("IRCNet")
+            .userId("~test@host.invalid")
+            .username("SomeoneElse")
+            .source("IRC_TOKEN_CLAIM")
+            .build())),
+        unknownUser()
+    )));
+
+    User resolved = accessService.getUser(cliRequest("test", "WEB-CLI:7"));
+
+    assertThat(resolved.getUsername()).isEqualTo("test");
+  }
+
   private EngineRequest ircRequest(String nick, String userHost) {
     return EngineRequest.builder()
         .network("IRCNet")
         .chatProtocol("irc")
         .fromSender(nick)
         .fromSenderId(userHost)
+        .build();
+  }
+
+  private EngineRequest cliRequest(String username, String senderId) {
+    return EngineRequest.builder()
+        .network("BOT_CLI_CLIENT")
+        .chatProtocol("cli")
+        .fromSender(username)
+        .fromSenderId(senderId)
         .build();
   }
 
