@@ -1,0 +1,57 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+#
+# Auto-start configured bot Hermes profile gateways on container boot.
+# Upstream reconcile recreates profile service registrations but does not
+# reliably bring our bot-facing gateways back after a plain container restart.
+
+set -eu
+
+HERMES_HOME="${HERMES_HOME:-/opt/data}"
+profiles="${BOT_HERMES_AUTOSTART_PROFILES:-}"
+LOG_OUT="${LOG_OUT:-/proc/1/fd/1}"
+LOG_ERR="${LOG_ERR:-/proc/1/fd/2}"
+
+if [ -z "$profiles" ] && [ -d "$HERMES_HOME/profiles" ]; then
+  profiles="$(find "$HERMES_HOME/profiles" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -v '^default$' | paste -sd, -)"
+fi
+
+[ -n "$profiles" ] || exit 0
+
+OLD_IFS="$IFS"
+IFS=','
+set -- $profiles
+IFS="$OLD_IFS"
+
+(
+  for profile in "$@"; do
+    profile="$(printf '%s' "$profile" | tr -d '[:space:]')"
+    [ -n "$profile" ] || continue
+    [ -d "$HERMES_HOME/profiles/$profile" ] || continue
+
+    service_dir="/run/service/gateway-$profile"
+    ready=0
+    i=0
+    while [ "$i" -lt 100 ]; do
+      if [ -e "$service_dir/supervise/control" ] && s6-svstat "$service_dir" >/dev/null 2>&1; then
+        ready=1
+        break
+      fi
+      i=$((i + 1))
+      sleep 0.2
+    done
+
+    if [ "$ready" -ne 1 ]; then
+      printf '%s\n' "[bot-hermes-autostart] warning: gateway supervisor did not become ready for $profile" >>"$LOG_ERR"
+      continue
+    fi
+
+    printf '%s\n' "[bot-hermes-autostart] starting profile gateway: $profile" >>"$LOG_OUT"
+    if ! s6-setuidgid hermes hermes -p "$profile" gateway start >/tmp/bot-hermes-autostart-"$profile".log 2>&1; then
+      printf '%s\n' "[bot-hermes-autostart] warning: gateway start failed for $profile" >>"$LOG_ERR"
+      sed -n '1,120p' /tmp/bot-hermes-autostart-"$profile".log >>"$LOG_ERR" || true
+    fi
+  done
+) &
+
+exit 0

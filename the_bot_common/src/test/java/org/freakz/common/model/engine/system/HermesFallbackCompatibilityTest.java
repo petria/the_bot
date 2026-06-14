@@ -33,4 +33,31 @@ class HermesFallbackCompatibilityTest {
 
     assertThat(request.enabled()).isNull();
   }
+
+  @Test
+  void readsBackendConfigPayload() throws Exception {
+    HermesBackendConfigResponse response = mapper.readValue("""
+        {
+          "profiles": [
+            {
+              "id": "ai-command",
+              "label": "Hermes AI command",
+              "provider": "ollama",
+              "baseUrl": "http://192.168.0.55:11434/v1",
+              "model": "qwen3.6:35b-a3b",
+              "apiMode": "chat-completions",
+              "timeoutSeconds": 120,
+              "healthy": true,
+              "toolCapable": true,
+              "contextWindow": 32768
+            }
+          ]
+        }
+        """, HermesBackendConfigResponse.class);
+
+    assertThat(response.profiles()).hasSize(1);
+    assertThat(response.profiles().get(0).id()).isEqualTo("ai-command");
+    assertThat(response.profiles().get(0).provider()).isEqualTo("ollama");
+    assertThat(response.profiles().get(0).contextWindow()).isEqualTo(32768);
+  }
 }

@@ -5,6 +5,8 @@ import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -89,6 +91,24 @@ public class AdminSystemController {
     ResponseEntity<HermesFallbackSettingsResponse> response = engineClient.updateHermesFallback(request);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update Hermes fallback settings");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/hermes/backends")
+  public HermesBackendConfigResponse getHermesBackendConfig() {
+    ResponseEntity<HermesBackendConfigResponse> response = engineClient.getHermesBackendConfig();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load Hermes backend configuration");
+    }
+    return response.getBody();
+  }
+
+  @PutMapping("/hermes/backends")
+  public HermesBackendConfigResponse updateHermesBackendConfig(@RequestBody HermesBackendConfigUpdateRequest request) {
+    ResponseEntity<HermesBackendConfigResponse> response = engineClient.updateHermesBackendConfig(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not update Hermes backend configuration");
     }
     return response.getBody();
   }

@@ -1,74 +1,57 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, Radio, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
-  getHermesSettings,
-  getHermesFallback,
+  getHermesBackendConfig,
   getHermesFallbackModels,
-  updateHermesSettings,
-  updateHermesFallback,
+  updateHermesBackendConfig,
+  type HermesBackendConfigResponse,
+  type HermesProfile,
 } from '../api/adminSystem';
+
+const PROFILE_ORDER = ['chat', 'coder', 'ai-command'] as const;
 
 export function AdminSystemPage() {
   const queryClient = useQueryClient();
-  const hermesSettingsQuery = useQuery({
-    queryKey: ['admin-system-hermes'],
-    queryFn: getHermesSettings,
+  const hermesBackendQuery = useQuery({
+    queryKey: ['admin-system-hermes-backends'],
+    queryFn: getHermesBackendConfig,
   });
-  const hermesFallbackQuery = useQuery({
-    queryKey: ['admin-system-hermes-fallback'],
-    queryFn: getHermesFallback,
-  });
-  const [selectedHermesProfileId, setSelectedHermesProfileId] = useState<string>('');
-  const [fallbackBaseUrl, setFallbackBaseUrl] = useState('');
-  const [fallbackModel, setFallbackModel] = useState('');
-  const [fallbackEnabled, setFallbackEnabled] = useState(false);
+  const [backendConfig, setBackendConfig] = useState<HermesBackendConfigResponse | null>(null);
+  const [modelProfileId, setModelProfileId] = useState<string>('');
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
 
   useEffect(() => {
-    if (hermesSettingsQuery.data?.currentProfileId) {
-      setSelectedHermesProfileId(hermesSettingsQuery.data.currentProfileId);
+    if (!hermesBackendQuery.data) {
+      return;
     }
-  }, [hermesSettingsQuery.data?.currentProfileId]);
+    setBackendConfig(hermesBackendQuery.data);
+    const firstOllama = hermesBackendQuery.data.profiles.find((profile) => profile.provider === 'ollama');
+    setModelProfileId(firstOllama?.id || hermesBackendQuery.data.profiles[0]?.id || '');
+  }, [hermesBackendQuery.data]);
 
-  useEffect(() => {
-    if (hermesFallbackQuery.data) {
-      setFallbackEnabled(hermesFallbackQuery.data.enabled);
-      setFallbackBaseUrl(hermesFallbackQuery.data.baseUrl);
-      setFallbackModel(hermesFallbackQuery.data.model);
-    }
-  }, [hermesFallbackQuery.data]);
-
-  const updateHermesMutation = useMutation({
-    mutationFn: updateHermesSettings,
+  const updateBackendsMutation = useMutation({
+    mutationFn: () => updateHermesBackendConfig(requireBackendConfig(backendConfig)),
     onSuccess: (response) => {
-      queryClient.setQueryData(['admin-system-hermes'], response);
+      queryClient.setQueryData(['admin-system-hermes-backends'], response);
+      setBackendConfig(response);
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
     },
   });
   const fallbackModelsMutation = useMutation({
-    mutationFn: getHermesFallbackModels,
+    mutationFn: (profile: HermesProfile) => getHermesFallbackModels(profile.baseUrl || ''),
     onSuccess: setFallbackModels,
   });
-  const updateFallbackMutation = useMutation({
-    mutationFn: () => updateHermesFallback(fallbackBaseUrl, fallbackModel, fallbackEnabled),
-    onSuccess: (response) => {
-      queryClient.setQueryData(['admin-system-hermes-fallback'], response);
-    },
-  });
 
-  const hasHermesChanges = Boolean(
-    selectedHermesProfileId && selectedHermesProfileId !== hermesSettingsQuery.data?.currentProfileId
+  const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId) || null;
+  const orderedProfiles = useMemo(
+    () => (backendConfig?.profiles || []).slice().sort((left, right) => PROFILE_ORDER.indexOf(left.id as never) - PROFILE_ORDER.indexOf(right.id as never)),
+    [backendConfig?.profiles]
   );
-  const hasFallbackChanges = Boolean(
-    fallbackBaseUrl && fallbackModel
-      && (
-        fallbackBaseUrl !== hermesFallbackQuery.data?.baseUrl
-        || fallbackModel !== hermesFallbackQuery.data?.model
-        || fallbackEnabled !== hermesFallbackQuery.data?.enabled
-      )
+  const hasBackendChanges = Boolean(
+    backendConfig && JSON.stringify(backendConfig) !== JSON.stringify(hermesBackendQuery.data)
   );
 
   return (
@@ -76,143 +59,172 @@ export function AdminSystemPage() {
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
           <Title order={2}>Manage System</Title>
-          <Text c="dimmed">Runtime system settings used by bot-engine.</Text>
+          <Text c="dimmed">Hermes profile provider settings used by bot-engine.</Text>
         </div>
       </Group>
 
-      {hermesSettingsQuery.isLoading ? <Loader /> : null}
-      {hermesSettingsQuery.isError ? <SettingsError error={hermesSettingsQuery.error} /> : null}
-      {updateHermesMutation.isError ? <SettingsError error={updateHermesMutation.error} /> : null}
-      {hermesFallbackQuery.isLoading ? <Loader /> : null}
-      {hermesFallbackQuery.isError ? <SettingsError error={hermesFallbackQuery.error} /> : null}
+      {hermesBackendQuery.isLoading ? <Loader /> : null}
+      {hermesBackendQuery.isError ? <SettingsError error={hermesBackendQuery.error} /> : null}
+      {updateBackendsMutation.isError ? <SettingsError error={updateBackendsMutation.error} /> : null}
       {fallbackModelsMutation.isError ? <SettingsError error={fallbackModelsMutation.error} /> : null}
-      {updateFallbackMutation.isError ? <SettingsError error={updateFallbackMutation.error} /> : null}
 
-      {hermesSettingsQuery.data ? (
+      {backendConfig ? (
         <Card withBorder radius="sm">
           <Stack gap="md">
             <Group justify="space-between" align="flex-start" gap="sm">
               <div>
-                <Text fw={700}>Hermes Backend</Text>
-                <Text size="sm" c="dimmed">Select which Hermes profile bot-engine uses for !hermes commands.</Text>
+                <Text fw={700}>Hermes Profiles</Text>
+                <Text size="sm" c="dimmed">Each logical Hermes profile chooses its provider directly.</Text>
               </div>
-              {hermesSettingsQuery.data.currentProfileId ? (
-                <Badge color="green" leftSection={<CheckCircle2 size={12} />}>
-                  {hermesSettingsQuery.data.currentProfileId}
-                </Badge>
-              ) : (
-                <Badge color="yellow" leftSection={<AlertCircle size={12} />}>custom</Badge>
-              )}
+              <Badge color={backendConfig.profiles.every((profile) => profile.healthy !== false) ? 'green' : 'yellow'}>
+                {backendConfig.profiles.length} profiles
+              </Badge>
             </Group>
 
-            <Radio.Group value={selectedHermesProfileId} onChange={setSelectedHermesProfileId}>
-              <Stack gap="sm">
-                {hermesSettingsQuery.data.options.map((option) => (
-                  <Card key={option.id} withBorder radius="sm">
-                    <Radio
-                      value={option.id}
-                      label={option.label}
-                      description={`${option.baseUrl} | ${option.model} | ${option.apiMode}`}
-                    />
-                  </Card>
-                ))}
-              </Stack>
-            </Radio.Group>
+            <Stack gap="sm">
+              {orderedProfiles.map((profile) => (
+                <Card key={profile.id} withBorder radius="sm">
+                  <Stack gap="sm">
+                    <Group justify="space-between" align="flex-start" gap="sm">
+                      <div>
+                        <Text fw={600}>{profile.label}</Text>
+                        <Text size="xs" c="dimmed">{profile.id}</Text>
+                      </div>
+                      <Badge
+                        color={profile.healthy === false ? 'red' : 'green'}
+                        leftSection={profile.healthy === false ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
+                      >
+                        {profile.provider}
+                      </Badge>
+                    </Group>
 
-            <Stack gap={4}>
-              <InfoLine label="Current Base URL" value={hermesSettingsQuery.data.baseUrl || '-'} />
-              <InfoLine label="Current Model" value={hermesSettingsQuery.data.model || '-'} />
-              <InfoLine label="Current API mode" value={hermesSettingsQuery.data.apiMode || '-'} />
-              <InfoLine
-                label="Current Timeout"
-                value={hermesSettingsQuery.data.timeoutSeconds == null ? '-' : `${hermesSettingsQuery.data.timeoutSeconds}s`}
-              />
-              <InfoLine label="Current Health URL" value={hermesSettingsQuery.data.healthUrl || '-'} />
+                    <Group grow align="flex-start">
+                      <Select
+                        label="Provider"
+                        data={[
+                          { value: 'openai', label: 'OpenAI' },
+                          { value: 'ollama', label: 'Ollama' },
+                        ]}
+                        value={profile.provider}
+                        onChange={(value) => updateProfile(profile.id, {
+                          provider: value || profile.provider,
+                          baseUrl: value === 'openai' ? null : profile.baseUrl,
+                          contextWindow: value === 'openai' ? null : profile.contextWindow,
+                        })}
+                      />
+                      <Select
+                        label="API mode"
+                        data={[
+                          { value: 'responses', label: 'Responses' },
+                          { value: 'chat-completions', label: 'Chat completions' },
+                        ]}
+                        value={profile.apiMode}
+                        onChange={(value) => updateProfile(profile.id, { apiMode: value || profile.apiMode })}
+                      />
+                      <NumberInput
+                        label="Timeout seconds"
+                        min={1}
+                        value={profile.timeoutSeconds || 120}
+                        onChange={(value) => updateProfile(profile.id, { timeoutSeconds: typeof value === 'number' ? value : 120 })}
+                      />
+                    </Group>
+
+                    <Group grow align="flex-start">
+                      <TextInput
+                        label="Label"
+                        value={profile.label}
+                        onChange={(event) => updateProfile(profile.id, { label: event.currentTarget.value })}
+                      />
+                      <Autocomplete
+                        label="Model"
+                        data={modelProfileId === profile.id ? fallbackModels : []}
+                        value={profile.model}
+                        onChange={(value) => updateProfile(profile.id, { model: value })}
+                      />
+                    </Group>
+
+                    {profile.provider === 'ollama' ? (
+                      <Group grow align="flex-start">
+                        <TextInput
+                          label="Ollama base URL"
+                          value={profile.baseUrl || ''}
+                          onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
+                        />
+                        <NumberInput
+                          label="Context window"
+                          min={1}
+                          value={profile.contextWindow || ''}
+                          onChange={(value) => updateProfile(profile.id, {
+                            contextWindow: typeof value === 'number' ? value : null,
+                          })}
+                        />
+                      </Group>
+                    ) : (
+                      <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
+                        <Text size="sm">OpenAI credentials stay in the runtime environment. This UI edits provider selection and model only.</Text>
+                      </Alert>
+                    )}
+
+                    <Stack gap={4}>
+                      <InfoLine label="Provider status" value={profile.detail || '-'} />
+                      {profile.provider === 'ollama' ? (
+                        <InfoLine label="Tool support" value={profile.toolCapable === false ? 'Not verified' : 'Available'} />
+                      ) : (
+                        <InfoLine label="Gateway mode" value="Shared Hermes profile" />
+                      )}
+                    </Stack>
+                  </Stack>
+                </Card>
+              ))}
             </Stack>
 
-            <Group justify="flex-end">
-              <Button
-                leftSection={<Save size={18} />}
-                disabled={!hasHermesChanges}
-                loading={updateHermesMutation.isPending}
-                onClick={() => updateHermesMutation.mutate(selectedHermesProfileId)}
-              >
-                Save Hermes
-              </Button>
-            </Group>
-          </Stack>
-        </Card>
-      ) : null}
-
-      {hermesFallbackQuery.data ? (
-        <Card withBorder radius="sm">
-          <Stack gap="md">
-            <div>
-              <Text fw={700}>Hermes Ollama Fallback</Text>
-              <Text size="sm" c="dimmed">
-                Shared fallback used by chat, coder, and AI command profiles when OpenAI is unavailable.
-              </Text>
-            </div>
-            <Switch
-              label="Force Ollama for all Hermes calls"
-              description="When enabled, bot-engine routes every Hermes request through the shared Ollama backend."
-              checked={fallbackEnabled}
-              onChange={(event) => setFallbackEnabled(event.currentTarget.checked)}
-            />
-
-            <TextInput
-              label="Ollama OpenAI-compatible base URL"
-              value={fallbackBaseUrl}
-              onChange={(event) => setFallbackBaseUrl(event.currentTarget.value)}
-            />
-            <Autocomplete
-              label="Model"
-              description="Select a discovered model or enter a custom model name."
-              data={fallbackModels}
-              value={fallbackModel}
-              onChange={setFallbackModel}
-            />
-            <Group justify="flex-end">
+            <Group justify="flex-end" align="flex-end">
+              <Select
+                w={260}
+                label="Model discovery profile"
+                value={modelProfileId}
+                data={orderedProfiles
+                  .filter((profile) => profile.provider === 'ollama')
+                  .map((profile) => ({ value: profile.id, label: profile.label }))}
+                onChange={(value) => setModelProfileId(value || '')}
+              />
               <Button
                 variant="light"
                 leftSection={<RefreshCw size={18} />}
                 loading={fallbackModelsMutation.isPending}
-                disabled={!fallbackBaseUrl}
-                onClick={() => fallbackModelsMutation.mutate(fallbackBaseUrl)}
+                disabled={selectedModelProfile?.provider !== 'ollama' || !selectedModelProfile?.baseUrl}
+                onClick={() => selectedModelProfile && fallbackModelsMutation.mutate(selectedModelProfile)}
               >
                 Load models
               </Button>
               <Button
                 leftSection={<Save size={18} />}
-                loading={updateFallbackMutation.isPending}
-                disabled={!hasFallbackChanges}
-                onClick={() => updateFallbackMutation.mutate()}
+                loading={updateBackendsMutation.isPending}
+                disabled={!hasBackendChanges}
+                onClick={() => updateBackendsMutation.mutate()}
               >
                 Validate and apply
               </Button>
             </Group>
-
-            <Stack gap="xs">
-              {hermesFallbackQuery.data.profiles.map((profile) => (
-                <Group key={profile.profileId} justify="space-between" gap="sm" className="system-info-line">
-                  <div>
-                    <Text size="sm" fw={600}>{profile.profileId}</Text>
-                    <Text size="xs" c="dimmed">{profile.detail}</Text>
-                    {profile.cooldownUntil ? (
-                      <Text size="xs" c="dimmed">Cooldown until {profile.cooldownUntil}</Text>
-                    ) : null}
-                  </div>
-                  <Badge color={profile.healthy ? (hermesFallbackQuery.data.enabled ? 'orange' : 'green') : 'red'}>
-                    {profile.expectedRoute}
-                  </Badge>
-                </Group>
-              ))}
-            </Stack>
           </Stack>
         </Card>
       ) : null}
     </Stack>
   );
+
+  function updateProfile(profileId: string, patch: Partial<HermesProfile>) {
+    setBackendConfig((current) => current == null ? current : {
+      ...current,
+      profiles: current.profiles.map((profile) => profile.id === profileId ? { ...profile, ...patch } : profile),
+    });
+  }
+}
+
+function requireBackendConfig(config: HermesBackendConfigResponse | null) {
+  if (config == null) {
+    throw new Error('Hermes backend configuration is not loaded.');
+  }
+  return config;
 }
 
 function InfoLine({ label, value }: { label: string; value: string }) {

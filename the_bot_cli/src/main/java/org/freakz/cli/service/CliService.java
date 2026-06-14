@@ -7,6 +7,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
+import java.io.Console;
 import java.util.Scanner;
 
 @Service
@@ -16,16 +17,15 @@ public class CliService implements CommandLineRunner {
 
   private static final Scanner scanner = new Scanner(System.in);
   boolean pressed = false;
-  private static final String DEFAULT_USER = "_Pete_";
   private boolean doMainLoop = true;
   @Autowired
   private MessageSender sender;
 
-  private void mainLoop(String botUser) {
+  private void mainLoop(String targetHost) {
     //        System.out.print("\033[H\033[2J");
     System.out.print("\n\n");
     System.out.print(">>> -------------    W E L C O M E  to  The Bot     ------------- <<<\n\n");
-    System.out.print("\n\n");
+    System.out.printf("Connected to %s as %s%n%n", sender.baseUrl(), sender.loggedInUsername());
 
     String prev = "";
     String last = "";
@@ -37,12 +37,12 @@ public class CliService implements CommandLineRunner {
       if (!message.isEmpty()) {
         if (message.equals("!!")) {
           pressed = true;
-          String reply = sender.sendToServer(prev, botUser);
+          String reply = sender.sendToServer(prev);
           printReplyAndPrompt(reply);
 
         } else if (message.equals("!")) {
           pressed = true;
-          String reply = sender.sendToServer(last, botUser);
+          String reply = sender.sendToServer(last);
           printReplyAndPrompt(reply);
         } else {
           prev = last;
@@ -52,7 +52,7 @@ public class CliService implements CommandLineRunner {
             if (message.equals("quit")) {
               doMainLoop = false;
             } else {
-              String reply = sender.sendToServer(message, botUser);
+              String reply = sender.sendToServer(message);
               printReplyAndPrompt(reply);
             }
           }
@@ -63,6 +63,7 @@ public class CliService implements CommandLineRunner {
     }
 
     System.out.println(">> Exit Client main loop, bye!");
+    sender.logout();
     System.exit(0);
   }
 
@@ -119,34 +120,68 @@ public class CliService implements CommandLineRunner {
 
   @Override
   public void run(String... args) throws Exception {
-    String botUser = resolveUser(args);
+    String targetHost = resolveTarget(args);
     String oneShotMessage = resolveOneShotMessage(args);
+    LoginCredentials credentials = promptForCredentials(targetHost);
+    MessageSender.LoginSession session;
+    try {
+      session = sender.login(targetHost, credentials.username(), credentials.password());
+    } catch (MessageSender.CliClientException e) {
+      print("LOGIN FAILED: " + e.getMessage() + "\n", true);
+      System.exit(1);
+      return;
+    }
 
     if (oneShotMessage == null) {
-      log.info("ENTERING INTERACTIVE MODE as {}", botUser);
-      Thread t = new Thread(() -> mainLoop(botUser));
-      t.setName("The Bot client: " + botUser);
+      log.info("ENTERING INTERACTIVE MODE against {} as {}", session.baseUrl(), session.username());
+      Thread t = new Thread(() -> mainLoop(targetHost));
+      t.setName("The Bot client: " + session.username());
       t.start();
 
     } else {
-      log.info("SENDING LINE as {}: {}", botUser, oneShotMessage);
-      String reply = sender.sendToServer(oneShotMessage, botUser);
-      print("BOT REPLY: " + reply + "\n", true);
+      try {
+        log.info("SENDING LINE against {} as {}: {}", session.baseUrl(), session.username(), oneShotMessage);
+        String reply = sender.sendToServer(oneShotMessage);
+        print("BOT REPLY: " + reply + "\n", true);
+      } finally {
+        sender.logout();
+      }
     }
   }
 
-  private String resolveUser(String... args) {
+  String resolveTarget(String... args) {
     if (args.length == 0 || args[0] == null || args[0].isBlank()) {
-      return DEFAULT_USER;
+      throw new IllegalArgumentException("Usage: java -jar the_bot_cli-<version>.jar <host> [command...]");
     }
     return args[0].trim();
   }
 
-  private String resolveOneShotMessage(String... args) {
+  String resolveOneShotMessage(String... args) {
     if (args.length < 2) {
       return null;
     }
     return String.join(" ", Arrays.copyOfRange(args, 1, args.length)).trim();
+  }
+
+  private LoginCredentials promptForCredentials(String targetHost) {
+    System.out.printf("Login to %s%n", targetHost);
+    System.out.print("Username: ");
+    String username = scanner.nextLine().trim();
+    String password = readPassword();
+    return new LoginCredentials(username, password);
+  }
+
+  private String readPassword() {
+    Console console = System.console();
+    if (console != null) {
+      char[] password = console.readPassword("Password: ");
+      return password == null ? "" : new String(password);
+    }
+    System.out.print("Password: ");
+    return scanner.nextLine();
+  }
+
+  record LoginCredentials(String username, String password) {
   }
 
 }

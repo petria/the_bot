@@ -3,6 +3,8 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,14 @@ public class HermesFallbackManagerService {
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
     overrideState.rememberRequestedEnabled(request == null ? null : request.enabled());
     return overrideState.apply(requireBody(client.updateFallback(request).getBody(), "update Hermes fallback settings"));
+  }
+
+  public HermesBackendConfigResponse getBackendConfig() {
+    return requireBody(client.getBackendConfig().getBody(), "load Hermes backend configuration");
+  }
+
+  public HermesBackendConfigResponse updateBackendConfig(HermesBackendConfigUpdateRequest request) {
+    return requireBody(client.updateBackendConfig(request).getBody(), "update Hermes backend configuration");
   }
 
   private <T> T requireBody(T body, String action) {

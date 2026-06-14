@@ -13,6 +13,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
+import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -242,6 +244,11 @@ public class SystemController {
 
   private SystemComponentStatus hermesComponentStatus(Instant checkedAt) {
     long startedNanos = System.nanoTime();
+    SystemComponentStatus backendStatus = hermesBackendComponentStatus(checkedAt, startedNanos);
+    if (backendStatus != null) {
+      return backendStatus;
+    }
+
     HermesFallbackSettingsResponse fallback = loadHermesFallbackSettings();
     if (fallback != null && Boolean.TRUE.equals(fallback.enabled())) {
       return forcedHermesFallbackComponentStatus(fallback, checkedAt, startedNanos);
@@ -305,6 +312,66 @@ public class SystemController {
         null,
         null,
         error);
+  }
+
+  private SystemComponentStatus hermesBackendComponentStatus(Instant checkedAt, long startedNanos) {
+    try {
+      ResponseEntity<HermesBackendConfigResponse> response = engineClient.getHermesBackendConfig();
+      HermesBackendConfigResponse config = response.getBody();
+      if (!response.getStatusCode().is2xxSuccessful() || config == null || config.profiles() == null) {
+        return null;
+      }
+      List<HermesProfile> profiles = config.profiles();
+      long healthyCount = profiles.stream()
+          .filter(profile -> !Boolean.FALSE.equals(profile.healthy()))
+          .count();
+      HermesProfile chatProfile = profiles.stream()
+          .filter(profile -> "chat".equals(profile.id()))
+          .findFirst()
+          .orElse(profiles.isEmpty() ? null : profiles.get(0));
+      String status;
+      String error = null;
+      if (profiles.isEmpty()) {
+        status = "DEGRADED";
+        error = "No Hermes profiles configured";
+      } else if (healthyCount == profiles.size()) {
+        status = "UP";
+      } else if (healthyCount > 0) {
+        status = "DEGRADED";
+        error = hermesProfileErrors(profiles);
+      } else {
+        status = "DOWN";
+        error = hermesProfileErrors(profiles);
+      }
+      long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
+      return new SystemComponentStatus(
+          "bot-hermes",
+          status,
+          "HERMES_MANAGER",
+          "managed-profiles",
+          null,
+          "profiles healthy " + healthyCount + "/" + profiles.size(),
+          chatProfile == null ? null : chatProfile.baseUrl(),
+          chatProfile == null ? null : chatProfile.provider(),
+          null,
+          chatProfile == null ? null : chatProfile.model(),
+          null,
+          null,
+          null,
+          null,
+          responseTimeMs,
+          checkedAt,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          error);
+    } catch (RuntimeException ignored) {
+      return null;
+    }
   }
 
   private HermesFallbackSettingsResponse loadHermesFallbackSettings() {
@@ -391,6 +458,15 @@ public class SystemController {
       return detail;
     }
     return "One or more Hermes fallback profiles are unhealthy";
+  }
+
+  private String hermesProfileErrors(List<HermesProfile> profiles) {
+    return profiles.stream()
+        .filter(profile -> Boolean.FALSE.equals(profile.healthy()))
+        .map(profile -> firstNonBlank(profile.detail(), profile.id() + " profile is unhealthy"))
+        .filter(value -> value != null && !value.isBlank())
+        .findFirst()
+        .orElse(null);
   }
 
   private SystemComponentStatus sidecarComponentStatus(String name, String containerName, Instant checkedAt) {
