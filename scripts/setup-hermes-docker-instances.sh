@@ -56,6 +56,7 @@ BUILD=0
 START=0
 VERIFY=0
 FORCE_API_KEYS=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -79,8 +80,14 @@ done
 
 if [[ "$TARGET" != "local" && "$TARGET" != "localhost" ]]; then
   remote_script="/tmp/the_bot_setup_hermes_docker_$$.sh"
+  remote_script_dir="$(dirname "$remote_script")"
+  remote_overlay_dir="$remote_script_dir/hermes"
   echo "Copying setup script to $TARGET:$remote_script"
   scp -q "$0" "$TARGET:$remote_script"
+  if [[ -d "$SCRIPT_DIR/hermes" ]]; then
+    ssh "$TARGET" "mkdir -p '$remote_overlay_dir'"
+    scp -q "$SCRIPT_DIR"/hermes/* "$TARGET:$remote_overlay_dir/"
+  fi
   echo "Running Docker Hermes setup on $TARGET"
   ssh "$TARGET" bash "$remote_script" \
     --target local \
@@ -94,7 +101,7 @@ if [[ "$TARGET" != "local" && "$TARGET" != "localhost" ]]; then
     $([[ "$START" == 1 ]] && printf '%s' --start || printf '%s' --no-start) \
     $([[ "$VERIFY" == 1 ]] && printf '%s' --verify || true) \
     $([[ "$FORCE_API_KEYS" == 1 ]] && printf '%s' --force-api-keys || true)
-  ssh "$TARGET" rm -f "$remote_script" >/dev/null 2>&1 || true
+  ssh "$TARGET" "rm -f '$remote_script'; rm -rf '$remote_overlay_dir'" >/dev/null 2>&1 || true
   exit 0
 fi
 
@@ -217,6 +224,12 @@ if not isinstance(data, dict):
 
 platform_toolsets = data.setdefault("platform_toolsets", {})
 agent = data.setdefault("agent", {})
+terminal = data.setdefault("terminal", {})
+
+# Do not depend on any host repo bind mount inside the Hermes container.
+terminal["backend"] = "local"
+terminal["cwd"] = "."
+terminal["docker_mount_cwd_to_workspace"] = False
 
 if mode == "chat":
     soul_path = path.parent / "SOUL.md"
@@ -260,6 +273,7 @@ DEPLOY_DIR="$(expand_path "$DEPLOY_DIR")"
 SOURCE_DIR="$DEPLOY_DIR/hermes-agent"
 DATA_DIR="$DEPLOY_DIR/data"
 BOT_ENV_FILE="$DEPLOY_DIR/the_bot-hermes-instances.env"
+AUTOSTART_OVERLAY="$SCRIPT_DIR/hermes/03-autostart-bot-profiles"
 
 require_cmd docker
 require_cmd git
@@ -280,6 +294,30 @@ if [[ "$BUILD" == 1 ]]; then
   git -C "$SOURCE_DIR" pull --ff-only || true
 fi
 
+if [[ -f "$AUTOSTART_OVERLAY" ]]; then
+  echo "Installing bot Hermes autostart overlay"
+  mkdir -p "$SOURCE_DIR/docker/cont-init.d"
+  cp "$AUTOSTART_OVERLAY" "$SOURCE_DIR/docker/cont-init.d/03-autostart-bot-profiles"
+  chmod 0755 "$SOURCE_DIR/docker/cont-init.d/03-autostart-bot-profiles"
+  if ! grep -q '03-autostart-bot-profiles' "$SOURCE_DIR/Dockerfile"; then
+    python3 - "$SOURCE_DIR/Dockerfile" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+needle = 'COPY --chmod=0755 docker/cont-init.d/02-reconcile-profiles /etc/cont-init.d/02-reconcile-profiles\n'
+insert = needle + 'COPY --chmod=0755 docker/cont-init.d/03-autostart-bot-profiles /etc/cont-init.d/03-autostart-bot-profiles\n'
+if needle in text and '03-autostart-bot-profiles' not in text:
+    text = text.replace(needle, insert, 1)
+path.write_text(text)
+PY
+  fi
+fi
+
+AUTOSTART_PROFILES="$(IFS=','; for spec in $PROFILES; do IFS=':' read -r profile _rest <<< "$spec"; printf '%s,' "$profile"; done)"
+AUTOSTART_PROFILES="${AUTOSTART_PROFILES%,}"
+
 cat > "$DEPLOY_DIR/.env" <<EOF
 HERMES_UID=$(id -u)
 HERMES_GID=$(id -g)
@@ -297,11 +335,13 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/opt/data
+      - ./hermes-agent/docker/cont-init.d/03-autostart-bot-profiles:/etc/cont-init.d/03-autostart-bot-profiles:ro
     ports:
 $(IFS=','; for spec in $PROFILES; do IFS=':' read -r _profile port _rest <<< "$spec"; printf '      - "0.0.0.0:%s:%s"\n' "$port" "$port"; done)
     environment:
       - HERMES_UID=\${HERMES_UID:-10000}
       - HERMES_GID=\${HERMES_GID:-10000}
+      - BOT_HERMES_AUTOSTART_PROFILES=\${BOT_HERMES_AUTOSTART_PROFILES:-$AUTOSTART_PROFILES}
       - PYTHONUNBUFFERED=1
     command: ["sleep", "infinity"]
 EOF

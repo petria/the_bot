@@ -18,6 +18,7 @@ jobs:
       web_changed: ${{ steps.changes.outputs.web }}
       whatsapp_changed: ${{ steps.changes.outputs.whatsapp }}
       hermes_manager_changed: ${{ steps.changes.outputs.hermes_manager }}
+      hermes_gateway_changed: ${{ steps.changes.outputs.hermes_gateway }}
 
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -59,6 +60,7 @@ jobs:
           web_changed=false
           whatsapp_changed=false
           hermes_manager_changed=false
+          hermes_gateway_changed=false
 
           if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
             engine_changed=true
@@ -80,11 +82,16 @@ jobs:
             hermes_manager_changed=true
           fi
 
+          if echo "$CHANGED_FILES" | grep -Eq '^(scripts/setup-hermes-docker-instances\.sh$|scripts/hermes/|\.github/workflows/)'; then
+            hermes_gateway_changed=true
+          fi
+
           echo "engine=$engine_changed" >> "$GITHUB_OUTPUT"
           echo "io=$io_changed" >> "$GITHUB_OUTPUT"
           echo "web=$web_changed" >> "$GITHUB_OUTPUT"
           echo "whatsapp=$whatsapp_changed" >> "$GITHUB_OUTPUT"
           echo "hermes_manager=$hermes_manager_changed" >> "$GITHUB_OUTPUT"
+          echo "hermes_gateway=$hermes_gateway_changed" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -669,6 +676,39 @@ jobs:
             docker compose -f docker-compose.hermes-manager.yml up -d '${SERVICE_NAME}' &&
             curl -fsS 'http://127.0.0.1:${HEALTH_PORT}/actuator/health'
           "
+
+  deploy-hermes-gateway:
+    name: Deploy shared Hermes gateway
+    needs: build-and-push
+    runs-on: [self-hosted, linux, shared-ai]
+    permissions:
+      contents: read
+    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_gateway_changed == 'true' && vars.HERMES_GATEWAY_DEPLOY_ENABLED == 'true' }}
+    environment:
+      name: openclaw-gateway
+    concurrency:
+      group: deploy-hermes-gateway
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Build and deploy Hermes gateway on shared host
+        env:
+          HERMES_SHARED_HOST: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
+          HERMES_SHARED_USER: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
+          HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
+          HERMES_REPO_URL: ${{ vars.HERMES_REPO_URL || 'https://github.com/NousResearch/hermes-agent.git' }}
+          HERMES_REPO_REF: ${{ vars.HERMES_REPO_REF || 'main' }}
+        run: |
+          bash scripts/setup-hermes-docker-instances.sh \
+            --target "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}" \
+            --directory "${HERMES_DEPLOY_WORKDIR}" \
+            --repo-url "${HERMES_REPO_URL}" \
+            --repo-ref "${HERMES_REPO_REF}" \
+            --build \
+            --start \
+            --verify
 
   deploy-openclaw-gateway:
     name: Deploy shared OpenClaw gateway
