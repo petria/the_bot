@@ -644,20 +644,21 @@ jobs:
           HERMES_SHARED_HOST: ${{ vars.OPENCLAW_VM_HOST || 'ubuntu-server.local' }}
           HERMES_SHARED_USER: ${{ vars.OPENCLAW_VM_USER || 'hokan' }}
           HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
-          PUID: ${{ vars.PUID }}
-          PGID: ${{ vars.PGID }}
           VM_GH_TOKEN: ${{ secrets.VM_GH_TOKEN }}
+          HERMES_MANAGER_TOKEN: ${{ secrets.HERMES_MANAGER_TOKEN }}
         run: |
           case "$DEPLOY_BRANCH" in
             main)
               SERVICE_NAME="bot-hermes-manager-main"
               HEALTH_PORT="8651"
               IMAGE_TAG="${DEPLOY_SHA}"
+              TOKEN_EXPORT="HERMES_MANAGER_MAIN_TOKEN"
               ;;
             develop)
               SERVICE_NAME="bot-hermes-manager-develop"
               HEALTH_PORT="8652"
               IMAGE_TAG="${DEPLOY_SHA}"
+              TOKEN_EXPORT="HERMES_MANAGER_DEVELOP_TOKEN"
               ;;
             *)
               echo "Unsupported branch for Hermes manager deploy: $DEPLOY_BRANCH"
@@ -668,9 +669,10 @@ jobs:
           ssh "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}" "
             cd '${HERMES_DEPLOY_WORKDIR}' &&
             export HERMES_MANAGER_IMAGE_TAG='${IMAGE_TAG}' &&
-            export PUID='${PUID:-1000}' &&
-            export PGID='${PGID:-1000}' &&
+            export PUID=\"\$(id -u)\" &&
+            export PGID=\"\$(id -g)\" &&
             export DOCKER_GID=\"\$(stat -c '%g' /var/run/docker.sock)\" &&
+            export ${TOKEN_EXPORT}='${HERMES_MANAGER_TOKEN}' &&
             docker login ghcr.io -u '${{ github.actor }}' -p '${VM_GH_TOKEN}' &&
             docker compose -f docker-compose.hermes-manager.yml pull '${SERVICE_NAME}' &&
             docker compose -f docker-compose.hermes-manager.yml up -d '${SERVICE_NAME}' &&
