@@ -8,6 +8,7 @@ import {
   getHermesFallbackModels,
   updateHermesBackendConfig,
   type HermesBackendConfigResponse,
+  type HermesFallbackModel,
   type HermesProfile,
 } from '../api/adminSystem';
 
@@ -22,6 +23,8 @@ export function AdminSystemPage() {
   const [backendConfig, setBackendConfig] = useState<HermesBackendConfigResponse | null>(null);
   const [modelProfileId, setModelProfileId] = useState<string>('');
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
+  const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
+  const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
 
   useEffect(() => {
     if (!hermesBackendQuery.data) {
@@ -42,10 +45,28 @@ export function AdminSystemPage() {
   });
   const fallbackModelsMutation = useMutation({
     mutationFn: (profile: HermesProfile) => getHermesFallbackModels(profile.baseUrl || ''),
-    onSuccess: setFallbackModels,
+    onSuccess: (response, profile) => {
+      setFallbackModels(response.models || []);
+      setFallbackModelItems(response.items?.length ? response.items : (response.models || []).map((model) => ({
+        id: model,
+        suitability: 'unknown',
+        label: 'tool support unknown',
+        toolCapable: null,
+        detail: null,
+      })));
+      setLoadedModelProfileId(profile.id);
+    },
   });
 
   const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId) || null;
+  const selectedDiscoveredModel = fallbackModelItems.find((model) => model.id === selectedModelProfile?.model) || null;
+  const discoveredModelOptions = useMemo(
+    () => fallbackModelItems.map((model) => ({
+      value: model.id,
+      label: `${model.id} - ${model.label}`,
+    })),
+    [fallbackModelItems]
+  );
   const orderedProfiles = useMemo(
     () => (backendConfig?.profiles || []).slice().sort((left, right) => PROFILE_ORDER.indexOf(left.id as never) - PROFILE_ORDER.indexOf(right.id as never)),
     [backendConfig?.profiles]
@@ -109,7 +130,6 @@ export function AdminSystemPage() {
                         onChange={(value) => updateProfile(profile.id, {
                           provider: value || profile.provider,
                           baseUrl: value === 'openai' ? null : profile.baseUrl,
-                          contextWindow: value === 'openai' ? null : profile.contextWindow,
                         })}
                       />
                       <Select
@@ -150,14 +170,6 @@ export function AdminSystemPage() {
                           value={profile.baseUrl || ''}
                           onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
                         />
-                        <NumberInput
-                          label="Context window"
-                          min={1}
-                          value={profile.contextWindow || ''}
-                          onChange={(value) => updateProfile(profile.id, {
-                            contextWindow: typeof value === 'number' ? value : null,
-                          })}
-                        />
                       </Group>
                     ) : (
                       <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
@@ -186,7 +198,12 @@ export function AdminSystemPage() {
                 data={orderedProfiles
                   .filter((profile) => profile.provider === 'ollama')
                   .map((profile) => ({ value: profile.id, label: profile.label }))}
-                onChange={(value) => setModelProfileId(value || '')}
+                onChange={(value) => {
+                  setModelProfileId(value || '');
+                  setFallbackModels([]);
+                  setFallbackModelItems([]);
+                  setLoadedModelProfileId('');
+                }}
               />
               <Button
                 variant="light"
@@ -197,6 +214,20 @@ export function AdminSystemPage() {
               >
                 Load models
               </Button>
+              <Select
+                w={300}
+                label="Discovered model"
+                searchable
+                disabled={!selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
+                data={discoveredModelOptions}
+                value={selectedModelProfile && fallbackModels.includes(selectedModelProfile.model) ? selectedModelProfile.model : null}
+                placeholder={loadedModelProfileId === selectedModelProfile?.id ? `${fallbackModels.length} models loaded` : 'Load models first'}
+                onChange={(value) => {
+                  if (selectedModelProfile && value) {
+                    updateProfile(selectedModelProfile.id, { model: value });
+                  }
+                }}
+              />
               <Button
                 leftSection={<Save size={18} />}
                 loading={updateBackendsMutation.isPending}
@@ -206,6 +237,19 @@ export function AdminSystemPage() {
                 Validate and apply
               </Button>
             </Group>
+            {selectedModelProfile && loadedModelProfileId === selectedModelProfile.id ? (
+              <Stack gap={2} align="flex-end">
+                <Text size="sm" c="dimmed" ta="right">
+                  Loaded {fallbackModels.length} models for {selectedModelProfile.label}. Tool-capable models are listed first.
+                </Text>
+                {selectedDiscoveredModel ? (
+                  <Text size="sm" c={selectedDiscoveredModel.toolCapable === false ? 'yellow' : 'dimmed'} ta="right">
+                    Selected discovery result: {selectedDiscoveredModel.label}
+                    {selectedDiscoveredModel.detail ? ` - ${selectedDiscoveredModel.detail}` : ''}
+                  </Text>
+                ) : null}
+              </Stack>
+            ) : null}
           </Stack>
         </Card>
       ) : null}
