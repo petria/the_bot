@@ -130,7 +130,6 @@ export function AdminSystemPage() {
                         onChange={(value) => updateProfile(profile.id, {
                           provider: value || profile.provider,
                           baseUrl: value === 'openai' ? null : profile.baseUrl,
-                          contextWindow: value === 'openai' ? null : profile.contextWindow,
                         })}
                       />
                       <Select
@@ -170,14 +169,6 @@ export function AdminSystemPage() {
                           label="Ollama base URL"
                           value={profile.baseUrl || ''}
                           onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
-                        />
-                        <NumberInput
-                          label="Context window"
-                          min={1}
-                          value={profile.contextWindow || ''}
-                          onChange={(value) => updateProfile(profile.id, {
-                            contextWindow: typeof value === 'number' ? value : null,
-                          })}
                         />
                       </Group>
                     ) : (
