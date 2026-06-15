@@ -22,6 +22,7 @@ export function AdminSystemPage() {
   const [backendConfig, setBackendConfig] = useState<HermesBackendConfigResponse | null>(null);
   const [modelProfileId, setModelProfileId] = useState<string>('');
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
+  const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
 
   useEffect(() => {
     if (!hermesBackendQuery.data) {
@@ -42,7 +43,10 @@ export function AdminSystemPage() {
   });
   const fallbackModelsMutation = useMutation({
     mutationFn: (profile: HermesProfile) => getHermesFallbackModels(profile.baseUrl || ''),
-    onSuccess: setFallbackModels,
+    onSuccess: (models, profile) => {
+      setFallbackModels(models);
+      setLoadedModelProfileId(profile.id);
+    },
   });
 
   const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId) || null;
@@ -186,7 +190,11 @@ export function AdminSystemPage() {
                 data={orderedProfiles
                   .filter((profile) => profile.provider === 'ollama')
                   .map((profile) => ({ value: profile.id, label: profile.label }))}
-                onChange={(value) => setModelProfileId(value || '')}
+                onChange={(value) => {
+                  setModelProfileId(value || '');
+                  setFallbackModels([]);
+                  setLoadedModelProfileId('');
+                }}
               />
               <Button
                 variant="light"
@@ -197,6 +205,20 @@ export function AdminSystemPage() {
               >
                 Load models
               </Button>
+              <Select
+                w={300}
+                label="Discovered model"
+                searchable
+                disabled={!selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
+                data={fallbackModels}
+                value={selectedModelProfile && fallbackModels.includes(selectedModelProfile.model) ? selectedModelProfile.model : null}
+                placeholder={loadedModelProfileId === selectedModelProfile?.id ? `${fallbackModels.length} models loaded` : 'Load models first'}
+                onChange={(value) => {
+                  if (selectedModelProfile && value) {
+                    updateProfile(selectedModelProfile.id, { model: value });
+                  }
+                }}
+              />
               <Button
                 leftSection={<Save size={18} />}
                 loading={updateBackendsMutation.isPending}
@@ -206,6 +228,11 @@ export function AdminSystemPage() {
                 Validate and apply
               </Button>
             </Group>
+            {selectedModelProfile && loadedModelProfileId === selectedModelProfile.id ? (
+              <Text size="sm" c="dimmed" ta="right">
+                Loaded {fallbackModels.length} models for {selectedModelProfile.label}.
+              </Text>
+            ) : null}
           </Stack>
         </Card>
       ) : null}
