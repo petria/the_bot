@@ -14,6 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.HermesFallbackModel;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
@@ -112,7 +113,15 @@ public class HermesFallbackService implements ApplicationRunner {
       }
     }
     models.sort(String::compareToIgnoreCase);
-    return new HermesFallbackModelsResponse(models);
+    Map<String, HermesFallbackModel> ollamaModels = ollamaModelMetadata(uri);
+    List<HermesFallbackModel> items = models.stream()
+        .map(model -> ollamaModels.getOrDefault(model, unknownModel(model)))
+        .sorted((left, right) -> {
+          int suitability = Integer.compare(suitabilityRank(left.suitability()), suitabilityRank(right.suitability()));
+          return suitability != 0 ? suitability : left.id().compareToIgnoreCase(right.id());
+        })
+        .toList();
+    return new HermesFallbackModelsResponse(items.stream().map(HermesFallbackModel::id).toList(), items);
   }
 
   public HermesBackendConfigResponse getBackendConfig() {
@@ -439,6 +448,76 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private boolean requiresTools(String profileId) {
     return "chat".equals(profileId) || "ai-command".equals(profileId);
+  }
+
+  private Map<String, HermesFallbackModel> ollamaModelMetadata(URI baseUrl) {
+    try {
+      Map<String, Object> response = restTemplate.getForObject(ollamaApiUri(baseUrl, "/api/tags"), Map.class);
+      Object data = response == null ? null : response.get("models");
+      if (!(data instanceof List<?> values)) {
+        return Map.of();
+      }
+      Map<String, HermesFallbackModel> models = new LinkedHashMap<>();
+      for (Object value : values) {
+        if (!(value instanceof Map<?, ?> item)) {
+          continue;
+        }
+        Object idValue = firstPresent(item, "model", "name");
+        if (idValue == null || idValue.toString().isBlank()) {
+          continue;
+        }
+        String id = idValue.toString();
+        List<String> capabilities = stringList(item.get("capabilities"));
+        boolean completion = capabilities.contains("completion");
+        boolean tools = capabilities.contains("tools");
+        if (tools) {
+          models.put(id, new HermesFallbackModel(id, "tool-capable", "tool capable", true, "Ollama advertises tool support"));
+        } else if (completion) {
+          models.put(id, new HermesFallbackModel(id, "chat-only", "no tool support", false, "Ollama advertises completion support but not tools"));
+        } else {
+          models.put(id, new HermesFallbackModel(id, "not-suitable", "not suitable", false, "Ollama does not advertise completion support"));
+        }
+      }
+      return models;
+    } catch (Exception e) {
+      log.warn("Could not load Ollama model capability metadata: {}", e.getMessage());
+      return Map.of();
+    }
+  }
+
+  private Object firstPresent(Map<?, ?> item, String... keys) {
+    for (String key : keys) {
+      Object value = item.get(key);
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private List<String> stringList(Object value) {
+    if (!(value instanceof List<?> list)) {
+      return List.of();
+    }
+    return list.stream().map(Object::toString).toList();
+  }
+
+  private HermesFallbackModel unknownModel(String model) {
+    return new HermesFallbackModel(model, "unknown", "tool support unknown", null, "Ollama capability metadata was not available");
+  }
+
+  private int suitabilityRank(String suitability) {
+    return switch (suitability == null ? "" : suitability) {
+      case "tool-capable" -> 0;
+      case "unknown" -> 1;
+      case "chat-only" -> 2;
+      case "not-suitable" -> 3;
+      default -> 4;
+    };
+  }
+
+  private URI ollamaApiUri(URI baseUrl, String path) {
+    return URI.create(baseUrl.getScheme() + "://" + baseUrl.getAuthority() + path);
   }
 
   private StoredBackendConfig defaultBackendConfig() {

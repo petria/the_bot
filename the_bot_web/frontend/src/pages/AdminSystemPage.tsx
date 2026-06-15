@@ -8,6 +8,7 @@ import {
   getHermesFallbackModels,
   updateHermesBackendConfig,
   type HermesBackendConfigResponse,
+  type HermesFallbackModel,
   type HermesProfile,
 } from '../api/adminSystem';
 
@@ -22,6 +23,7 @@ export function AdminSystemPage() {
   const [backendConfig, setBackendConfig] = useState<HermesBackendConfigResponse | null>(null);
   const [modelProfileId, setModelProfileId] = useState<string>('');
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
+  const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
   const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
 
   useEffect(() => {
@@ -43,13 +45,28 @@ export function AdminSystemPage() {
   });
   const fallbackModelsMutation = useMutation({
     mutationFn: (profile: HermesProfile) => getHermesFallbackModels(profile.baseUrl || ''),
-    onSuccess: (models, profile) => {
-      setFallbackModels(models);
+    onSuccess: (response, profile) => {
+      setFallbackModels(response.models || []);
+      setFallbackModelItems(response.items?.length ? response.items : (response.models || []).map((model) => ({
+        id: model,
+        suitability: 'unknown',
+        label: 'tool support unknown',
+        toolCapable: null,
+        detail: null,
+      })));
       setLoadedModelProfileId(profile.id);
     },
   });
 
   const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId) || null;
+  const selectedDiscoveredModel = fallbackModelItems.find((model) => model.id === selectedModelProfile?.model) || null;
+  const discoveredModelOptions = useMemo(
+    () => fallbackModelItems.map((model) => ({
+      value: model.id,
+      label: `${model.id} - ${model.label}`,
+    })),
+    [fallbackModelItems]
+  );
   const orderedProfiles = useMemo(
     () => (backendConfig?.profiles || []).slice().sort((left, right) => PROFILE_ORDER.indexOf(left.id as never) - PROFILE_ORDER.indexOf(right.id as never)),
     [backendConfig?.profiles]
@@ -193,6 +210,7 @@ export function AdminSystemPage() {
                 onChange={(value) => {
                   setModelProfileId(value || '');
                   setFallbackModels([]);
+                  setFallbackModelItems([]);
                   setLoadedModelProfileId('');
                 }}
               />
@@ -210,7 +228,7 @@ export function AdminSystemPage() {
                 label="Discovered model"
                 searchable
                 disabled={!selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
-                data={fallbackModels}
+                data={discoveredModelOptions}
                 value={selectedModelProfile && fallbackModels.includes(selectedModelProfile.model) ? selectedModelProfile.model : null}
                 placeholder={loadedModelProfileId === selectedModelProfile?.id ? `${fallbackModels.length} models loaded` : 'Load models first'}
                 onChange={(value) => {
@@ -229,9 +247,17 @@ export function AdminSystemPage() {
               </Button>
             </Group>
             {selectedModelProfile && loadedModelProfileId === selectedModelProfile.id ? (
-              <Text size="sm" c="dimmed" ta="right">
-                Loaded {fallbackModels.length} models for {selectedModelProfile.label}.
-              </Text>
+              <Stack gap={2} align="flex-end">
+                <Text size="sm" c="dimmed" ta="right">
+                  Loaded {fallbackModels.length} models for {selectedModelProfile.label}. Tool-capable models are listed first.
+                </Text>
+                {selectedDiscoveredModel ? (
+                  <Text size="sm" c={selectedDiscoveredModel.toolCapable === false ? 'yellow' : 'dimmed'} ta="right">
+                    Selected discovery result: {selectedDiscoveredModel.label}
+                    {selectedDiscoveredModel.detail ? ` - ${selectedDiscoveredModel.detail}` : ''}
+                  </Text>
+                ) : null}
+              </Stack>
             ) : null}
           </Stack>
         </Card>
