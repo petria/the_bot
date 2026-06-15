@@ -21,3 +21,4 @@ openclaw/config/config.json
 openclaw/state/
 openclaw/workspace/
 openclaw/logs/
+/runtime/
