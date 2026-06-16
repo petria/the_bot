@@ -15,14 +15,4 @@ public interface CommandStatsPersistenceService {
      * @return Map containing command names and their invocation counts
      */
     Map<String, Long> loadStats();
-    
-    /**
-     * Called when application starts - initialize persistence if needed
-     */
-    void startup();
-    
-    /**
-     * Called when application shuts down - flush any pending data
-     */
-    void shutdown();
 }
