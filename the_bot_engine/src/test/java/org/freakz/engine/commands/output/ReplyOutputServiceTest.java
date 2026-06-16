@@ -60,10 +60,11 @@ class ReplyOutputServiceTest {
         request,
         "HELP:",
         List.of("ping", "help aliases: !commands", "weather aliases: !saa, !sää", "topcounts[A] aliases: !topgl"),
-        "Use !help <commandName> for details.");
+        "Use !help commandName for details.");
 
     assertThat(output.lines().count()).isLessThanOrEqualTo(4);
     assertThat(output).contains("HELP: ping, help aliases: !commands");
+    assertThat(output).contains("Use !help commandName for details.");
   }
 
   private EngineRequest request(String protocol, boolean privateChannel) {

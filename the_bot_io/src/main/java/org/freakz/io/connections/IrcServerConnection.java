@@ -287,10 +287,12 @@ public class IrcServerConnection extends BotConnection {
     Optional<Channel> channel = client.getChannel(message.getTarget());
     if (channel.isPresent() || nick != null) {
       Cutter messageCutter = client.getMessageCutter();
-      List<String> split = messageCutter.split(message.getMessage(), 400);
-      for (String line : split) {
-        String[] splitted = line.split("\n");
-        for (String splitLine : splitted) {
+      String[] logicalLines = message.getMessage().split("\\R", -1);
+      for (String logicalLine : logicalLines) {
+        if (logicalLine.isBlank()) {
+          continue;
+        }
+        for (String splitLine : messageCutter.split(logicalLine, 400)) {
           if (nick != null) {
             client.sendMessage(nick, splitLine);
           } else {
