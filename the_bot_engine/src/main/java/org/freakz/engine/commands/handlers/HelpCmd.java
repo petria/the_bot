@@ -77,7 +77,7 @@ public class HelpCmd extends AbstractCmd {
           irc ? "HELP BY PROVIDER:" : "== HELP: COMMANDS BY PROVIDER ==",
           entries,
           irc
-              ? "Use !help <commandName> for details."
+              ? "Use !help commandName for details."
               : "Command is triggered using: !<name in lower case>, example: !help triggers command named Help. Use !help <commandName> to get detailed help for specific command.");
 
 
