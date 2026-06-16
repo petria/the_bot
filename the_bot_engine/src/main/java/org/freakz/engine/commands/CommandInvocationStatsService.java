@@ -87,7 +87,7 @@ public class CommandInvocationStatsService {
     dirty = true;
   }
 
-  private void saveStatsToPersistence() {
+  private boolean saveStatsToPersistence() {
     if (persistenceService != null) {
       try {
         Map<String, Long> statsMap = new HashMap<>();
@@ -95,11 +95,13 @@ public class CommandInvocationStatsService {
           statsMap.put(entry.getKey(), entry.getValue().sum());
         }
         persistenceService.saveStats(statsMap);
+        return true;
       } catch (Exception e) {
         // Don't let persistence issues crash the application
         // Just log and continue
       }
     }
+    return false;
   }
 
   private void loadStatsFromPersistence() {
@@ -135,8 +137,9 @@ public class CommandInvocationStatsService {
     if (!dirty || persistenceService == null) {
       return;
     }
-    saveStatsToPersistence();
-    dirty = false;
+    if (saveStatsToPersistence()) {
+      dirty = false;
+    }
   }
 
   public long getCommandInvocationCount(String canonicalName) {
