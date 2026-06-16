@@ -132,7 +132,7 @@ public class CommandInvocationStatsService {
     }
   }
 
-  @Scheduled(fixedRate = 60000)
+  @Scheduled(fixedRate = 10000)
   public void saveStatsPeriodically() {
     if (!dirty || persistenceService == null) {
       return;
