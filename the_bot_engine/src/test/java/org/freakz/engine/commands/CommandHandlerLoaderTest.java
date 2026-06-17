@@ -97,6 +97,14 @@ class CommandHandlerLoaderTest {
   }
 
   @Test
+  void registersAiRoutesAsAdminCommand() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    assertThat(loader.getHandlersMap()).containsKey("main::airoutes");
+    assertThat(loader.getHandlersMap().get("main::airoutes").getRequiredPermission()).isEqualTo("commands.admin");
+  }
+
+  @Test
   void resolvesMainCommandsWithOldAndNamespacedSyntax() throws Exception {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
 
