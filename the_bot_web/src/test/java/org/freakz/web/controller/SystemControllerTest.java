@@ -126,6 +126,32 @@ class SystemControllerTest {
   }
 
   @Test
+  void mapsUnhealthyWhatsappSidecarContainerToDown() {
+    RestTemplate restTemplate = new RestTemplate();
+    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
+    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
+
+    SystemController.SystemStatusResponse response = controller(
+        restTemplate,
+        containerName -> {
+          if ("bot-whatsapp".equals(containerName)) {
+            return containerStatus(containerName, "unhealthy");
+          }
+          return containerStatus(containerName, "running");
+        }).getStatus();
+
+    assertThat(response.components())
+        .filteredOn(component -> component.name().equals("bot-whatsapp"))
+        .singleElement()
+        .satisfies(component -> {
+          assertThat(component.status()).isEqualTo("DOWN");
+          assertThat(component.containerState()).isEqualTo("unhealthy");
+        });
+    server.verify();
+  }
+
+  @Test
   void mapsExternalOpenClawHealthWithoutLocalContainer() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();

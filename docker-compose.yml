@@ -83,6 +83,7 @@ services:
   # Hokan the Bot WhatsApp sidecar using wacli
   bot-whatsapp:
     image: ghcr.io/petria/the_bot-whatsapp:${WHATSAPP_IMAGE_TAG:-latest}
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/${WHATSAPP_WACLI_DIR:-wacli-dev}:/wacli

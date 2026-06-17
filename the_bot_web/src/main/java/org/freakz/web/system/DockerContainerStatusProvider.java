@@ -40,7 +40,7 @@ public class DockerContainerStatusProvider implements ContainerStatusProvider {
       }
       InspectContainerResponse inspected = client().inspectContainerCmd(container.getId()).exec();
       InspectContainerResponse.ContainerState state = inspected.getState();
-      String stateName = state == null ? "unknown" : normalizeState(state);
+      String stateName = state == null ? "unknown" : normalizeState(state, container.getStatus());
       return new ContainerStatus(
           containerName,
           stateName,
@@ -84,11 +84,17 @@ public class DockerContainerStatusProvider implements ContainerStatusProvider {
     return dockerClient;
   }
 
-  private String normalizeState(InspectContainerResponse.ContainerState state) {
+  private String normalizeState(InspectContainerResponse.ContainerState state, String statusText) {
     if (Boolean.TRUE.equals(state.getRestarting())) {
       return "restarting";
     }
     if (Boolean.TRUE.equals(state.getRunning())) {
+      if (statusText != null && statusText.toLowerCase().contains("(unhealthy)")) {
+        return "unhealthy";
+      }
+      if (statusText != null && statusText.toLowerCase().contains("(health: starting)")) {
+        return "starting";
+      }
       return "running";
     }
     if (Boolean.TRUE.equals(state.getPaused())) {

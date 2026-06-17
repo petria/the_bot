@@ -23,12 +23,16 @@ RUN apt-get update \
 
 COPY --from=wacli-builder /go/bin/wacli /usr/local/bin/wacli
 COPY server.py /opt/bot-whatsapp/server.py
+COPY supervisor.py /opt/bot-whatsapp/supervisor.py
 COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh
 
 VOLUME /wacli
 EXPOSE 8095
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD python -c "import sys, urllib.request; urllib.request.urlopen('http://127.0.0.1:8095/health', timeout=8); sys.exit(0)"
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["serve"]
