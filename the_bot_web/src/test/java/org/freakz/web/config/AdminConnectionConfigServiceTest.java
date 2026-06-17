@@ -114,7 +114,7 @@ class AdminConnectionConfigServiceTest {
             6667,
             List.of(
                 channel("IRC-HOKANDEV2"),
-                new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false, false, false, false)))),
+                new ChannelDto("test_1", null, "#TestTest", "IrcPublic", "IRC-TESTTEST", List.of("IRC-HOKANDEV2"), false, false, false, false, false)))),
         new DiscordConfigDto(true, "123", List.of()),
         new TelegramConfigDto("bot", true, List.of()),
         new WhatsAppConfigDto("whatsapp", "http://localhost", true, List.of()));
@@ -150,7 +150,7 @@ class AdminConnectionConfigServiceTest {
   }
 
   @Test
-  void savesAnonymousAiCommandChannelFlag() throws Exception {
+  void savesChannelFeatureFlags() throws Exception {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
 
@@ -165,6 +165,7 @@ class AdminConnectionConfigServiceTest {
         channel.echoToAlias(),
         channel.echoToAliases(),
         channel.joinOnStart(),
+        true,
         true,
         true,
         true);
@@ -187,7 +188,8 @@ class AdminConnectionConfigServiceTest {
     assertThat(saved)
         .contains("\"publicAiEnabled\" : true")
         .contains("\"allowAnonymousAiCommands\" : true")
-        .contains("\"resolveUrls\" : true");
+        .contains("\"resolveUrls\" : true")
+        .contains("\"alertMessages\" : true");
   }
 
   @Test
@@ -213,7 +215,7 @@ class AdminConnectionConfigServiceTest {
     service.promoteChannel(new PromoteChannelRequest(
         "IRC_CONNECTION",
         "IRCDEV",
-        new ChannelDto("123", null, "#Observed", "IrcPublic", "IRC-OBSERVED", List.of(), false, false, false, false)));
+        new ChannelDto("123", null, "#Observed", "IrcPublic", "IRC-OBSERVED", List.of(), false, false, false, false, false)));
 
     String saved = Files.readString(files.runtimeConfigFile());
     assertThat(saved)
@@ -313,7 +315,7 @@ class AdminConnectionConfigServiceTest {
   }
 
   private ChannelDto channel(String alias) {
-    return new ChannelDto(alias, null, alias, "PUBLIC", alias, List.of(), false, false, false, false);
+    return new ChannelDto(alias, null, alias, "PUBLIC", alias, List.of(), false, false, false, false, false);
   }
 
   private record TestFiles(Path bootstrapFile, Path runtimeConfigFile) {

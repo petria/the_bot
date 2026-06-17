@@ -231,7 +231,8 @@ public class AdminConnectionConfigService {
           item.path("joinOnStart").asBoolean(false),
           item.path("publicAiEnabled").asBoolean(false),
           item.path("allowAnonymousAiCommands").asBoolean(false),
-          item.path("resolveUrls").asBoolean(false)));
+          item.path("resolveUrls").asBoolean(false),
+          item.path("alertMessages").asBoolean(false)));
     }
     return channels;
   }
@@ -370,7 +371,8 @@ public class AdminConnectionConfigService {
         source.joinOnStart(),
         source.publicAiEnabled(),
         source.allowAnonymousAiCommands(),
-        source.resolveUrls());
+        source.resolveUrls(),
+        source.alertMessages());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -505,7 +507,8 @@ public class AdminConnectionConfigService {
             channel.joinOnStart(),
             channel.publicAiEnabled(),
             channel.allowAnonymousAiCommands(),
-            channel.resolveUrls()))
+            channel.resolveUrls(),
+            channel.alertMessages()))
         .toList();
   }
 
@@ -621,6 +624,7 @@ public class AdminConnectionConfigService {
       item.put("publicAiEnabled", channel.publicAiEnabled());
       item.put("allowAnonymousAiCommands", channel.allowAnonymousAiCommands());
       item.put("resolveUrls", channel.resolveUrls());
+      item.put("alertMessages", channel.alertMessages());
       array.add(item);
     }
     return array;
@@ -765,6 +769,7 @@ public class AdminConnectionConfigService {
       boolean joinOnStart,
       boolean publicAiEnabled,
       boolean allowAnonymousAiCommands,
-      boolean resolveUrls) {
+      boolean resolveUrls,
+      boolean alertMessages) {
   }
 }

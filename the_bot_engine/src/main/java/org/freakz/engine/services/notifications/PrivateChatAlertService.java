@@ -1,6 +1,9 @@
 package org.freakz.engine.services.notifications;
 
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.botconfig.IrcServerConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.users.User;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
@@ -9,8 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PrivateChatAlertService {
 
   private static final Logger log = LoggerFactory.getLogger(PrivateChatAlertService.class);
-  private static final String ALERT_TARGETS_KEY = "channel.do.sys.notify";
 
   private final ConfigService configService;
   private final UsersService usersService;
@@ -46,7 +49,7 @@ public class PrivateChatAlertService {
 
     Set<String> targets = resolveAlertTargets();
     if (targets.isEmpty()) {
-      log.debug("No {} configured, skipping unknown private chat alert for {}", ALERT_TARGETS_KEY, dedupeKey);
+      log.debug("No alert-message channels configured, skipping unknown private chat alert for {}", dedupeKey);
       return;
     }
 
@@ -86,16 +89,47 @@ public class PrivateChatAlertService {
   }
 
   private Set<String> resolveAlertTargets() {
-    String raw = configService.getConfigValue(ALERT_TARGETS_KEY, null, null);
-    if (raw == null || raw.isBlank()) {
+    TheBotConfig botConfig;
+    try {
+      botConfig = configService.readBotConfig();
+    } catch (RuntimeException e) {
+      log.warn("Could not read bot config for alert targets: {}", e.getMessage());
       return Set.of();
     }
     Set<String> targets = new LinkedHashSet<>();
-    Arrays.stream(raw.split(","))
-        .map(String::trim)
-        .filter(value -> !value.isBlank())
-        .forEach(targets::add);
+    Set<String> seen = new LinkedHashSet<>();
+    for (IrcServerConfig ircConfig : nullSafe(botConfig == null ? null : botConfig.getIrcServerConfigs())) {
+      addAlertChannels(targets, seen, ircConfig == null ? null : ircConfig.getChannelList());
+    }
+    addAlertChannels(
+        targets,
+        seen,
+        botConfig == null || botConfig.getDiscordConfig() == null ? null : botConfig.getDiscordConfig().getChannelList());
+    addAlertChannels(
+        targets,
+        seen,
+        botConfig == null || botConfig.getTelegramConfig() == null ? null : botConfig.getTelegramConfig().getChannelList());
+    addAlertChannels(
+        targets,
+        seen,
+        botConfig == null || botConfig.getWhatsappConfig() == null ? null : botConfig.getWhatsappConfig().getChannelList());
     return targets;
+  }
+
+  private void addAlertChannels(Set<String> targets, Set<String> seen, List<Channel> channels) {
+    for (Channel channel : nullSafe(channels)) {
+      if (channel == null || !Boolean.TRUE.equals(channel.getAlertMessages())) {
+        continue;
+      }
+      String alias = channel.getEchoToAlias();
+      if (alias == null || alias.isBlank()) {
+        continue;
+      }
+      String cleaned = alias.trim();
+      if (seen.add(cleaned.toLowerCase(Locale.ROOT))) {
+        targets.add(cleaned);
+      }
+    }
   }
 
   private String firstNonBlank(String... values) {
@@ -105,6 +139,10 @@ public class PrivateChatAlertService {
       }
     }
     return "";
+  }
+
+  private <T> List<T> nullSafe(List<T> values) {
+    return values == null ? List.of() : values;
   }
 
   private String abbreviate(String value, int maxLength) {

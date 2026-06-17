@@ -15,19 +15,24 @@ public class Channel {
   private Boolean publicAiEnabled;
   private Boolean allowAnonymousAiCommands;
   private Boolean resolveUrls;
+  private Boolean alertMessages;
 
   public Channel() {
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled) {
-    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, null, null);
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, null, null, null);
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands) {
-    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, null);
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, null, null);
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls) {
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, null);
+  }
+
+  public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls, Boolean alertMessages) {
     this.id = id;
     this.description = description;
     this.name = name;
@@ -38,6 +43,7 @@ public class Channel {
     this.publicAiEnabled = publicAiEnabled;
     this.allowAnonymousAiCommands = allowAnonymousAiCommands;
     this.resolveUrls = resolveUrls;
+    this.alertMessages = alertMessages;
   }
 
   public static Builder builder() {
@@ -124,17 +130,25 @@ public class Channel {
     this.resolveUrls = resolveUrls;
   }
 
+  public Boolean getAlertMessages() {
+    return alertMessages;
+  }
+
+  public void setAlertMessages(Boolean alertMessages) {
+    this.alertMessages = alertMessages;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Channel channel = (Channel) o;
-    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
+    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(alertMessages, channel.alertMessages) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls);
+    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages);
   }
 
   @Override
@@ -150,6 +164,7 @@ public class Channel {
         ", publicAiEnabled=" + publicAiEnabled +
         ", allowAnonymousAiCommands=" + allowAnonymousAiCommands +
         ", resolveUrls=" + resolveUrls +
+        ", alertMessages=" + alertMessages +
         '}';
   }
 
@@ -164,6 +179,7 @@ public class Channel {
     private Boolean publicAiEnabled;
     private Boolean allowAnonymousAiCommands;
     private Boolean resolveUrls;
+    private Boolean alertMessages;
 
     public Builder id(String id) {
       this.id = id;
@@ -215,8 +231,13 @@ public class Channel {
       return this;
     }
 
+    public Builder alertMessages(Boolean alertMessages) {
+      this.alertMessages = alertMessages;
+      return this;
+    }
+
     public Channel build() {
-      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls);
+      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages);
     }
   }
 }

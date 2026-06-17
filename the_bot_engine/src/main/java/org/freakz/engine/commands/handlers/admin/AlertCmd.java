@@ -20,7 +20,7 @@ public class AlertCmd extends AbstractCmd {
 
   @Override
   public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
-    jsap.setHelp("Send alert text to all echoToAlias targets configured in channel.do.sys.notify.");
+    jsap.setHelp("Send alert text to all channels with Alert messages enabled in Manage Connections.");
 
     UnflaggedOption opt = new UnflaggedOption(ARG_MESSAGE)
         .setRequired(true)
@@ -33,7 +33,7 @@ public class AlertCmd extends AbstractCmd {
   public String executeCommand(EngineRequest request, JSAPResult results) {
     AlertResponse response = doServiceRequest(request, results, ServiceRequestType.SendAlertToNotifyChannels);
     if (response.getSentTo() == null || response.getSentTo().isEmpty()) {
-      return "No notify targets configured in channel.do.sys.notify";
+      return "No alert-message channels configured in Manage Connections";
     }
     return "Alert sent to: " + String.join(", ", response.getSentTo());
   }

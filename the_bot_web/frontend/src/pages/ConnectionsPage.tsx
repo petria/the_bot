@@ -131,6 +131,7 @@ export function ConnectionsPage() {
                   publicAiEnabled: false,
                   allowAnonymousAiCommands: false,
                   resolveUrls: false,
+                  alertMessages: false,
                 },
               })}
             />

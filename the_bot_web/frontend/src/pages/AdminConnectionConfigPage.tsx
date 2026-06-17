@@ -46,6 +46,7 @@ const emptyChannel: AdminConfigChannel = {
   publicAiEnabled: false,
   allowAnonymousAiCommands: false,
   resolveUrls: false,
+  alertMessages: false,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -515,6 +516,11 @@ function ChannelsEditor({
               label="Resolve URLs"
               checked={channel.resolveUrls}
               onChange={(event) => updateChannel(channels, index, { resolveUrls: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Alert messages"
+              checked={channel.alertMessages}
+              onChange={(event) => updateChannel(channels, index, { alertMessages: event.currentTarget.checked }, onChange)}
             />
           </Stack>
         </Card>
