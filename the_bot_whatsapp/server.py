@@ -13,7 +13,10 @@ WACLI_BIN = os.environ.get("WACLI_BIN", "wacli")
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
-            self.respond(200, {"status": "OK"})
+            self.handle_health()
+            return
+        if self.path == "/status":
+            self.handle_status()
             return
         self.respond(404, {"status": "NOK", "message": "Not found"})
 
@@ -88,6 +91,55 @@ class Handler(BaseHTTPRequestHandler):
             command.extend(["--media", media])
         self.run_wacli(command, to)
 
+    def handle_health(self):
+        result = self.run_wacli_capture([
+            WACLI_BIN,
+            "--json",
+            "--store",
+            STORE_DIR,
+            "auth",
+            "status",
+        ], timeout=10)
+        if result["timedOut"]:
+            self.respond(503, {"status": "NOK", "message": "wacli auth status timed out"})
+            return
+        if result["exitCode"] != 0:
+            self.respond(503, {
+                "status": "NOK",
+                "message": "wacli auth status failed",
+                "stderr": result["stderr"],
+                "exitCode": result["exitCode"],
+            })
+            return
+        body = parse_json_or_text(result["stdout"])
+        authenticated = bool(
+            isinstance(body, dict)
+            and body.get("success") is True
+            and isinstance(body.get("data"), dict)
+            and body["data"].get("authenticated") is True
+        )
+        if not authenticated:
+            self.respond(503, {"status": "NOK", "message": "not authenticated", "wacli": body})
+            return
+        self.respond(200, {"status": "OK", "authenticated": True, "wacli": body})
+
+    def handle_status(self):
+        result = self.run_wacli_capture([
+            WACLI_BIN,
+            "--json",
+            "--store",
+            STORE_DIR,
+            "doctor",
+        ], timeout=15)
+        status = 200 if result["exitCode"] == 0 and not result["timedOut"] else 503
+        self.respond(status, {
+            "status": "OK" if status == 200 else "NOK",
+            "stdout": parse_json_or_text(result["stdout"]),
+            "stderr": result["stderr"],
+            "exitCode": result["exitCode"],
+            "timedOut": result["timedOut"],
+        })
+
     def authorized(self):
         return not SEND_TOKEN or self.headers.get("X-Bot-Whatsapp-Token") == SEND_TOKEN
 
@@ -100,19 +152,35 @@ class Handler(BaseHTTPRequestHandler):
             return None
 
     def run_wacli(self, command, to):
-        try:
-            result = subprocess.run(command, text=True, capture_output=True, timeout=90)
-        except subprocess.TimeoutExpired:
+        result = self.run_wacli_capture(command, timeout=90)
+        if result["timedOut"]:
             self.respond(504, {"status": "NOK", "to": to, "message": "wacli command timed out"})
             return
         body = {
-            "status": "OK" if result.returncode == 0 else "NOK",
+            "status": "OK" if result["exitCode"] == 0 else "NOK",
             "to": to,
-            "stdout": parse_json_or_text(result.stdout),
+            "stdout": parse_json_or_text(result["stdout"]),
+            "stderr": result["stderr"],
+            "exitCode": result["exitCode"],
+        }
+        self.respond(200 if result["exitCode"] == 0 else 502, body)
+
+    def run_wacli_capture(self, command, timeout):
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return {
+                "stdout": "",
+                "stderr": "",
+                "exitCode": -1,
+                "timedOut": True,
+            }
+        return {
+            "stdout": result.stdout,
             "stderr": result.stderr.strip(),
             "exitCode": result.returncode,
+            "timedOut": False,
         }
-        self.respond(200 if result.returncode == 0 else 502, body)
 
     def respond(self, status, body):
         raw = json.dumps(body).encode("utf-8")
