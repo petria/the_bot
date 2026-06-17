@@ -4,9 +4,11 @@ import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.AiReplyGuard;
 import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettings;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
+import org.freakz.engine.services.notifications.AiStructuredResponseAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -30,6 +32,7 @@ import java.util.List;
 public class HermesAiCommandService {
 
   private static final Logger log = LoggerFactory.getLogger(HermesAiCommandService.class);
+  private static final String INVALID_STRUCTURED_RESPONSE = "AI command returned an invalid structured response.";
 
   private final HermesSettingsService settingsService;
   private final AiCommandToolRegistry toolRegistry;
@@ -37,6 +40,7 @@ public class HermesAiCommandService {
   private final ObjectProvider<BotEngine> botEngineProvider;
   private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
+  private final AiStructuredResponseAlertService structuredResponseAlertService;
 
   public HermesAiCommandService(
       HermesSettingsService settingsService,
@@ -44,13 +48,15 @@ public class HermesAiCommandService {
       JsonMapper jsonMapper,
       ObjectProvider<BotEngine> botEngineProvider,
       HermesPromptContextService promptContextService,
-      WebClient.Builder webClientBuilder) {
+      WebClient.Builder webClientBuilder,
+      AiStructuredResponseAlertService structuredResponseAlertService) {
     this.settingsService = settingsService;
     this.toolRegistry = toolRegistry;
     this.jsonMapper = jsonMapper;
     this.botEngineProvider = botEngineProvider;
     this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
+    this.structuredResponseAlertService = structuredResponseAlertService;
   }
 
   @Async
@@ -76,12 +82,17 @@ public class HermesAiCommandService {
       for (int i = 0; i < maxIterations; i++) {
         String responseText = createModelResponse(client, settings, sessionKey, instructions, input);
         AiCommandModelResponse modelResponse = parseModelResponse(responseText);
+        if (modelResponse.invalidResponse()) {
+          notifyStructuredResponseRejected(request, command, settings);
+          processReply(request, INVALID_STRUCTURED_RESPONSE);
+          return;
+        }
         if (modelResponse.finalAnswer() != null) {
-          processReply(request, modelResponse.finalAnswer());
+          processReply(request, safeFinalAnswer(request, command, settings, modelResponse.finalAnswer()));
           return;
         }
         if (modelResponse.toolName() == null || modelResponse.toolName().isBlank()) {
-          processReply(request, responseText);
+          processReply(request, INVALID_STRUCTURED_RESPONSE);
           return;
         }
         if (!allowedTools.contains(modelResponse.toolName())) {
@@ -102,7 +113,7 @@ public class HermesAiCommandService {
       processReply(request, "AI command stopped before producing a final answer.");
     } catch (Exception e) {
       log.warn("Hermes AI command failed: {}", e.getMessage(), e);
-      processReply(request, "AI command failed: " + e.getMessage());
+      processReply(request, AiReplyGuard.safeFailure("AI command failed:", e.getMessage()));
     }
   }
 
@@ -249,11 +260,14 @@ public class HermesAiCommandService {
   }
 
   AiCommandModelResponse parseModelResponse(String text) throws Exception {
-    String cleaned = stripJsonFence(text);
+    String cleaned = AiReplyGuard.stripJsonFence(text);
     JsonNode node;
     try {
       node = jsonMapper.readTree(cleaned);
     } catch (Exception e) {
+      if (AiReplyGuard.looksLikeStructuredJson(text)) {
+        return AiCommandModelResponse.invalid();
+      }
       return AiCommandModelResponse.finalAnswer(text);
     }
 
@@ -265,7 +279,10 @@ public class HermesAiCommandService {
     String type = node.path("type").asString("").trim();
     if ("final".equalsIgnoreCase(type)) {
       String answer = firstText(node, "answer", "text", "message", "response");
-      return AiCommandModelResponse.finalAnswer(answer.isBlank() ? cleaned : answer);
+      if (answer.isBlank()) {
+        return AiCommandModelResponse.invalid();
+      }
+      return AiCommandModelResponse.finalAnswer(answer);
     }
     if ("tool".equalsIgnoreCase(type)) {
       JsonNode arguments = node.path("arguments");
@@ -275,7 +292,10 @@ public class HermesAiCommandService {
       return AiCommandModelResponse.tool(firstText(node, "tool", "name"), arguments);
     }
     String answer = firstText(node, "answer", "text", "message", "response");
-    return answer.isBlank() ? AiCommandModelResponse.finalAnswer(cleaned) : AiCommandModelResponse.finalAnswer(answer);
+    if (!answer.isBlank()) {
+      return parseModelResponse(answer);
+    }
+    return AiCommandModelResponse.invalid();
   }
 
   private AiCommandModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {
@@ -300,30 +320,49 @@ public class HermesAiCommandService {
     if (!multiToolValue.isBlank() && multiToolValue.trim().startsWith("{")) {
       return parseModelResponse(multiToolValue);
     }
+    for (String field : new String[]{"answer", "text", "message", "content", "response", "result", "final_response", "final_output"}) {
+      JsonNode wrappedNode = node.path(field);
+      if (wrappedNode.isObject()) {
+        return parseModelResponse(wrappedNode.toString());
+      }
+      String value = textValue(wrappedNode);
+      if (!value.isBlank() && AiReplyGuard.looksLikeStructuredJson(value)) {
+        return parseModelResponse(value);
+      }
+    }
     return null;
-  }
-
-  private String stripJsonFence(String text) {
-    if (text == null) {
-      return "";
-    }
-    String cleaned = text.trim();
-    if (cleaned.startsWith("```json")) {
-      cleaned = cleaned.substring("```json".length()).trim();
-    } else if (cleaned.startsWith("```")) {
-      cleaned = cleaned.substring("```".length()).trim();
-    }
-    if (cleaned.endsWith("```")) {
-      cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
-    }
-    return cleaned;
   }
 
   private void processReply(EngineRequest request, String reply) {
     BotEngine botEngine = botEngineProvider.getIfAvailable();
     if (botEngine != null) {
-      botEngine.sendReplyMessage(request, formatReplyForTarget(request, reply));
+      botEngine.sendReplyMessage(request, formatReplyForTarget(request, AiReplyGuard.safeFinalAnswer(reply, INVALID_STRUCTURED_RESPONSE)));
     }
+  }
+
+  private String safeFinalAnswer(
+      EngineRequest request,
+      AiCommandDefinition command,
+      HermesSettings settings,
+      String answer) {
+    if (AiReplyGuard.looksLikeStructuredJson(answer)) {
+      notifyStructuredResponseRejected(request, command, settings);
+    }
+    return AiReplyGuard.safeFinalAnswer(answer, INVALID_STRUCTURED_RESPONSE);
+  }
+
+  private void notifyStructuredResponseRejected(
+      EngineRequest request,
+      AiCommandDefinition command,
+      HermesSettings settings) {
+    if (structuredResponseAlertService == null) {
+      return;
+    }
+    structuredResponseAlertService.notifyRejected(
+        "ai-command",
+        command == null ? null : "!" + command.getName(),
+        request,
+        settings);
   }
 
   private String formatReplyForTarget(EngineRequest request, String reply) {
@@ -459,13 +498,17 @@ public class HermesAiCommandService {
     return "";
   }
 
-  record AiCommandModelResponse(String finalAnswer, String toolName, JsonNode arguments) {
+  record AiCommandModelResponse(String finalAnswer, String toolName, JsonNode arguments, boolean invalidResponse) {
     static AiCommandModelResponse finalAnswer(String answer) {
-      return new AiCommandModelResponse(answer == null ? "" : answer, null, null);
+      return new AiCommandModelResponse(answer == null ? "" : answer, null, null, false);
     }
 
     static AiCommandModelResponse tool(String toolName, JsonNode arguments) {
-      return new AiCommandModelResponse(null, toolName, arguments);
+      return new AiCommandModelResponse(null, toolName, arguments, false);
+    }
+
+    static AiCommandModelResponse invalid() {
+      return new AiCommandModelResponse(null, null, null, true);
     }
   }
 }

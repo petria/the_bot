@@ -11,6 +11,7 @@ export type AdminConfigChannel = {
   publicAiEnabled: boolean;
   allowAnonymousAiCommands: boolean;
   resolveUrls: boolean;
+  alertMessages: boolean;
 };
 
 export type AdminIrcServerConfig = {

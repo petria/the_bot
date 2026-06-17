@@ -9,6 +9,7 @@ import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
+import org.freakz.engine.services.notifications.AiStructuredResponseAlertService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -117,6 +118,56 @@ class HermesAiServiceTest {
         """));
 
     assertThat(recovered).isEqualTo("{\"type\":\"tool\",\"tool\":\"logs.search\",\"arguments\":{\"scope\":\"current-chat\",\"query\":\"pätiä\",\"maxMatches\":20}}");
+  }
+
+  @Test
+  void parsesHermesToolResponseWrappedInAnswerField() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        {"answer":"{\\"type\\":\\"tool\\",\\"tool\\":\\"logs.search\\",\\"arguments\\":{\\"query\\":\\"pätiä\\"}}"}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("logs.search");
+    assertThat(response.arguments().path("query").asString()).isEqualTo("pätiä");
+  }
+
+  @Test
+  void parsesHermesToolResponseWrappedInContentObject() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        {"content":{"type":"tool","tool":"logs.read","arguments":{"lines":20}}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.toolName()).isEqualTo("logs.read");
+    assertThat(response.arguments().path("lines").asInt()).isEqualTo(20);
+  }
+
+  @Test
+  void marksUnknownHermesJsonAsInvalid() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        {"unexpected":"raw"}
+        """);
+
+    assertThat(response.invalidResponse()).isTrue();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isNull();
+  }
+
+  @Test
+  void marksMalformedHermesJsonLookingTextAsInvalid() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response =
+        service.parseModelResponse("{\"type\":\"tool\",\"tool\":\"logs.search\"");
+
+    assertThat(response.invalidResponse()).isTrue();
   }
 
   @Test
@@ -289,7 +340,8 @@ class HermesAiServiceTest {
         null,
         mock(AiCommandToolRegistry.class),
         mock(HermesPromptContextService.class),
-        WebClient.builder()
+        WebClient.builder(),
+        mock(AiStructuredResponseAlertService.class)
     );
   }
 

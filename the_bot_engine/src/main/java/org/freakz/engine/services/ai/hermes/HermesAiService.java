@@ -3,7 +3,9 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.engine.services.ai.AiReplyGuard;
 import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
+import org.freakz.engine.services.notifications.AiStructuredResponseAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -48,6 +50,7 @@ public class HermesAiService {
   private static final List<String> CHAT_TOOL_NAMES = List.of("logs.read", "logs.search");
   private static final int MAX_TOOL_ITERATIONS = 4;
   private static final int POLL_INTERVAL_MILLIS = 750;
+  private static final String INVALID_STRUCTURED_RESPONSE = "Hermes returned an invalid structured response.";
   private static final Pattern REASONING_TOOL_PATTERN = Pattern.compile(
       "(?is)(?:tool_name|tool|name)\\s*`?\\s*[:=]\\s*`?([a-z0-9_.-]+)");
 
@@ -57,6 +60,7 @@ public class HermesAiService {
   private final AiCommandToolRegistry toolRegistry;
   private final HermesPromptContextService promptContextService;
   private final WebClient.Builder webClientBuilder;
+  private final AiStructuredResponseAlertService structuredResponseAlertService;
 
   public HermesAiService(
       HermesSettingsService settingsService,
@@ -64,7 +68,8 @@ public class HermesAiService {
       BotEngine botEngine,
       AiCommandToolRegistry toolRegistry,
       HermesPromptContextService promptContextService,
-      WebClient.Builder webClientBuilder
+      WebClient.Builder webClientBuilder,
+      AiStructuredResponseAlertService structuredResponseAlertService
   ) {
     this.settingsService = settingsService;
     this.objectMapper = objectMapper;
@@ -72,6 +77,7 @@ public class HermesAiService {
     this.toolRegistry = toolRegistry;
     this.promptContextService = promptContextService;
     this.webClientBuilder = webClientBuilder;
+    this.structuredResponseAlertService = structuredResponseAlertService;
   }
 
   @Async
@@ -126,7 +132,7 @@ public class HermesAiService {
         return;
       }
       if (result.error() != null && !result.error().isBlank()) {
-        processReply(engineRequest, "Hermes failed: " + result.error());
+        processReply(engineRequest, AiReplyGuard.safeFailure("Hermes failed:", result.error()));
         return;
       }
       if (result.text() == null || result.text().isBlank()) {
@@ -137,7 +143,7 @@ public class HermesAiService {
       processReply(engineRequest, result.text());
     } catch (Exception e) {
       log.warn("Hermes request failed: {}", e.getMessage(), e);
-      processReply(engineRequest, "Hermes failed: " + e.getMessage());
+      processReply(engineRequest, AiReplyGuard.safeFailure("Hermes failed:", e.getMessage()));
     }
   }
 
@@ -187,8 +193,12 @@ public class HermesAiService {
     for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       String text = createResponse(client, settings, sessionKey, input);
       ChatModelResponse modelResponse = parseModelResponse(text);
+      if (modelResponse.invalidResponse()) {
+        notifyStructuredResponseRejected(request, settings);
+        return INVALID_STRUCTURED_RESPONSE;
+      }
       if (modelResponse.finalAnswer() != null) {
-        return modelResponse.finalAnswer();
+        return safeFinalAnswer(request, settings, modelResponse.finalAnswer());
       }
       if (!CHAT_TOOL_NAMES.contains(modelResponse.toolName())) {
         return "Hermes requested tool that is not allowed: " + modelResponse.toolName();
@@ -212,8 +222,12 @@ public class HermesAiService {
     for (int i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       String text = createChatCompletion(client, settings, sessionKey, input);
       ChatModelResponse modelResponse = parseModelResponse(text);
+      if (modelResponse.invalidResponse()) {
+        notifyStructuredResponseRejected(request, settings);
+        return INVALID_STRUCTURED_RESPONSE;
+      }
       if (modelResponse.finalAnswer() != null) {
-        return modelResponse.finalAnswer();
+        return safeFinalAnswer(request, settings, modelResponse.finalAnswer());
       }
       if (!CHAT_TOOL_NAMES.contains(modelResponse.toolName())) {
         return "Hermes requested tool that is not allowed: " + modelResponse.toolName();
@@ -367,7 +381,29 @@ public class HermesAiService {
   }
 
   private void processReply(EngineRequest request, String reply) {
-    botEngine.sendReplyMessage(request, formatReplyForTarget(request, reply));
+    botEngine.sendReplyMessage(request, formatReplyForTarget(request, AiReplyGuard.safeFinalAnswer(reply, INVALID_STRUCTURED_RESPONSE)));
+  }
+
+  private String safeFinalAnswer(EngineRequest request, HermesSettings settings, String answer) {
+    if (AiReplyGuard.looksLikeStructuredJson(answer)) {
+      notifyStructuredResponseRejected(request, settings);
+    }
+    return AiReplyGuard.safeFinalAnswer(answer, INVALID_STRUCTURED_RESPONSE);
+  }
+
+  private void notifyStructuredResponseRejected(EngineRequest request, HermesSettings settings) {
+    if (structuredResponseAlertService == null) {
+      return;
+    }
+    structuredResponseAlertService.notifyRejected("hermes", commandName(request), request, settings);
+  }
+
+  private String commandName(EngineRequest request) {
+    if (request == null || request.getCommand() == null || request.getCommand().isBlank()) {
+      return "!hermes";
+    }
+    String[] parts = request.getCommand().trim().split("\\s+", 2);
+    return parts.length == 0 ? "!hermes" : parts[0];
   }
 
   private String formatReplyForTarget(EngineRequest request, String reply) {
@@ -427,12 +463,15 @@ public class HermesAiService {
     return objectMapper.readTree(response);
   }
 
-  private ChatModelResponse parseModelResponse(String text) throws Exception {
-    String cleaned = stripJsonFence(text);
+  ChatModelResponse parseModelResponse(String text) throws Exception {
+    String cleaned = AiReplyGuard.stripJsonFence(text);
     JsonNode node;
     try {
       node = objectMapper.readTree(cleaned);
     } catch (Exception e) {
+      if (AiReplyGuard.looksLikeStructuredJson(text)) {
+        return ChatModelResponse.invalid();
+      }
       return ChatModelResponse.finalAnswer(text);
     }
 
@@ -444,7 +483,10 @@ public class HermesAiService {
     String type = node.path("type").asString("").trim();
     if ("final".equalsIgnoreCase(type)) {
       String answer = firstText(node, "answer", "text", "message", "response");
-      return ChatModelResponse.finalAnswer(answer.isBlank() ? cleaned : answer);
+      if (answer.isBlank()) {
+        return ChatModelResponse.invalid();
+      }
+      return ChatModelResponse.finalAnswer(answer);
     }
     if ("tool".equalsIgnoreCase(type)) {
       JsonNode arguments = node.path("arguments");
@@ -454,7 +496,10 @@ public class HermesAiService {
       return ChatModelResponse.tool(firstText(node, "tool", "name"), arguments);
     }
     String answer = firstText(node, "answer", "text", "message", "response");
-    return answer.isBlank() ? ChatModelResponse.finalAnswer(cleaned) : ChatModelResponse.finalAnswer(answer);
+    if (!answer.isBlank()) {
+      return parseModelResponse(answer);
+    }
+    return ChatModelResponse.invalid();
   }
 
   private ChatModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {
@@ -471,23 +516,17 @@ public class HermesAiService {
     if (!toolValue.isBlank() && toolValue.trim().startsWith("{")) {
       return parseModelResponse(toolValue);
     }
+    for (String field : new String[]{"answer", "text", "message", "content", "response", "result", "final_response", "final_output"}) {
+      JsonNode wrappedNode = node.path(field);
+      if (wrappedNode.isObject()) {
+        return parseModelResponse(wrappedNode.toString());
+      }
+      String value = textValue(wrappedNode);
+      if (!value.isBlank() && AiReplyGuard.looksLikeStructuredJson(value)) {
+        return parseModelResponse(value);
+      }
+    }
     return null;
-  }
-
-  private String stripJsonFence(String text) {
-    if (text == null) {
-      return "";
-    }
-    String cleaned = text.trim();
-    if (cleaned.startsWith("```json")) {
-      cleaned = cleaned.substring("```json".length()).trim();
-    } else if (cleaned.startsWith("```")) {
-      cleaned = cleaned.substring("```".length()).trim();
-    }
-    if (cleaned.endsWith("```")) {
-      cleaned = cleaned.substring(0, cleaned.length() - 3).trim();
-    }
-    return cleaned;
   }
 
   String extractText(JsonNode node) {
@@ -740,13 +779,17 @@ public class HermesAiService {
     }
   }
 
-  private record ChatModelResponse(String finalAnswer, String toolName, JsonNode arguments) {
+  record ChatModelResponse(String finalAnswer, String toolName, JsonNode arguments, boolean invalidResponse) {
     static ChatModelResponse finalAnswer(String answer) {
-      return new ChatModelResponse(answer == null ? "" : answer, null, null);
+      return new ChatModelResponse(answer == null ? "" : answer, null, null, false);
     }
 
     static ChatModelResponse tool(String toolName, JsonNode arguments) {
-      return new ChatModelResponse(null, toolName, arguments);
+      return new ChatModelResponse(null, toolName, arguments, false);
+    }
+
+    static ChatModelResponse invalid() {
+      return new ChatModelResponse(null, null, null, true);
     }
   }
 }

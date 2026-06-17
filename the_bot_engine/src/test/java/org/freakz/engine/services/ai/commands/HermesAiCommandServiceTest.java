@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.commands;
 import org.freakz.engine.commands.BotEngine;
 import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
+import org.freakz.engine.services.notifications.AiStructuredResponseAlertService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -49,6 +50,77 @@ class HermesAiCommandServiceTest {
     assertThat(response.finalAnswer()).isNull();
     assertThat(response.toolName()).isEqualTo("weather.current");
     assertThat(response.arguments().path("locations")).hasSize(2);
+  }
+
+  @Test
+  void parsesToolResponseWrappedInAnswerField() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"answer":"{\\"type\\":\\"tool\\",\\"tool\\":\\"weather.current\\",\\"arguments\\":{\\"location\\":\\"Oulu\\"}}"}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.current");
+    assertThat(response.arguments().path("location").asString()).isEqualTo("Oulu");
+  }
+
+  @Test
+  void parsesToolResponseWrappedInContentObject() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"content":{"type":"tool","tool":"weather.current","arguments":{"location":"Jaipur"}}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.toolName()).isEqualTo("weather.current");
+    assertThat(response.arguments().path("location").asString()).isEqualTo("Jaipur");
+  }
+
+  @Test
+  void marksUnknownJsonObjectAsInvalid() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"unexpected":"raw"}
+        """);
+
+    assertThat(response.invalidResponse()).isTrue();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isNull();
+  }
+
+  @Test
+  void marksJsonArrayAsInvalid() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        [{"type":"tool","tool":"weather.current"}]
+        """);
+
+    assertThat(response.invalidResponse()).isTrue();
+  }
+
+  @Test
+  void marksMalformedJsonLookingTextAsInvalid() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response =
+        service.parseModelResponse("{\"type\":\"tool\",\"tool\":\"weather.current\"");
+
+    assertThat(response.invalidResponse()).isTrue();
+  }
+
+  @Test
+  void keepsPlainTextAsFinalAnswer() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("pong");
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isEqualTo("pong");
   }
 
 
@@ -105,6 +177,7 @@ class HermesAiCommandServiceTest {
         new JsonMapper(),
         mock(ObjectProvider.class),
         mock(HermesPromptContextService.class),
-        WebClient.builder());
+        WebClient.builder(),
+        mock(AiStructuredResponseAlertService.class));
   }
 }
