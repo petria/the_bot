@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.services.ai.hermes.HermesSettings;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,6 +21,7 @@ public class AiStructuredResponseAlertService {
   private final Clock clock;
   private final ConcurrentMap<String, Instant> lastSent = new ConcurrentHashMap<>();
 
+  @Autowired
   public AiStructuredResponseAlertService(PrivateChatAlertService alertService) {
     this(alertService, Clock.systemDefaultZone());
   }
