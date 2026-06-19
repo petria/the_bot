@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,12 +35,14 @@ import org.springframework.web.client.RestTemplate;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 
 @Service
 public class HermesFallbackService implements ApplicationRunner {
 
   private static final String SETTINGS_FILE = "the_bot_fallback.json";
   private static final String BACKEND_SETTINGS_FILE = "the_bot_hermes_backends.json";
+  private static final String RUNTIME_STATE_FILE = "the_bot_hermes_runtime.json";
   private static final String OPENAI_PROVIDER = "openai";
   private static final String OLLAMA_PROVIDER = "ollama";
   private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
@@ -48,20 +52,27 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
+  private final HermesGatewayService gatewayService;
   private final RestTemplate restTemplate;
   private final JsonMapper jsonMapper;
+  private final YAMLMapper yamlMapper;
 
-  public HermesFallbackService(HermesManagerProperties properties, RestTemplate restTemplate) {
+  public HermesFallbackService(
+      HermesManagerProperties properties,
+      HermesGatewayService gatewayService,
+      RestTemplate restTemplate) {
     this.properties = properties;
+    this.gatewayService = gatewayService;
     this.restTemplate = restTemplate;
     this.jsonMapper = JsonMapper.builder().build();
+    this.yamlMapper = YAMLMapper.builder().build();
   }
 
   @Override
   public void run(ApplicationArguments args) {
     if (!Files.exists(settingsPath())) {
       try {
-        writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(defaultFallbackSettings()));
+        writeFallbackConfig(defaultFallbackConfig());
       } catch (IOException e) {
         log.error("Could not initialize Hermes fallback settings: {}", e.getMessage());
       }
@@ -73,10 +84,17 @@ public class HermesFallbackService implements ApplicationRunner {
         log.error("Could not initialize Hermes backend configuration: {}", e.getMessage());
       }
     }
+    try {
+      applyHermesConfiguration(readBackendConfig(), readFallbackConfig());
+    } catch (Exception e) {
+      log.warn("Could not reconcile Hermes profile configuration during startup: {}", e.getMessage());
+    }
   }
 
   public HermesFallbackSettingsResponse getSettings() {
-    return fallbackResponse(readSettings());
+    StoredBackendConfig config = readBackendConfig();
+    StoredFallbackConfig fallback = readFallbackConfig();
+    return fallbackResponse(fallback, config, updateRuntimeState(config, fallback));
   }
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
@@ -85,15 +103,22 @@ public class HermesFallbackService implements ApplicationRunner {
     boolean enabled = request != null && Boolean.TRUE.equals(request.enabled());
     validateToolCall(baseUrl, model);
 
-    HermesFallbackUpdateRequest saved = new HermesFallbackUpdateRequest(
+    StoredFallbackConfig saved = new StoredFallbackConfig(
         trimTrailingSlash(baseUrl.toString()),
         model,
-        enabled);
+        enabled,
+        request == null ? null : request.contextWindow(),
+        Instant.now().toString(),
+        "VALID",
+        true,
+        "Ollama fallback validated successfully");
     updateLock.lock();
     try {
-      writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(saved));
-      return fallbackResponse(saved);
-    } catch (IOException e) {
+      StoredBackendConfig config = readBackendConfig();
+      applyHermesConfiguration(config, saved);
+      writeFallbackConfig(saved);
+      return fallbackResponse(saved, config, updateRuntimeState(config, saved));
+    } catch (Exception e) {
       throw new IllegalStateException("Could not apply Hermes fallback configuration: " + e.getMessage(), e);
     } finally {
       updateLock.unlock();
@@ -125,12 +150,15 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   public HermesBackendConfigResponse getBackendConfig() {
-    return backendResponse(readBackendConfig());
+    StoredBackendConfig config = readBackendConfig();
+    StoredFallbackConfig fallback = readFallbackConfig();
+    return backendResponse(config, fallback, updateRuntimeState(config, fallback));
   }
 
   public HermesBackendConfigResponse updateBackendConfig(HermesBackendConfigUpdateRequest request) {
     StoredBackendConfig config = sanitizeBackendConfig(request);
     validateProfiles(config);
+    StoredFallbackConfig fallback = sanitizeFallbackConfig(request == null ? null : request.fallback());
 
     updateLock.lock();
     try {
@@ -147,67 +175,90 @@ public class HermesFallbackService implements ApplicationRunner {
           }
         }
       }
+      if (fallback.enabled()) {
+        URI baseUrl = validatedBaseUrl(fallback.baseUrl());
+        getModels(baseUrl.toString());
+        validateToolCall(baseUrl, fallback.model());
+        fallback = fallback.validated(Instant.now(), true, "VALID", "Ollama fallback validated successfully");
+      }
+      applyHermesConfiguration(config, fallback);
       writeBackendConfig(config);
-      return backendResponse(config);
-    } catch (IOException e) {
+      writeFallbackConfig(fallback);
+      return backendResponse(config, fallback, updateRuntimeState(config, fallback));
+    } catch (Exception e) {
       throw new IllegalStateException("Could not apply Hermes backend configuration: " + e.getMessage(), e);
     } finally {
       updateLock.unlock();
     }
   }
 
-  private HermesFallbackSettingsResponse fallbackResponse(HermesFallbackUpdateRequest settings) {
+  private HermesFallbackSettingsResponse fallbackResponse(
+      StoredFallbackConfig settings,
+      StoredBackendConfig config,
+      StoredRuntimeState runtimeState) {
+    PassiveOllamaHealth fallbackHealth = passiveOllamaHealth(settings);
     List<HermesFallbackProfileStatus> statuses = properties.profiles().stream()
         .map(profileId -> {
           CredentialStatus credential = credentialStatus(profileId);
-          if (Boolean.TRUE.equals(settings.enabled())) {
-            try {
-              validateToolCall(validatedBaseUrl(settings.baseUrl()), settings.model());
-              return new HermesFallbackProfileStatus(
-                  profileId,
-                  "OLLAMA_FORCED",
-                  true,
-                  credential.openAiAvailable(),
-                  credential.cooldownUntil(),
-                  firstNonBlank(credential.detail(), "Shared Ollama override active"));
-            } catch (Exception e) {
-              return new HermesFallbackProfileStatus(
-                  profileId,
-                  "OLLAMA_FORCED",
-                  false,
-                  credential.openAiAvailable(),
-                  credential.cooldownUntil(),
-                  "Shared Ollama override failed health check");
-            }
-          }
-
+          StoredProfile profile = profileById(config, profileId);
           ProfileHealth health = openAiProfileHealth(profileId);
+          RuntimeProfileState runtime = runtimeState.profiles().get(profileId);
+          String activeProvider = runtime == null ? effectiveProvider(profile, settings, credential) : runtime.activeProvider();
+          boolean fallbackActive = OLLAMA_PROVIDER.equals(activeProvider) && profile != null
+              && OPENAI_PROVIDER.equals(profile.provider());
           return new HermesFallbackProfileStatus(
               profileId,
-              credential.openAiAvailable() ? "OPENAI_PRIMARY" : "OPENAI_PROFILE_UNAVAILABLE",
+              fallbackActive ? "OLLAMA_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
               Boolean.TRUE.equals(health.healthy()),
               credential.openAiAvailable(),
               credential.cooldownUntil(),
-              firstNonBlank(health.detail(), credential.detail()));
+              firstNonBlank(credential.detail(), health.detail()),
+              activeProvider,
+              fallbackActive ? credential.detail() : null,
+              runtime == null ? null : runtime.fallbackActivatedAt(),
+              runtime == null ? null : runtime.lastProviderError(),
+              runtime == null ? null : runtime.lastProviderErrorAt());
         })
         .toList();
     return new HermesFallbackSettingsResponse(
-        Boolean.TRUE.equals(settings.enabled()),
+        settings.enabled(),
         settings.baseUrl(),
         settings.model(),
-        statuses);
+        statuses,
+        settings.contextWindow(),
+        fallbackHealth.healthy(),
+        settings.toolCapable(),
+        firstNonBlank(fallbackHealth.detail(), settings.validationDetail()),
+        settings.lastValidatedAt(),
+        settings.validationStatus());
   }
 
-  private HermesBackendConfigResponse backendResponse(StoredBackendConfig config) {
-    return new HermesBackendConfigResponse(config.profiles().stream()
-        .map(this::profileResponse)
-        .toList());
+  private HermesBackendConfigResponse backendResponse(
+      StoredBackendConfig config,
+      StoredFallbackConfig fallback,
+      StoredRuntimeState runtimeState) {
+    HermesFallbackSettingsResponse fallbackResponse = fallbackResponse(fallback, config, runtimeState);
+    return new HermesBackendConfigResponse(
+        config.profiles().stream()
+            .map(profile -> profileResponse(profile, fallback, runtimeState))
+            .toList(),
+        fallbackResponse);
   }
 
-  private HermesProfile profileResponse(StoredProfile profile) {
+  private HermesProfile profileResponse(
+      StoredProfile profile,
+      StoredFallbackConfig fallback,
+      StoredRuntimeState runtimeState) {
     ProfileHealth health = OPENAI_PROVIDER.equals(profile.provider())
         ? openAiProfileHealth(profile.id())
         : ollamaProfileHealth(profile);
+    CredentialStatus credential = credentialStatus(profile.id());
+    PassiveOllamaHealth fallbackHealth = passiveOllamaHealth(fallback);
+    RuntimeProfileState runtime = runtimeState.profiles().get(profile.id());
+    String activeProvider = runtime == null ? effectiveProvider(profile, fallback, credential) : runtime.activeProvider();
+    boolean primaryHealthy = OPENAI_PROVIDER.equals(profile.provider())
+        ? credential.openAiAvailable()
+        : Boolean.TRUE.equals(health.healthy());
     return new HermesProfile(
         profile.id(),
         profile.label(),
@@ -219,7 +270,19 @@ public class HermesFallbackService implements ApplicationRunner {
         health.healthy(),
         health.toolCapable(),
         health.detail(),
-        profile.contextWindow());
+        profile.contextWindow(),
+        profile.fallbackAllowed(),
+        activeProvider,
+        health.healthy(),
+        primaryHealthy,
+        fallbackHealth.healthy(),
+        credential.cooldownUntil(),
+        runtime == null ? null : runtime.fallbackReason(),
+        runtime == null ? null : runtime.fallbackActivatedAt(),
+        runtime == null ? null : runtime.lastProviderError(),
+        runtime == null ? null : runtime.lastProviderErrorAt(),
+        profile.lastValidatedAt(),
+        profile.validationStatus());
   }
 
   private ProfileHealth openAiProfileHealth(String profileId) {
@@ -238,18 +301,28 @@ public class HermesFallbackService implements ApplicationRunner {
   private ProfileHealth ollamaProfileHealth(StoredProfile profile) {
     try {
       URI baseUrl = validatedBaseUrl(profile.baseUrl());
-      getModels(baseUrl.toString());
-      if (requiresTools(profile.id())) {
-        try {
-          validateToolCall(baseUrl, profile.model());
-          return new ProfileHealth(true, true, "Ollama backend reachable and tool-capable");
-        } catch (Exception e) {
-          return new ProfileHealth(true, false, "Ollama backend reachable, tool-call validation failed");
-        }
-      }
-      return new ProfileHealth(true, null, "Ollama backend reachable");
+      Map<String, HermesFallbackModel> models = ollamaModelMetadata(baseUrl);
+      HermesFallbackModel model = models.get(profile.model());
+      Boolean toolCapable = model == null ? profile.toolCapable() : model.toolCapable();
+      return new ProfileHealth(true, toolCapable, "Ollama backend reachable");
     } catch (Exception e) {
       return new ProfileHealth(false, null, "Ollama backend check failed");
+    }
+  }
+
+  private PassiveOllamaHealth passiveOllamaHealth(StoredFallbackConfig fallback) {
+    if (fallback == null || !fallback.enabled()) {
+      return new PassiveOllamaHealth(null, "Ollama fallback disabled");
+    }
+    try {
+      URI baseUrl = validatedBaseUrl(fallback.baseUrl());
+      Map<String, HermesFallbackModel> models = ollamaModelMetadata(baseUrl);
+      if (!models.containsKey(fallback.model())) {
+        return new PassiveOllamaHealth(false, "Configured fallback model is not available");
+      }
+      return new PassiveOllamaHealth(true, "Ollama fallback reachable");
+    } catch (Exception e) {
+      return new PassiveOllamaHealth(false, "Ollama fallback is not reachable");
     }
   }
 
@@ -268,12 +341,31 @@ public class HermesFallbackService implements ApplicationRunner {
       }
       Instant now = Instant.now();
       Instant latestCooldown = null;
+      String latestError = null;
       for (Object value : credentials) {
         if (!(value instanceof Map<?, ?> credential)) {
           continue;
         }
+        Object accessToken = credential.get("access_token");
+        Object refreshToken = credential.get("refresh_token");
+        if ((accessToken == null || accessToken.toString().isBlank())
+            && (refreshToken == null || refreshToken.toString().isBlank())) {
+          latestError = firstNonBlank(
+              stringValue(credential.get("last_error_message")),
+              stringValue(credential.get("last_error_reason")),
+              "OpenAI access token is missing");
+          continue;
+        }
         Object resetValue = credential.get("last_error_reset_at");
         if (resetValue == null || resetValue.toString().isBlank()) {
+          String lastStatus = stringValue(credential.get("last_status"));
+          if ("error".equalsIgnoreCase(lastStatus) || "failed".equalsIgnoreCase(lastStatus)) {
+            latestError = firstNonBlank(
+                stringValue(credential.get("last_error_message")),
+                stringValue(credential.get("last_error_reason")),
+                "OpenAI credential is in an error state");
+            continue;
+          }
           return new CredentialStatus(true, null, "OpenAI credential available");
         }
         try {
@@ -291,7 +383,7 @@ public class HermesFallbackService implements ApplicationRunner {
       return new CredentialStatus(
           false,
           latestCooldown == null ? null : latestCooldown.toString(),
-          "OpenAI quota cooldown active");
+          firstNonBlank(latestError, latestCooldown == null ? null : "OpenAI quota cooldown active", "OpenAI credential unavailable"));
     } catch (Exception e) {
       return new CredentialStatus(false, null, "Could not inspect OpenAI credential state");
     }
@@ -314,13 +406,14 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private HermesFallbackUpdateRequest readSettings() {
+  private StoredFallbackConfig readFallbackConfig() {
     Path path = settingsPath();
     if (!Files.exists(path)) {
-      return defaultFallbackSettings();
+      return defaultFallbackConfig();
     }
     try {
-      return jsonMapper.readValue(Files.readAllBytes(path), HermesFallbackUpdateRequest.class);
+      StoredFallbackConfig config = jsonMapper.readValue(Files.readAllBytes(path), StoredFallbackConfig.class);
+      return config == null ? defaultFallbackConfig() : config.withDefaults(defaultFallbackConfig());
     } catch (IOException e) {
       throw new IllegalStateException("Could not read " + path, e);
     }
@@ -339,15 +432,67 @@ public class HermesFallbackService implements ApplicationRunner {
             requireValue(profile.model(), "profile model"),
             firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
             profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            profile.contextWindow()))
+            profile.contextWindow(),
+            Boolean.TRUE.equals(profile.fallbackAllowed()),
+            profile.toolCapable(),
+            profile.lastValidatedAt(),
+            profile.validationStatus()))
         .toList()));
+  }
+
+  private StoredFallbackConfig sanitizeFallbackConfig(HermesFallbackUpdateRequest request) {
+    StoredFallbackConfig current = readFallbackConfig();
+    if (request == null) {
+      return current;
+    }
+    boolean enabled = Boolean.TRUE.equals(request.enabled());
+    String baseUrl = trimTrailingSlash(firstNonBlank(request.baseUrl(), current.baseUrl()));
+    String model = firstNonBlank(request.model(), current.model());
+    Integer contextWindow = request.contextWindow() == null ? current.contextWindow() : request.contextWindow();
+    if (enabled) {
+      validatedBaseUrl(baseUrl);
+      requireValue(model, "fallback model");
+      if (contextWindow != null && contextWindow <= 0) {
+        throw new IllegalArgumentException("fallback contextWindow must be positive");
+      }
+    }
+    return new StoredFallbackConfig(
+        baseUrl,
+        model,
+        enabled,
+        contextWindow,
+        current.lastValidatedAt(),
+        current.validationStatus(),
+        current.toolCapable(),
+        current.validationDetail());
   }
 
   private StoredBackendConfig normalizeBackendConfig(StoredBackendConfig config) {
     Map<String, StoredProfile> merged = new LinkedHashMap<>();
     defaultBackendConfig().profiles().forEach(profile -> merged.put(profile.id(), profile));
     if (config != null && config.profiles() != null) {
-      config.profiles().forEach(profile -> merged.put(profile.id(), profile));
+      config.profiles().forEach(profile -> {
+        StoredProfile defaults = merged.get(profile.id());
+        String model = OPENAI_PROVIDER.equals(profile.provider()) && profile.model() != null
+            && profile.model().startsWith("hermes-")
+                ? upstreamModel(profile.id(), defaults == null ? "gpt-5.5" : defaults.model())
+                : profile.model();
+        merged.put(profile.id(), new StoredProfile(
+            profile.id(),
+            firstNonBlank(profile.label(), defaults == null ? profile.id() : defaults.label()),
+            firstNonBlank(profile.provider(), defaults == null ? OPENAI_PROVIDER : defaults.provider()),
+            profile.baseUrl(),
+            firstNonBlank(model, defaults == null ? "gpt-5.5" : defaults.model()),
+            firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
+            profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
+            profile.contextWindow(),
+            profile.fallbackAllowed() == null
+                ? defaults != null && Boolean.TRUE.equals(defaults.fallbackAllowed())
+                : profile.fallbackAllowed(),
+            profile.toolCapable(),
+            profile.lastValidatedAt(),
+            profile.validationStatus()));
+      });
     }
     return new StoredBackendConfig(List.copyOf(merged.values()));
   }
@@ -393,6 +538,10 @@ public class HermesFallbackService implements ApplicationRunner {
             firstNonBlank(text(targetNode, "model"), properties.defaultModel()),
             firstNonBlank(text(targetNode, "apiMode"), CHAT_COMPLETIONS_API_MODE),
             intValue(targetNode, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
+            null,
+            false,
+            null,
+            null,
             null));
       } else {
         profiles.add(new StoredProfile(
@@ -403,6 +552,10 @@ public class HermesFallbackService implements ApplicationRunner {
             firstNonBlank(text(targetNode, "model"), defaults.model()),
             firstNonBlank(text(targetNode, "apiMode"), defaults.apiMode()),
             intValue(targetNode, "timeoutSeconds", defaults.timeoutSeconds()),
+            null,
+            true,
+            null,
+            null,
             null));
       }
     }
@@ -522,17 +675,242 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private StoredBackendConfig defaultBackendConfig() {
     return new StoredBackendConfig(List.of(
-        new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, "hermes-chat", RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null),
-        new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, "hermes-coder", RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null),
-        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, "hermes-ai-command", RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null)));
+        new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, upstreamModel("chat", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null),
+        new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, upstreamModel("coder", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null),
+        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null)));
   }
 
-  private HermesFallbackUpdateRequest defaultFallbackSettings() {
-    return new HermesFallbackUpdateRequest(properties.defaultBaseUrl(), properties.defaultModel(), false);
+  private StoredFallbackConfig defaultFallbackConfig() {
+    return new StoredFallbackConfig(
+        properties.defaultBaseUrl(),
+        properties.defaultModel(),
+        false,
+        32768,
+        null,
+        "NOT_VALIDATED",
+        null,
+        "Fallback has not been validated");
   }
 
   private void writeBackendConfig(StoredBackendConfig config) throws IOException {
     writeAtomically(backendSettingsPath(), jsonMapper.writeValueAsBytes(normalizeBackendConfig(config)));
+  }
+
+  private void writeFallbackConfig(StoredFallbackConfig config) throws IOException {
+    writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(config));
+  }
+
+  private void applyHermesConfiguration(StoredBackendConfig config, StoredFallbackConfig fallback) throws IOException {
+    Map<Path, byte[]> backups = new LinkedHashMap<>();
+    List<String> changedProfiles = new ArrayList<>();
+    try {
+      for (StoredProfile profile : config.profiles()) {
+        Path path = findProfileConfig(profile.id());
+        backups.put(path, Files.readAllBytes(path));
+        byte[] updated = updatedProfileYaml(path, profile, fallback);
+        if (!java.util.Arrays.equals(backups.get(path), updated)) {
+          writeAtomically(path, updated);
+          changedProfiles.add(profile.id());
+        }
+      }
+      for (String profile : changedProfiles) {
+        gatewayService.restart(profile);
+        waitForProfileHealth(profile);
+      }
+    } catch (Exception e) {
+      rollbackProfiles(backups);
+      throw e;
+    }
+  }
+
+  private byte[] updatedProfileYaml(
+      Path path,
+      StoredProfile profile,
+      StoredFallbackConfig fallback) throws IOException {
+    Map<String, Object> yaml = yamlMapper.readValue(Files.readAllBytes(path), new TypeReference<>() {});
+    if (yaml == null) {
+      yaml = new LinkedHashMap<>();
+    }
+    Map<String, Object> model = mutableMap(yaml.get("model"));
+    if (OLLAMA_PROVIDER.equals(profile.provider())) {
+      model.put("default", profile.model());
+      model.put("provider", "custom");
+      model.put("base_url", trimTrailingSlash(profile.baseUrl()));
+      if (profile.contextWindow() != null) {
+        model.put("context_length", profile.contextWindow());
+      }
+      yaml.put("fallback_providers", List.of());
+    } else {
+      model.put("default", profile.model());
+      model.put("provider", "openai-codex");
+      model.put("base_url", "https://chatgpt.com/backend-api/codex");
+      if (fallback.enabled() && profile.fallbackAllowed()) {
+        Map<String, Object> fallbackProvider = new LinkedHashMap<>();
+        fallbackProvider.put("provider", "custom");
+        fallbackProvider.put("model", fallback.model());
+        fallbackProvider.put("base_url", trimTrailingSlash(fallback.baseUrl()));
+        if (fallback.contextWindow() != null) {
+          fallbackProvider.put("context_length", fallback.contextWindow());
+        }
+        yaml.put("fallback_providers", List.of(fallbackProvider));
+      } else {
+        yaml.put("fallback_providers", List.of());
+      }
+    }
+    yaml.put("model", model);
+    return yamlMapper.writeValueAsBytes(yaml);
+  }
+
+  private Map<String, Object> mutableMap(Object value) {
+    Map<String, Object> map = new LinkedHashMap<>();
+    if (value instanceof Map<?, ?> values) {
+      values.forEach((key, item) -> map.put(String.valueOf(key), item));
+    }
+    return map;
+  }
+
+  private Path findProfileConfig(String profile) throws IOException {
+    try (var paths = Files.walk(properties.dataDir())) {
+      return paths.filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().matches("config\\.ya?ml"))
+          .filter(path -> path.toString().contains("/" + profile + "/"))
+          .min(Comparator.comparingInt(Path::getNameCount))
+          .orElseThrow(() -> new IllegalStateException("Could not find config YAML for Hermes profile " + profile));
+    }
+  }
+
+  private String upstreamModel(String profile, String defaultModel) {
+    try {
+      Path config = findProfileConfig(profile);
+      Map<String, Object> yaml = yamlMapper.readValue(Files.readAllBytes(config), new TypeReference<>() {});
+      if (yaml != null && yaml.get("model") instanceof Map<?, ?> model) {
+        Object value = model.get("default");
+        if (value != null && !value.toString().isBlank()) {
+          return value.toString();
+        }
+      }
+    } catch (Exception ignored) {
+    }
+    return defaultModel;
+  }
+
+  private void waitForProfileHealth(String profile) {
+    Integer port = properties.ports().get(profile);
+    if (port == null) {
+      throw new IllegalStateException("Hermes profile port is not configured: " + profile);
+    }
+    for (int attempt = 0; attempt < 30; attempt++) {
+      try {
+        restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
+        return;
+      } catch (Exception e) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException interrupted) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException("Interrupted while waiting for Hermes profile " + profile, interrupted);
+        }
+      }
+    }
+    throw new IllegalStateException("Hermes profile " + profile + " did not become healthy");
+  }
+
+  private void rollbackProfiles(Map<Path, byte[]> backups) {
+    backups.forEach((path, bytes) -> {
+      try {
+        writeAtomically(path, bytes);
+      } catch (IOException ignored) {
+      }
+    });
+    for (Path path : backups.keySet()) {
+      String profile = profileName(path);
+      if (profile != null) {
+        try {
+          gatewayService.restart(profile);
+        } catch (Exception ignored) {
+        }
+      }
+    }
+  }
+
+  private String profileName(Path path) {
+    for (String profile : properties.profiles()) {
+      if (path.toString().contains("/" + profile + "/")) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
+  private String effectiveProvider(
+      StoredProfile profile,
+      StoredFallbackConfig fallback,
+      CredentialStatus credential) {
+    if (profile == null || OLLAMA_PROVIDER.equals(profile.provider())) {
+      return OLLAMA_PROVIDER;
+    }
+    if (!credential.openAiAvailable() && fallback.enabled() && profile.fallbackAllowed()) {
+      return OLLAMA_PROVIDER;
+    }
+    return OPENAI_PROVIDER;
+  }
+
+  private StoredRuntimeState updateRuntimeState(
+      StoredBackendConfig config,
+      StoredFallbackConfig fallback) {
+    StoredRuntimeState previous = readRuntimeState();
+    Map<String, RuntimeProfileState> profiles = new LinkedHashMap<>();
+    Instant now = Instant.now();
+    for (StoredProfile profile : config.profiles()) {
+      CredentialStatus credential = credentialStatus(profile.id());
+      String activeProvider = effectiveProvider(profile, fallback, credential);
+      RuntimeProfileState old = previous.profiles().get(profile.id());
+      boolean enteredFallback = OLLAMA_PROVIDER.equals(activeProvider)
+          && OPENAI_PROVIDER.equals(profile.provider())
+          && (old == null || !OLLAMA_PROVIDER.equals(old.activeProvider()));
+      String activatedAt = enteredFallback
+          ? now.toString()
+          : old == null ? null : old.fallbackActivatedAt();
+      String reason = OLLAMA_PROVIDER.equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
+          ? credential.detail()
+          : null;
+      String lastError = credential.openAiAvailable()
+          ? old == null ? null : old.lastProviderError()
+          : credential.detail();
+      String lastErrorAt = !credential.openAiAvailable()
+          ? enteredFallback || old == null || old.lastProviderErrorAt() == null
+              ? now.toString()
+              : old.lastProviderErrorAt()
+          : old == null ? null : old.lastProviderErrorAt();
+      profiles.put(profile.id(), new RuntimeProfileState(
+          activeProvider,
+          reason,
+          activatedAt,
+          lastError,
+          lastErrorAt));
+    }
+    StoredRuntimeState updated = new StoredRuntimeState(profiles);
+    if (!updated.equals(previous)) {
+      try {
+        writeAtomically(runtimeStatePath(), jsonMapper.writeValueAsBytes(updated));
+      } catch (IOException e) {
+        log.warn("Could not persist Hermes runtime state: {}", e.getMessage());
+      }
+    }
+    return updated;
+  }
+
+  private StoredRuntimeState readRuntimeState() {
+    Path path = runtimeStatePath();
+    if (!Files.exists(path)) {
+      return new StoredRuntimeState(Map.of());
+    }
+    try {
+      StoredRuntimeState state = jsonMapper.readValue(Files.readAllBytes(path), StoredRuntimeState.class);
+      return state == null || state.profiles() == null ? new StoredRuntimeState(Map.of()) : state;
+    } catch (Exception e) {
+      return new StoredRuntimeState(Map.of());
+    }
   }
 
   private void validateToolCall(URI baseUrl, String model) {
@@ -584,6 +962,10 @@ public class HermesFallbackService implements ApplicationRunner {
     return value == null || value.isBlank() ? null : value.trim();
   }
 
+  private String stringValue(Object value) {
+    return value == null || value.toString().isBlank() ? null : value.toString().trim();
+  }
+
   private String trimTrailingSlash(String value) {
     return value == null ? null : value.replaceFirst("/+$", "");
   }
@@ -628,14 +1010,18 @@ public class HermesFallbackService implements ApplicationRunner {
     return properties.dataDir().resolve(BACKEND_SETTINGS_FILE);
   }
 
+  private Path runtimeStatePath() {
+    return properties.dataDir().resolve(RUNTIME_STATE_FILE);
+  }
+
   private void writeAtomically(Path path, byte[] bytes) throws IOException {
     Files.createDirectories(path.getParent());
     Path temporary = Files.createTempFile(path.getParent(), path.getFileName().toString(), ".tmp");
     Files.write(temporary, bytes);
     try {
-      Files.move(temporary, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
     } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-      Files.move(temporary, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
     }
   }
 
@@ -643,6 +1029,9 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private record ProfileHealth(Boolean healthy, Boolean toolCapable, String detail) {
+  }
+
+  private record PassiveOllamaHealth(Boolean healthy, String detail) {
   }
 
   private record StoredBackendConfig(List<StoredProfile> profiles) {
@@ -656,6 +1045,60 @@ public class HermesFallbackService implements ApplicationRunner {
       String model,
       String apiMode,
       Integer timeoutSeconds,
-      Integer contextWindow) {
+      Integer contextWindow,
+      Boolean fallbackAllowed,
+      Boolean toolCapable,
+      String lastValidatedAt,
+      String validationStatus) {
+  }
+
+  private record StoredFallbackConfig(
+      String baseUrl,
+      String model,
+      boolean enabled,
+      Integer contextWindow,
+      String lastValidatedAt,
+      String validationStatus,
+      Boolean toolCapable,
+      String validationDetail) {
+
+    StoredFallbackConfig withDefaults(StoredFallbackConfig defaults) {
+      return new StoredFallbackConfig(
+          baseUrl == null ? defaults.baseUrl : baseUrl,
+          model == null ? defaults.model : model,
+          enabled,
+          contextWindow == null ? defaults.contextWindow : contextWindow,
+          lastValidatedAt,
+          validationStatus == null ? defaults.validationStatus : validationStatus,
+          toolCapable,
+          validationDetail == null ? defaults.validationDetail : validationDetail);
+    }
+
+    StoredFallbackConfig validated(
+        Instant at,
+        Boolean validatedToolCapable,
+        String status,
+        String detail) {
+      return new StoredFallbackConfig(
+          baseUrl,
+          model,
+          enabled,
+          contextWindow,
+          at.toString(),
+          status,
+          validatedToolCapable,
+          detail);
+    }
+  }
+
+  private record StoredRuntimeState(Map<String, RuntimeProfileState> profiles) {
+  }
+
+  private record RuntimeProfileState(
+      String activeProvider,
+      String fallbackReason,
+      String fallbackActivatedAt,
+      String lastProviderError,
+      String lastProviderErrorAt) {
   }
 }

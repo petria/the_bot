@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +25,7 @@ export function AdminSystemPage() {
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
   const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
   const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
+  const fallback = backendConfig?.fallback || null;
 
   useEffect(() => {
     if (!hermesBackendQuery.data) {
@@ -90,7 +91,90 @@ export function AdminSystemPage() {
       {fallbackModelsMutation.isError ? <SettingsError error={fallbackModelsMutation.error} /> : null}
 
       {backendConfig ? (
-        <Card withBorder radius="sm">
+        <Stack gap="md">
+          <Card withBorder radius="sm">
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start" gap="sm">
+                <div>
+                  <Text fw={700}>Environment Ollama fallback</Text>
+                  <Text size="sm" c="dimmed">Used only when an OpenAI profile is unavailable and that profile permits fallback.</Text>
+                </div>
+                <Badge color={fallback?.enabled ? (fallback.healthy === false ? 'red' : 'green') : 'gray'}>
+                  {fallback?.enabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+              </Group>
+
+              <Switch
+                label="Enable Ollama fallback"
+                checked={Boolean(fallback?.enabled)}
+                onChange={(event) => updateFallback({ enabled: event.currentTarget.checked })}
+              />
+
+              <Group grow align="flex-start">
+                <TextInput
+                  label="Ollama base URL"
+                  value={fallback?.baseUrl || ''}
+                  onChange={(event) => updateFallback({ baseUrl: event.currentTarget.value })}
+                />
+                <Autocomplete
+                  label="Fallback model"
+                  data={loadedModelProfileId === '__fallback__' ? fallbackModels : []}
+                  value={fallback?.model || ''}
+                  onChange={(value) => updateFallback({ model: value })}
+                />
+                <NumberInput
+                  label="Context window"
+                  min={1024}
+                  step={1024}
+                  value={fallback?.contextWindow || 32768}
+                  onChange={(value) => updateFallback({ contextWindow: typeof value === 'number' ? value : 32768 })}
+                />
+              </Group>
+
+              <Group justify="space-between" align="flex-end">
+                <Stack gap={2}>
+                  <InfoLine label="Reachability" value={fallback?.detail || 'Not checked'} />
+                  <InfoLine label="Validation" value={fallback?.validationStatus || 'NOT_VALIDATED'} />
+                  <InfoLine label="Last validated" value={formatDate(fallback?.lastValidatedAt)} />
+                </Stack>
+                <Button
+                  variant="light"
+                  leftSection={<RefreshCw size={18} />}
+                  loading={fallbackModelsMutation.isPending && loadedModelProfileId === '__fallback__'}
+                  disabled={!fallback?.baseUrl}
+                  onClick={() => fallback && fallbackModelsMutation.mutate({
+                    id: '__fallback__',
+                    label: 'Environment fallback',
+                    provider: 'ollama',
+                    baseUrl: fallback.baseUrl,
+                    model: fallback.model,
+                    apiMode: 'chat-completions',
+                    timeoutSeconds: 120,
+                    healthy: fallback.healthy,
+                    toolCapable: fallback.toolCapable,
+                    detail: fallback.detail,
+                    contextWindow: fallback.contextWindow,
+                    fallbackAllowed: false,
+                    activeProvider: 'ollama',
+                    gatewayHealthy: null,
+                    primaryProviderHealthy: fallback.healthy,
+                    fallbackHealthy: fallback.healthy,
+                    cooldownUntil: null,
+                    fallbackReason: null,
+                    fallbackActivatedAt: null,
+                    lastProviderError: null,
+                    lastProviderErrorAt: null,
+                    lastValidatedAt: fallback.lastValidatedAt,
+                    validationStatus: fallback.validationStatus,
+                  })}
+                >
+                  Load fallback models
+                </Button>
+              </Group>
+            </Stack>
+          </Card>
+
+          <Card withBorder radius="sm">
           <Stack gap="md">
             <Group justify="space-between" align="flex-start" gap="sm">
               <div>
@@ -112,10 +196,10 @@ export function AdminSystemPage() {
                         <Text size="xs" c="dimmed">{profile.id}</Text>
                       </div>
                       <Badge
-                        color={profile.healthy === false ? 'red' : 'green'}
+                        color={profile.gatewayHealthy === false || profile.primaryProviderHealthy === false ? 'red' : 'green'}
                         leftSection={profile.healthy === false ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
                       >
-                        {profile.provider}
+                        {profile.activeProvider || profile.provider}
                       </Badge>
                     </Group>
 
@@ -172,13 +256,26 @@ export function AdminSystemPage() {
                         />
                       </Group>
                     ) : (
-                      <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
-                        <Text size="sm">OpenAI credentials stay in the runtime environment. This UI edits provider selection and model only.</Text>
-                      </Alert>
+                      <Stack gap="xs">
+                        <Switch
+                          label="Allow Ollama fallback"
+                          checked={Boolean(profile.fallbackAllowed)}
+                          disabled={!fallback?.enabled}
+                          onChange={(event) => updateProfile(profile.id, { fallbackAllowed: event.currentTarget.checked })}
+                        />
+                        <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
+                          <Text size="sm">OpenAI credentials stay in the Hermes profile. The model field is the upstream OpenAI model.</Text>
+                        </Alert>
+                      </Stack>
                     )}
 
                     <Stack gap={4}>
-                      <InfoLine label="Provider status" value={profile.detail || '-'} />
+                      <InfoLine label="Configured provider" value={profile.provider} />
+                      <InfoLine label="Active provider" value={profile.activeProvider || profile.provider} />
+                      <InfoLine label="Gateway" value={statusText(profile.gatewayHealthy)} />
+                      <InfoLine label="Primary provider" value={statusText(profile.primaryProviderHealthy)} />
+                      <InfoLine label="Provider status" value={profile.fallbackReason || profile.lastProviderError || profile.detail || '-'} />
+                      <InfoLine label="Fallback active since" value={formatDate(profile.fallbackActivatedAt)} />
                       {profile.provider === 'ollama' ? (
                         <InfoLine label="Tool support" value={profile.toolCapable === false ? 'Not verified' : 'Available'} />
                       ) : (
@@ -251,7 +348,8 @@ export function AdminSystemPage() {
               </Stack>
             ) : null}
           </Stack>
-        </Card>
+          </Card>
+        </Stack>
       ) : null}
     </Stack>
   );
@@ -260,6 +358,26 @@ export function AdminSystemPage() {
     setBackendConfig((current) => current == null ? current : {
       ...current,
       profiles: current.profiles.map((profile) => profile.id === profileId ? { ...profile, ...patch } : profile),
+    });
+  }
+
+  function updateFallback(patch: Partial<NonNullable<HermesBackendConfigResponse['fallback']>>) {
+    setBackendConfig((current) => current == null ? current : {
+      ...current,
+      fallback: {
+        enabled: false,
+        baseUrl: '',
+        model: '',
+        profiles: [],
+        contextWindow: 32768,
+        healthy: null,
+        toolCapable: null,
+        detail: null,
+        lastValidatedAt: null,
+        validationStatus: 'NOT_VALIDATED',
+        ...current.fallback,
+        ...patch,
+      },
     });
   }
 }
@@ -278,6 +396,21 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <Text size="sm" ta="right" className="system-info-value">{value}</Text>
     </Group>
   );
+}
+
+function statusText(value: boolean | null | undefined) {
+  if (value == null) {
+    return 'Unknown';
+  }
+  return value ? 'Available' : 'Unavailable';
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return '-';
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function SettingsError({ error }: { error: Error }) {

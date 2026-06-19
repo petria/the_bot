@@ -36,6 +36,12 @@ export type HermesFallbackSettingsResponse = {
   baseUrl: string;
   model: string;
   profiles: HermesFallbackProfileStatus[];
+  contextWindow: number | null;
+  healthy: boolean | null;
+  toolCapable: boolean | null;
+  detail: string | null;
+  lastValidatedAt: string | null;
+  validationStatus: string | null;
 };
 
 export type HermesProfile = {
@@ -50,10 +56,23 @@ export type HermesProfile = {
   toolCapable: boolean | null;
   detail: string | null;
   contextWindow: number | null;
+  fallbackAllowed: boolean | null;
+  activeProvider: string | null;
+  gatewayHealthy: boolean | null;
+  primaryProviderHealthy: boolean | null;
+  fallbackHealthy: boolean | null;
+  cooldownUntil: string | null;
+  fallbackReason: string | null;
+  fallbackActivatedAt: string | null;
+  lastProviderError: string | null;
+  lastProviderErrorAt: string | null;
+  lastValidatedAt: string | null;
+  validationStatus: string | null;
 };
 
 export type HermesBackendConfigResponse = {
   profiles: HermesProfile[];
+  fallback: HermesFallbackSettingsResponse | null;
 };
 
 export type HermesFallbackModel = {

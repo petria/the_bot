@@ -40,7 +40,7 @@ class AiRoutesStatusServiceTest {
   }
 
   @Test
-  void formatsForcedFallbackStatus() {
+  void legacyFallbackDoesNotReplaceGatewayRoutes() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
     when(managerClient.getBackendConfig()).thenThrow(new IllegalStateException("manager unavailable"));
     when(managerClient.getFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(
@@ -54,8 +54,8 @@ class AiRoutesStatusServiceTest {
 
     List<String> lines = service.formatRoutes();
 
-    assertThat(lines.get(0)).contains("chat: UNKNOWN", "source=fallback", "provider=ollama", "model=qwen3.6:35b-a3b");
-    assertThat(lines.get(1)).contains("ai-command: UNKNOWN", "source=fallback", "provider=ollama", "model=qwen3.6:35b-a3b");
+    assertThat(lines.get(0)).contains("chat: UNKNOWN", "source=local", "model=hermes-chat");
+    assertThat(lines.get(1)).contains("ai-command: UNKNOWN", "source=local", "model=hermes-ai-command");
     assertThat(lines.get(2)).contains("fallback: on", "profiles=chat:UP");
   }
 

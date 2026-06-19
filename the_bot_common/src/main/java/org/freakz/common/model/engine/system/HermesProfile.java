@@ -25,7 +25,57 @@ public record HermesProfile(
         Boolean toolCapable,
         String detail,
         /** Context window size (tokens). Meaningful for ollama; nullable for openai. Persisted but not yet passed at runtime. */
-        Integer contextWindow) {
+        Integer contextWindow,
+        Boolean fallbackAllowed,
+        String activeProvider,
+        Boolean gatewayHealthy,
+        Boolean primaryProviderHealthy,
+        Boolean fallbackHealthy,
+        String cooldownUntil,
+        String fallbackReason,
+        String fallbackActivatedAt,
+        String lastProviderError,
+        String lastProviderErrorAt,
+        String lastValidatedAt,
+        String validationStatus) {
+
+  public HermesProfile(
+      String id,
+      String label,
+      String provider,
+      String baseUrl,
+      String model,
+      String apiMode,
+      Integer timeoutSeconds,
+      Boolean healthy,
+      Boolean toolCapable,
+      String detail,
+      Integer contextWindow) {
+    this(
+        id,
+        label,
+        provider,
+        baseUrl,
+        model,
+        apiMode,
+        timeoutSeconds,
+        healthy,
+        toolCapable,
+        detail,
+        contextWindow,
+        false,
+        provider,
+        healthy,
+        healthy,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
 
   public HermesProfile {
     if (provider == null || provider.isBlank()) {

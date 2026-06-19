@@ -139,12 +139,14 @@ services:
       - "${DOCKER_GID:-989}"
     network_mode: host
     volumes:
-      - ${HERMES_DATA_DIR:-/home/hokan/bot-hermes/data}:/hermes-data
+      - ${HERMES_MANAGER_MAIN_STATE_DIR:-/home/hokan/bot-hermes/data-main}:/hermes-data
+      - ${HERMES_MAIN_PROFILES_DIR:-/home/hokan/bot-hermes/main/data/profiles}:/hermes-data/profiles
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
       - HERMES_MANAGER_DATA_DIR=/hermes-data
-      - HERMES_CONTAINER_NAME=${HERMES_CONTAINER_NAME:-bot-hermes}
+      - HERMES_CONTAINER_NAME=${HERMES_MAIN_CONTAINER_NAME:-bot-hermes-main}
+      - HERMES_MANAGER_PROFILE_PORTS=chat:8643,coder:8644,ai-command:8645
       - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_MAIN_TOKEN:-${HERMES_MANAGER_TOKEN}}
       - HERMES_FALLBACK_BASE_URL=${HERMES_FALLBACK_BASE_URL:-http://192.168.0.55:11434/v1}
       - HERMES_FALLBACK_MODEL=${HERMES_FALLBACK_MODEL:-qwen3.6:35b-a3b}
@@ -159,12 +161,14 @@ services:
       - "${DOCKER_GID:-989}"
     network_mode: host
     volumes:
-      - ${HERMES_DATA_DIR:-/home/hokan/bot-hermes/data}:/hermes-data-dev
+      - ${HERMES_MANAGER_DEVELOP_STATE_DIR:-/home/hokan/bot-hermes/data-develop}:/hermes-data-dev
+      - ${HERMES_DEVELOP_PROFILES_DIR:-/home/hokan/bot-hermes/develop/data/profiles}:/hermes-data-dev/profiles
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
       - HERMES_MANAGER_DATA_DIR=/hermes-data-dev
-      - HERMES_CONTAINER_NAME=${HERMES_CONTAINER_NAME:-bot-hermes}
+      - HERMES_CONTAINER_NAME=${HERMES_DEVELOP_CONTAINER_NAME:-bot-hermes-develop}
+      - HERMES_MANAGER_PROFILE_PORTS=chat:8663,coder:8664,ai-command:8665
       - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_DEVELOP_TOKEN:-${HERMES_MANAGER_TOKEN}}
       - HERMES_FALLBACK_BASE_URL=${HERMES_FALLBACK_BASE_URL:-http://192.168.0.55:11434/v1}
       - HERMES_FALLBACK_MODEL=${HERMES_FALLBACK_MODEL:-qwen3.6:35b-a3b}
