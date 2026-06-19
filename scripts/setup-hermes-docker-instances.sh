@@ -168,6 +168,17 @@ compose() {
   docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
 }
 
+prune_docker_if_disk_is_low() {
+  local docker_root usage
+  docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || printf '/var/lib/docker')"
+  usage="$(df -P "$docker_root" | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }')"
+  if [[ "$usage" =~ ^[0-9]+$ ]] && (( usage >= 85 )); then
+    echo "Docker filesystem is ${usage}% full; pruning unused data older than 24 hours"
+    docker image prune -af --filter until=24h
+    docker builder prune -af --filter until=24h
+  fi
+}
+
 container_exec() {
   compose exec -T "$SERVICE_NAME" "$@"
 }
@@ -373,6 +384,7 @@ EOF
 echo "Wrote $DEPLOY_DIR/docker-compose.yml"
 
 if [[ "$BUILD" == 1 ]]; then
+  prune_docker_if_disk_is_low
   echo "Building Hermes Docker image"
   compose build "$SERVICE_NAME"
 fi
@@ -429,8 +441,8 @@ for spec in "${SPECS[@]}"; do
 
   patch_profile_config "$profile" "$mode"
 
-  echo "Starting profile gateway $profile"
-  container_exec hermes -p "$profile" gateway start
+  echo "Restarting profile gateway $profile"
+  container_exec hermes -p "$profile" gateway restart
 
   up="$(upper_profile "$profile")"
   base_url="http://${PUBLIC_HOST}:${port}"
@@ -452,11 +464,11 @@ for spec in "${SPECS[@]}"; do
 
   if [[ "$VERIFY" == 1 ]]; then
     echo "Verifying $profile health"
-    wait_for_profile_health "$profile" "$port" || true
-    curl -fsS "http://127.0.0.1:${port}/health" || echo "WARN: /health failed for $profile"
+    wait_for_profile_health "$profile" "$port"
+    curl -fsS "http://127.0.0.1:${port}/health"
     echo
     echo "Verifying $profile toolsets"
-    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets" || echo "WARN: /v1/toolsets failed for $profile"
+    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"
     echo
   fi
 done
