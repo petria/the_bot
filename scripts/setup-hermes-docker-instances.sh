@@ -285,9 +285,23 @@ require_cmd git
 mkdir -p "$DEPLOY_DIR" "$DATA_DIR"
 
 LEGACY_DATA_DIR="$(dirname "$DEPLOY_DIR")/data"
-if [[ ! -d "$DATA_DIR/profiles" && -d "$LEGACY_DATA_DIR/profiles" ]]; then
+SEED_MARKER="$DATA_DIR/.isolated-seed-complete"
+if [[ ! -f "$SEED_MARKER" && -d "$LEGACY_DATA_DIR/profiles" ]]; then
   echo "Seeding isolated Hermes state from $LEGACY_DATA_DIR"
-  cp -a "$LEGACY_DATA_DIR/." "$DATA_DIR/"
+  if [[ ! -d "$DATA_DIR/profiles" ]]; then
+    cp -a "$LEGACY_DATA_DIR/profiles" "$DATA_DIR/profiles"
+  fi
+  for seed_file in .env config.yaml SOUL.md the_bot_fallback.json; do
+    if [[ -f "$LEGACY_DATA_DIR/$seed_file" && ! -e "$DATA_DIR/$seed_file" ]]; then
+      cp -a "$LEGACY_DATA_DIR/$seed_file" "$DATA_DIR/$seed_file"
+    fi
+  done
+
+  # Process state from the legacy gateway is invalid in the isolated container.
+  find "$DATA_DIR/profiles" -type f \
+    \( -name 'gateway.pid' -o -name 'gateway.lock' -o -name '.tick.lock' -o -name 'auth.lock' \) \
+    -delete
+  touch "$SEED_MARKER"
 fi
 
 if [[ ! -d "$SOURCE_DIR/.git" ]]; then
