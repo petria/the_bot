@@ -140,17 +140,19 @@ public class HermesPromptContextService {
     sb.append("tool_failure_rule=if the work cannot be completed, say that clearly in the final reply with the reason\n");
     sb.append("log_access_rule=do not read local log files directly and do not use HTTP for logs; request logs only through allowed Hermes tools\n");
     sb.append("log_api_scope_rule=use current-chat by default; use broader scopes only when the user asks and permissions permit it\n");
+    sb.append("log_api_scopes=current-chat,current-channel,current-user-dm,all-public-channels,all-private-chats,all\n");
+    sb.append("log_other_public_channel_rule=when the user names a different public channel, use scope all-public-channels and set protocol, network, chatType=channel, and chatTarget\n");
     sb.append("directory_scan_rule=request logs.read without date and with includeAvailableFiles=true to discover available files for the permitted target\n");
     sb.append("hermes_log_tools_available=").append(logsRead || logsSearch).append("\n");
     if (logsSearch) {
       sb.append("hermes_log_search_tool=logs.search\n");
-      sb.append("hermes_log_search_tool_params={\"scope\":\"current-chat\",\"query\":\"<required phrase>\",\"allTerms\":[\"<term>\"],\"anyTerms\":[\"<term>\"],\"nick\":\"<nick optional>\",\"dateFrom\":\"<yyyy-mm-dd optional>\",\"dateTo\":\"<yyyy-mm-dd optional>\",\"maxDays\":30,\"maxMatches\":20,\"maxBytes\":16000}\n");
+      sb.append("hermes_log_search_tool_params={\"scope\":\"current-chat|all-public-channels|other permitted scope\",\"protocol\":\"<required for another chat>\",\"network\":\"<required for another chat>\",\"chatType\":\"channel|dm\",\"chatTarget\":\"<required for another chat>\",\"query\":\"<required phrase>\",\"allTerms\":[\"<term>\"],\"anyTerms\":[\"<term>\"],\"nick\":\"<nick optional>\",\"dateFrom\":\"<yyyy-mm-dd optional>\",\"dateTo\":\"<yyyy-mm-dd optional>\",\"maxDays\":30,\"maxMatches\":20,\"maxBytes\":16000}\n");
       sb.append("hermes_log_search_tool_use=for historical questions with concrete words, names, phrases, or nicks, request logs.search first; use compact terms from the user question\n");
       sb.append("hermes_log_search_tool_returns=json with result.searchedFiles, result.searchedLines, result.truncated, result.matches[{date,lineNumber,time,nick,text}]\n");
     }
     if (logsRead) {
       sb.append("hermes_log_read_tool=logs.read\n");
-      sb.append("hermes_log_read_tool_params={\"scope\":\"current-chat\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80,\"includeAvailableFiles\":false}\n");
+      sb.append("hermes_log_read_tool_params={\"scope\":\"current-chat|all-public-channels|other permitted scope\",\"protocol\":\"<required for another chat>\",\"network\":\"<required for another chat>\",\"chatType\":\"channel|dm\",\"chatTarget\":\"<required for another chat>\",\"date\":\"<yyyy-mm-dd optional>\",\"lines\":80,\"includeAvailableFiles\":false}\n");
       sb.append("hermes_log_read_tool_use=for recent chat context, broad channel analysis, ranking questions, or exact dated tail reads, request logs.read; omit date to read latest available log\n");
       sb.append("hermes_log_read_tool_returns=json with result.content, result.found, result.date, result.availableFiles when requested or date omitted\n");
     }
