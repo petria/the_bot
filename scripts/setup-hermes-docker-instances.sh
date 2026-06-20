@@ -304,12 +304,29 @@ fi
 mkdir -p "$DEPLOY_DIR" "$DATA_DIR"
 
 LEGACY_DATA_DIR="$(dirname "$DEPLOY_DIR")/data"
-SEED_MARKER="$DATA_DIR/.isolated-seed-complete"
+SEED_MARKER="$DATA_DIR/.isolated-profile-seed-v2-complete"
 if [[ ! -f "$SEED_MARKER" && -d "$LEGACY_DATA_DIR/profiles" ]]; then
   echo "Seeding isolated Hermes state from $LEGACY_DATA_DIR"
-  if [[ ! -d "$DATA_DIR/profiles" ]]; then
-    cp -a "$LEGACY_DATA_DIR/profiles" "$DATA_DIR/profiles"
-  fi
+  mkdir -p "$DATA_DIR/profiles"
+  IFS=',' read -ra SEED_SPECS <<< "$PROFILES"
+  for spec in "${SEED_SPECS[@]}"; do
+    IFS=':' read -r profile _rest <<< "$spec"
+    source_profile="$LEGACY_DATA_DIR/profiles/$profile"
+    target_profile="$DATA_DIR/profiles/$profile"
+    if [[ -d "$source_profile" ]] \
+        && { [[ ! -d "$target_profile" ]] \
+          || [[ -f "$source_profile/auth.json" && ! -f "$target_profile/auth.json" ]]; }; then
+      echo "Seeding profile $profile"
+      docker stop "$SERVICE_NAME" >/dev/null 2>&1 || true
+      docker run --rm \
+        -v "$LEGACY_DATA_DIR:/source:ro" \
+        -v "$DATA_DIR:/target" \
+        alpine:3.20 \
+        sh -c "rm -rf '/target/profiles/$profile' \
+          && cp -a '/source/profiles/$profile' '/target/profiles/$profile' \
+          && chown -R '$(id -u):$(id -g)' '/target/profiles/$profile'"
+    fi
+  done
   for seed_file in .env config.yaml SOUL.md the_bot_fallback.json; do
     if [[ -f "$LEGACY_DATA_DIR/$seed_file" && ! -e "$DATA_DIR/$seed_file" ]]; then
       cp -a "$LEGACY_DATA_DIR/$seed_file" "$DATA_DIR/$seed_file"
