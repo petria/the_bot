@@ -70,6 +70,7 @@ class HermesFallbackServiceTest {
     HermesBackendConfigResponse response = service.getBackendConfig();
 
     assertThat(response.fallback().healthy()).isTrue();
+    assertThat(response.fallback().contextWindow()).isEqualTo(65536);
     assertThat(response.profiles()).allMatch(profile -> "ollama".equals(profile.activeProvider()));
     verify(restTemplate, never()).postForObject(any(), any(), eq(Map.class));
   }
@@ -98,11 +99,11 @@ class HermesFallbackServiceTest {
             profile("chat", true),
             profile("coder", false),
             profile("ai-command", true)),
-        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", true, 32768)));
+        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", true, 65536)));
 
     String chatYaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
     String coderYaml = Files.readString(tempDir.resolve("profiles/coder/config.yaml"));
-    assertThat(chatYaml).contains("fallback_providers", "qwen3.5:27b", "context_length: 32768");
+    assertThat(chatYaml).contains("fallback_providers", "qwen3.5:27b", "context_length: 65536");
     assertThat(coderYaml).contains("fallback_providers: []").doesNotContain("qwen3.5:27b");
     verify(gatewayService, atLeastOnce()).restart("chat");
     verify(gatewayService, atLeastOnce()).restart("coder");

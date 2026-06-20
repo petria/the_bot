@@ -375,6 +375,29 @@ PY
   fi
 fi
 
+echo "Applying Hermes API server fallback model fix"
+python3 - "$SOURCE_DIR/gateway/platforms/api_server.py" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = """        runtime_kwargs = _resolve_runtime_agent_kwargs()
+        reasoning_config = GatewayRunner._load_reasoning_config()
+        model = _resolve_gateway_model()
+"""
+new = """        runtime_kwargs = _resolve_runtime_agent_kwargs()
+        reasoning_config = GatewayRunner._load_reasoning_config()
+        model = runtime_kwargs.pop("model", None) or _resolve_gateway_model()
+"""
+if old in text:
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+elif new not in text:
+    raise SystemExit(
+        "ERROR: Hermes API server model resolution changed; fallback patch was not applied"
+    )
+PY
+
 AUTOSTART_PROFILES="$(IFS=','; for spec in $PROFILES; do IFS=':' read -r profile _rest <<< "$spec"; printf '%s,' "$profile"; done)"
 AUTOSTART_PROFILES="${AUTOSTART_PROFILES%,}"
 

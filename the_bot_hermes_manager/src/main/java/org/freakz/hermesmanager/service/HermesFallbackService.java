@@ -48,6 +48,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
   private static final String RESPONSES_API_MODE = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
+  private static final int MIN_CONTEXT_WINDOW = 65536;
   private static final Logger log = LoggerFactory.getLogger(HermesFallbackService.class);
 
   private final ReentrantLock updateLock = new ReentrantLock();
@@ -413,7 +414,18 @@ public class HermesFallbackService implements ApplicationRunner {
     }
     try {
       StoredFallbackConfig config = jsonMapper.readValue(Files.readAllBytes(path), StoredFallbackConfig.class);
-      return config == null ? defaultFallbackConfig() : config.withDefaults(defaultFallbackConfig());
+      StoredFallbackConfig normalized = config == null
+          ? defaultFallbackConfig()
+          : config.withDefaults(defaultFallbackConfig());
+      return new StoredFallbackConfig(
+          normalized.baseUrl(),
+          normalized.model(),
+          normalized.enabled(),
+          normalizeContextWindow(normalized.contextWindow()),
+          normalized.lastValidatedAt(),
+          normalized.validationStatus(),
+          normalized.toolCapable(),
+          normalized.validationDetail());
     } catch (IOException e) {
       throw new IllegalStateException("Could not read " + path, e);
     }
@@ -432,7 +444,9 @@ public class HermesFallbackService implements ApplicationRunner {
             requireValue(profile.model(), "profile model"),
             firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
             profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            profile.contextWindow(),
+            OLLAMA_PROVIDER.equals(normalizeProvider(profile.provider()))
+                ? normalizeContextWindow(profile.contextWindow())
+                : profile.contextWindow(),
             Boolean.TRUE.equals(profile.fallbackAllowed()),
             profile.toolCapable(),
             profile.lastValidatedAt(),
@@ -448,13 +462,12 @@ public class HermesFallbackService implements ApplicationRunner {
     boolean enabled = Boolean.TRUE.equals(request.enabled());
     String baseUrl = trimTrailingSlash(firstNonBlank(request.baseUrl(), current.baseUrl()));
     String model = firstNonBlank(request.model(), current.model());
-    Integer contextWindow = request.contextWindow() == null ? current.contextWindow() : request.contextWindow();
+    Integer contextWindow = normalizeContextWindow(
+        request.contextWindow() == null ? current.contextWindow() : request.contextWindow());
     if (enabled) {
       validatedBaseUrl(baseUrl);
       requireValue(model, "fallback model");
-      if (contextWindow != null && contextWindow <= 0) {
-        throw new IllegalArgumentException("fallback contextWindow must be positive");
-      }
+      validateContextWindow(contextWindow, "fallback");
     }
     return new StoredFallbackConfig(
         baseUrl,
@@ -485,7 +498,9 @@ public class HermesFallbackService implements ApplicationRunner {
             firstNonBlank(model, defaults == null ? "gpt-5.5" : defaults.model()),
             firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
             profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            profile.contextWindow(),
+            OLLAMA_PROVIDER.equals(profile.provider())
+                ? normalizeContextWindow(profile.contextWindow())
+                : profile.contextWindow(),
             profile.fallbackAllowed() == null
                 ? defaults != null && Boolean.TRUE.equals(defaults.fallbackAllowed())
                 : profile.fallbackAllowed(),
@@ -580,9 +595,7 @@ public class HermesFallbackService implements ApplicationRunner {
       } else if (OLLAMA_PROVIDER.equals(profile.provider())) {
         validatedBaseUrl(profile.baseUrl());
         requireValue(profile.model(), "profile model");
-        if (profile.contextWindow() != null && profile.contextWindow() <= 0) {
-          throw new IllegalArgumentException("profile " + profile.id() + " contextWindow must be positive");
-        }
+        validateContextWindow(profile.contextWindow(), "profile " + profile.id());
       } else {
         throw new IllegalArgumentException("Unsupported provider: " + profile.provider());
       }
@@ -685,11 +698,22 @@ public class HermesFallbackService implements ApplicationRunner {
         properties.defaultBaseUrl(),
         properties.defaultModel(),
         false,
-        32768,
+        MIN_CONTEXT_WINDOW,
         null,
         "NOT_VALIDATED",
         null,
         "Fallback has not been validated");
+  }
+
+  private Integer normalizeContextWindow(Integer contextWindow) {
+    return contextWindow == null ? MIN_CONTEXT_WINDOW : Math.max(contextWindow, MIN_CONTEXT_WINDOW);
+  }
+
+  private void validateContextWindow(Integer contextWindow, String owner) {
+    if (contextWindow == null || contextWindow < MIN_CONTEXT_WINDOW) {
+      throw new IllegalArgumentException(
+          owner + " contextWindow must be at least " + MIN_CONTEXT_WINDOW);
+    }
   }
 
   private void writeBackendConfig(StoredBackendConfig config) throws IOException {
