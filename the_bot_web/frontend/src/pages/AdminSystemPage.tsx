@@ -124,10 +124,10 @@ export function AdminSystemPage() {
                 />
                 <NumberInput
                   label="Context window"
-                  min={1024}
+                  min={65536}
                   step={1024}
-                  value={fallback?.contextWindow || 32768}
-                  onChange={(value) => updateFallback({ contextWindow: typeof value === 'number' ? value : 32768 })}
+                  value={fallback?.contextWindow || 65536}
+                  onChange={(value) => updateFallback({ contextWindow: typeof value === 'number' ? value : 65536 })}
                 />
               </Group>
 
@@ -254,6 +254,15 @@ export function AdminSystemPage() {
                           value={profile.baseUrl || ''}
                           onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
                         />
+                        <NumberInput
+                          label="Context window"
+                          min={65536}
+                          step={1024}
+                          value={profile.contextWindow || 65536}
+                          onChange={(value) => updateProfile(profile.id, {
+                            contextWindow: typeof value === 'number' ? value : 65536,
+                          })}
+                        />
                       </Group>
                     ) : (
                       <Stack gap="xs">
@@ -369,7 +378,7 @@ export function AdminSystemPage() {
         baseUrl: '',
         model: '',
         profiles: [],
-        contextWindow: 32768,
+        contextWindow: 65536,
         healthy: null,
         toolCapable: null,
         detail: null,
