@@ -449,10 +449,19 @@ public class ChatLogAccessService {
   }
 
   private String sanitizeScope(String scope) {
-    String value = scope == null || scope.isBlank() ? "current-chat" : scope.trim().toLowerCase();
+    String value = scope == null || scope.isBlank()
+        ? "current-chat"
+        : scope.trim().toLowerCase(Locale.ROOT).replace('_', '-').replace(' ', '-');
     return switch (value) {
       case "current-chat", "current-channel", "current-user-dm", "all-public-channels", "all-private-chats", "all" -> value;
-      default -> throw new IllegalArgumentException("invalid log scope");
+      case "current", "this-chat" -> "current-chat";
+      case "this-channel" -> "current-channel";
+      case "current-dm", "own-dm", "current-user-private-chat" -> "current-user-dm";
+      case "channel", "public", "public-channel", "public-channels", "all-public", "all-public-channel",
+           "other-channel", "another-channel", "other-public-channel" ->
+          "all-public-channels";
+      case "private-chat", "private-chats", "all-private", "all-private-chat" -> "all-private-chats";
+      default -> throw new IllegalArgumentException("invalid log scope: " + value);
     };
   }
 

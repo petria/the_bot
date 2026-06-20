@@ -68,6 +68,41 @@ class OpenClawLogAccessServiceTest {
   }
 
   @Test
+  void normalizesPublicChannelScopeAliasBeforePermissionCheck() throws Exception {
+    Files.createDirectories(tempDir.resolve("irc/ircnet/channel/other"));
+    Files.writeString(tempDir.resolve("irc/ircnet/channel/other/2026-05-19.log"), "public\n");
+
+    ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_ALL_PUBLIC_CHANNELS));
+    String token = bundle.tokenService().createToken(request(), "session");
+
+    OpenClawLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
+        new OpenClawLogAccessService.LogReadRequest(
+            token, "other_channel", "irc", "ircnet", "channel", "other",
+            "2026-05-19", 80, null));
+
+    assertThat(response.scope()).isEqualTo("all-public-channels");
+    assertThat(response.content()).isEqualTo("public");
+  }
+
+  @Test
+  void normalizedPublicChannelScopeStillRequiresBroadPermission() throws Exception {
+    Files.createDirectories(tempDir.resolve("irc/ircnet/channel/other"));
+    Files.writeString(tempDir.resolve("irc/ircnet/channel/other/2026-05-19.log"), "secret\n");
+
+    ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
+    String token = bundle.tokenService().createToken(request(), "session");
+
+    OpenClawLogAccessService.LogReadRequest request =
+        new OpenClawLogAccessService.LogReadRequest(
+            token, "public-channel", "irc", "ircnet", "channel", "other",
+            "2026-05-19", 80, null);
+
+    assertThatThrownBy(() -> bundle.logAccessService().readLogs(request))
+        .isInstanceOf(SecurityException.class)
+        .hasMessageContaining("permission denied");
+  }
+
+  @Test
   void omitsAvailableFilesForDatedReadUnlessRequested() throws Exception {
     Files.createDirectories(tempDir.resolve("irc/ircnet/channel/hokandev"));
     Files.writeString(tempDir.resolve("irc/ircnet/channel/hokandev/2026-05-19.log"), "one\n");

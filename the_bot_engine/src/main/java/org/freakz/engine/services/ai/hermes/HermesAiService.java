@@ -203,6 +203,7 @@ public class HermesAiService {
       if (!CHAT_TOOL_NAMES.contains(modelResponse.toolName())) {
         return "Hermes requested tool that is not allowed: " + modelResponse.toolName();
       }
+      log.debug("Hermes tool request: tool={} arguments={}", modelResponse.toolName(), modelResponse.arguments());
       String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
       input = "Original user question:\n" + (queryMessage == null ? "" : queryMessage)
           + "\n\nTool result for " + modelResponse.toolName() + ":\n" + toolResult
