@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.freakz.common.model.engine.system.HermesProfileOption;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
-import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
@@ -24,7 +23,6 @@ public class HermesSettingsService {
   private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
   private static final String DEFAULT_MODEL = "hermes-chat";
   private static final String DEFAULT_API_MODE = "responses";
-  private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final String BASE_URL_KEY = "hermes.chat.base-url";
   private static final String API_KEY_KEY = "hermes.chat.api-key";
@@ -44,65 +42,31 @@ public class HermesSettingsService {
   private final ConfigService configService;
   private final EnvValuesService envValuesService;
   private final RestHermesManagerClient hermesManagerClient;
-  private final HermesFallbackOverrideState hermesFallbackOverrideState;
 
   public HermesSettingsService(ConfigService configService, EnvValuesService envValuesService) {
-    this(configService, envValuesService, null, new HermesFallbackOverrideState());
+    this(configService, envValuesService, null);
   }
 
   @Autowired
   public HermesSettingsService(
       ConfigService configService,
       EnvValuesService envValuesService,
-      RestHermesManagerClient hermesManagerClient,
-      HermesFallbackOverrideState hermesFallbackOverrideState) {
+      RestHermesManagerClient hermesManagerClient) {
     this.configService = configService;
     this.envValuesService = envValuesService;
     this.hermesManagerClient = hermesManagerClient;
-    this.hermesFallbackOverrideState = hermesFallbackOverrideState;
-  }
-
-  public HermesSettingsService(
-      ConfigService configService,
-      EnvValuesService envValuesService,
-      RestHermesManagerClient hermesManagerClient) {
-    this(configService, envValuesService, hermesManagerClient, new HermesFallbackOverrideState());
   }
 
   public HermesSettings resolveSettings() {
     HermesSettings local = resolveLocalSettings();
     HermesSettings managed = resolveManagedProfile("chat", local);
-    if (managed != null) {
-      return managed;
-    }
-    HermesFallbackSettingsResponse override = loadHermesOverride();
-    if (override != null && Boolean.TRUE.equals(override.enabled())) {
-      return new HermesSettings(
-          normalizeApiRoot(firstNonBlank(override.baseUrl(), local.baseUrl())),
-          "",
-          firstNonBlank(override.model(), local.model()),
-          local.timeoutSeconds(),
-          CHAT_COMPLETIONS_API_MODE);
-    }
-    return local;
+    return managed == null ? local : managed;
   }
 
   public HermesSettings resolveAiCommandSettings() {
     HermesSettings local = resolveLocalAiCommandSettings();
     HermesSettings managed = resolveManagedProfile(AI_COMMAND_PROFILE_ID, local);
-    if (managed != null) {
-      return managed;
-    }
-    HermesFallbackSettingsResponse override = loadHermesOverride();
-    if (override != null && Boolean.TRUE.equals(override.enabled())) {
-      return new HermesSettings(
-          normalizeApiRoot(firstNonBlank(override.baseUrl(), local.baseUrl())),
-          "",
-          firstNonBlank(override.model(), local.model()),
-          local.timeoutSeconds(),
-          CHAT_COMPLETIONS_API_MODE);
-    }
-    return local;
+    return managed == null ? local : managed;
   }
 
   public HermesSettingsResponse getSettings() {
@@ -337,18 +301,6 @@ public class HermesSettingsService {
     return trimmed.replaceFirst("(?i)/v1$", "");
   }
 
-  private HermesFallbackSettingsResponse loadHermesOverride() {
-    if (hermesManagerClient == null) {
-      return null;
-    }
-    try {
-      return hermesFallbackOverrideState.apply(hermesManagerClient.getFallback().getBody());
-    } catch (Exception e) {
-      log.debug("Could not load Hermes override state: {}", e.getMessage());
-      return null;
-    }
-  }
-
   private HermesSettings resolveManagedProfile(String profileId, HermesSettings local) {
     if (hermesManagerClient == null) {
       return null;
@@ -365,22 +317,18 @@ public class HermesSettingsService {
       if (profile == null || profile.model() == null || profile.model().isBlank()) {
         return null;
       }
-      String provider = firstNonBlank(profile.provider(), "openai");
-      String apiMode = firstNonBlank(profile.apiMode(), local.apiMode());
       int timeoutSeconds = profile.timeoutSeconds() == null ? local.timeoutSeconds() : profile.timeoutSeconds();
-      String baseUrl = "ollama".equalsIgnoreCase(provider)
-          ? normalizeApiRoot(firstNonBlank(profile.baseUrl(), local.baseUrl()))
-          : normalizeApiRoot(profileGatewayBaseUrl(profile.id(), local.baseUrl()));
+      String baseUrl = normalizeApiRoot(profileGatewayBaseUrl(profile.id(), local.baseUrl()));
       if (baseUrl == null || baseUrl.isBlank()) {
         return null;
       }
-      String apiKey = "ollama".equalsIgnoreCase(provider) ? "" : apiKeyForProfile(profile.id());
+      String apiKey = apiKeyForProfile(profile.id());
       return new HermesSettings(
           baseUrl,
           apiKey == null ? "" : apiKey.trim(),
-          profile.model(),
+          gatewayModelAlias(profile.id()),
           timeoutSeconds,
-          apiMode);
+          DEFAULT_API_MODE);
     } catch (Exception e) {
       log.debug("Could not load Hermes profile {} from manager: {}", profileId, e.getMessage());
       return null;
@@ -393,6 +341,15 @@ public class HermesSettingsService {
       case "coder" -> "http://ubuntu-server.local:8644";
       case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_BASE_URL;
       default -> localBaseUrl;
+    };
+  }
+
+  private String gatewayModelAlias(String profileId) {
+    return switch (profileId) {
+      case "chat" -> "hermes-chat";
+      case "coder" -> "hermes-coder";
+      case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_MODEL;
+      default -> "hermes-" + profileId;
     };
   }
 

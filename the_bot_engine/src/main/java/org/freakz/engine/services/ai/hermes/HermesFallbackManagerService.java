@@ -12,15 +12,13 @@ import org.springframework.stereotype.Service;
 public class HermesFallbackManagerService {
 
   private final RestHermesManagerClient client;
-  private final HermesFallbackOverrideState overrideState;
 
-  public HermesFallbackManagerService(RestHermesManagerClient client, HermesFallbackOverrideState overrideState) {
+  public HermesFallbackManagerService(RestHermesManagerClient client) {
     this.client = client;
-    this.overrideState = overrideState;
   }
 
   public HermesFallbackSettingsResponse getSettings() {
-    return overrideState.apply(requireBody(client.getFallback().getBody(), "load Hermes fallback settings"));
+    return requireBody(client.getFallback().getBody(), "load Hermes fallback settings");
   }
 
   public HermesFallbackModelsResponse getModels(String baseUrl) {
@@ -28,8 +26,7 @@ public class HermesFallbackManagerService {
   }
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
-    overrideState.rememberRequestedEnabled(request == null ? null : request.enabled());
-    return overrideState.apply(requireBody(client.updateFallback(request).getBody(), "update Hermes fallback settings"));
+    return requireBody(client.updateFallback(request).getBody(), "update Hermes fallback settings");
   }
 
   public HermesBackendConfigResponse getBackendConfig() {

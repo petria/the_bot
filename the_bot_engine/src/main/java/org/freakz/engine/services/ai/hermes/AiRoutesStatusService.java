@@ -106,17 +106,26 @@ public class AiRoutesStatusService {
       HermesSettings settings,
       HermesProfile profile,
       HermesFallbackSettingsResponse fallback) {
-    String provider = firstNonBlank(profileProvider(profile), inferFallbackProvider(settings, fallback), "unknown");
-    String health = profile == null ? "UNKNOWN" : health(profile.healthy());
+    String provider = firstNonBlank(
+        profile == null ? null : profile.activeProvider(),
+        profileProvider(profile),
+        "unknown");
+    String health = profile == null ? "UNKNOWN" : health(profile.gatewayHealthy());
     String tools = profile == null ? "unknown" : yesNoUnknown(profile.toolCapable());
-    String source = profile == null && fallbackMatches(settings, fallback) ? "fallback" : profile == null ? "local" : "manager";
+    String source = profile == null ? "local" : "manager";
+    boolean fallbackActive = profile != null
+        && "openai".equalsIgnoreCase(profile.provider())
+        && "ollama".equalsIgnoreCase(profile.activeProvider());
+    String model = fallbackActive && fallback != null
+        ? fallback.model()
+        : profile == null ? settings.model() : profile.model();
 
     return "%s: %s source=%s provider=%s model=%s api=%s tools=%s base=%s".formatted(
         label,
         health,
         source,
         provider,
-        shortValue(settings.model(), MAX_MODEL_CHARS),
+        shortValue(model, MAX_MODEL_CHARS),
         valueOrUnknown(settings.apiMode()),
         tools,
         shortValue(settings.baseUrl(), MAX_BASE_URL_CHARS));

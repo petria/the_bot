@@ -28,6 +28,7 @@ Examples:
 Options:
   --target HOST          local, or an SSH target like user@host. Default: local
   --directory PATH      Compose directory on target. Default: ~/bot-hermes
+  --service-name NAME   Compose service/container name. Default: bot-hermes
   --profiles LIST       Comma-separated profile specs: name:port[:mode[:model_label]]
                         mode defaults to chat for profile "chat", otherwise agent.
                         model_label defaults to hermes-<name>.
@@ -47,6 +48,7 @@ USAGE
 
 TARGET="local"
 DEPLOY_DIR='~/bot-hermes'
+SERVICE_NAME='bot-hermes'
 PROFILES="chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command"
 REPO_URL="https://github.com/NousResearch/hermes-agent.git"
 REPO_REF="main"
@@ -62,6 +64,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --target) TARGET="${2:?missing --target value}"; shift 2 ;;
     --directory) DEPLOY_DIR="${2:?missing --directory value}"; shift 2 ;;
+    --service-name) SERVICE_NAME="${2:?missing --service-name value}"; shift 2 ;;
     --profiles|--instances) PROFILES="${2:?missing --profiles value}"; shift 2 ;;
     --repo-url) REPO_URL="${2:?missing --repo-url value}"; shift 2 ;;
     --repo-ref) REPO_REF="${2:?missing --repo-ref value}"; shift 2 ;;
@@ -92,6 +95,7 @@ if [[ "$TARGET" != "local" && "$TARGET" != "localhost" ]]; then
   ssh "$TARGET" bash "$remote_script" \
     --target local \
     --directory "$DEPLOY_DIR" \
+    --service-name "$SERVICE_NAME" \
     --profiles "$PROFILES" \
     --repo-url "$REPO_URL" \
     --repo-ref "$REPO_REF" \
@@ -164,12 +168,23 @@ compose() {
   docker compose --env-file "$DEPLOY_DIR/.env" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
 }
 
+prune_docker_if_disk_is_low() {
+  local docker_root usage
+  docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || printf '/var/lib/docker')"
+  usage="$(df -P "$docker_root" | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }')"
+  if [[ "$usage" =~ ^[0-9]+$ ]] && (( usage >= 85 )); then
+    echo "Docker filesystem is ${usage}% full; pruning unused data older than 24 hours"
+    docker image prune -af --filter until=24h
+    docker builder prune -af --filter until=24h
+  fi
+}
+
 container_exec() {
-  compose exec -T bot-hermes "$@"
+  compose exec -T "$SERVICE_NAME" "$@"
 }
 
 wait_for_container_ready() {
-  echo "Waiting for bot-hermes container init to complete"
+  echo "Waiting for $SERVICE_NAME container init to complete"
   local attempt
   for attempt in $(seq 1 120); do
     if container_exec sh -lc 'test "$(stat -c %U:%G /run/service 2>/dev/null)" = "hermes:hermes" && test -x /opt/hermes/bin/hermes' >/dev/null 2>&1; then
@@ -177,8 +192,8 @@ wait_for_container_ready() {
     fi
     sleep 1
   done
-  echo "ERROR: bot-hermes did not finish container init in time" >&2
-  compose logs --tail=120 bot-hermes >&2 || true
+  echo "ERROR: $SERVICE_NAME did not finish container init in time" >&2
+  compose logs --tail=120 "$SERVICE_NAME" >&2 || true
   exit 1
 }
 
@@ -280,6 +295,26 @@ require_cmd git
 
 mkdir -p "$DEPLOY_DIR" "$DATA_DIR"
 
+LEGACY_DATA_DIR="$(dirname "$DEPLOY_DIR")/data"
+SEED_MARKER="$DATA_DIR/.isolated-seed-complete"
+if [[ ! -f "$SEED_MARKER" && -d "$LEGACY_DATA_DIR/profiles" ]]; then
+  echo "Seeding isolated Hermes state from $LEGACY_DATA_DIR"
+  if [[ ! -d "$DATA_DIR/profiles" ]]; then
+    cp -a "$LEGACY_DATA_DIR/profiles" "$DATA_DIR/profiles"
+  fi
+  for seed_file in .env config.yaml SOUL.md the_bot_fallback.json; do
+    if [[ -f "$LEGACY_DATA_DIR/$seed_file" && ! -e "$DATA_DIR/$seed_file" ]]; then
+      cp -a "$LEGACY_DATA_DIR/$seed_file" "$DATA_DIR/$seed_file"
+    fi
+  done
+
+  # Process state from the legacy gateway is invalid in the isolated container.
+  find "$DATA_DIR/profiles" -type f \
+    \( -name 'gateway.pid' -o -name 'gateway.lock' -o -name '.tick.lock' -o -name 'auth.lock' \) \
+    -delete
+  touch "$SEED_MARKER"
+fi
+
 if [[ ! -d "$SOURCE_DIR/.git" ]]; then
   echo "Cloning Hermes Agent into $SOURCE_DIR"
   git clone "$REPO_URL" "$SOURCE_DIR"
@@ -327,11 +362,11 @@ chmod 600 "$DEPLOY_DIR/.env"
 
 cat > "$DEPLOY_DIR/docker-compose.yml" <<EOF
 services:
-  bot-hermes:
+  ${SERVICE_NAME}:
     build:
       context: ./hermes-agent
     image: \${HERMES_IMAGE:-bot-hermes-agent:local}
-    container_name: bot-hermes
+    container_name: ${SERVICE_NAME}
     restart: unless-stopped
     volumes:
       - ./data:/opt/data
@@ -349,13 +384,14 @@ EOF
 echo "Wrote $DEPLOY_DIR/docker-compose.yml"
 
 if [[ "$BUILD" == 1 ]]; then
+  prune_docker_if_disk_is_low
   echo "Building Hermes Docker image"
-  compose build bot-hermes
+  compose build "$SERVICE_NAME"
 fi
 
 if [[ "$START" == 1 ]]; then
-  echo "Starting bot-hermes container"
-  compose up -d bot-hermes
+  echo "Starting $SERVICE_NAME container"
+  compose up -d "$SERVICE_NAME"
   wait_for_container_ready
 fi
 
@@ -405,8 +441,8 @@ for spec in "${SPECS[@]}"; do
 
   patch_profile_config "$profile" "$mode"
 
-  echo "Starting profile gateway $profile"
-  container_exec hermes -p "$profile" gateway start
+  echo "Restarting profile gateway $profile"
+  container_exec hermes -p "$profile" gateway restart
 
   up="$(upper_profile "$profile")"
   base_url="http://${PUBLIC_HOST}:${port}"
@@ -428,11 +464,11 @@ for spec in "${SPECS[@]}"; do
 
   if [[ "$VERIFY" == 1 ]]; then
     echo "Verifying $profile health"
-    wait_for_profile_health "$profile" "$port" || true
-    curl -fsS "http://127.0.0.1:${port}/health" || echo "WARN: /health failed for $profile"
+    wait_for_profile_health "$profile" "$port"
+    curl -fsS "http://127.0.0.1:${port}/health"
     echo
     echo "Verifying $profile toolsets"
-    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets" || echo "WARN: /v1/toolsets failed for $profile"
+    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"
     echo
   fi
 done

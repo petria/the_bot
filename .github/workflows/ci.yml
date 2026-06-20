@@ -419,10 +419,16 @@ jobs:
             OPENCLAW_GATEWAY_TOKEN="${CI_OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_GATEWAY_TOKEN:-$OPENCLAW_HOOKS_TOKEN}}"
             OPENCLAW_AUTH_PROFILE_SECRET_KEY="${CI_OPENCLAW_AUTH_PROFILE_SECRET_KEY:-${OPENCLAW_AUTH_PROFILE_SECRET_KEY:-$OPENCLAW_GATEWAY_TOKEN}}"
             OPENCLAW_NODE_CONTEXT_SECRET="${CI_OPENCLAW_NODE_CONTEXT_SECRET:-${OPENCLAW_NODE_CONTEXT_SECRET:-}}"
-            HERMES_CHAT_BASE_URL="${CI_HERMES_CHAT_BASE_URL:-${HERMES_CHAT_BASE_URL:-http://ubuntu-server.local:8643}}"
+            DEFAULT_HERMES_CHAT_PORT=8663
+            DEFAULT_HERMES_AI_COMMAND_PORT=8665
+            if [ "$HOKAN_BOT_INSTANCE_ID" = "hokan-main" ]; then
+              DEFAULT_HERMES_CHAT_PORT=8643
+              DEFAULT_HERMES_AI_COMMAND_PORT=8645
+            fi
+            HERMES_CHAT_BASE_URL="${CI_HERMES_CHAT_BASE_URL:-${HERMES_CHAT_BASE_URL:-http://ubuntu-server.local:$DEFAULT_HERMES_CHAT_PORT}}"
             HERMES_CHAT_API_KEY="${CI_HERMES_CHAT_API_KEY:-${HERMES_CHAT_API_KEY:-${CI_HERMES_API_KEY:-${HERMES_API_KEY:-}}}}"
             HERMES_CODER_API_KEY="${CI_HERMES_CODER_API_KEY:-${HERMES_CODER_API_KEY:-}}"
-            HERMES_AI_COMMAND_BASE_URL="${CI_HERMES_AI_COMMAND_BASE_URL:-${HERMES_AI_COMMAND_BASE_URL:-http://ubuntu-server.local:8645}}"
+            HERMES_AI_COMMAND_BASE_URL="${CI_HERMES_AI_COMMAND_BASE_URL:-${HERMES_AI_COMMAND_BASE_URL:-http://ubuntu-server.local:$DEFAULT_HERMES_AI_COMMAND_PORT}}"
             HERMES_AI_COMMAND_API_KEY="${CI_HERMES_AI_COMMAND_API_KEY:-${HERMES_AI_COMMAND_API_KEY:-}}"
             HERMES_AI_COMMAND_MODEL="${CI_HERMES_AI_COMMAND_MODEL:-${HERMES_AI_COMMAND_MODEL:-hermes-ai-command}}"
             HERMES_AI_COMMAND_TIMEOUT_SECONDS="${CI_HERMES_AI_COMMAND_TIMEOUT_SECONDS:-${HERMES_AI_COMMAND_TIMEOUT_SECONDS:-120}}"
@@ -711,9 +717,20 @@ jobs:
           HERMES_REPO_URL: ${{ vars.HERMES_REPO_URL || 'https://github.com/NousResearch/hermes-agent.git' }}
           HERMES_REPO_REF: ${{ vars.HERMES_REPO_REF || 'main' }}
         run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            HERMES_INSTANCE="main"
+            HERMES_SERVICE_NAME="bot-hermes-main"
+            HERMES_PROFILES="chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command"
+          else
+            HERMES_INSTANCE="develop"
+            HERMES_SERVICE_NAME="bot-hermes-develop"
+            HERMES_PROFILES="chat:8663:chat,coder:8664:agent,ai-command:8665:agent:hermes-ai-command"
+          fi
           bash scripts/setup-hermes-docker-instances.sh \
             --target "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}" \
-            --directory "${HERMES_DEPLOY_WORKDIR}" \
+            --directory "${HERMES_DEPLOY_WORKDIR}/${HERMES_INSTANCE}" \
+            --service-name "${HERMES_SERVICE_NAME}" \
+            --profiles "${HERMES_PROFILES}" \
             --repo-url "${HERMES_REPO_URL}" \
             --repo-ref "${HERMES_REPO_REF}" \
             --build \
