@@ -51,6 +51,8 @@ class HermesPromptContextServiceTest {
     assertThat(input).contains("log_access_mode=controlled_hermes_tool");
     assertThat(input).contains("hermes_log_search_tool=logs.search");
     assertThat(input).contains("hermes_log_read_tool=logs.read");
+    assertThat(input).contains("log_api_scopes=current-chat,current-channel,current-user-dm,all-public-channels,all-private-chats,all");
+    assertThat(input).contains("log_other_public_channel_rule=when the user names a different public channel, use scope all-public-channels");
     assertThat(input).contains("log_dir_files=2026-06-09.log");
     assertThat(input).contains("[USER_PROMPT]\nwhat happened?\n[/USER_PROMPT]");
     assertThat(input).doesNotContain("hokanContextToken");
