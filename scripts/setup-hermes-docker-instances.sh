@@ -293,6 +293,14 @@ AUTOSTART_OVERLAY="$SCRIPT_DIR/hermes/03-autostart-bot-profiles"
 require_cmd docker
 require_cmd git
 
+if [[ -d "$DEPLOY_DIR" && ( ! -w "$DEPLOY_DIR" || ( -d "$DATA_DIR" && ! -w "$DATA_DIR" ) ) ]]; then
+  echo "Repairing Docker-created ownership under $DEPLOY_DIR"
+  docker run --rm \
+    -v "$DEPLOY_DIR:/target" \
+    alpine:3.20 \
+    chown -R "$(id -u):$(id -g)" /target
+fi
+
 mkdir -p "$DEPLOY_DIR" "$DATA_DIR"
 
 LEGACY_DATA_DIR="$(dirname "$DEPLOY_DIR")/data"

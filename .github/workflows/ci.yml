@@ -623,11 +623,11 @@ jobs:
 
   deploy-hermes-manager:
     name: Deploy shared Hermes manager
-    needs: build-and-push
+    needs: [build-and-push, deploy-hermes-gateway]
     runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
+    if: ${{ always() && github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.result == 'success' && (needs.deploy-hermes-gateway.result == 'success' || needs.deploy-hermes-gateway.result == 'skipped') && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
