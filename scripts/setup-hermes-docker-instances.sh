@@ -398,6 +398,10 @@ if [[ "$BUILD" == 1 ]]; then
 fi
 
 if [[ "$START" == 1 ]]; then
+  if [[ "$SERVICE_NAME" == "bot-hermes-main" ]] && docker container inspect bot-hermes >/dev/null 2>&1; then
+    echo "Removing legacy bot-hermes container before starting isolated main instance"
+    docker rm -f bot-hermes
+  fi
   echo "Starting $SERVICE_NAME container"
   compose up -d "$SERVICE_NAME"
   wait_for_container_ready
