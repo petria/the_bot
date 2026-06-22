@@ -7,24 +7,27 @@ import com.martiansoftware.jsap.UnflaggedOption;
 import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
-import org.freakz.common.users.UserPermissions;
 import org.freakz.engine.commands.HandlerAlias;
 import org.freakz.engine.commands.HandlerClass;
 import org.freakz.engine.commands.ai.AiCommandHelpFormatter;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.commands.providers.CommandProvider;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_COMMAND;
 
 @HokanCommandHandler
 public class HelpCmd extends AbstractCmd {
 
+  private static final String DYNAMIC_AI_PROVIDER = "dynai";
 
   @Override
   public void initCommandOptions(JSAP jsap) throws NotImplementedException, JSAPException {
@@ -52,34 +55,9 @@ public class HelpCmd extends AbstractCmd {
 
     if (command == null) {
       Map<String, HandlerClass> handlersMap = getBotEngine().getCommandHandlerLoader().getHandlersMap();
-
-      List<String> entries = new ArrayList<>();
-      Map<String, List<HandlerClass>> handlerClassesByProvider = handlersMap.values().stream()
-          .filter(handlerClass -> isAllowed(request, handlerClass))
-          .collect(java.util.stream.Collectors.groupingBy(HandlerClass::getNamespace, java.util.TreeMap::new, java.util.stream.Collectors.toList()));
-      Map<String, CommandProvider> commandProviders = getBotEngine().getCommandHandlerLoader().getCommandProviderMap();
-      for (Map.Entry<String, List<HandlerClass>> entry : handlerClassesByProvider.entrySet()) {
-        List<String> commandNames = entry.getValue().stream()
-          .sorted(Comparator.comparing(HandlerClass::getCommandName, String.CASE_INSENSITIVE_ORDER))
-          .map(this::formatSummaryCommand)
-          .toList();
-        if (!commandNames.isEmpty()) {
-          entries.add(formatProviderName(entry.getKey(), commandProviders) + ": " + String.join(", ", commandNames));
-        }
-      }
-      String aiCommands = formatAiCommands();
-      if (!aiCommands.isBlank()) {
-        entries.add("Hermes AI Commands: " + aiCommands);
-      }
-      boolean irc = getBotEngine().getReplyOutputService().isIrc(request);
-      return getBotEngine().getReplyOutputService().formatList(
-          request,
-          irc ? "HELP BY PROVIDER:" : "== HELP: COMMANDS BY PROVIDER ==",
-          entries,
-          irc
-              ? "Use !help commandName for details."
-              : "Command is triggered using: !<name in lower case>, example: !help triggers command named Help. Use !help <commandName> to get detailed help for specific command.");
-
+      return formatCommandOverview(
+          handlersMap.values(),
+          getBotEngine().getAiCommandRegistryService().currentConfig().getCommands());
 
     } else {
       List<AbstractCmd> list = getBotEngine().getCommandHandlerLoader().getMatchingCommandInstances(command);
@@ -117,46 +95,47 @@ public class HelpCmd extends AbstractCmd {
     return sb.toString();
   }
 
-  private boolean isAllowed(EngineRequest request, HandlerClass handlerClass) {
-    String requiredPermission = handlerClass.getRequiredPermission();
-    return requiredPermission == null || requiredPermission.isBlank() || UserPermissions.has(request.getUser(), requiredPermission);
+  String formatCommandOverview(
+      Collection<HandlerClass> handlerClasses,
+      Collection<AiCommandDefinition> aiCommands) {
+    Map<String, List<String>> commandsByProvider = handlerClasses.stream()
+        .collect(Collectors.groupingBy(
+            HandlerClass::getNamespace,
+            TreeMap::new,
+            Collectors.mapping(
+                handlerClass -> handlerClass.getCommandName().toLowerCase(Locale.ROOT),
+                Collectors.toList())));
+
+    List<String> dynamicCommandNames = aiCommands.stream()
+        .map(AiCommandDefinition::getName)
+        .filter(name -> name != null && !name.isBlank())
+        .map(name -> name.toLowerCase(Locale.ROOT))
+        .sorted(String.CASE_INSENSITIVE_ORDER)
+        .toList();
+
+    StringBuilder output = new StringBuilder("== HELP: COMMANDS BY PROVIDER ==");
+    commandsByProvider.entrySet().stream()
+        .sorted(Comparator
+            .<Map.Entry<String, List<String>>>comparingInt(
+                entry -> "main".equalsIgnoreCase(entry.getKey()) ? 0 : 1)
+            .thenComparing(Map.Entry::getKey, String.CASE_INSENSITIVE_ORDER))
+        .forEach(entry -> appendProviderLine(output, entry.getKey(), entry.getValue()));
+    appendProviderLine(output, DYNAMIC_AI_PROVIDER, dynamicCommandNames);
+    output.append("\nUse !help commandName for details.");
+    return output.toString();
   }
 
-  private String formatSummaryCommand(HandlerClass handlerClass) {
-    StringBuilder sb = new StringBuilder(handlerClass.getCommandName().toLowerCase());
-    String requiredPermission = handlerClass.getRequiredPermission();
-    if (requiredPermission != null && !requiredPermission.isBlank()) {
-      sb.append("[P]");
-    }
-    return sb.toString();
-  }
-
-  private String formatProviderName(String namespace, Map<String, CommandProvider> commandProviders) {
-    CommandProvider provider = commandProviders.get(namespace);
-    if (provider != null && provider.displayName() != null && !provider.displayName().isBlank()) {
-      return provider.displayName();
-    }
-    return namespace;
-  }
-
-  private String formatAiCommands() {
-    return getBotEngine().getAiCommandRegistryService().currentConfig().getCommands().stream()
-        .sorted(Comparator.comparing(AiCommandDefinition::getName, String.CASE_INSENSITIVE_ORDER))
-        .map(this::formatAiCommand)
-        .reduce((left, right) -> left + ", " + right)
-        .orElse("");
-  }
-
-  private String formatAiCommand(AiCommandDefinition command) {
-    StringBuilder sb = new StringBuilder(command.getName().toLowerCase());
-    if (!command.isEnabled()) {
-      sb.append("[D]");
-    }
-    String requiredPermission = command.getRequiredPermission();
-    if (requiredPermission != null && !requiredPermission.isBlank()) {
-      sb.append("[P]");
-    }
-    return sb.toString();
+  private void appendProviderLine(
+      StringBuilder output,
+      String provider,
+      Collection<String> commandNames) {
+    List<String> sortedCommandNames = commandNames.stream()
+        .sorted(String.CASE_INSENSITIVE_ORDER)
+        .toList();
+    output.append("\n = ")
+        .append(provider.toLowerCase(Locale.ROOT))
+        .append(":: ")
+        .append(String.join(", ", sortedCommandNames));
   }
 
   private String formatHelpCommandName(String requestedCommand, AbstractCmd cmd) {
