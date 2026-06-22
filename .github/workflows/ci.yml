@@ -62,7 +62,7 @@ jobs:
           hermes_manager_changed=false
           hermes_gateway_changed=false
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|docker-compose\.develop-debug\.yml$|env/|\.github/workflows/)'; then
             engine_changed=true
           fi
 
@@ -216,6 +216,17 @@ jobs:
           target: ${{ vars.DEPLOY_WORKDIR || '/home/hokan/the_bot' }}
           overwrite: true
 
+      - name: Copy develop debug compose file to VM
+        if: ${{ github.ref_name == 'develop' }}
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: docker-compose.develop-debug.yml
+          target: ${{ vars.DEPLOY_WORKDIR || '/home/hokan/the_bot' }}
+          overwrite: true
+
       - name: Deploy changed services to VM
         uses: appleboy/ssh-action@master
         env:
@@ -293,6 +304,7 @@ jobs:
                 SPRING_PROFILES_ACTIVE="prod"
                 HOKAN_RUNTIME_PROFILE="PROD"
                 RUNTIME_PROPERTIES_FILE="prod.properties"
+                COMPOSE_ARGS="-f docker-compose.yml"
                 DEFAULT_OPENCLAW_HOST_PORT="18890"
                 DEFAULT_HOKAN_BOT_INSTANCE_ID="hokan-main"
                 DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL="http://hokan-main.local:8091"
@@ -302,6 +314,7 @@ jobs:
                 SPRING_PROFILES_ACTIVE="dev"
                 HOKAN_RUNTIME_PROFILE="DEV"
                 RUNTIME_PROPERTIES_FILE="dev.properties"
+                COMPOSE_ARGS="-f docker-compose.yml -f docker-compose.develop-debug.yml"
                 DEFAULT_OPENCLAW_HOST_PORT="18899"
                 DEFAULT_HOKAN_BOT_INSTANCE_ID="hokan-develop"
                 DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL="http://hokan-develop.local:8091"
@@ -598,23 +611,23 @@ jobs:
             fi
 
             if [ "$WHATSAPP_CHANGED" = "true" ]; then
-              docker compose pull bot-whatsapp
-              docker compose up -d bot-whatsapp
+              docker compose $COMPOSE_ARGS pull bot-whatsapp
+              docker compose $COMPOSE_ARGS up -d bot-whatsapp
             fi
 
             if [ "$ENGINE_CHANGED" = "true" ]; then
-              docker compose pull bot-engine
-              docker compose up -d bot-engine
+              docker compose $COMPOSE_ARGS pull bot-engine
+              docker compose $COMPOSE_ARGS up -d bot-engine
             fi
 
             if [ "$IO_CHANGED" = "true" ]; then
-              docker compose pull bot-io
-              docker compose up -d bot-io
+              docker compose $COMPOSE_ARGS pull bot-io
+              docker compose $COMPOSE_ARGS up -d bot-io
             fi
 
             if [ "$WEB_CHANGED" = "true" ]; then
-              docker compose pull bot-web
-              docker compose up -d bot-web
+              docker compose $COMPOSE_ARGS pull bot-web
+              docker compose $COMPOSE_ARGS up -d bot-web
             fi
 
             if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ] && [ "$WEB_CHANGED" != "true" ] && [ "$WHATSAPP_CHANGED" != "true" ]; then

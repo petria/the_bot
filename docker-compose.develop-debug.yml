@@ -1,0 +1,7 @@
+services:
+  bot-engine:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005,allow=192.168.0.55
+    ports:
+      - "192.168.0.66:5005:5005"
