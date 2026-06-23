@@ -147,9 +147,41 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
-    String provider = normalizeLocalProvider(request == null ? null : request.provider());
+    String provider = normalizeProvider(request == null ? null : request.provider());
+    if (OPENAI_PROVIDER.equals(provider)) {
+      return openAiModels(request);
+    }
     URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
     return localLlmClient.discover(provider, uri, discoveryApiKey(request));
+  }
+
+  private HermesFallbackModelsResponse openAiModels(HermesModelDiscoveryRequest request) {
+    StoredBackendConfig config = readBackendConfig();
+    List<String> models = new ArrayList<>();
+    StoredProfile selected = profileById(config, request == null ? null : blankToNull(request.profileId()));
+    if (selected != null && OPENAI_PROVIDER.equals(selected.provider())) {
+      models.add(selected.model());
+    }
+    for (StoredProfile profile : config.profiles()) {
+      if (OPENAI_PROVIDER.equals(profile.provider())) {
+        models.add(profile.model());
+      }
+    }
+    models.add("gpt-5.5");
+    List<String> sorted = models.stream()
+        .filter(model -> model != null && !model.isBlank())
+        .distinct()
+        .sorted(String.CASE_INSENSITIVE_ORDER)
+        .toList();
+    List<HermesFallbackModel> items = sorted.stream()
+        .map(model -> new HermesFallbackModel(
+            model,
+            "tool-capable",
+            "OpenAI/Codex profile model",
+            true,
+            "Managed by Hermes profile credentials"))
+        .toList();
+    return new HermesFallbackModelsResponse(sorted, items);
   }
 
   private String discoveryApiKey(HermesModelDiscoveryRequest request) {
@@ -739,7 +771,7 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private StoredProfile profileById(StoredBackendConfig config, String id) {
-    if (config == null || config.profiles() == null) {
+    if (config == null || config.profiles() == null || id == null) {
       return null;
     }
     return config.profiles().stream()
