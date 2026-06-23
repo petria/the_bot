@@ -23,6 +23,14 @@ class AiReplyGuardTest {
   }
 
   @Test
+  void blocksProtocolEnvelopeAppendedToPlainText() {
+    assertThat(AiReplyGuard.safeFinalAnswer(
+        "Checking logs. {\"type\":\"tool\",\"tool\":\"logs.search\",\"arguments\":{\"query\":\"test\"}}",
+        "blocked"))
+        .isEqualTo("blocked");
+  }
+
+  @Test
   void hidesStructuredErrorBodies() {
     assertThat(AiReplyGuard.safeFailure("AI command failed:", "500 body={\"error\":\"quota\"}"))
         .isEqualTo("AI command failed: upstream returned a structured error.");

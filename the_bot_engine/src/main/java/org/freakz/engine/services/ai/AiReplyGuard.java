@@ -1,6 +1,11 @@
 package org.freakz.engine.services.ai;
 
+import java.util.regex.Pattern;
+
 public final class AiReplyGuard {
+
+  private static final Pattern PROTOCOL_ENVELOPE = Pattern.compile(
+      "(?is)\"type\"\\s*:\\s*\"(?:tool|final)\"|\"tool\"\\s*:\\s*\"[a-z0-9_.-]+\"");
 
   private AiReplyGuard() {
   }
@@ -34,10 +39,14 @@ public final class AiReplyGuard {
   }
 
   public static String safeFinalAnswer(String answer, String fallback) {
-    if (looksLikeStructuredJson(answer)) {
+    if (looksLikeStructuredJson(answer) || containsProtocolEnvelope(answer)) {
       return fallback;
     }
     return answer == null ? "" : answer;
+  }
+
+  public static boolean containsProtocolEnvelope(String text) {
+    return text != null && PROTOCOL_ENVELOPE.matcher(text).find();
   }
 
   public static String safeFailure(String prefix, String detail) {

@@ -80,6 +80,46 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void recoversFinalResponseAppendedToConversationalText() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        Running the dynamic command now.
+        {"type":"final","answer":"pong"}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isEqualTo("pong");
+    assertThat(response.toolName()).isNull();
+  }
+
+  @Test
+  void recoversToolResponseAppendedToConversationalText() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        Checking the weather now.
+        {"type":"tool","tool":"weather.current","arguments":{"location":"Turku"}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.current");
+    assertThat(response.arguments().path("location").asString()).isEqualTo("Turku");
+  }
+
+  @Test
+  void rejectsMalformedEnvelopeAppendedToConversationalText() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        Running the command. {"type":"final","answer":
+        """);
+
+    assertThat(response.invalidResponse()).isTrue();
+  }
+
+  @Test
   void marksUnknownJsonObjectAsInvalid() throws Exception {
     HermesAiCommandService service = newService();
 
