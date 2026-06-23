@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -156,6 +157,49 @@ class HermesFallbackServiceTest {
         "lmstudio",
         java.net.URI.create("http://lmstudio.local:1234/v1/"),
         "secret-key");
+  }
+
+  @Test
+  void openAiModelDiscoveryReturnsConfiguredProfileModels() throws Exception {
+    createProfiles();
+    RestTemplate restTemplate = mock(RestTemplate.class);
+    when(restTemplate.getForEntity(anyString(), eq(String.class)))
+        .thenReturn(ResponseEntity.ok("{\"status\":\"ok\"}"));
+    LocalLlmClient localLlmClient = localClient();
+    HermesFallbackService service = new HermesFallbackService(
+        properties(),
+        mock(HermesGatewayService.class),
+        restTemplate,
+        localLlmClient,
+        new LocalCredentialCipher(properties()));
+    service.run(new DefaultApplicationArguments());
+    service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        List.of(
+            new HermesProfileUpdate(
+                "chat",
+                "Hermes chat",
+                "openai",
+                null,
+                "openai/gpt-5.5",
+                "responses",
+                120,
+                null,
+                true,
+                null,
+                false),
+            profile("coder", false),
+            profile("ai-command", true)),
+        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", false, 65536)));
+
+    HermesFallbackModelsResponse response = service.getModels(new HermesModelDiscoveryRequest(
+        "openai",
+        "",
+        null,
+        "chat"));
+
+    assertThat(response.models()).contains("openai/gpt-5.5", "gpt-5.5");
+    assertThat(response.items()).allMatch(item -> Boolean.TRUE.equals(item.toolCapable()));
+    verify(localLlmClient, never()).discover(eq("openai"), any(), any());
   }
 
   @Test
