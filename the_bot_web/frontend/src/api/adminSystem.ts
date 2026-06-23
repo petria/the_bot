@@ -80,6 +80,21 @@ export type HermesProfile = {
 export type HermesBackendConfigResponse = {
   profiles: HermesProfile[];
   fallback: HermesFallbackSettingsResponse | null;
+  globalOverride: HermesGlobalOverrideSettings | null;
+};
+
+export type HermesGlobalOverrideSettings = {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  contextWindow: number | null;
+  healthy: boolean | null;
+  detail: string | null;
+  activatedAt: string | null;
+  updatedBy: string | null;
+  validationStatus: string | null;
+  lastValidatedAt: string | null;
 };
 
 export type HermesFallbackModel = {
@@ -151,5 +166,8 @@ export function updateHermesBackendConfig(config: HermesBackendConfigResponse): 
       apiKey: config.fallback.apiKey || null,
       clearApiKey: Boolean(config.fallback.clearApiKey),
     } : null,
+    globalOverride: {
+      enabled: Boolean(config.globalOverride?.enabled),
+    },
   });
 }

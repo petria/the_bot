@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesGlobalOverrideSettings;
 import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.dto.ai.AiRoutesResponse;
@@ -48,8 +49,16 @@ public class AiRoutesStatusService {
   List<String> formatRoutes() {
     Map<String, HermesProfile> profiles = loadProfiles();
     HermesFallbackSettingsResponse fallback = loadFallback();
+    HermesGlobalOverrideSettings globalOverride = loadGlobalOverride();
     List<String> lines = new ArrayList<>();
 
+    if (globalOverride != null && Boolean.TRUE.equals(globalOverride.enabled())) {
+      lines.add("GLOBAL_OVERRIDE: %s provider=%s model=%s base=%s".formatted(
+          health(globalOverride.healthy()),
+          valueOrUnknown(globalOverride.provider()),
+          shortValue(globalOverride.model(), MAX_MODEL_CHARS),
+          shortValue(globalOverride.baseUrl(), MAX_BASE_URL_CHARS)));
+    }
     lines.add(formatRuntimeRoute(
         "chat",
         hermesSettingsService.resolveSettings(),
@@ -96,6 +105,18 @@ public class AiRoutesStatusService {
     }
     try {
       return hermesManagerClient.getFallback().getBody();
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private HermesGlobalOverrideSettings loadGlobalOverride() {
+    if (hermesManagerClient == null) {
+      return null;
+    }
+    try {
+      HermesBackendConfigResponse response = hermesManagerClient.getBackendConfig().getBody();
+      return response == null ? null : response.globalOverride();
     } catch (Exception e) {
       return null;
     }

@@ -23,6 +23,8 @@ import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesGlobalOverrideSettings;
+import org.freakz.common.model.engine.system.HermesGlobalOverrideUpdate;
 import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
@@ -114,7 +116,12 @@ public class HermesFallbackService implements ApplicationRunner {
         current.encryptedApiKey(),
         request == null ? null : request.apiKey(),
         request != null && Boolean.TRUE.equals(request.clearApiKey()));
-    localLlmClient.validateToolCall(baseUrl, model, decryptCredential(encryptedApiKey));
+    String apiKey = decryptCredential(encryptedApiKey);
+    localLlmClient.validateToolCall(baseUrl, model, apiKey);
+    StoredBackendConfig config = readBackendConfig();
+    if (config.globalOverride().enabled()) {
+      localLlmClient.validateChat(baseUrl, model, apiKey);
+    }
 
     StoredFallbackConfig saved = new StoredFallbackConfig(
         provider,
@@ -129,7 +136,6 @@ public class HermesFallbackService implements ApplicationRunner {
         encryptedApiKey);
     updateLock.lock();
     try {
-      StoredBackendConfig config = readBackendConfig();
       applyHermesConfiguration(config, saved);
       writeFallbackConfig(saved);
       return fallbackResponse(saved, config, updateRuntimeState(config, saved));
@@ -172,6 +178,10 @@ public class HermesFallbackService implements ApplicationRunner {
     StoredBackendConfig config = sanitizeBackendConfig(request);
     validateProfiles(config);
     StoredFallbackConfig fallback = sanitizeFallbackConfig(request == null ? null : request.fallback());
+    StoredGlobalOverride override = sanitizeGlobalOverride(
+        request == null ? null : request.globalOverride(),
+        request == null ? null : request.requestedBy(),
+        config.globalOverride());
 
     updateLock.lock();
     try {
@@ -187,17 +197,25 @@ public class HermesFallbackService implements ApplicationRunner {
           }
         }
       }
-      if (fallback.enabled()) {
+      if (fallback.enabled() || override.enabled()) {
         URI baseUrl = validatedBaseUrl(fallback.baseUrl());
         String apiKey = decryptCredential(fallback.encryptedApiKey());
         localLlmClient.discover(fallback.provider(), baseUrl, apiKey);
-        localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
+        if (override.enabled()) {
+          localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
+          localLlmClient.validateChat(baseUrl, fallback.model(), apiKey);
+          override = override.validated(Instant.now(), LocalLlmClient.displayName(fallback.provider())
+              + " global override validated successfully");
+        } else {
+          localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
+        }
         fallback = fallback.validated(
             Instant.now(),
             true,
             "VALID",
             LocalLlmClient.displayName(fallback.provider()) + " fallback validated successfully");
       }
+      config = new StoredBackendConfig(config.profiles(), override);
       applyHermesConfiguration(config, fallback);
       writeBackendConfig(config);
       writeFallbackConfig(fallback);
@@ -221,11 +239,14 @@ public class HermesFallbackService implements ApplicationRunner {
           ProfileHealth health = openAiProfileHealth(profileId);
           RuntimeProfileState runtime = runtimeState.profiles().get(profileId);
           String activeProvider = runtime == null ? effectiveProvider(profile, settings, credential) : runtime.activeProvider();
-          boolean fallbackActive = settings.provider().equals(activeProvider) && profile != null
+          boolean globalOverride = runtime != null && "GLOBAL_OVERRIDE".equals(runtime.routeMode());
+          boolean fallbackActive = !globalOverride && settings.provider().equals(activeProvider) && profile != null
               && OPENAI_PROVIDER.equals(profile.provider());
           return new HermesFallbackProfileStatus(
               profileId,
-              fallbackActive ? activeProvider.toUpperCase() + "_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
+              globalOverride
+                  ? "GLOBAL_OVERRIDE"
+                  : fallbackActive ? activeProvider.toUpperCase() + "_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
               Boolean.TRUE.equals(health.healthy()),
               credential.openAiAvailable(),
               credential.cooldownUntil(),
@@ -259,23 +280,28 @@ public class HermesFallbackService implements ApplicationRunner {
     HermesFallbackSettingsResponse fallbackResponse = fallbackResponse(fallback, config, runtimeState);
     return new HermesBackendConfigResponse(
         config.profiles().stream()
-            .map(profile -> profileResponse(profile, fallback, runtimeState))
+            .map(profile -> profileResponse(profile, fallback, config.globalOverride(), runtimeState))
             .toList(),
-        fallbackResponse);
+        fallbackResponse,
+        globalOverrideResponse(config.globalOverride(), fallback));
   }
 
   private HermesProfile profileResponse(
       StoredProfile profile,
       StoredFallbackConfig fallback,
+      StoredGlobalOverride override,
       StoredRuntimeState runtimeState) {
     ProfileHealth health = OPENAI_PROVIDER.equals(profile.provider())
         ? openAiProfileHealth(profile.id())
         : localProfileHealth(profile);
     CredentialStatus credential = credentialStatus(profile.id());
-    PassiveLocalHealth fallbackHealth = passiveLocalHealth(fallback);
+    PassiveLocalHealth fallbackHealth = passiveLocalHealth(fallback, override.enabled());
     RuntimeProfileState runtime = runtimeState.profiles().get(profile.id());
     String activeProvider = runtime == null ? effectiveProvider(profile, fallback, credential) : runtime.activeProvider();
-    boolean primaryHealthy = OPENAI_PROVIDER.equals(profile.provider())
+    boolean overrideEnabled = configOverrideEnabled(runtime);
+    boolean primaryHealthy = overrideEnabled
+        ? Boolean.TRUE.equals(fallbackHealth.healthy())
+        : OPENAI_PROVIDER.equals(profile.provider())
         ? credential.openAiAvailable()
         : Boolean.TRUE.equals(health.healthy());
     return new HermesProfile(
@@ -286,13 +312,13 @@ public class HermesFallbackService implements ApplicationRunner {
         profile.model(),
         profile.apiMode(),
         profile.timeoutSeconds(),
-        health.healthy(),
+        overrideEnabled ? fallbackHealth.healthy() : health.healthy(),
         health.toolCapable(),
         health.detail(),
         profile.contextWindow(),
         profile.fallbackAllowed(),
         activeProvider,
-        health.healthy(),
+        overrideEnabled ? fallbackHealth.healthy() : health.healthy(),
         primaryHealthy,
         fallbackHealth.healthy(),
         credential.cooldownUntil(),
@@ -303,6 +329,30 @@ public class HermesFallbackService implements ApplicationRunner {
         profile.lastValidatedAt(),
         profile.validationStatus(),
         hasCredential(profile.encryptedApiKey()));
+  }
+
+  private boolean configOverrideEnabled(RuntimeProfileState runtime) {
+    return runtime != null && "GLOBAL_OVERRIDE".equals(runtime.routeMode());
+  }
+
+  private HermesGlobalOverrideSettings globalOverrideResponse(
+      StoredGlobalOverride override,
+      StoredFallbackConfig fallback) {
+    PassiveLocalHealth health = override.enabled()
+        ? passiveLocalHealth(fallback, true)
+        : new PassiveLocalHealth(null, "Global override disabled");
+    return new HermesGlobalOverrideSettings(
+        override.enabled(),
+        fallback.provider(),
+        fallback.baseUrl(),
+        fallback.model(),
+        fallback.contextWindow(),
+        health.healthy(),
+        firstNonBlank(health.detail(), override.detail()),
+        override.activatedAt(),
+        override.updatedBy(),
+        override.validationStatus(),
+        override.lastValidatedAt());
   }
 
   private ProfileHealth openAiProfileHealth(String profileId) {
@@ -343,7 +393,11 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private PassiveLocalHealth passiveLocalHealth(StoredFallbackConfig fallback) {
-    if (fallback == null || !fallback.enabled()) {
+    return passiveLocalHealth(fallback, false);
+  }
+
+  private PassiveLocalHealth passiveLocalHealth(StoredFallbackConfig fallback, boolean forceEnabled) {
+    if (fallback == null || (!forceEnabled && !fallback.enabled())) {
       return new PassiveLocalHealth(null, "Local LLM fallback disabled");
     }
     try {
@@ -500,7 +554,25 @@ public class HermesFallbackService implements ApplicationRunner {
                 profile.apiKey(),
                 Boolean.TRUE.equals(profile.clearApiKey())));
         })
-        .toList()));
+        .toList(), current.globalOverride()));
+  }
+
+  private StoredGlobalOverride sanitizeGlobalOverride(
+      HermesGlobalOverrideUpdate request,
+      String requestedBy,
+      StoredGlobalOverride current) {
+    StoredGlobalOverride existing = current == null ? defaultGlobalOverride() : current;
+    if (request == null || request.enabled() == null || request.enabled() == existing.enabled()) {
+      return existing;
+    }
+    boolean enabled = Boolean.TRUE.equals(request.enabled());
+    return new StoredGlobalOverride(
+        enabled,
+        enabled ? Instant.now().toString() : null,
+        firstNonBlank(requestedBy, "unknown"),
+        enabled ? "PENDING_VALIDATION" : "DISABLED",
+        existing.lastValidatedAt(),
+        enabled ? "Global override awaiting validation" : "Global override disabled");
   }
 
   private StoredFallbackConfig sanitizeFallbackConfig(HermesFallbackUpdateRequest request) {
@@ -568,7 +640,10 @@ public class HermesFallbackService implements ApplicationRunner {
             profile.encryptedApiKey()));
       });
     }
-    return new StoredBackendConfig(List.copyOf(merged.values()));
+    StoredGlobalOverride override = config == null || config.globalOverride() == null
+        ? defaultGlobalOverride()
+        : config.globalOverride().withDefaults(defaultGlobalOverride());
+    return new StoredBackendConfig(List.copyOf(merged.values()), override);
   }
 
   private StoredBackendConfig migrateLegacyBackendConfig(JsonNode root) {
@@ -635,7 +710,7 @@ public class HermesFallbackService implements ApplicationRunner {
             null));
       }
     }
-    return new StoredBackendConfig(profiles);
+    return new StoredBackendConfig(profiles, defaultGlobalOverride());
   }
 
   private void validateProfiles(StoredBackendConfig config) {
@@ -681,7 +756,12 @@ public class HermesFallbackService implements ApplicationRunner {
     return new StoredBackendConfig(List.of(
         new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, upstreamModel("chat", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
         new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, upstreamModel("coder", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
-        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null)));
+        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null)),
+        defaultGlobalOverride());
+  }
+
+  private StoredGlobalOverride defaultGlobalOverride() {
+    return new StoredGlobalOverride(false, null, null, "DISABLED", null, "Global override disabled");
   }
 
   private StoredFallbackConfig defaultFallbackConfig() {
@@ -724,7 +804,7 @@ public class HermesFallbackService implements ApplicationRunner {
       for (StoredProfile profile : config.profiles()) {
         Path path = findProfileConfig(profile.id());
         backups.put(path, Files.readAllBytes(path));
-        byte[] updated = updatedProfileYaml(path, profile, fallback);
+        byte[] updated = updatedProfileYaml(path, profile, fallback, config.globalOverride());
         if (!java.util.Arrays.equals(backups.get(path), updated)) {
           writeAtomically(path, updated);
           changedProfiles.add(profile.id());
@@ -743,13 +823,23 @@ public class HermesFallbackService implements ApplicationRunner {
   private byte[] updatedProfileYaml(
       Path path,
       StoredProfile profile,
-      StoredFallbackConfig fallback) throws IOException {
+      StoredFallbackConfig fallback,
+      StoredGlobalOverride override) throws IOException {
     Map<String, Object> yaml = yamlMapper.readValue(Files.readAllBytes(path), new TypeReference<>() {});
     if (yaml == null) {
       yaml = new LinkedHashMap<>();
     }
     Map<String, Object> model = mutableMap(yaml.get("model"));
-    if (LocalLlmClient.isLocal(profile.provider())) {
+    if (override.enabled()) {
+      model.put("default", fallback.model());
+      model.put("provider", "custom");
+      model.put("base_url", trimTrailingSlash(fallback.baseUrl()));
+      putOptionalApiKey(model, fallback.encryptedApiKey());
+      if (fallback.contextWindow() != null) {
+        model.put("context_length", fallback.contextWindow());
+      }
+      yaml.put("fallback_providers", List.of());
+    } else if (LocalLlmClient.isLocal(profile.provider())) {
       model.put("default", profile.model());
       model.put("provider", "custom");
       model.put("base_url", trimTrailingSlash(profile.baseUrl()));
@@ -885,15 +975,22 @@ public class HermesFallbackService implements ApplicationRunner {
     Instant now = Instant.now();
     for (StoredProfile profile : config.profiles()) {
       CredentialStatus credential = credentialStatus(profile.id());
-      String activeProvider = effectiveProvider(profile, fallback, credential);
+      boolean globalOverride = config.globalOverride().enabled();
+      String activeProvider = globalOverride
+          ? fallback.provider()
+          : effectiveProvider(profile, fallback, credential);
       RuntimeProfileState old = previous.profiles().get(profile.id());
-      boolean enteredFallback = fallback.provider().equals(activeProvider)
+      boolean enteredFallback = !globalOverride && fallback.provider().equals(activeProvider)
           && OPENAI_PROVIDER.equals(profile.provider())
           && (old == null || !fallback.provider().equals(old.activeProvider()));
-      String activatedAt = enteredFallback
+      String activatedAt = globalOverride
+          ? config.globalOverride().activatedAt()
+          : enteredFallback
           ? now.toString()
           : old == null ? null : old.fallbackActivatedAt();
-      String reason = fallback.provider().equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
+      String reason = globalOverride
+          ? "Global local LLM override enabled"
+          : fallback.provider().equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
           ? credential.detail()
           : null;
       String lastError = credential.openAiAvailable()
@@ -909,7 +1006,8 @@ public class HermesFallbackService implements ApplicationRunner {
           reason,
           activatedAt,
           lastError,
-          lastErrorAt));
+          lastErrorAt,
+          globalOverride ? "GLOBAL_OVERRIDE" : "NORMAL"));
     }
     StoredRuntimeState updated = new StoredRuntimeState(profiles);
     if (!updated.equals(previous)) {
@@ -1079,7 +1177,9 @@ public class HermesFallbackService implements ApplicationRunner {
   private record PassiveLocalHealth(Boolean healthy, String detail) {
   }
 
-  private record StoredBackendConfig(List<StoredProfile> profiles) {
+  private record StoredBackendConfig(
+      List<StoredProfile> profiles,
+      StoredGlobalOverride globalOverride) {
   }
 
   private record StoredProfile(
@@ -1143,6 +1243,35 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
+  private record StoredGlobalOverride(
+      boolean enabled,
+      String activatedAt,
+      String updatedBy,
+      String validationStatus,
+      String lastValidatedAt,
+      String detail) {
+
+    StoredGlobalOverride withDefaults(StoredGlobalOverride defaults) {
+      return new StoredGlobalOverride(
+          enabled,
+          activatedAt,
+          updatedBy,
+          validationStatus == null ? defaults.validationStatus : validationStatus,
+          lastValidatedAt,
+          detail == null ? defaults.detail : detail);
+    }
+
+    StoredGlobalOverride validated(Instant at, String validationDetail) {
+      return new StoredGlobalOverride(
+          enabled,
+          activatedAt == null ? at.toString() : activatedAt,
+          updatedBy,
+          "VALID",
+          at.toString(),
+          validationDetail);
+    }
+  }
+
   private record StoredRuntimeState(Map<String, RuntimeProfileState> profiles) {
   }
 
@@ -1151,6 +1280,7 @@ public class HermesFallbackService implements ApplicationRunner {
       String fallbackReason,
       String fallbackActivatedAt,
       String lastProviderError,
-      String lastProviderErrorAt) {
+      String lastProviderErrorAt,
+      String routeMode) {
   }
 }

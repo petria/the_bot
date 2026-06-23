@@ -20,6 +20,7 @@ import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.HermesFallbackModel;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesGlobalOverrideUpdate;
 import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesProfileUpdate;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
@@ -155,6 +156,52 @@ class HermesFallbackServiceTest {
         "lmstudio",
         java.net.URI.create("http://lmstudio.local:1234/v1/"),
         "secret-key");
+  }
+
+  @Test
+  void globalOverrideForcesEveryProfileAndDisableRestoresNormalRoutes() throws Exception {
+    createProfiles();
+    RestTemplate restTemplate = mock(RestTemplate.class);
+    when(restTemplate.getForEntity(anyString(), eq(String.class)))
+        .thenReturn(ResponseEntity.ok("{\"status\":\"ok\"}"));
+    HermesGatewayService gatewayService = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(restTemplate, gatewayService);
+    service.run(new DefaultApplicationArguments());
+
+    List<HermesProfileUpdate> profiles = List.of(
+        profile("chat", true),
+        profile("coder", false),
+        profile("ai-command", true));
+    HermesFallbackUpdateRequest fallback =
+        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", false, 65536);
+
+    HermesBackendConfigResponse enabled = service.updateBackendConfig(
+        new HermesBackendConfigUpdateRequest(
+            profiles,
+            fallback,
+            new HermesGlobalOverrideUpdate(true),
+            "admin"));
+
+    assertThat(enabled.globalOverride().enabled()).isTrue();
+    assertThat(enabled.globalOverride().updatedBy()).isEqualTo("admin");
+    assertThat(enabled.profiles()).allMatch(profile -> "ollama".equals(profile.activeProvider()));
+    for (String profile : List.of("chat", "coder", "ai-command")) {
+      assertThat(Files.readString(tempDir.resolve("profiles/" + profile + "/config.yaml")))
+          .contains("qwen3.5:27b", "http://ollama.local:11434/v1", "fallback_providers: []");
+    }
+
+    HermesBackendConfigResponse disabled = service.updateBackendConfig(
+        new HermesBackendConfigUpdateRequest(
+            profiles,
+            fallback,
+            new HermesGlobalOverrideUpdate(false),
+            "admin"));
+
+    assertThat(disabled.globalOverride().enabled()).isFalse();
+    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml")))
+        .contains("provider: \"openai-codex\"", "default: \"gpt-5.5\"");
+    assertThat(Files.readString(tempDir.resolve("profiles/coder/config.yaml")))
+        .contains("provider: \"openai-codex\"", "fallback_providers: []");
   }
 
   private void createProfiles() throws Exception {

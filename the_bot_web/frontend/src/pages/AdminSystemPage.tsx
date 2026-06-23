@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, Modal, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -30,7 +30,10 @@ export function AdminSystemPage() {
   const [fallbackModels, setFallbackModels] = useState<string[]>([]);
   const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
   const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
+  const [overrideConfirmation, setOverrideConfirmation] = useState<'enable' | 'disable' | null>(null);
   const fallback = backendConfig?.fallback || null;
+  const globalOverride = backendConfig?.globalOverride || null;
+  const overrideEnabled = Boolean(globalOverride?.enabled);
 
   useEffect(() => {
     if (!hermesBackendQuery.data) {
@@ -42,7 +45,7 @@ export function AdminSystemPage() {
   }, [hermesBackendQuery.data]);
 
   const updateBackendsMutation = useMutation({
-    mutationFn: () => updateHermesBackendConfig(requireBackendConfig(backendConfig)),
+    mutationFn: (config: HermesBackendConfigResponse) => updateHermesBackendConfig(config),
     onSuccess: (response) => {
       queryClient.setQueryData(['admin-system-hermes-backends'], response);
       setBackendConfig(response);
@@ -102,6 +105,51 @@ export function AdminSystemPage() {
             <Stack gap="md">
               <Group justify="space-between" align="flex-start" gap="sm">
                 <div>
+                  <Text fw={700}>Emergency local override</Text>
+                  <Text size="sm" c="dimmed">
+                    Forces chat, coder, and AI-command routes through the configured local fallback backend.
+                  </Text>
+                </div>
+                <Badge color={overrideEnabled ? 'red' : 'gray'}>
+                  {overrideEnabled ? 'Forced local route' : 'Inactive'}
+                </Badge>
+              </Group>
+
+              {overrideEnabled ? (
+                <Alert color="red" variant="filled" icon={<AlertCircle size={18} />}>
+                  <Text fw={700}>All AI routes are forced to the local backend.</Text>
+                  <Text size="sm">Requests fail closed if this backend is unavailable. Normal route editing is locked.</Text>
+                </Alert>
+              ) : null}
+
+              <Group grow align="flex-start">
+                <InfoLine label="Runner" value={displayRunner(fallback?.provider)} />
+                <InfoLine label="Model" value={fallback?.model || '-'} />
+                <InfoLine label="Endpoint" value={fallback?.baseUrl || '-'} />
+                <InfoLine label="Context window" value={String(fallback?.contextWindow || '-')} />
+              </Group>
+              <Group justify="space-between" align="flex-end">
+                <Stack gap={2}>
+                  <InfoLine label="Status" value={globalOverride?.detail || 'Global override disabled'} />
+                  <InfoLine label="Activated" value={formatDate(globalOverride?.activatedAt)} />
+                  <InfoLine label="Changed by" value={globalOverride?.updatedBy || '-'} />
+                </Stack>
+                <Button
+                  color={overrideEnabled ? 'red' : 'orange'}
+                  loading={updateBackendsMutation.isPending}
+                  disabled={!overrideEnabled && (!fallback?.baseUrl || !fallback?.model)}
+                  onClick={() => setOverrideConfirmation(overrideEnabled ? 'disable' : 'enable')}
+                >
+                  {overrideEnabled ? 'Disable emergency override' : 'Validate and force all routes'}
+                </Button>
+              </Group>
+            </Stack>
+          </Card>
+
+          <Card withBorder radius="sm">
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start" gap="sm">
+                <div>
                   <Text fw={700}>Local LLM fallback</Text>
                   <Text size="sm" c="dimmed">Used only when an OpenAI profile is unavailable and that profile permits fallback.</Text>
                 </div>
@@ -113,6 +161,7 @@ export function AdminSystemPage() {
               <Switch
                 label="Enable local LLM fallback"
                 checked={Boolean(fallback?.enabled)}
+                disabled={overrideEnabled}
                 onChange={(event) => updateFallback({ enabled: event.currentTarget.checked })}
               />
 
@@ -121,6 +170,7 @@ export function AdminSystemPage() {
                   label="Local runner"
                   data={LOCAL_RUNNER_OPTIONS}
                   value={fallback?.provider || 'ollama'}
+                  disabled={overrideEnabled}
                   onChange={(value) => updateFallback({
                     provider: value || 'ollama',
                     baseUrl: defaultRunnerUrl(value || 'ollama'),
@@ -129,12 +179,14 @@ export function AdminSystemPage() {
                 <TextInput
                   label="OpenAI-compatible base URL"
                   value={fallback?.baseUrl || ''}
+                  disabled={overrideEnabled}
                   onChange={(event) => updateFallback({ baseUrl: event.currentTarget.value })}
                 />
                 <Autocomplete
                   label="Fallback model"
                   data={loadedModelProfileId === '__fallback__' ? fallbackModels : []}
                   value={fallback?.model || ''}
+                  disabled={overrideEnabled}
                   onChange={(value) => updateFallback({ model: value })}
                 />
                 <NumberInput
@@ -142,11 +194,13 @@ export function AdminSystemPage() {
                   min={65536}
                   step={1024}
                   value={fallback?.contextWindow || 65536}
+                  disabled={overrideEnabled}
                   onChange={(value) => updateFallback({ contextWindow: typeof value === 'number' ? value : 65536 })}
                 />
               </Group>
               <CredentialFields
                 configured={Boolean(fallback?.apiKeyConfigured)}
+                disabled={overrideEnabled}
                 value={fallback?.apiKey || ''}
                 clear={Boolean(fallback?.clearApiKey)}
                 onChange={(apiKey) => updateFallback({ apiKey, clearApiKey: false })}
@@ -163,7 +217,7 @@ export function AdminSystemPage() {
                   variant="light"
                   leftSection={<RefreshCw size={18} />}
                   loading={fallbackModelsMutation.isPending && loadedModelProfileId === '__fallback__'}
-                  disabled={!fallback?.baseUrl}
+                  disabled={overrideEnabled || !fallback?.baseUrl}
                   onClick={() => fallback && fallbackModelsMutation.mutate({
                     id: '__fallback__',
                     label: 'Environment fallback',
@@ -235,6 +289,7 @@ export function AdminSystemPage() {
                           ...LOCAL_RUNNER_OPTIONS,
                         ]}
                         value={profile.provider}
+                        disabled={overrideEnabled}
                         onChange={(value) => updateProfile(profile.id, {
                           provider: value || profile.provider,
                           baseUrl: value === 'openai'
@@ -249,12 +304,14 @@ export function AdminSystemPage() {
                           { value: 'chat-completions', label: 'Chat completions' },
                         ]}
                         value={profile.apiMode}
+                        disabled={overrideEnabled}
                         onChange={(value) => updateProfile(profile.id, { apiMode: value || profile.apiMode })}
                       />
                       <NumberInput
                         label="Timeout seconds"
                         min={1}
                         value={profile.timeoutSeconds || 120}
+                        disabled={overrideEnabled}
                         onChange={(value) => updateProfile(profile.id, { timeoutSeconds: typeof value === 'number' ? value : 120 })}
                       />
                     </Group>
@@ -263,12 +320,14 @@ export function AdminSystemPage() {
                       <TextInput
                         label="Label"
                         value={profile.label}
+                        disabled={overrideEnabled}
                         onChange={(event) => updateProfile(profile.id, { label: event.currentTarget.value })}
                       />
                       <Autocomplete
                         label="Model"
                         data={modelProfileId === profile.id ? fallbackModels : []}
                         value={profile.model}
+                        disabled={overrideEnabled}
                         onChange={(value) => updateProfile(profile.id, { model: value })}
                       />
                     </Group>
@@ -279,6 +338,7 @@ export function AdminSystemPage() {
                         <TextInput
                           label="OpenAI-compatible base URL"
                           value={profile.baseUrl || ''}
+                          disabled={overrideEnabled}
                           onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
                         />
                         <NumberInput
@@ -286,6 +346,7 @@ export function AdminSystemPage() {
                           min={65536}
                           step={1024}
                           value={profile.contextWindow || 65536}
+                          disabled={overrideEnabled}
                           onChange={(value) => updateProfile(profile.id, {
                             contextWindow: typeof value === 'number' ? value : 65536,
                           })}
@@ -293,6 +354,7 @@ export function AdminSystemPage() {
                         </Group>
                         <CredentialFields
                           configured={Boolean(profile.apiKeyConfigured)}
+                          disabled={overrideEnabled}
                           value={profile.apiKey || ''}
                           clear={Boolean(profile.clearApiKey)}
                           onChange={(apiKey) => updateProfile(profile.id, { apiKey, clearApiKey: false })}
@@ -304,7 +366,7 @@ export function AdminSystemPage() {
                         <Switch
                           label="Allow local LLM fallback"
                           checked={Boolean(profile.fallbackAllowed)}
-                          disabled={!fallback?.enabled}
+                          disabled={overrideEnabled || !fallback?.enabled}
                           onChange={(event) => updateProfile(profile.id, { fallbackAllowed: event.currentTarget.checked })}
                         />
                         <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
@@ -336,6 +398,7 @@ export function AdminSystemPage() {
                 w={260}
                 label="Model discovery profile"
                 value={modelProfileId}
+                disabled={overrideEnabled}
                 data={orderedProfiles
                   .filter((profile) => isLocalRunner(profile.provider))
                   .map((profile) => ({ value: profile.id, label: profile.label }))}
@@ -350,7 +413,7 @@ export function AdminSystemPage() {
                 variant="light"
                 leftSection={<RefreshCw size={18} />}
                 loading={fallbackModelsMutation.isPending}
-                disabled={!isLocalRunner(selectedModelProfile?.provider) || !selectedModelProfile?.baseUrl}
+                disabled={overrideEnabled || !isLocalRunner(selectedModelProfile?.provider) || !selectedModelProfile?.baseUrl}
                 onClick={() => selectedModelProfile && fallbackModelsMutation.mutate(selectedModelProfile)}
               >
                 Load models
@@ -359,7 +422,7 @@ export function AdminSystemPage() {
                 w={300}
                 label="Discovered model"
                 searchable
-                disabled={!selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
+                disabled={overrideEnabled || !selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
                 data={discoveredModelOptions}
                 value={selectedModelProfile && fallbackModels.includes(selectedModelProfile.model) ? selectedModelProfile.model : null}
                 placeholder={loadedModelProfileId === selectedModelProfile?.id ? `${fallbackModels.length} models loaded` : 'Load models first'}
@@ -372,8 +435,8 @@ export function AdminSystemPage() {
               <Button
                 leftSection={<Save size={18} />}
                 loading={updateBackendsMutation.isPending}
-                disabled={!hasBackendChanges}
-                onClick={() => updateBackendsMutation.mutate()}
+                disabled={overrideEnabled || !hasBackendChanges}
+                onClick={() => updateBackendsMutation.mutate(requireBackendConfig(backendConfig))}
               >
                 Validate and apply
               </Button>
@@ -395,6 +458,53 @@ export function AdminSystemPage() {
           </Card>
         </Stack>
       ) : null}
+
+      <Modal
+        opened={overrideConfirmation != null}
+        onClose={() => setOverrideConfirmation(null)}
+        title={overrideConfirmation === 'enable' ? 'Force all AI routes locally?' : 'Restore normal AI routing?'}
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            {overrideConfirmation === 'enable'
+              ? `All AI traffic will use ${displayRunner(fallback?.provider)} model ${fallback?.model || 'unknown'} at ${fallback?.baseUrl || 'unknown'}. Requests will fail closed if it is unavailable.`
+              : 'The saved provider and fallback settings for each Hermes profile will be restored.'}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOverrideConfirmation(null)}>Cancel</Button>
+            <Button
+              color={overrideConfirmation === 'enable' ? 'orange' : 'red'}
+              loading={updateBackendsMutation.isPending}
+              onClick={() => {
+                if (!backendConfig || overrideConfirmation == null) {
+                  return;
+                }
+                const next = {
+                  ...backendConfig,
+                  globalOverride: {
+                    enabled: overrideConfirmation === 'enable',
+                    provider: fallback?.provider || 'ollama',
+                    baseUrl: fallback?.baseUrl || '',
+                    model: fallback?.model || '',
+                    contextWindow: fallback?.contextWindow || 65536,
+                    healthy: globalOverride?.healthy || null,
+                    detail: globalOverride?.detail || null,
+                    activatedAt: globalOverride?.activatedAt || null,
+                    updatedBy: globalOverride?.updatedBy || null,
+                    validationStatus: globalOverride?.validationStatus || null,
+                    lastValidatedAt: globalOverride?.lastValidatedAt || null,
+                  },
+                };
+                setOverrideConfirmation(null);
+                updateBackendsMutation.mutate(next);
+              }}
+            >
+              {overrideConfirmation === 'enable' ? 'Validate and force' : 'Disable override'}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 
@@ -434,12 +544,14 @@ function CredentialFields({
   configured,
   value,
   clear,
+  disabled = false,
   onChange,
   onClear,
 }: {
   configured: boolean;
   value: string;
   clear: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
   onClear: (value: boolean) => void;
 }) {
@@ -453,13 +565,13 @@ function CredentialFields({
           : 'Leave blank for an unauthenticated LAN endpoint.'}
         placeholder={configured ? 'Configured' : 'Not configured'}
         value={value}
-        disabled={clear}
+        disabled={disabled || clear}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
       <Switch
         label="Clear configured API key"
         checked={clear}
-        disabled={!configured && !value}
+        disabled={disabled || (!configured && !value)}
         onChange={(event) => onClear(event.currentTarget.checked)}
       />
     </Group>
@@ -479,6 +591,10 @@ function defaultRunnerUrl(provider: string) {
     default:
       return 'http://localhost:11434/v1';
   }
+}
+
+function displayRunner(provider: string | null | undefined) {
+  return LOCAL_RUNNER_OPTIONS.find((option) => option.value === provider)?.label || provider || '-';
 }
 
 function requireBackendConfig(config: HermesBackendConfigResponse | null) {

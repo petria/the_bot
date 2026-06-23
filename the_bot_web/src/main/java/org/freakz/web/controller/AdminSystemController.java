@@ -1,5 +1,7 @@
 package org.freakz.web.controller;
 
+import java.security.Principal;
+
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
@@ -108,8 +110,12 @@ public class AdminSystemController {
   }
 
   @PutMapping("/hermes/backends")
-  public HermesBackendConfigResponse updateHermesBackendConfig(@RequestBody HermesBackendConfigUpdateRequest request) {
-    ResponseEntity<HermesBackendConfigResponse> response = engineClient.updateHermesBackendConfig(request);
+  public HermesBackendConfigResponse updateHermesBackendConfig(
+      @RequestBody HermesBackendConfigUpdateRequest request,
+      Principal principal) {
+    String username = principal == null ? "unknown" : principal.getName();
+    ResponseEntity<HermesBackendConfigResponse> response =
+        engineClient.updateHermesBackendConfig(request.withRequestedBy(username));
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update Hermes backend configuration");
     }
