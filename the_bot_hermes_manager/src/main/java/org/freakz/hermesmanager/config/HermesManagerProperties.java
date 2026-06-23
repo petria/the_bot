@@ -18,17 +18,6 @@ public record HermesManagerProperties(
     String token,
     String localCredentialKey) {
 
-  public HermesManagerProperties(
-      Path dataDir,
-      String containerName,
-      List<String> profiles,
-      String profilePorts,
-      String defaultBaseUrl,
-      String defaultModel,
-      String token) {
-    this(dataDir, containerName, profiles, profilePorts, defaultBaseUrl, defaultModel, token, "");
-  }
-
   public Map<String, Integer> ports() {
     return List.of(profilePorts.split(",")).stream()
         .map(value -> value.split(":", 2))
