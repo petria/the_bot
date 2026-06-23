@@ -135,6 +135,19 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void parsesWrappedFinalResponseContainingJsonStringLiteral() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        {"final":"\\"pong: 2026-06-23T13:35:37+03:00 (Europe/Helsinki)\\""}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isEqualTo("pong: 2026-06-23T13:35:37+03:00 (Europe/Helsinki)");
+    assertThat(response.toolName()).isNull();
+  }
+
+  @Test
   void parsesHermesToolResponseWrappedInContentObject() throws Exception {
     HermesAiService service = newService();
 

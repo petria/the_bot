@@ -274,6 +274,9 @@ public class HermesAiCommandService {
       }
       return AiCommandModelResponse.finalAnswer(text);
     }
+    if (node.isTextual()) {
+      return AiCommandModelResponse.finalAnswer(node.asText());
+    }
 
     AiCommandModelResponse wrapped = parseWrappedModelResponse(node);
     if (wrapped != null) {

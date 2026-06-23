@@ -27,6 +27,19 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void parsesWrappedFinalResponseContainingJsonStringLiteral() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"final":"\\"pong: 2026-06-23T13:35:37+03:00 (Europe/Helsinki)\\""}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isEqualTo("pong: 2026-06-23T13:35:37+03:00 (Europe/Helsinki)");
+    assertThat(response.toolName()).isNull();
+  }
+
+  @Test
   void parsesWrappedToolResponse() throws Exception {
     HermesAiCommandService service = newService();
 
