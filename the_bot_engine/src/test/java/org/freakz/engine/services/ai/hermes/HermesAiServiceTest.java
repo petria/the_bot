@@ -236,7 +236,9 @@ class HermesAiServiceTest {
   @Test
   void detectsCurrentHermesProfileFromBaseUrl() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
-        "hermes.chat.base-url", "http://ubuntu-server.local:8644",
+        "hermes.chat.base-url", "http://coder.example:8644",
+        "hermes.chat.profile-base-url", "http://chat.example:8643",
+        "hermes.coder.profile-base-url", "http://coder.example:8644",
         "hermes.chat.model", "hermes-coder"
     )), mock(EnvValuesService.class));
 
@@ -250,7 +252,9 @@ class HermesAiServiceTest {
   @Test
   void resolvesProfileApiKeyFromSelectedBaseUrl() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
-        "hermes.chat.base-url", "http://ubuntu-server.local:8644",
+        "hermes.chat.base-url", "http://coder.example:8644",
+        "hermes.chat.profile-base-url", "http://chat.example:8643",
+        "hermes.coder.profile-base-url", "http://coder.example:8644",
         "hermes.profiles.coder.api-key", "coder-secret",
         "hermes.chat.api-key", "chat-secret"
     )), mock(EnvValuesService.class));
@@ -380,12 +384,13 @@ class HermesAiServiceTest {
   void selectingHermesProfileWritesRuntimeOverrides() {
     EnvValuesService envValuesService = mock(EnvValuesService.class);
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
+        "hermes.coder.profile-base-url", "http://coder.example:9000",
         "hermes.profiles.coder.api-key", "coder-secret"
     )), envValuesService);
 
     assertThat(service.selectProfile(new HermesSettingsRequest("coder")).currentProfileId()).isEqualTo("coder");
 
-    verify(envValuesService).setEnvValue(eq("hermes.chat.base-url"), eq("http://ubuntu-server.local:8644"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.base-url"), eq("http://coder.example:9000"), any(User.class));
     verify(envValuesService).setEnvValue(eq("hermes.chat.api-key"), eq("coder-secret"), any(User.class));
     verify(envValuesService).setEnvValue(eq("hermes.chat.model"), eq("hermes-coder"), any(User.class));
     verify(envValuesService).setEnvValue(eq("hermes.chat.api-mode"), eq("responses"), any(User.class));
@@ -442,6 +447,11 @@ class HermesAiServiceTest {
         return values.get(propertyKey);
       }
       return defaultValue;
+    }
+
+    @Override
+    public String getConfigValueWithoutOverride(String propertyKey, String envKey, String defaultValue) {
+      return getConfigValue(propertyKey, envKey, defaultValue);
     }
   }
 }

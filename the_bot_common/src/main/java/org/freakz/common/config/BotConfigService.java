@@ -98,6 +98,11 @@ public class BotConfigService {
       return override.get();
     }
 
+    return getConfigValueWithoutOverride(propertyKey, envKey, defaultValue);
+  }
+
+  public String getConfigValueWithoutOverride(String propertyKey, String envKey, String defaultValue) {
+
     String fromFile = getBootstrapProperty(propertyKey);
     String fromEnv = firstNonBlank(
         envKey == null ? null : environment.getProperty(envKey),
