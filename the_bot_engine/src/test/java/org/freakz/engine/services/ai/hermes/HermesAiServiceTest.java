@@ -148,6 +148,33 @@ class HermesAiServiceTest {
   }
 
   @Test
+  void recoversToolRequestAppendedToConversationalText() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        Tsekataan mitä kanavalla on ollut puhetta tästä.
+        {"type":"tool","tool":"logs.search","arguments":{"query":"pätijä kingi","maxMatches":10}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("logs.search");
+    assertThat(response.arguments().path("query").asString()).isEqualTo("pätijä kingi");
+    assertThat(response.arguments().path("maxMatches").asInt()).isEqualTo(10);
+  }
+
+  @Test
+  void rejectsMalformedToolEnvelopeAppendedToConversationalText() throws Exception {
+    HermesAiService service = newService();
+
+    HermesAiService.ChatModelResponse response = service.parseModelResponse("""
+        Tsekataan lokit. {"type":"tool","tool":"logs.search","arguments":
+        """);
+
+    assertThat(response.invalidResponse()).isTrue();
+  }
+
+  @Test
   void marksUnknownHermesJsonAsInvalid() throws Exception {
     HermesAiService service = newService();
 

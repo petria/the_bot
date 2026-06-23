@@ -265,7 +265,11 @@ public class HermesAiCommandService {
     try {
       node = jsonMapper.readTree(cleaned);
     } catch (Exception e) {
-      if (AiReplyGuard.looksLikeStructuredJson(text)) {
+      AiCommandModelResponse embedded = parseEmbeddedModelResponse(cleaned);
+      if (embedded != null) {
+        return embedded;
+      }
+      if (AiReplyGuard.looksLikeStructuredJson(text) || AiReplyGuard.containsProtocolEnvelope(text)) {
         return AiCommandModelResponse.invalid();
       }
       return AiCommandModelResponse.finalAnswer(text);
@@ -296,6 +300,78 @@ public class HermesAiCommandService {
       return parseModelResponse(answer);
     }
     return AiCommandModelResponse.invalid();
+  }
+
+  private AiCommandModelResponse parseEmbeddedModelResponse(String text) throws Exception {
+    if (text == null || text.isBlank()) {
+      return null;
+    }
+
+    for (int start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
+      int end = findJsonObjectEnd(text, start);
+      if (end < 0) {
+        continue;
+      }
+
+      JsonNode candidate;
+      try {
+        candidate = jsonMapper.readTree(text.substring(start, end + 1));
+      } catch (Exception ignored) {
+        continue;
+      }
+
+      AiCommandModelResponse response = parseWrappedModelResponse(candidate);
+      if (response != null) {
+        return response;
+      }
+
+      String type = candidate.path("type").asString("").trim();
+      if ("tool".equalsIgnoreCase(type)) {
+        JsonNode arguments = candidate.path("arguments");
+        if (arguments == null || arguments.isMissingNode() || arguments.isNull()) {
+          arguments = jsonMapper.createObjectNode();
+        }
+        return AiCommandModelResponse.tool(firstText(candidate, "tool", "name"), arguments);
+      }
+      if ("final".equalsIgnoreCase(type)) {
+        String answer = firstText(candidate, "answer", "text", "message", "response");
+        return answer.isBlank() ? AiCommandModelResponse.invalid() : AiCommandModelResponse.finalAnswer(answer);
+      }
+    }
+    return null;
+  }
+
+  private int findJsonObjectEnd(String text, int start) {
+    int depth = 0;
+    boolean inString = false;
+    boolean escaped = false;
+    for (int i = start; i < text.length(); i++) {
+      char c = text.charAt(i);
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (c == '\\' && inString) {
+        escaped = true;
+        continue;
+      }
+      if (c == '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) {
+        continue;
+      }
+      if (c == '{') {
+        depth++;
+      } else if (c == '}') {
+        depth--;
+        if (depth == 0) {
+          return i;
+        }
+      }
+    }
+    return -1;
   }
 
   private AiCommandModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {
