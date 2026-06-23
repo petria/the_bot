@@ -1,0 +1,119 @@
+digraph AiRouting {
+  graph [
+    rankdir=TB,
+    bgcolor="#f7f8fa",
+    pad="0.30",
+    nodesep="0.36",
+    ranksep="0.55",
+    fontname="DejaVu Sans",
+    fontsize=18,
+    label="the_bot AI routing and Web UI controls",
+    labelloc=t,
+    labeljust=l,
+    splines=ortho
+  ];
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="DejaVu Sans",
+    fontsize=10,
+    color="#3f4b5b",
+    fillcolor="#ffffff",
+    fontcolor="#17202b",
+    margin="0.14,0.10"
+  ];
+
+  edge [
+    fontname="DejaVu Sans",
+    fontsize=9,
+    color="#596575",
+    fontcolor="#3f4b5b",
+    arrowsize=0.72
+  ];
+
+  chat [label="Chat AI entry\n!hokan <text> / !hermes <text>\nbot-name conversation", fillcolor="#dceeff"];
+  dyn [label="Dynamic AI command entry\n!weather / !dynping / ...\nai-commands.json", fillcolor="#dceeff"];
+  web [label="Admin Web UI\nManage AI routes", fillcolor="#fff1cc"];
+
+  chat_service [label="HermesAiService\nBuild chat context\nPermit controlled log callbacks"];
+  dyn_service [label="HermesAiCommandService\nLoad dynamic command instructions\nPermit only configured callback tools"];
+  web_api [label="bot-web -> bot-engine\nAdmin route API", fillcolor="#fff8e6"];
+
+  chat_profile [label="Hermes chat profile\nNormal chat AI route", fillcolor="#dceeff"];
+  ai_profile [label="Hermes ai-command profile\nDynamic command route", fillcolor="#dceeff"];
+  coder_profile [label="Hermes coder profile\nManaged and available\nNot normal chat-command route", fillcolor="#e8e0ff"];
+
+  manager [label="bot-hermes-manager\nStores route settings\nWrites profile YAML\nRestarts affected gateway\nChecks health", fillcolor="#e4f5e9"];
+
+  override [shape=diamond, label="Emergency local override\nFORCE LOCAL enabled?", fillcolor="#ffd6a8", color="#c05a00", penwidth=2];
+  provider [shape=diamond, label="Profile provider?", fillcolor="#ffffff"];
+  openai_ok [shape=diamond, label="OpenAI credentials and\nprovider available?", fillcolor="#ffffff"];
+  fallback_ok [shape=diamond, label="Shared local fallback enabled\nAND allowed for this profile?", fillcolor="#ffffff"];
+
+  openai [label="OpenAI / Codex backend\nProfile-specific model", fillcolor="#d9f0ff"];
+  local [label="Local OpenAI-compatible runner\nOllama / LM Studio / vLLM\nEndpoint + model + context window", fillcolor="#dcf5df"];
+  failed [label="Fail closed\nNo silent route change", fillcolor="#ffe0e0", color="#a33a3a"];
+
+  guard [label="bot-engine response parser and guard\nRecognize final/tool envelopes\nExecute allowed callback tool\nSend tool result back to Hermes\nOnly final chat-safe text is published", fillcolor="#e4f5e9"];
+  output [label="Reply through original connection\nIRC / Discord / Telegram / WhatsApp", fillcolor="#dceeff"];
+  alerts [label="Admin alerts\nOverride enabled/disabled\nFallback activated/restored\nRejected structured output", fillcolor="#f3e4ff"];
+
+  profile_settings [label="Per-profile controls\nchat / coder / ai-command\nProvider, model, API mode, timeout", fillcolor="#fff1cc"];
+  local_profile [label="Direct local profile controls\nOllama / LM Studio / vLLM\nBase URL, model, context, API key", fillcolor="#fff1cc"];
+  fallback_settings [label="Shared local fallback controls\nEnable, runner, endpoint, model,\ncontext, API key, validate", fillcolor="#fff1cc"];
+  fallback_toggle [label="Per OpenAI profile\nAllow local LLM fallback", fillcolor="#fff1cc"];
+  override_toggle [label="Emergency local override toggle\nForces chat + coder + ai-command\nto the shared local backend", fillcolor="#ffd6a8", color="#c05a00", penwidth=2];
+
+  priority [shape=note, label="Effective routing priority\n1. Emergency local override\n2. Directly selected local profile\n3. OpenAI primary\n4. Shared local fallback if enabled + allowed\n5. Otherwise fail closed", fillcolor="#ffffff"];
+
+  { rank=same; chat; dyn; web; }
+  { rank=same; chat_service; dyn_service; web_api; }
+  { rank=same; chat_profile; ai_profile; coder_profile; }
+  { rank=same; openai; local; failed; }
+  { rank=same; profile_settings; local_profile; fallback_settings; fallback_toggle; override_toggle; }
+
+  chat -> chat_service;
+  dyn -> dyn_service;
+  chat_service -> chat_profile;
+  dyn_service -> ai_profile;
+
+  chat_profile -> override;
+  ai_profile -> override;
+  coder_profile -> override [style=dashed, label="when a coder consumer uses it"];
+
+  override -> local [label="yes", color="#c05a00", penwidth=2];
+  override -> provider [label="no"];
+  provider -> local [label="local profile"];
+  provider -> openai_ok [label="OpenAI profile"];
+  openai_ok -> openai [label="yes"];
+  openai_ok -> fallback_ok [label="no"];
+  fallback_ok -> local [label="yes"];
+  fallback_ok -> failed [label="no"];
+
+  openai -> guard;
+  local -> guard;
+  failed -> guard [label="explicit failure"];
+  guard -> output;
+  guard -> chat_profile [label="tool result loop", style=dashed, constraint=false];
+  guard -> ai_profile [label="tool result loop", style=dashed, constraint=false];
+  guard -> alerts [style=dashed, label="invalid protocol output"];
+
+  web -> web_api;
+  web_api -> profile_settings;
+  web_api -> local_profile;
+  web_api -> fallback_settings;
+  web_api -> fallback_toggle;
+  web_api -> override_toggle;
+
+  profile_settings -> manager;
+  local_profile -> manager;
+  fallback_settings -> manager;
+  fallback_toggle -> manager;
+  override_toggle -> manager;
+  manager -> chat_profile [style=dashed, label="apply"];
+  manager -> ai_profile [style=dashed, label="apply"];
+  manager -> coder_profile [style=dashed, label="apply"];
+  manager -> alerts [style=dashed, label="route transition"];
+  manager -> priority [style=dotted, arrowhead=none];
+}
