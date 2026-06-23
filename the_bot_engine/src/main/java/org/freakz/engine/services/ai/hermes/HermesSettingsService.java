@@ -29,6 +29,9 @@ public class HermesSettingsService {
   private static final String MODEL_KEY = "hermes.chat.model";
   private static final String API_MODE_KEY = "hermes.chat.api-mode";
   private static final String TIMEOUT_SECONDS_KEY = "hermes.chat.timeout-seconds";
+  private static final String CHAT_PROFILE_BASE_URL_KEY = "hermes.chat.profile-base-url";
+  private static final String CODER_BASE_URL_KEY = "hermes.coder.base-url";
+  private static final String CODER_PROFILE_BASE_URL_KEY = "hermes.coder.profile-base-url";
   private static final String AI_COMMAND_PROFILE_ID = "ai-command";
   private static final String AI_COMMAND_DEFAULT_BASE_URL = "http://ubuntu-server.local:8645";
   private static final String AI_COMMAND_DEFAULT_MODEL = "hermes-ai-command";
@@ -223,8 +226,8 @@ public class HermesSettingsService {
 
   private List<HermesProfileConfig> profileConfigs(String selectedProfileId, boolean includeInternalProfiles) {
     List<HermesProfileConfig> publicProfiles = List.of(
-        profile("chat", "Chat profile", "http://ubuntu-server.local:8643", "hermes-chat", selectedProfileId),
-        profile("coder", "Coder profile", "http://ubuntu-server.local:8644", "hermes-coder", selectedProfileId));
+        profile("chat", "Chat profile", chatProfileBaseUrl(), "hermes-chat", selectedProfileId),
+        profile("coder", "Coder profile", coderProfileBaseUrl(), "hermes-coder", selectedProfileId));
     if (!includeInternalProfiles) {
       return publicProfiles;
     }
@@ -268,6 +271,23 @@ public class HermesSettingsService {
       case AI_COMMAND_PROFILE_ID -> configService.getConfigValue("hermes.profiles.ai-command.api-key", "HERMES_AI_COMMAND_API_KEY", "");
       default -> "";
     };
+  }
+
+  private String chatProfileBaseUrl() {
+    return normalizeApiRoot(firstNonBlank(
+        configService.getConfigValueWithoutOverride(CHAT_PROFILE_BASE_URL_KEY, "HERMES_CHAT_PROFILE_BASE_URL", ""),
+        configService.getConfigValueWithoutOverride(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
+        configService.getConfigValueWithoutOverride("hermes.base-url", "HERMES_BASE_URL", ""),
+        DEFAULT_BASE_URL
+    ));
+  }
+
+  private String coderProfileBaseUrl() {
+    return normalizeApiRoot(firstNonBlank(
+        configService.getConfigValueWithoutOverride(CODER_PROFILE_BASE_URL_KEY, "HERMES_CODER_PROFILE_BASE_URL", ""),
+        configService.getConfigValueWithoutOverride(CODER_BASE_URL_KEY, "HERMES_CODER_BASE_URL", ""),
+        "http://ubuntu-server.local:8644"
+    ));
   }
 
   private String healthUrl(String baseUrl) {
@@ -338,8 +358,8 @@ public class HermesSettingsService {
   private String profileGatewayBaseUrl(String profileId, String localBaseUrl) {
     return switch (profileId) {
       case "chat" -> firstNonBlank(localBaseUrl, DEFAULT_BASE_URL);
-      case "coder" -> "http://ubuntu-server.local:8644";
-      case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_BASE_URL;
+      case "coder" -> firstNonBlank(localBaseUrl, "http://ubuntu-server.local:8644");
+      case AI_COMMAND_PROFILE_ID -> firstNonBlank(localBaseUrl, AI_COMMAND_DEFAULT_BASE_URL);
       default -> localBaseUrl;
     };
   }

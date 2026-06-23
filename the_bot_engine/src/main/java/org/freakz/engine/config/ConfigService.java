@@ -69,6 +69,10 @@ public class ConfigService {
     return delegate().getConfigValue(propertyKey, envKey, defaultValue);
   }
 
+  public String getConfigValueWithoutOverride(String propertyKey, String envKey, String defaultValue) {
+    return delegate().getConfigValueWithoutOverride(propertyKey, envKey, defaultValue);
+  }
+
   public String getRequiredConfigValue(String propertyKey, String envKey) {
     return delegate().getRequiredConfigValue(propertyKey, envKey);
   }
