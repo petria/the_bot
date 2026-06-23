@@ -22,6 +22,7 @@ public class HermesProviderTransitionAlertService {
   private final RestHermesManagerClient managerClient;
   private final PrivateChatAlertService alertService;
   private final Map<String, ProviderState> previousStates = new ConcurrentHashMap<>();
+  private Boolean previousOverrideHealthy;
 
   public HermesProviderTransitionAlertService(
       RestHermesManagerClient managerClient,
@@ -39,6 +40,11 @@ public class HermesProviderTransitionAlertService {
       if (response == null || response.profiles() == null) {
         return;
       }
+      if (response.globalOverride() != null && Boolean.TRUE.equals(response.globalOverride().enabled())) {
+        pollGlobalOverrideHealth(response);
+        return;
+      }
+      previousOverrideHealthy = null;
       for (HermesProfile profile : response.profiles()) {
         if (profile == null || profile.id() == null || profile.activeProvider() == null) {
           continue;
@@ -51,9 +57,10 @@ public class HermesProviderTransitionAlertService {
         if (previous == null || previous.provider().equalsIgnoreCase(current.provider())) {
           continue;
         }
-        if ("ollama".equalsIgnoreCase(current.provider())) {
+        String fallbackProvider = response.fallback() == null ? null : response.fallback().provider();
+        if (fallbackProvider != null && fallbackProvider.equalsIgnoreCase(current.provider())) {
           alertService.sendAlertToConfiguredTargets(fallbackAlert(profile, response.fallback()));
-        } else if ("ollama".equalsIgnoreCase(previous.provider())
+        } else if (fallbackProvider != null && fallbackProvider.equalsIgnoreCase(previous.provider())
             && "openai".equalsIgnoreCase(current.provider())) {
           alertService.sendAlertToConfiguredTargets(recoveryAlert(profile, previous));
         }
@@ -63,12 +70,33 @@ public class HermesProviderTransitionAlertService {
     }
   }
 
+  private void pollGlobalOverrideHealth(HermesBackendConfigResponse response) {
+    Boolean healthy = response.globalOverride().healthy();
+    if (Boolean.FALSE.equals(healthy) && !Boolean.FALSE.equals(previousOverrideHealthy)) {
+      alertService.sendAlertToConfiguredTargets(
+          "ALERT: AI global local override backend is unavailable. AI requests are failing closed. "
+              + "Provider=%s model=%s endpoint=%s"
+                  .formatted(
+                      displayProvider(firstNonBlank(response.globalOverride().provider(), "local LLM")),
+                      firstNonBlank(response.globalOverride().model(), "unknown"),
+                      firstNonBlank(response.globalOverride().baseUrl(), "unknown")));
+    } else if (Boolean.TRUE.equals(healthy) && Boolean.FALSE.equals(previousOverrideHealthy)) {
+      alertService.sendAlertToConfiguredTargets(
+          "ALERT: AI global local override backend has recovered. Forced local routing remains active.");
+    }
+    previousOverrideHealthy = healthy;
+  }
+
   private String fallbackAlert(HermesProfile profile, HermesFallbackSettingsResponse fallback) {
     String endpoint = fallback == null ? "unknown" : fallback.baseUrl();
     String model = fallback == null ? "unknown" : fallback.model();
-    return "ALERT: Hermes %s switched to Ollama. Reason: %s. Fallback: %s at %s"
+    String provider = fallback == null
+        ? "local LLM"
+        : displayProvider(firstNonBlank(fallback.provider(), "local LLM"));
+    return "ALERT: Hermes %s switched to %s. Reason: %s. Fallback: %s at %s"
         .formatted(
             profile.id(),
+            provider,
             firstNonBlank(profile.fallbackReason(), profile.lastProviderError(), "OpenAI unavailable"),
             firstNonBlank(model, "unknown"),
             firstNonBlank(endpoint, "unknown"));
@@ -100,6 +128,15 @@ public class HermesProviderTransitionAlertService {
       }
     }
     return "";
+  }
+
+  private String displayProvider(String provider) {
+    return switch (provider.toLowerCase()) {
+      case "ollama" -> "Ollama";
+      case "lmstudio" -> "LM Studio";
+      case "vllm" -> "vLLM";
+      default -> provider;
+    };
   }
 
   private record ProviderState(String provider, String activatedAt, String reason) {

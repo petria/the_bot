@@ -339,15 +339,22 @@ public class SystemController {
       }
       long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
       boolean fallbackActive = chatProfile != null
-          && "ollama".equalsIgnoreCase(chatProfile.activeProvider())
+          && config.fallback() != null
+          && config.fallback().provider() != null
+          && config.fallback().provider().equalsIgnoreCase(chatProfile.activeProvider())
           && "openai".equalsIgnoreCase(chatProfile.provider());
-      String activeBaseUrl = fallbackActive && config.fallback() != null
+      boolean globalOverride = config.globalOverride() != null
+          && Boolean.TRUE.equals(config.globalOverride().enabled());
+      String activeBaseUrl = (fallbackActive || globalOverride) && config.fallback() != null
           ? config.fallback().baseUrl()
           : chatProfile == null ? null : chatProfile.baseUrl();
-      String activeModel = fallbackActive && config.fallback() != null
+      String activeModel = (fallbackActive || globalOverride) && config.fallback() != null
           ? config.fallback().model()
           : chatProfile == null ? null : chatProfile.model();
-      if (fallbackActive) {
+      if (globalOverride) {
+        String overrideDetail = "GLOBAL_OVERRIDE active: all AI routes forced to local backend";
+        error = error == null || error.isBlank() ? overrideDetail : error + "; " + overrideDetail;
+      } else if (fallbackActive) {
         error = firstNonBlank(
             firstNonBlank(chatProfile.fallbackReason(), chatProfile.lastProviderError()),
             error);

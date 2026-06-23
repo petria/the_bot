@@ -4,9 +4,16 @@ import java.util.List;
 
 public record HermesBackendConfigResponse(
     List<HermesProfile> profiles,
-    HermesFallbackSettingsResponse fallback) {
+    HermesFallbackSettingsResponse fallback,
+    HermesGlobalOverrideSettings globalOverride) {
 
   public HermesBackendConfigResponse(List<HermesProfile> profiles) {
-    this(profiles, null);
+    this(profiles, null, null);
+  }
+
+  public HermesBackendConfigResponse(
+      List<HermesProfile> profiles,
+      HermesFallbackSettingsResponse fallback) {
+    this(profiles, fallback, null);
   }
 }

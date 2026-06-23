@@ -3,12 +3,13 @@ package org.freakz.hermesmanager.controller;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.hermesmanager.service.HermesFallbackService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -26,9 +27,9 @@ public class HermesFallbackController {
     return service.getSettings();
   }
 
-  @GetMapping("/models")
-  public HermesFallbackModelsResponse getModels(@RequestParam String baseUrl) {
-    return service.getModels(baseUrl);
+  @PostMapping("/models")
+  public HermesFallbackModelsResponse getModels(@RequestBody HermesModelDiscoveryRequest request) {
+    return service.getModels(request);
   }
 
   @PutMapping

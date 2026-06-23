@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.hermes;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
@@ -21,8 +22,8 @@ public class HermesFallbackManagerService {
     return requireBody(client.getFallback().getBody(), "load Hermes fallback settings");
   }
 
-  public HermesFallbackModelsResponse getModels(String baseUrl) {
-    return requireBody(client.getModels(baseUrl).getBody(), "load Ollama models");
+  public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
+    return requireBody(client.getModels(request).getBody(), "load local LLM models");
   }
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {

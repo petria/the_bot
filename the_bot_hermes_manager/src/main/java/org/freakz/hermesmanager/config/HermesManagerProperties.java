@@ -15,7 +15,8 @@ public record HermesManagerProperties(
     String profilePorts,
     String defaultBaseUrl,
     String defaultModel,
-    String token) {
+    String token,
+    String localCredentialKey) {
 
   public Map<String, Integer> ports() {
     return List.of(profilePorts.split(",")).stream()

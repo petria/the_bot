@@ -8,6 +8,7 @@ import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
@@ -29,6 +30,7 @@ import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
+import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,7 @@ public class EngineController {
   private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
   private final HermesSettingsService hermesSettingsService;
   private final HermesFallbackManagerService hermesFallbackManagerService;
+  private final HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService;
   private final AiCommandRegistryService aiCommandRegistryService;
   private final AiCommandToolRegistry aiCommandToolRegistry;
 
@@ -73,6 +76,7 @@ public class EngineController {
       OpenClawInstanceSettingsService openClawInstanceSettingsService,
       HermesSettingsService hermesSettingsService,
       HermesFallbackManagerService hermesFallbackManagerService,
+      HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService,
       AiCommandRegistryService aiCommandRegistryService,
       AiCommandToolRegistry aiCommandToolRegistry) {
     this.botEngine = botEngine;
@@ -86,6 +90,7 @@ public class EngineController {
     this.openClawInstanceSettingsService = openClawInstanceSettingsService;
     this.hermesSettingsService = hermesSettingsService;
     this.hermesFallbackManagerService = hermesFallbackManagerService;
+    this.hermesGlobalOverrideAlertService = hermesGlobalOverrideAlertService;
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.aiCommandToolRegistry = aiCommandToolRegistry;
   }
@@ -232,9 +237,10 @@ public class EngineController {
     return ResponseEntity.ok(hermesFallbackManagerService.getSettings());
   }
 
-  @GetMapping("/internal/system/hermes/fallback/models")
-  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(@RequestParam String baseUrl) {
-    return ResponseEntity.ok(hermesFallbackManagerService.getModels(baseUrl));
+  @PostMapping("/internal/system/hermes/fallback/models")
+  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(
+      @RequestBody HermesModelDiscoveryRequest request) {
+    return ResponseEntity.ok(hermesFallbackManagerService.getModels(request));
   }
 
   @PutMapping("/internal/system/hermes/fallback")
@@ -251,7 +257,10 @@ public class EngineController {
   @PutMapping("/internal/system/hermes/backends")
   public ResponseEntity<HermesBackendConfigResponse> updateHermesBackendConfig(
       @RequestBody HermesBackendConfigUpdateRequest request) {
-    return ResponseEntity.ok(hermesFallbackManagerService.updateBackendConfig(request));
+    HermesBackendConfigResponse before = hermesFallbackManagerService.getBackendConfig();
+    HermesBackendConfigResponse after = hermesFallbackManagerService.updateBackendConfig(request);
+    hermesGlobalOverrideAlertService.notifyStateChange(before.globalOverride(), after.globalOverride());
+    return ResponseEntity.ok(after);
   }
 
   @PostMapping("/internal/security/web-login-failed")

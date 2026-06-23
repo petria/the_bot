@@ -1,10 +1,13 @@
 package org.freakz.web.controller;
 
+import java.security.Principal;
+
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
@@ -77,11 +80,13 @@ public class AdminSystemController {
     return response.getBody();
   }
 
-  @GetMapping("/hermes/fallback/models")
-  public HermesFallbackModelsResponse getHermesFallbackModels(@RequestParam String baseUrl) {
-    ResponseEntity<HermesFallbackModelsResponse> response = engineClient.getHermesFallbackModels(baseUrl);
+  @PostMapping("/hermes/fallback/models")
+  public HermesFallbackModelsResponse getHermesFallbackModels(
+      @RequestBody HermesModelDiscoveryRequest request) {
+    ResponseEntity<HermesFallbackModelsResponse> response =
+        engineClient.getHermesFallbackModels(request);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-      throw new IllegalStateException("Could not load Ollama models");
+      throw new IllegalStateException("Could not load local LLM models");
     }
     return response.getBody();
   }
@@ -105,8 +110,12 @@ public class AdminSystemController {
   }
 
   @PutMapping("/hermes/backends")
-  public HermesBackendConfigResponse updateHermesBackendConfig(@RequestBody HermesBackendConfigUpdateRequest request) {
-    ResponseEntity<HermesBackendConfigResponse> response = engineClient.updateHermesBackendConfig(request);
+  public HermesBackendConfigResponse updateHermesBackendConfig(
+      @RequestBody HermesBackendConfigUpdateRequest request,
+      Principal principal) {
+    String username = principal == null ? "unknown" : principal.getName();
+    ResponseEntity<HermesBackendConfigResponse> response =
+        engineClient.updateHermesBackendConfig(request.withRequestedBy(username));
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update Hermes backend configuration");
     }

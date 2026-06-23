@@ -103,14 +103,12 @@ public class RestEngineClient {
     return restTemplate.getForEntity(baseUrl + "/internal/system/hermes/fallback", HermesFallbackSettingsResponse.class);
   }
 
-  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(String baseUrl) {
-    String url = org.springframework.web.util.UriComponentsBuilder
-        .fromUriString(this.baseUrl + "/internal/system/hermes/fallback/models")
-        .queryParam("baseUrl", baseUrl)
-        .build()
-        .encode()
-        .toUriString();
-    return restTemplate.getForEntity(url, HermesFallbackModelsResponse.class);
+  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(
+      org.freakz.common.model.engine.system.HermesModelDiscoveryRequest request) {
+    return longRunningRestTemplate.postForEntity(
+        baseUrl + "/internal/system/hermes/fallback/models",
+        request,
+        HermesFallbackModelsResponse.class);
   }
 
   public ResponseEntity<HermesFallbackSettingsResponse> updateHermesFallback(HermesFallbackUpdateRequest request) {

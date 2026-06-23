@@ -33,6 +33,7 @@ export type HermesFallbackProfileStatus = {
 
 export type HermesFallbackSettingsResponse = {
   enabled: boolean;
+  provider: string;
   baseUrl: string;
   model: string;
   profiles: HermesFallbackProfileStatus[];
@@ -42,6 +43,9 @@ export type HermesFallbackSettingsResponse = {
   detail: string | null;
   lastValidatedAt: string | null;
   validationStatus: string | null;
+  apiKeyConfigured: boolean | null;
+  apiKey?: string;
+  clearApiKey?: boolean;
 };
 
 export type HermesProfile = {
@@ -68,11 +72,29 @@ export type HermesProfile = {
   lastProviderErrorAt: string | null;
   lastValidatedAt: string | null;
   validationStatus: string | null;
+  apiKeyConfigured: boolean | null;
+  apiKey?: string;
+  clearApiKey?: boolean;
 };
 
 export type HermesBackendConfigResponse = {
   profiles: HermesProfile[];
   fallback: HermesFallbackSettingsResponse | null;
+  globalOverride: HermesGlobalOverrideSettings | null;
+};
+
+export type HermesGlobalOverrideSettings = {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  contextWindow: number | null;
+  healthy: boolean | null;
+  detail: string | null;
+  activatedAt: string | null;
+  updatedBy: string | null;
+  validationStatus: string | null;
+  lastValidatedAt: string | null;
 };
 
 export type HermesFallbackModel = {
@@ -100,9 +122,15 @@ export function getHermesFallback(): Promise<HermesFallbackSettingsResponse> {
   return getJson<HermesFallbackSettingsResponse>('/api/web/admin/system/hermes/fallback');
 }
 
-export function getHermesFallbackModels(baseUrl: string): Promise<HermesFallbackModelsResponse> {
-  return getJson<HermesFallbackModelsResponse>(
-    `/api/web/admin/system/hermes/fallback/models?baseUrl=${encodeURIComponent(baseUrl)}`
+export function getHermesFallbackModels(
+  provider: string,
+  baseUrl: string,
+  apiKey?: string,
+  profileId?: string
+): Promise<HermesFallbackModelsResponse> {
+  return postJson<HermesFallbackModelsResponse>(
+    '/api/web/admin/system/hermes/fallback/models',
+    { provider, baseUrl, apiKey: apiKey || null, profileId: profileId || null }
   );
 }
 
@@ -115,5 +143,31 @@ export function getHermesBackendConfig(): Promise<HermesBackendConfigResponse> {
 }
 
 export function updateHermesBackendConfig(config: HermesBackendConfigResponse): Promise<HermesBackendConfigResponse> {
-  return putJson<HermesBackendConfigResponse>('/api/web/admin/system/hermes/backends', config);
+  return putJson<HermesBackendConfigResponse>('/api/web/admin/system/hermes/backends', {
+    profiles: config.profiles.map((profile) => ({
+      id: profile.id,
+      label: profile.label,
+      provider: profile.provider,
+      baseUrl: profile.baseUrl,
+      model: profile.model,
+      apiMode: profile.apiMode,
+      timeoutSeconds: profile.timeoutSeconds,
+      contextWindow: profile.contextWindow,
+      fallbackAllowed: profile.fallbackAllowed,
+      apiKey: profile.apiKey || null,
+      clearApiKey: Boolean(profile.clearApiKey),
+    })),
+    fallback: config.fallback ? {
+      provider: config.fallback.provider,
+      baseUrl: config.fallback.baseUrl,
+      model: config.fallback.model,
+      enabled: config.fallback.enabled,
+      contextWindow: config.fallback.contextWindow,
+      apiKey: config.fallback.apiKey || null,
+      clearApiKey: Boolean(config.fallback.clearApiKey),
+    } : null,
+    globalOverride: {
+      enabled: Boolean(config.globalOverride?.enabled),
+    },
+  });
 }
