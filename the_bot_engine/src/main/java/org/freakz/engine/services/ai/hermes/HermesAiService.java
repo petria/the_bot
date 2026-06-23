@@ -479,6 +479,9 @@ public class HermesAiService {
       }
       return ChatModelResponse.finalAnswer(text);
     }
+    if (node.isTextual()) {
+      return ChatModelResponse.finalAnswer(node.asText());
+    }
 
     ChatModelResponse wrapped = parseWrappedModelResponse(node);
     if (wrapped != null) {
