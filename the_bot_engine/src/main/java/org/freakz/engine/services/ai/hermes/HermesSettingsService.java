@@ -338,8 +338,8 @@ public class HermesSettingsService {
   private String profileGatewayBaseUrl(String profileId, String localBaseUrl) {
     return switch (profileId) {
       case "chat" -> firstNonBlank(localBaseUrl, DEFAULT_BASE_URL);
-      case "coder" -> "http://ubuntu-server.local:8644";
-      case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_BASE_URL;
+      case "coder" -> firstNonBlank(localBaseUrl, "http://ubuntu-server.local:8644");
+      case AI_COMMAND_PROFILE_ID -> firstNonBlank(localBaseUrl, AI_COMMAND_DEFAULT_BASE_URL);
       default -> localBaseUrl;
     };
   }

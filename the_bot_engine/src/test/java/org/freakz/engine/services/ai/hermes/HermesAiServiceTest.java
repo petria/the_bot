@@ -2,7 +2,9 @@ package org.freakz.engine.services.ai.hermes;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.users.User;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
@@ -337,6 +339,41 @@ class HermesAiServiceTest {
     assertThat(aiCommandSettings.model()).isEqualTo("hermes-ai-command");
     assertThat(aiCommandSettings.apiMode()).isEqualTo("responses");
     assertThat(aiCommandSettings.timeoutSeconds()).isEqualTo(31);
+  }
+
+  @Test
+  void managedAiCommandProfileKeepsConfiguredGatewayBaseUrl() {
+    RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
+    when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(List.of(
+        new HermesProfile(
+            "ai-command",
+            "AI command profile",
+            "vllm",
+            "http://192.168.0.143:8000/v1",
+            "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
+            "responses",
+            120,
+            true,
+            true,
+            null,
+            65536)
+    ))));
+
+    HermesSettingsService service = new HermesSettingsService(
+        new TestConfigService(Map.of(
+            "hermes.ai-command.base-url", "http://ubuntu-server.local:8665",
+            "hermes.profiles.ai-command.api-key", "ai-command-secret",
+            "hermes.ai-command.timeout-seconds", "31"
+        )),
+        mock(EnvValuesService.class),
+        managerClient);
+
+    HermesSettings settings = service.resolveAiCommandSettings();
+
+    assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8665");
+    assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
+    assertThat(settings.model()).isEqualTo("hermes-ai-command");
+    assertThat(settings.timeoutSeconds()).isEqualTo(120);
   }
 
   @Test
