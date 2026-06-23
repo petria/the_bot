@@ -8,6 +8,7 @@ import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
@@ -232,9 +233,10 @@ public class EngineController {
     return ResponseEntity.ok(hermesFallbackManagerService.getSettings());
   }
 
-  @GetMapping("/internal/system/hermes/fallback/models")
-  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(@RequestParam String baseUrl) {
-    return ResponseEntity.ok(hermesFallbackManagerService.getModels(baseUrl));
+  @PostMapping("/internal/system/hermes/fallback/models")
+  public ResponseEntity<HermesFallbackModelsResponse> getHermesFallbackModels(
+      @RequestBody HermesModelDiscoveryRequest request) {
+    return ResponseEntity.ok(hermesFallbackManagerService.getModels(request));
   }
 
   @PutMapping("/internal/system/hermes/fallback")

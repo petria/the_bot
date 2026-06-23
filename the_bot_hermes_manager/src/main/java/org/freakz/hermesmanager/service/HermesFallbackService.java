@@ -5,10 +5,12 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,15 +23,13 @@ import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesProfile;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.core.type.TypeReference;
@@ -55,16 +55,22 @@ public class HermesFallbackService implements ApplicationRunner {
   private final HermesManagerProperties properties;
   private final HermesGatewayService gatewayService;
   private final RestTemplate restTemplate;
+  private final LocalLlmClient localLlmClient;
+  private final LocalCredentialCipher credentialCipher;
   private final JsonMapper jsonMapper;
   private final YAMLMapper yamlMapper;
 
   public HermesFallbackService(
       HermesManagerProperties properties,
       HermesGatewayService gatewayService,
-      RestTemplate restTemplate) {
+      RestTemplate restTemplate,
+      LocalLlmClient localLlmClient,
+      LocalCredentialCipher credentialCipher) {
     this.properties = properties;
     this.gatewayService = gatewayService;
     this.restTemplate = restTemplate;
+    this.localLlmClient = localLlmClient;
+    this.credentialCipher = credentialCipher;
     this.jsonMapper = JsonMapper.builder().build();
     this.yamlMapper = YAMLMapper.builder().build();
   }
@@ -99,12 +105,19 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
+    String provider = normalizeLocalProvider(request == null ? null : request.provider());
     URI baseUrl = validatedBaseUrl(request == null ? null : request.baseUrl());
     String model = requireValue(request == null ? null : request.model(), "model");
     boolean enabled = request != null && Boolean.TRUE.equals(request.enabled());
-    validateToolCall(baseUrl, model);
+    StoredFallbackConfig current = readFallbackConfig();
+    String encryptedApiKey = updatedCredential(
+        current.encryptedApiKey(),
+        request == null ? null : request.apiKey(),
+        request != null && Boolean.TRUE.equals(request.clearApiKey()));
+    localLlmClient.validateToolCall(baseUrl, model, decryptCredential(encryptedApiKey));
 
     StoredFallbackConfig saved = new StoredFallbackConfig(
+        provider,
         trimTrailingSlash(baseUrl.toString()),
         model,
         enabled,
@@ -112,7 +125,8 @@ public class HermesFallbackService implements ApplicationRunner {
         Instant.now().toString(),
         "VALID",
         true,
-        "Ollama fallback validated successfully");
+        LocalLlmClient.displayName(provider) + " fallback validated successfully",
+        encryptedApiKey);
     updateLock.lock();
     try {
       StoredBackendConfig config = readBackendConfig();
@@ -126,28 +140,26 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  public HermesFallbackModelsResponse getModels(String baseUrl) {
-    URI uri = validatedBaseUrl(baseUrl);
-    Map<String, Object> response = restTemplate.getForObject(uri.resolve(path(uri, "models")), Map.class);
-    List<String> models = new ArrayList<>();
-    Object data = response == null ? null : response.get("data");
-    if (data instanceof List<?> values) {
-      for (Object value : values) {
-        if (value instanceof Map<?, ?> item && item.get("id") != null) {
-          models.add(item.get("id").toString());
-        }
-      }
+  public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
+    String provider = normalizeLocalProvider(request == null ? null : request.provider());
+    URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
+    return localLlmClient.discover(provider, uri, discoveryApiKey(request));
+  }
+
+  private String discoveryApiKey(HermesModelDiscoveryRequest request) {
+    if (request == null) {
+      return null;
     }
-    models.sort(String::compareToIgnoreCase);
-    Map<String, HermesFallbackModel> ollamaModels = ollamaModelMetadata(uri);
-    List<HermesFallbackModel> items = models.stream()
-        .map(model -> ollamaModels.getOrDefault(model, unknownModel(model)))
-        .sorted((left, right) -> {
-          int suitability = Integer.compare(suitabilityRank(left.suitability()), suitabilityRank(right.suitability()));
-          return suitability != 0 ? suitability : left.id().compareToIgnoreCase(right.id());
-        })
-        .toList();
-    return new HermesFallbackModelsResponse(items.stream().map(HermesFallbackModel::id).toList(), items);
+    String supplied = blankToNull(request.apiKey());
+    if (supplied != null) {
+      return supplied;
+    }
+    String profileId = blankToNull(request.profileId());
+    if ("__fallback__".equals(profileId)) {
+      return decryptCredential(readFallbackConfig().encryptedApiKey());
+    }
+    StoredProfile profile = profileById(readBackendConfig(), profileId);
+    return profile == null ? null : decryptCredential(profile.encryptedApiKey());
   }
 
   public HermesBackendConfigResponse getBackendConfig() {
@@ -164,23 +176,27 @@ public class HermesFallbackService implements ApplicationRunner {
     updateLock.lock();
     try {
       for (StoredProfile profile : config.profiles()) {
-        if (OLLAMA_PROVIDER.equals(profile.provider())) {
+        if (LocalLlmClient.isLocal(profile.provider())) {
           URI baseUrl = validatedBaseUrl(profile.baseUrl());
-          getModels(baseUrl.toString());
+          String apiKey = decryptCredential(profile.encryptedApiKey());
+          localLlmClient.discover(profile.provider(), baseUrl, apiKey);
           if (requiresTools(profile.id())) {
-            try {
-              validateToolCall(baseUrl, profile.model());
-            } catch (Exception e) {
-              log.warn("Hermes profile {} is reachable but tool-call validation failed: {}", profile.id(), e.getMessage());
-            }
+            localLlmClient.validateToolCall(baseUrl, profile.model(), apiKey);
+          } else {
+            localLlmClient.validateChat(baseUrl, profile.model(), apiKey);
           }
         }
       }
       if (fallback.enabled()) {
         URI baseUrl = validatedBaseUrl(fallback.baseUrl());
-        getModels(baseUrl.toString());
-        validateToolCall(baseUrl, fallback.model());
-        fallback = fallback.validated(Instant.now(), true, "VALID", "Ollama fallback validated successfully");
+        String apiKey = decryptCredential(fallback.encryptedApiKey());
+        localLlmClient.discover(fallback.provider(), baseUrl, apiKey);
+        localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
+        fallback = fallback.validated(
+            Instant.now(),
+            true,
+            "VALID",
+            LocalLlmClient.displayName(fallback.provider()) + " fallback validated successfully");
       }
       applyHermesConfiguration(config, fallback);
       writeBackendConfig(config);
@@ -197,7 +213,7 @@ public class HermesFallbackService implements ApplicationRunner {
       StoredFallbackConfig settings,
       StoredBackendConfig config,
       StoredRuntimeState runtimeState) {
-    PassiveOllamaHealth fallbackHealth = passiveOllamaHealth(settings);
+    PassiveLocalHealth fallbackHealth = passiveLocalHealth(settings);
     List<HermesFallbackProfileStatus> statuses = properties.profiles().stream()
         .map(profileId -> {
           CredentialStatus credential = credentialStatus(profileId);
@@ -205,11 +221,11 @@ public class HermesFallbackService implements ApplicationRunner {
           ProfileHealth health = openAiProfileHealth(profileId);
           RuntimeProfileState runtime = runtimeState.profiles().get(profileId);
           String activeProvider = runtime == null ? effectiveProvider(profile, settings, credential) : runtime.activeProvider();
-          boolean fallbackActive = OLLAMA_PROVIDER.equals(activeProvider) && profile != null
+          boolean fallbackActive = settings.provider().equals(activeProvider) && profile != null
               && OPENAI_PROVIDER.equals(profile.provider());
           return new HermesFallbackProfileStatus(
               profileId,
-              fallbackActive ? "OLLAMA_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
+              fallbackActive ? activeProvider.toUpperCase() + "_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
               Boolean.TRUE.equals(health.healthy()),
               credential.openAiAvailable(),
               credential.cooldownUntil(),
@@ -223,6 +239,7 @@ public class HermesFallbackService implements ApplicationRunner {
         .toList();
     return new HermesFallbackSettingsResponse(
         settings.enabled(),
+        settings.provider(),
         settings.baseUrl(),
         settings.model(),
         statuses,
@@ -231,7 +248,8 @@ public class HermesFallbackService implements ApplicationRunner {
         settings.toolCapable(),
         firstNonBlank(fallbackHealth.detail(), settings.validationDetail()),
         settings.lastValidatedAt(),
-        settings.validationStatus());
+        settings.validationStatus(),
+        hasCredential(settings.encryptedApiKey()));
   }
 
   private HermesBackendConfigResponse backendResponse(
@@ -252,9 +270,9 @@ public class HermesFallbackService implements ApplicationRunner {
       StoredRuntimeState runtimeState) {
     ProfileHealth health = OPENAI_PROVIDER.equals(profile.provider())
         ? openAiProfileHealth(profile.id())
-        : ollamaProfileHealth(profile);
+        : localProfileHealth(profile);
     CredentialStatus credential = credentialStatus(profile.id());
-    PassiveOllamaHealth fallbackHealth = passiveOllamaHealth(fallback);
+    PassiveLocalHealth fallbackHealth = passiveLocalHealth(fallback);
     RuntimeProfileState runtime = runtimeState.profiles().get(profile.id());
     String activeProvider = runtime == null ? effectiveProvider(profile, fallback, credential) : runtime.activeProvider();
     boolean primaryHealthy = OPENAI_PROVIDER.equals(profile.provider())
@@ -283,7 +301,8 @@ public class HermesFallbackService implements ApplicationRunner {
         runtime == null ? null : runtime.lastProviderError(),
         runtime == null ? null : runtime.lastProviderErrorAt(),
         profile.lastValidatedAt(),
-        profile.validationStatus());
+        profile.validationStatus(),
+        hasCredential(profile.encryptedApiKey()));
   }
 
   private ProfileHealth openAiProfileHealth(String profileId) {
@@ -299,31 +318,50 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private ProfileHealth ollamaProfileHealth(StoredProfile profile) {
+  private ProfileHealth localProfileHealth(StoredProfile profile) {
     try {
       URI baseUrl = validatedBaseUrl(profile.baseUrl());
-      Map<String, HermesFallbackModel> models = ollamaModelMetadata(baseUrl);
-      HermesFallbackModel model = models.get(profile.model());
-      Boolean toolCapable = model == null ? profile.toolCapable() : model.toolCapable();
-      return new ProfileHealth(true, toolCapable, "Ollama backend reachable");
+      HermesFallbackModelsResponse models = localLlmClient.discover(
+          profile.provider(),
+          baseUrl,
+          decryptCredential(profile.encryptedApiKey()));
+      Boolean toolCapable = models.items().stream()
+          .filter(model -> profile.model().equals(model.id()))
+          .map(HermesFallbackModel::toolCapable)
+          .findFirst()
+          .orElse(profile.toolCapable());
+      return new ProfileHealth(
+          true,
+          toolCapable,
+          LocalLlmClient.displayName(profile.provider()) + " backend reachable");
     } catch (Exception e) {
-      return new ProfileHealth(false, null, "Ollama backend check failed");
+      return new ProfileHealth(
+          false,
+          null,
+          LocalLlmClient.displayName(profile.provider()) + " backend check failed");
     }
   }
 
-  private PassiveOllamaHealth passiveOllamaHealth(StoredFallbackConfig fallback) {
+  private PassiveLocalHealth passiveLocalHealth(StoredFallbackConfig fallback) {
     if (fallback == null || !fallback.enabled()) {
-      return new PassiveOllamaHealth(null, "Ollama fallback disabled");
+      return new PassiveLocalHealth(null, "Local LLM fallback disabled");
     }
     try {
       URI baseUrl = validatedBaseUrl(fallback.baseUrl());
-      Map<String, HermesFallbackModel> models = ollamaModelMetadata(baseUrl);
-      if (!models.containsKey(fallback.model())) {
-        return new PassiveOllamaHealth(false, "Configured fallback model is not available");
+      HermesFallbackModelsResponse models = localLlmClient.discover(
+          fallback.provider(),
+          baseUrl,
+          decryptCredential(fallback.encryptedApiKey()));
+      if (!models.models().contains(fallback.model())) {
+        return new PassiveLocalHealth(false, "Configured fallback model is not available");
       }
-      return new PassiveOllamaHealth(true, "Ollama fallback reachable");
+      return new PassiveLocalHealth(
+          true,
+          LocalLlmClient.displayName(fallback.provider()) + " fallback reachable");
     } catch (Exception e) {
-      return new PassiveOllamaHealth(false, "Ollama fallback is not reachable");
+      return new PassiveLocalHealth(
+          false,
+          LocalLlmClient.displayName(fallback.provider()) + " fallback is not reachable");
     }
   }
 
@@ -418,6 +456,7 @@ public class HermesFallbackService implements ApplicationRunner {
           ? defaultFallbackConfig()
           : config.withDefaults(defaultFallbackConfig());
       return new StoredFallbackConfig(
+          firstNonBlank(normalized.provider(), OLLAMA_PROVIDER),
           normalized.baseUrl(),
           normalized.model(),
           normalized.enabled(),
@@ -425,7 +464,8 @@ public class HermesFallbackService implements ApplicationRunner {
           normalized.lastValidatedAt(),
           normalized.validationStatus(),
           normalized.toolCapable(),
-          normalized.validationDetail());
+          normalized.validationDetail(),
+          normalized.encryptedApiKey());
     } catch (IOException e) {
       throw new IllegalStateException("Could not read " + path, e);
     }
@@ -435,22 +475,31 @@ public class HermesFallbackService implements ApplicationRunner {
     if (request == null || request.profiles() == null) {
       throw new IllegalArgumentException("profiles are required");
     }
+    StoredBackendConfig current = readBackendConfig();
     return normalizeBackendConfig(new StoredBackendConfig(request.profiles().stream()
-        .map(profile -> new StoredProfile(
+        .map(profile -> {
+          StoredProfile existing = profileById(current, profile.id());
+          String provider = normalizeProvider(profile.provider());
+          return new StoredProfile(
             requireValue(profile.id(), "profile id"),
             requireValue(profile.label(), "profile label"),
-            normalizeProvider(profile.provider()),
+            provider,
             blankToNull(profile.baseUrl()),
             requireValue(profile.model(), "profile model"),
             firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
             profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            OLLAMA_PROVIDER.equals(normalizeProvider(profile.provider()))
+            LocalLlmClient.isLocal(provider)
                 ? normalizeContextWindow(profile.contextWindow())
                 : profile.contextWindow(),
             Boolean.TRUE.equals(profile.fallbackAllowed()),
-            profile.toolCapable(),
-            profile.lastValidatedAt(),
-            profile.validationStatus()))
+            existing == null ? null : existing.toolCapable(),
+            existing == null ? null : existing.lastValidatedAt(),
+            existing == null ? null : existing.validationStatus(),
+            updatedCredential(
+                existing == null ? null : existing.encryptedApiKey(),
+                profile.apiKey(),
+                Boolean.TRUE.equals(profile.clearApiKey())));
+        })
         .toList()));
   }
 
@@ -460,6 +509,8 @@ public class HermesFallbackService implements ApplicationRunner {
       return current;
     }
     boolean enabled = Boolean.TRUE.equals(request.enabled());
+    String provider = firstNonBlank(request.provider(), current.provider(), OLLAMA_PROVIDER);
+    provider = normalizeLocalProvider(provider);
     String baseUrl = trimTrailingSlash(firstNonBlank(request.baseUrl(), current.baseUrl()));
     String model = firstNonBlank(request.model(), current.model());
     Integer contextWindow = normalizeContextWindow(
@@ -470,6 +521,7 @@ public class HermesFallbackService implements ApplicationRunner {
       validateContextWindow(contextWindow, "fallback");
     }
     return new StoredFallbackConfig(
+        provider,
         baseUrl,
         model,
         enabled,
@@ -477,7 +529,11 @@ public class HermesFallbackService implements ApplicationRunner {
         current.lastValidatedAt(),
         current.validationStatus(),
         current.toolCapable(),
-        current.validationDetail());
+        current.validationDetail(),
+        updatedCredential(
+            current.encryptedApiKey(),
+            request.apiKey(),
+            Boolean.TRUE.equals(request.clearApiKey())));
   }
 
   private StoredBackendConfig normalizeBackendConfig(StoredBackendConfig config) {
@@ -493,12 +549,14 @@ public class HermesFallbackService implements ApplicationRunner {
         merged.put(profile.id(), new StoredProfile(
             profile.id(),
             firstNonBlank(profile.label(), defaults == null ? profile.id() : defaults.label()),
-            firstNonBlank(profile.provider(), defaults == null ? OPENAI_PROVIDER : defaults.provider()),
+            normalizeProvider(firstNonBlank(
+                profile.provider(),
+                defaults == null ? OPENAI_PROVIDER : defaults.provider())),
             profile.baseUrl(),
             firstNonBlank(model, defaults == null ? "gpt-5.5" : defaults.model()),
             firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
             profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            OLLAMA_PROVIDER.equals(profile.provider())
+            LocalLlmClient.isLocal(profile.provider())
                 ? normalizeContextWindow(profile.contextWindow())
                 : profile.contextWindow(),
             profile.fallbackAllowed() == null
@@ -506,7 +564,8 @@ public class HermesFallbackService implements ApplicationRunner {
                 : profile.fallbackAllowed(),
             profile.toolCapable(),
             profile.lastValidatedAt(),
-            profile.validationStatus()));
+            profile.validationStatus(),
+            profile.encryptedApiKey()));
       });
     }
     return new StoredBackendConfig(List.copyOf(merged.values()));
@@ -557,6 +616,7 @@ public class HermesFallbackService implements ApplicationRunner {
             false,
             null,
             null,
+            null,
             null));
       } else {
         profiles.add(new StoredProfile(
@@ -569,6 +629,7 @@ public class HermesFallbackService implements ApplicationRunner {
             intValue(targetNode, "timeoutSeconds", defaults.timeoutSeconds()),
             null,
             true,
+            null,
             null,
             null,
             null));
@@ -592,7 +653,7 @@ public class HermesFallbackService implements ApplicationRunner {
       }
       if (OPENAI_PROVIDER.equals(profile.provider())) {
         requireValue(profile.model(), "profile model");
-      } else if (OLLAMA_PROVIDER.equals(profile.provider())) {
+      } else if (LocalLlmClient.isLocal(profile.provider())) {
         validatedBaseUrl(profile.baseUrl());
         requireValue(profile.model(), "profile model");
         validateContextWindow(profile.contextWindow(), "profile " + profile.id());
@@ -616,85 +677,16 @@ public class HermesFallbackService implements ApplicationRunner {
     return "chat".equals(profileId) || "ai-command".equals(profileId);
   }
 
-  private Map<String, HermesFallbackModel> ollamaModelMetadata(URI baseUrl) {
-    try {
-      Map<String, Object> response = restTemplate.getForObject(ollamaApiUri(baseUrl, "/api/tags"), Map.class);
-      Object data = response == null ? null : response.get("models");
-      if (!(data instanceof List<?> values)) {
-        return Map.of();
-      }
-      Map<String, HermesFallbackModel> models = new LinkedHashMap<>();
-      for (Object value : values) {
-        if (!(value instanceof Map<?, ?> item)) {
-          continue;
-        }
-        Object idValue = firstPresent(item, "model", "name");
-        if (idValue == null || idValue.toString().isBlank()) {
-          continue;
-        }
-        String id = idValue.toString();
-        List<String> capabilities = stringList(item.get("capabilities"));
-        boolean completion = capabilities.contains("completion");
-        boolean tools = capabilities.contains("tools");
-        if (tools) {
-          models.put(id, new HermesFallbackModel(id, "tool-capable", "tool capable", true, "Ollama advertises tool support"));
-        } else if (completion) {
-          models.put(id, new HermesFallbackModel(id, "chat-only", "no tool support", false, "Ollama advertises completion support but not tools"));
-        } else {
-          models.put(id, new HermesFallbackModel(id, "not-suitable", "not suitable", false, "Ollama does not advertise completion support"));
-        }
-      }
-      return models;
-    } catch (Exception e) {
-      log.warn("Could not load Ollama model capability metadata: {}", e.getMessage());
-      return Map.of();
-    }
-  }
-
-  private Object firstPresent(Map<?, ?> item, String... keys) {
-    for (String key : keys) {
-      Object value = item.get(key);
-      if (value != null) {
-        return value;
-      }
-    }
-    return null;
-  }
-
-  private List<String> stringList(Object value) {
-    if (!(value instanceof List<?> list)) {
-      return List.of();
-    }
-    return list.stream().map(Object::toString).toList();
-  }
-
-  private HermesFallbackModel unknownModel(String model) {
-    return new HermesFallbackModel(model, "unknown", "tool support unknown", null, "Ollama capability metadata was not available");
-  }
-
-  private int suitabilityRank(String suitability) {
-    return switch (suitability == null ? "" : suitability) {
-      case "tool-capable" -> 0;
-      case "unknown" -> 1;
-      case "chat-only" -> 2;
-      case "not-suitable" -> 3;
-      default -> 4;
-    };
-  }
-
-  private URI ollamaApiUri(URI baseUrl, String path) {
-    return URI.create(baseUrl.getScheme() + "://" + baseUrl.getAuthority() + path);
-  }
-
   private StoredBackendConfig defaultBackendConfig() {
     return new StoredBackendConfig(List.of(
-        new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, upstreamModel("chat", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null),
-        new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, upstreamModel("coder", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null),
-        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null)));
+        new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, upstreamModel("chat", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
+        new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, upstreamModel("coder", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
+        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null)));
   }
 
   private StoredFallbackConfig defaultFallbackConfig() {
     return new StoredFallbackConfig(
+        OLLAMA_PROVIDER,
         properties.defaultBaseUrl(),
         properties.defaultModel(),
         false,
@@ -702,7 +694,8 @@ public class HermesFallbackService implements ApplicationRunner {
         null,
         "NOT_VALIDATED",
         null,
-        "Fallback has not been validated");
+        "Fallback has not been validated",
+        null);
   }
 
   private Integer normalizeContextWindow(Integer contextWindow) {
@@ -756,10 +749,11 @@ public class HermesFallbackService implements ApplicationRunner {
       yaml = new LinkedHashMap<>();
     }
     Map<String, Object> model = mutableMap(yaml.get("model"));
-    if (OLLAMA_PROVIDER.equals(profile.provider())) {
+    if (LocalLlmClient.isLocal(profile.provider())) {
       model.put("default", profile.model());
       model.put("provider", "custom");
       model.put("base_url", trimTrailingSlash(profile.baseUrl()));
+      putOptionalApiKey(model, profile.encryptedApiKey());
       if (profile.contextWindow() != null) {
         model.put("context_length", profile.contextWindow());
       }
@@ -773,6 +767,7 @@ public class HermesFallbackService implements ApplicationRunner {
         fallbackProvider.put("provider", "custom");
         fallbackProvider.put("model", fallback.model());
         fallbackProvider.put("base_url", trimTrailingSlash(fallback.baseUrl()));
+        putOptionalApiKey(fallbackProvider, fallback.encryptedApiKey());
         if (fallback.contextWindow() != null) {
           fallbackProvider.put("context_length", fallback.contextWindow());
         }
@@ -870,11 +865,14 @@ public class HermesFallbackService implements ApplicationRunner {
       StoredProfile profile,
       StoredFallbackConfig fallback,
       CredentialStatus credential) {
-    if (profile == null || OLLAMA_PROVIDER.equals(profile.provider())) {
-      return OLLAMA_PROVIDER;
+    if (profile == null) {
+      return OPENAI_PROVIDER;
+    }
+    if (LocalLlmClient.isLocal(profile.provider())) {
+      return profile.provider();
     }
     if (!credential.openAiAvailable() && fallback.enabled() && profile.fallbackAllowed()) {
-      return OLLAMA_PROVIDER;
+      return fallback.provider();
     }
     return OPENAI_PROVIDER;
   }
@@ -889,13 +887,13 @@ public class HermesFallbackService implements ApplicationRunner {
       CredentialStatus credential = credentialStatus(profile.id());
       String activeProvider = effectiveProvider(profile, fallback, credential);
       RuntimeProfileState old = previous.profiles().get(profile.id());
-      boolean enteredFallback = OLLAMA_PROVIDER.equals(activeProvider)
+      boolean enteredFallback = fallback.provider().equals(activeProvider)
           && OPENAI_PROVIDER.equals(profile.provider())
-          && (old == null || !OLLAMA_PROVIDER.equals(old.activeProvider()));
+          && (old == null || !fallback.provider().equals(old.activeProvider()));
       String activatedAt = enteredFallback
           ? now.toString()
           : old == null ? null : old.fallbackActivatedAt();
-      String reason = OLLAMA_PROVIDER.equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
+      String reason = fallback.provider().equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
           ? credential.detail()
           : null;
       String lastError = credential.openAiAvailable()
@@ -937,27 +935,6 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private void validateToolCall(URI baseUrl, String model) {
-    Map<String, Object> request = Map.of(
-        "model", model,
-        "messages", List.of(Map.of("role", "user", "content", "Call the ping tool now.")),
-        "tools", List.of(Map.of("type", "function", "function", Map.of(
-            "name", "ping",
-            "description", "Connectivity test",
-            "parameters", Map.of("type", "object", "properties", Map.of())))),
-        "tool_choice", "required",
-        "stream", false);
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    Map<?, ?> response = restTemplate.postForObject(
-        baseUrl.resolve(path(baseUrl, "chat/completions")),
-        new HttpEntity<>(request, headers),
-        Map.class);
-    if (response == null || !response.toString().contains("tool_calls")) {
-      throw new IllegalArgumentException("Selected Ollama model did not produce a tool call");
-    }
-  }
-
   private URI validatedBaseUrl(String value) {
     String cleaned = requireValue(value, "baseUrl").replaceFirst("/+$", "") + "/";
     URI uri = URI.create(cleaned);
@@ -969,10 +946,42 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private String normalizeProvider(String provider) {
     String normalized = requireValue(provider, "provider").toLowerCase();
-    if (!OPENAI_PROVIDER.equals(normalized) && !OLLAMA_PROVIDER.equals(normalized)) {
-      throw new IllegalArgumentException("provider must be openai or ollama");
+    if (!OPENAI_PROVIDER.equals(normalized) && !LocalLlmClient.isLocal(normalized)) {
+      throw new IllegalArgumentException(
+          "provider must be openai, ollama, lmstudio, or vllm");
     }
     return normalized;
+  }
+
+  private String normalizeLocalProvider(String provider) {
+    return LocalLlmClient.normalizeProvider(firstNonBlank(provider, OLLAMA_PROVIDER));
+  }
+
+  private String updatedCredential(String current, String replacement, boolean clear) {
+    if (clear) {
+      return null;
+    }
+    if (replacement == null || replacement.isBlank()) {
+      return current;
+    }
+    return credentialCipher.encrypt(replacement.trim());
+  }
+
+  private String decryptCredential(String encrypted) {
+    return encrypted == null || encrypted.isBlank() ? null : credentialCipher.decrypt(encrypted);
+  }
+
+  private boolean hasCredential(String encrypted) {
+    return encrypted != null && !encrypted.isBlank();
+  }
+
+  private void putOptionalApiKey(Map<String, Object> target, String encrypted) {
+    String apiKey = decryptCredential(encrypted);
+    if (apiKey == null || apiKey.isBlank()) {
+      target.remove("api_key");
+    } else {
+      target.put("api_key", apiKey);
+    }
   }
 
   private String requireValue(String value, String field) {
@@ -1041,11 +1050,23 @@ public class HermesFallbackService implements ApplicationRunner {
   private void writeAtomically(Path path, byte[] bytes) throws IOException {
     Files.createDirectories(path.getParent());
     Path temporary = Files.createTempFile(path.getParent(), path.getFileName().toString(), ".tmp");
+    restrictOwnerAccess(temporary);
     Files.write(temporary, bytes);
     try {
       Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
     } catch (java.nio.file.AtomicMoveNotSupportedException e) {
       Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+    }
+    restrictOwnerAccess(path);
+  }
+
+  private void restrictOwnerAccess(Path path) throws IOException {
+    try {
+      Files.setPosixFilePermissions(
+          path,
+          EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+    } catch (UnsupportedOperationException ignored) {
+      // Non-POSIX filesystems do not expose Unix file permissions.
     }
   }
 
@@ -1055,7 +1076,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private record ProfileHealth(Boolean healthy, Boolean toolCapable, String detail) {
   }
 
-  private record PassiveOllamaHealth(Boolean healthy, String detail) {
+  private record PassiveLocalHealth(Boolean healthy, String detail) {
   }
 
   private record StoredBackendConfig(List<StoredProfile> profiles) {
@@ -1073,10 +1094,12 @@ public class HermesFallbackService implements ApplicationRunner {
       Boolean fallbackAllowed,
       Boolean toolCapable,
       String lastValidatedAt,
-      String validationStatus) {
+      String validationStatus,
+      String encryptedApiKey) {
   }
 
   private record StoredFallbackConfig(
+      String provider,
       String baseUrl,
       String model,
       boolean enabled,
@@ -1084,10 +1107,12 @@ public class HermesFallbackService implements ApplicationRunner {
       String lastValidatedAt,
       String validationStatus,
       Boolean toolCapable,
-      String validationDetail) {
+      String validationDetail,
+      String encryptedApiKey) {
 
     StoredFallbackConfig withDefaults(StoredFallbackConfig defaults) {
       return new StoredFallbackConfig(
+          provider == null ? defaults.provider : provider,
           baseUrl == null ? defaults.baseUrl : baseUrl,
           model == null ? defaults.model : model,
           enabled,
@@ -1095,7 +1120,8 @@ public class HermesFallbackService implements ApplicationRunner {
           lastValidatedAt,
           validationStatus == null ? defaults.validationStatus : validationStatus,
           toolCapable,
-          validationDetail == null ? defaults.validationDetail : validationDetail);
+          validationDetail == null ? defaults.validationDetail : validationDetail,
+          encryptedApiKey);
     }
 
     StoredFallbackConfig validated(
@@ -1104,6 +1130,7 @@ public class HermesFallbackService implements ApplicationRunner {
         String status,
         String detail) {
       return new StoredFallbackConfig(
+          provider,
           baseUrl,
           model,
           enabled,
@@ -1111,7 +1138,8 @@ public class HermesFallbackService implements ApplicationRunner {
           at.toString(),
           status,
           validatedToolCapable,
-          detail);
+          detail,
+          encryptedApiKey);
     }
   }
 

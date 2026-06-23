@@ -33,7 +33,7 @@ const adminNavItems = [
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
   { label: 'Manage AI Commands', path: '/admin/ai-commands', icon: BrainCircuit },
-  { label: 'Manage System', path: '/admin/system', icon: Settings },
+  { label: 'Manage AI Routes', path: '/admin/system', icon: Settings },
 ];
 
 export function App() {

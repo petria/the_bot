@@ -3,10 +3,10 @@ package org.freakz.common.model.engine.system;
 import java.util.List;
 
 public record HermesBackendConfigUpdateRequest(
-    List<HermesProfile> profiles,
+    List<HermesProfileUpdate> profiles,
     HermesFallbackUpdateRequest fallback) {
 
-  public HermesBackendConfigUpdateRequest(List<HermesProfile> profiles) {
+  public HermesBackendConfigUpdateRequest(List<HermesProfileUpdate> profiles) {
     this(profiles, null);
   }
 }

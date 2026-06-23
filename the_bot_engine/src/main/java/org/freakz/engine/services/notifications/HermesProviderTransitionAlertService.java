@@ -51,9 +51,10 @@ public class HermesProviderTransitionAlertService {
         if (previous == null || previous.provider().equalsIgnoreCase(current.provider())) {
           continue;
         }
-        if ("ollama".equalsIgnoreCase(current.provider())) {
+        String fallbackProvider = response.fallback() == null ? null : response.fallback().provider();
+        if (fallbackProvider != null && fallbackProvider.equalsIgnoreCase(current.provider())) {
           alertService.sendAlertToConfiguredTargets(fallbackAlert(profile, response.fallback()));
-        } else if ("ollama".equalsIgnoreCase(previous.provider())
+        } else if (fallbackProvider != null && fallbackProvider.equalsIgnoreCase(previous.provider())
             && "openai".equalsIgnoreCase(current.provider())) {
           alertService.sendAlertToConfiguredTargets(recoveryAlert(profile, previous));
         }
@@ -66,9 +67,13 @@ public class HermesProviderTransitionAlertService {
   private String fallbackAlert(HermesProfile profile, HermesFallbackSettingsResponse fallback) {
     String endpoint = fallback == null ? "unknown" : fallback.baseUrl();
     String model = fallback == null ? "unknown" : fallback.model();
-    return "ALERT: Hermes %s switched to Ollama. Reason: %s. Fallback: %s at %s"
+    String provider = fallback == null
+        ? "local LLM"
+        : displayProvider(firstNonBlank(fallback.provider(), "local LLM"));
+    return "ALERT: Hermes %s switched to %s. Reason: %s. Fallback: %s at %s"
         .formatted(
             profile.id(),
+            provider,
             firstNonBlank(profile.fallbackReason(), profile.lastProviderError(), "OpenAI unavailable"),
             firstNonBlank(model, "unknown"),
             firstNonBlank(endpoint, "unknown"));
@@ -100,6 +105,15 @@ public class HermesProviderTransitionAlertService {
       }
     }
     return "";
+  }
+
+  private String displayProvider(String provider) {
+    return switch (provider.toLowerCase()) {
+      case "ollama" -> "Ollama";
+      case "lmstudio" -> "LM Studio";
+      case "vllm" -> "vLLM";
+      default -> provider;
+    };
   }
 
   private record ProviderState(String provider, String activatedAt, String reason) {

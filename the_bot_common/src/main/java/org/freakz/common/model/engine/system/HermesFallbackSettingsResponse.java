@@ -4,6 +4,7 @@ import java.util.List;
 
 public record HermesFallbackSettingsResponse(
     Boolean enabled,
+    String provider,
     String baseUrl,
     String model,
     List<HermesFallbackProfileStatus> profiles,
@@ -12,13 +13,14 @@ public record HermesFallbackSettingsResponse(
     Boolean toolCapable,
     String detail,
     String lastValidatedAt,
-    String validationStatus) {
+    String validationStatus,
+    Boolean apiKeyConfigured) {
 
   public HermesFallbackSettingsResponse(
       Boolean enabled,
       String baseUrl,
       String model,
       List<HermesFallbackProfileStatus> profiles) {
-    this(enabled, baseUrl, model, profiles, null, null, null, null, null, null);
+    this(enabled, "ollama", baseUrl, model, profiles, null, null, null, null, null, null, false);
   }
 }

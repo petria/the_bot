@@ -4,21 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.HermesFallbackModel;
+import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
-import org.freakz.common.model.engine.system.HermesProfile;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
+import org.freakz.common.model.engine.system.HermesProfileUpdate;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -55,16 +58,11 @@ class HermesFallbackServiceTest {
             "capabilities", List.of("completion", "tools")))));
 
     HermesFallbackService service = new HermesFallbackService(
-        new HermesManagerProperties(
-            tempDir,
-            "bot-hermes-test",
-            List.of("chat", "coder", "ai-command"),
-            "chat:8643,coder:8644,ai-command:8645",
-            "http://ollama.local:11434/v1",
-            "qwen3.5:27b",
-            "token"),
+        properties(),
         mock(HermesGatewayService.class),
-        restTemplate);
+        restTemplate,
+        localClient(),
+        new LocalCredentialCipher(properties()));
     service.run(new DefaultApplicationArguments());
 
     HermesBackendConfigResponse response = service.getBackendConfig();
@@ -72,7 +70,6 @@ class HermesFallbackServiceTest {
     assertThat(response.fallback().healthy()).isTrue();
     assertThat(response.fallback().contextWindow()).isEqualTo(65536);
     assertThat(response.profiles()).allMatch(profile -> "ollama".equals(profile.activeProvider()));
-    verify(restTemplate, never()).postForObject(any(), any(), eq(Map.class));
   }
 
   @Test
@@ -110,6 +107,56 @@ class HermesFallbackServiceTest {
     verify(gatewayService, atLeastOnce()).restart("ai-command");
   }
 
+  @Test
+  void storesLocalApiKeyEncryptedAndOnlyExposesConfiguredState() throws Exception {
+    createProfiles();
+    RestTemplate restTemplate = mock(RestTemplate.class);
+    when(restTemplate.getForEntity(anyString(), eq(String.class)))
+        .thenReturn(ResponseEntity.ok("{\"status\":\"ok\"}"));
+    HermesGatewayService gatewayService = mock(HermesGatewayService.class);
+    HermesManagerProperties properties = propertiesWithKey();
+    LocalLlmClient localLlmClient = localClient();
+    HermesFallbackService service = new HermesFallbackService(
+        properties,
+        gatewayService,
+        restTemplate,
+        localLlmClient,
+        new LocalCredentialCipher(properties));
+    service.run(new DefaultApplicationArguments());
+
+    service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        List.of(
+            localProfile("chat", "lmstudio", "http://lmstudio.local:1234/v1", "lm-model", "secret-key"),
+            profile("coder", false),
+            profile("ai-command", true)),
+        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", false, 65536)));
+
+    String stored = Files.readString(tempDir.resolve("the_bot_hermes_backends.json"));
+    String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
+    HermesBackendConfigResponse response = service.getBackendConfig();
+    service.getModels(new HermesModelDiscoveryRequest(
+        "lmstudio",
+        "http://lmstudio.local:1234/v1",
+        null,
+        "chat"));
+
+    assertThat(stored).contains("aesgcm:").doesNotContain("secret-key");
+    assertThat(yaml).contains("provider: \"custom\"", "api_key: \"secret-key\"");
+    assertThat(Files.getPosixFilePermissions(tempDir.resolve("profiles/chat/config.yaml")))
+        .containsExactlyInAnyOrder(
+            java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+            java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
+    assertThat(response.profiles().stream()
+        .filter(profile -> "chat".equals(profile.id()))
+        .findFirst()
+        .orElseThrow()
+        .apiKeyConfigured()).isTrue();
+    verify(localLlmClient, atLeastOnce()).discover(
+        "lmstudio",
+        java.net.URI.create("http://lmstudio.local:1234/v1/"),
+        "secret-key");
+  }
+
   private void createProfiles() throws Exception {
     for (String profile : List.of("chat", "coder", "ai-command")) {
       Path profileDir = tempDir.resolve("profiles").resolve(profile);
@@ -131,20 +178,15 @@ class HermesFallbackServiceTest {
 
   private HermesFallbackService service(RestTemplate restTemplate, HermesGatewayService gatewayService) {
     return new HermesFallbackService(
-        new HermesManagerProperties(
-            tempDir,
-            "bot-hermes-test",
-            List.of("chat", "coder", "ai-command"),
-            "chat:8643,coder:8644,ai-command:8645",
-            "http://ollama.local:11434/v1",
-            "qwen3.5:27b",
-            "token"),
+        properties(),
         gatewayService,
-        restTemplate);
+        restTemplate,
+        localClient(),
+        new LocalCredentialCipher(properties()));
   }
 
-  private HermesProfile profile(String id, boolean fallbackAllowed) {
-    return new HermesProfile(
+  private HermesProfileUpdate profile(String id, boolean fallbackAllowed) {
+    return new HermesProfileUpdate(
         id,
         "Hermes " + id,
         "openai",
@@ -152,21 +194,66 @@ class HermesFallbackServiceTest {
         "gpt-5.5",
         "responses",
         120,
-        true,
-        true,
-        null,
         null,
         fallbackAllowed,
-        "openai",
-        true,
-        true,
-        true,
         null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
+        false);
+  }
+
+  private HermesProfileUpdate localProfile(
+      String id,
+      String provider,
+      String baseUrl,
+      String model,
+      String apiKey) {
+    return new HermesProfileUpdate(
+        id,
+        "Hermes " + id,
+        provider,
+        baseUrl,
+        model,
+        "chat-completions",
+        120,
+        65536,
+        false,
+        apiKey,
+        false);
+  }
+
+  private HermesManagerProperties properties() {
+    return new HermesManagerProperties(
+        tempDir,
+        "bot-hermes-test",
+        List.of("chat", "coder", "ai-command"),
+        "chat:8643,coder:8644,ai-command:8645",
+        "http://ollama.local:11434/v1",
+        "qwen3.5:27b",
+        "token",
+        "");
+  }
+
+  private HermesManagerProperties propertiesWithKey() {
+    return new HermesManagerProperties(
+        tempDir,
+        "bot-hermes-test",
+        List.of("chat", "coder", "ai-command"),
+        "chat:8643,coder:8644,ai-command:8645",
+        "http://ollama.local:11434/v1",
+        "qwen3.5:27b",
+        "token",
+        Base64.getEncoder().encodeToString(new byte[32]));
+  }
+
+  private LocalLlmClient localClient() {
+    LocalLlmClient client = mock(LocalLlmClient.class);
+    when(client.discover(anyString(), any(), any())).thenReturn(new HermesFallbackModelsResponse(
+        List.of("qwen3.5:27b"),
+        List.of(new HermesFallbackModel(
+            "qwen3.5:27b",
+            "tool-capable",
+            "tool capable",
+            true,
+            "validated"))));
+    return client;
   }
 }

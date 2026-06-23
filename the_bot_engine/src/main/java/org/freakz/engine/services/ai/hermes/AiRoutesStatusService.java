@@ -115,7 +115,9 @@ public class AiRoutesStatusService {
     String source = profile == null ? "local" : "manager";
     boolean fallbackActive = profile != null
         && "openai".equalsIgnoreCase(profile.provider())
-        && "ollama".equalsIgnoreCase(profile.activeProvider());
+        && fallback != null
+        && fallback.provider() != null
+        && fallback.provider().equalsIgnoreCase(profile.activeProvider());
     String model = fallbackActive && fallback != null
         ? fallback.model()
         : profile == null ? settings.model() : profile.model();
@@ -140,7 +142,8 @@ public class AiRoutesStatusService {
     }
     String profiles = formatFallbackProfiles(fallback.profiles());
     String suffix = profiles.isBlank() ? "" : " profiles=" + profiles;
-    return "fallback: on model=%s base=%s%s".formatted(
+    return "fallback: on provider=%s model=%s base=%s%s".formatted(
+        valueOrUnknown(fallback.provider()),
         shortValue(fallback.model(), MAX_MODEL_CHARS),
         shortValue(fallback.baseUrl(), MAX_BASE_URL_CHARS),
         suffix);
@@ -177,7 +180,7 @@ public class AiRoutesStatusService {
   }
 
   private String inferFallbackProvider(HermesSettings settings, HermesFallbackSettingsResponse fallback) {
-    return fallbackMatches(settings, fallback) ? "ollama" : null;
+    return fallbackMatches(settings, fallback) ? fallback.provider() : null;
   }
 
   private boolean sameNormalized(String left, String right) {

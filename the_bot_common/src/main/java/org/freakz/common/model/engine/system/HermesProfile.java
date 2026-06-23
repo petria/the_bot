@@ -2,7 +2,7 @@ package org.freakz.common.model.engine.system;
 
 /**
  * A logical Hermes profile that owns its provider configuration directly.
- * Supported providers: {@code openai}, {@code ollama}.
+ * Supported providers: {@code openai}, {@code ollama}, {@code lmstudio}, {@code vllm}.
  * <p>
  * Each profile id (chat, coder, ai-command) is the logical route target.
  */
@@ -11,11 +11,11 @@ public record HermesProfile(
         String id,
         /** Human-readable label shown in the UI. */
         String label,
-        /** Provider: openai or ollama. Required. */
-        String provider, // openai | ollama
-        /** Base URL for the API endpoint. Required when provider=ollama; nullable for openai (env keys used). */
+        /** Provider: openai, ollama, lmstudio, or vllm. Required. */
+        String provider,
+        /** Base URL for the API endpoint. Required for local providers; nullable for openai. */
         String baseUrl,
-        /** Model name to use. Required for both providers. */
+        /** Model name to use. Required for every provider. */
         String model,
         /** API mode: responses or chat-completions. */
         String apiMode,
@@ -37,7 +37,8 @@ public record HermesProfile(
         String lastProviderError,
         String lastProviderErrorAt,
         String lastValidatedAt,
-        String validationStatus) {
+        String validationStatus,
+        Boolean apiKeyConfigured) {
 
   public HermesProfile(
       String id,
@@ -74,7 +75,59 @@ public record HermesProfile(
         null,
         null,
         null,
-        null);
+        null,
+        false);
+  }
+
+  public HermesProfile(
+      String id,
+      String label,
+      String provider,
+      String baseUrl,
+      String model,
+      String apiMode,
+      Integer timeoutSeconds,
+      Boolean healthy,
+      Boolean toolCapable,
+      String detail,
+      Integer contextWindow,
+      Boolean fallbackAllowed,
+      String activeProvider,
+      Boolean gatewayHealthy,
+      Boolean primaryProviderHealthy,
+      Boolean fallbackHealthy,
+      String cooldownUntil,
+      String fallbackReason,
+      String fallbackActivatedAt,
+      String lastProviderError,
+      String lastProviderErrorAt,
+      String lastValidatedAt,
+      String validationStatus) {
+    this(
+        id,
+        label,
+        provider,
+        baseUrl,
+        model,
+        apiMode,
+        timeoutSeconds,
+        healthy,
+        toolCapable,
+        detail,
+        contextWindow,
+        fallbackAllowed,
+        activeProvider,
+        gatewayHealthy,
+        primaryProviderHealthy,
+        fallbackHealthy,
+        cooldownUntil,
+        fallbackReason,
+        fallbackActivatedAt,
+        lastProviderError,
+        lastProviderErrorAt,
+        lastValidatedAt,
+        validationStatus,
+        false);
   }
 
   public HermesProfile {
@@ -82,23 +135,28 @@ public record HermesProfile(
       throw new IllegalArgumentException("provider is required");
     }
     String prov = provider.trim().toLowerCase();
-    if (!"openai".equals(prov) && !"ollama".equals(prov)) {
-      throw new IllegalArgumentException("provider must be openai or ollama, got: " + provider);
+    if (!"openai".equals(prov)
+        && !"ollama".equals(prov)
+        && !"lmstudio".equals(prov)
+        && !"vllm".equals(prov)) {
+      throw new IllegalArgumentException(
+          "provider must be openai, ollama, lmstudio, or vllm, got: " + provider);
     }
     // Provider-specific validation
     if ("openai".equals(prov)) {
       if (model == null || model.isBlank()) {
         throw new IllegalArgumentException("provider=openai requires a non-blank model");
       }
-    } else if ("ollama".equals(prov)) {
+    } else {
       if (baseUrl == null || baseUrl.isBlank()) {
-        throw new IllegalArgumentException("provider=ollama requires a non-blank baseUrl");
+        throw new IllegalArgumentException("local provider requires a non-blank baseUrl");
       }
       if (model == null || model.isBlank()) {
-        throw new IllegalArgumentException("provider=ollama requires a non-blank model");
+        throw new IllegalArgumentException("local provider requires a non-blank model");
       }
       if (contextWindow != null && contextWindow <= 0) {
-        throw new IllegalArgumentException("provider=ollama contextWindow must be positive when non-null, got: " + contextWindow);
+        throw new IllegalArgumentException(
+            "local provider contextWindow must be positive when non-null, got: " + contextWindow);
       }
     }
   }
