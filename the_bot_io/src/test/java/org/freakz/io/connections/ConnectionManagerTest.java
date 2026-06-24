@@ -303,6 +303,68 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void sendsTelegramPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .telegramId("138695441")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection telegramConnection = new CapturingBotConnection(BotConnectionType.TELEGRAM_CONNECTION, "TelegramNetwork");
+    connectionManager.addConnection(telegramConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("TELEGRAM_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-TELEGRAM-138695441");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getTarget()).isEqualTo("Telegram DM petria");
+    assertThat(telegramConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
+  void sendsDiscordPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .discordId("265828694445129728")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection discordConnection = new CapturingBotConnection(BotConnectionType.DISCORD_CONNECTION, "Discord");
+    connectionManager.addConnection(discordConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("DISCORD_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-DISCORD-265828694445129728");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("265828694445129728");
+    assertThat(discordConnection.lastMessage.getId()).isEqualTo("265828694445129728");
+    assertThat(discordConnection.lastMessage.getTarget()).isEqualTo("Discord DM petria");
+    assertThat(discordConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
   void mentionsDiscordUserWhenSendingToPublicDiscordChannel() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()

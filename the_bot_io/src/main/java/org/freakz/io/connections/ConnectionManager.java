@@ -444,7 +444,7 @@ public class ConnectionManager implements CommandLineRunner {
 
   private Optional<KnownUserTargetResponse> synthesizeConfiguredPrivateTarget(SendMessageToKnownUserRequest request) {
     BotConnectionType requestedType = parseConnectionType(request.getConnectionType());
-    if (requestedType != BotConnectionType.WHATSAPP_CONNECTION) {
+    if (requestedType == null) {
       return Optional.empty();
     }
     Optional<BotConnection> connection = findConnectionByType(requestedType);
@@ -455,27 +455,28 @@ public class ConnectionManager implements CommandLineRunner {
     if (user.isEmpty()) {
       return Optional.empty();
     }
-    String whatsappId = configuredWhatsAppTarget(user.get());
-    if (whatsappId == null) {
+    String targetId = configuredPrivateTargetId(user.get(), requestedType);
+    if (targetId == null) {
       return Optional.empty();
     }
-    String echoToAlias = "PRIVATE-WHATSAPP-" + whatsappId;
+    String echoToAlias = privateEchoToAlias(requestedType, targetId);
+    String displayName = privateDisplayName(requestedType, firstNonBlank(user.get().getUsername(), targetId));
     return Optional.of(new KnownUserTargetResponse(
         "configured:" + user.get().getId(),
         user.get().getId(),
         user.get().getUsername(),
         user.get().getName(),
         true,
-        "CONFIGURED_WHATSAPP_ID",
+        "CONFIGURED_" + requestedType.name(),
         null,
-        whatsappId,
+        targetId,
         user.get().getUsername(),
         user.get().getName(),
         connection.get().getId(),
         requestedType.name(),
         connection.get().getNetwork(),
-        whatsappId,
-        "WhatsApp DM " + firstNonBlank(user.get().getUsername(), whatsappId),
+        targetId,
+        displayName,
         echoToAlias,
         "PRIVATE",
         System.currentTimeMillis(),
@@ -508,8 +509,21 @@ public class ConnectionManager implements CommandLineRunner {
         || normalizedQuery.equals(user.getId() == null ? null : String.valueOf(user.getId()));
   }
 
-  private String configuredWhatsAppTarget(User user) {
-    String direct = firstNonBlank(user == null ? null : user.getWhatsappId());
+  private String configuredPrivateTargetId(User user, BotConnectionType connectionType) {
+    if (connectionType == BotConnectionType.DISCORD_CONNECTION) {
+      return configuredTargetId(user, connectionType, user == null ? null : user.getDiscordId());
+    }
+    if (connectionType == BotConnectionType.TELEGRAM_CONNECTION) {
+      return configuredTargetId(user, connectionType, user == null ? null : user.getTelegramId());
+    }
+    if (connectionType == BotConnectionType.WHATSAPP_CONNECTION) {
+      return configuredTargetId(user, connectionType, user == null ? null : user.getWhatsappId());
+    }
+    return null;
+  }
+
+  private String configuredTargetId(User user, BotConnectionType connectionType, String legacyId) {
+    String direct = firstNonBlank(legacyId);
     if (direct != null) {
       return direct;
     }
@@ -517,11 +531,29 @@ public class ConnectionManager implements CommandLineRunner {
       return null;
     }
     return user.getChatIdentities().stream()
-        .filter(identity -> identity != null && "WHATSAPP_CONNECTION".equalsIgnoreCase(identity.getConnectionType()))
+        .filter(identity -> identity != null && connectionType.name().equalsIgnoreCase(identity.getConnectionType()))
         .map(org.freakz.common.model.users.UserChatIdentity::getUserId)
         .filter(value -> firstNonBlank(value) != null)
         .findFirst()
         .orElse(null);
+  }
+
+  private String privateEchoToAlias(BotConnectionType connectionType, String targetId) {
+    return switch (connectionType) {
+      case DISCORD_CONNECTION -> "PRIVATE-DISCORD-" + targetId;
+      case TELEGRAM_CONNECTION -> "PRIVATE-TELEGRAM-" + targetId;
+      case WHATSAPP_CONNECTION -> "PRIVATE-WHATSAPP-" + targetId;
+      case IRC_CONNECTION -> "PRIVATE-" + targetId;
+    };
+  }
+
+  private String privateDisplayName(BotConnectionType connectionType, String label) {
+    return switch (connectionType) {
+      case DISCORD_CONNECTION -> "Discord DM " + label;
+      case TELEGRAM_CONNECTION -> "Telegram DM " + label;
+      case WHATSAPP_CONNECTION -> "WhatsApp DM " + label;
+      case IRC_CONNECTION -> "PRIVATE-" + label;
+    };
   }
 
   private Optional<KnownUserTargetResponse> synthesizeIrcPrivateTarget(KnownUserTargetResponse candidate) {
