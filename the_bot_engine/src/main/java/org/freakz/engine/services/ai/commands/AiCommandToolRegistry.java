@@ -12,6 +12,7 @@ import org.freakz.engine.commands.util.WeatherUtils;
 import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
+import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.logs.ChatLogAccessService;
@@ -65,6 +66,7 @@ public class AiCommandToolRegistry {
   public List<String> availableToolNames() {
     return List.of(
         "weather.current",
+        "weather.compare",
         "users.search",
         "users.get",
         "dataValues.query",
@@ -81,6 +83,7 @@ public class AiCommandToolRegistry {
   public String execute(String toolName, JsonNode arguments, EngineRequest request) {
     return switch (toolName == null ? "" : toolName.trim()) {
       case "weather.current" -> weatherCurrent(arguments);
+      case "weather.compare" -> weatherCompare(arguments);
       case "users.search" -> usersSearch(arguments);
       case "users.get" -> usersGet(arguments);
       case "dataValues.query" -> dataValuesQuery(arguments);
@@ -132,6 +135,31 @@ public class AiCommandToolRegistry {
     return out.toString();
   }
 
+  private String weatherCompare(JsonNode args) {
+    List<String> locations = weatherLocations(args);
+    if (locations.size() < 2) {
+      return error("Need at least two weather locations to compare");
+    }
+    if (locations.size() > MAX_WEATHER_LOCATIONS) {
+      return error("Too many weather locations, maximum is " + MAX_WEATHER_LOCATIONS);
+    }
+    WeatherAPIService weatherAPIService = weatherAPIServiceProvider.getIfAvailable();
+    if (weatherAPIService == null) {
+      return error("Weather API service is not configured");
+    }
+
+    CmpWeatherResponse response = queryCompareWeather(weatherAPIService, locations);
+    ObjectNode out = jsonMapper.createObjectNode();
+    out.put("tool", "weather.compare");
+    out.set("locations", jsonMapper.valueToTree(locations));
+    out.set("results", jsonMapper.valueToTree(response.getForecastResponses()));
+    out.put("formattedText", formatCompareWeatherResponse(response, locations));
+    if (response.getStatus() != null) {
+      out.put("status", response.getStatus());
+    }
+    return out.toString();
+  }
+
   private WeatherAPIResponse queryWeather(
       WeatherAPIService weatherAPIService,
       String location,
@@ -141,6 +169,14 @@ public class AiCommandToolRegistry {
     ServiceRequest request = ServiceRequest.builder().build();
     request.setResults(new FakeJSAPResults(location, astronomy, feelsLike, verbose));
     return weatherAPIService.handleWeatherCmdServiceRequest(request);
+  }
+
+  private CmpWeatherResponse queryCompareWeather(
+      WeatherAPIService weatherAPIService,
+      List<String> locations) {
+    ServiceRequest request = ServiceRequest.builder().build();
+    request.setResults(new FakeJSAPResults(locations.toArray(String[]::new)));
+    return weatherAPIService.handleCmpWeatherServiceRequest(request);
   }
 
   private ObjectNode weatherResult(
@@ -164,6 +200,59 @@ public class AiCommandToolRegistry {
       out.put("error", response.getErrorResponse().error().message());
     }
     return out;
+  }
+
+  private String formatCompareWeatherResponse(CmpWeatherResponse response, List<String> locations) {
+    if (response == null || response.getStatus() == null || !response.getStatus().startsWith("OK")) {
+      return "Check spelling, no weather data found with: " + String.join(" ", locations);
+    }
+    List<ForecastResponse> forecastResponses = response.getForecastResponses();
+    if (forecastResponses == null || forecastResponses.isEmpty()) {
+      return "Check spelling, no weather data found with: " + String.join(" ", locations);
+    }
+    int longestCityName = findLongestCityNameLength(forecastResponses);
+    forecastResponses = new ArrayList<>(forecastResponses);
+    forecastResponses.sort(
+        Comparator.comparing((ForecastResponse forecastResponse) -> Double.parseDouble(forecastResponse.current().temp_c()))
+            .reversed());
+    double highestTemp = Double.parseDouble(forecastResponses.getFirst().current().temp_c());
+    StringBuilder sb = new StringBuilder();
+    int index = 0;
+    for (ForecastResponse forecastResponse : forecastResponses) {
+      String formatted;
+      if (index != 0) {
+        double diff = highestTemp - Double.parseDouble(forecastResponse.current().temp_c());
+        String differenceStr = String.format("%.2f°C", diff);
+        formatted = formatCompareWeatherLine(forecastResponse, differenceStr, longestCityName);
+        sb.append("\n");
+      } else {
+        formatted = formatCompareWeatherLine(forecastResponse, "difference", longestCityName);
+      }
+      sb.append(formatted);
+      index++;
+    }
+    return sb.toString();
+  }
+
+  private String formatCompareWeatherLine(ForecastResponse response, String diff, int longestCityName) {
+    String template = "%-" + longestCityName + "s %s %s%6.1f°C - %s";
+    return String.format(
+        template,
+        response.location().name(),
+        response.location().localtime().toLocalDate(),
+        response.location().localtime().toLocalTime(),
+        Double.parseDouble(response.current().temp_c()),
+        diff);
+  }
+
+  private int findLongestCityNameLength(List<ForecastResponse> forecastResponses) {
+    int longest = Integer.MIN_VALUE;
+    for (ForecastResponse response : forecastResponses) {
+      if (response.location().name().length() > longest) {
+        longest = response.location().name().length();
+      }
+    }
+    return longest;
   }
 
   private String usersSearch(JsonNode args) {
@@ -570,20 +659,35 @@ public class AiCommandToolRegistry {
 
   private static class FakeJSAPResults extends JSAPResult {
     private final String result;
+    private final String[] results;
     private final boolean astronomy;
     private final boolean feelsLike;
     private final boolean verbose;
 
     FakeJSAPResults(String result, boolean astronomy, boolean feelsLike, boolean verbose) {
       this.result = result;
+      this.results = null;
       this.astronomy = astronomy;
       this.feelsLike = feelsLike;
       this.verbose = verbose;
     }
 
+    FakeJSAPResults(String[] results) {
+      this.result = null;
+      this.results = results == null ? new String[0] : results.clone();
+      this.astronomy = false;
+      this.feelsLike = false;
+      this.verbose = false;
+    }
+
     @Override
     public String getString(String s) {
       return result;
+    }
+
+    @Override
+    public String[] getStringArray(String s) {
+      return results == null ? new String[0] : results.clone();
     }
 
     @Override

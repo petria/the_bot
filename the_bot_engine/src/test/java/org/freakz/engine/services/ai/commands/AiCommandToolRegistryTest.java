@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.commands;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.data.service.UsersService;
+import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
 import org.freakz.engine.services.api.ServiceRequest;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.when;
 class AiCommandToolRegistryTest {
 
   private final JsonMapper jsonMapper = new JsonMapper();
+  private static final LocalDateTime FIXED_TIME = LocalDateTime.of(2026, 6, 3, 21, 40);
 
   @Test
   void weatherCurrentFormatsMultipleLocations() throws Exception {
@@ -58,6 +60,35 @@ class AiCommandToolRegistryTest {
     assertThat(result.path("results")).hasSize(2);
     assertThat(result.path("results").get(0).path("formattedText").asString())
         .isEqualTo("Turku: 21:40, 12.4°C");
+  }
+
+  @Test
+  void weatherCompareFormatsMultipleLocationsLikeCmpWeatherCmd() throws Exception {
+    WeatherAPIService weatherAPIService = mock(WeatherAPIService.class);
+    when(weatherAPIService.handleCmpWeatherServiceRequest(any(ServiceRequest.class)))
+        .thenAnswer(invocation -> {
+          ServiceRequest request = invocation.getArgument(0);
+          String[] places = request.getResults().getStringArray(ARG_PLACE);
+          assertThat(places).containsExactly("Turku", "Oulu");
+          return compareResponse(List.of(
+              forecast("Turku", "12.4"),
+              forecast("Oulu", "8.1")));
+        });
+
+    AiCommandToolRegistry registry = newRegistry(weatherAPIService);
+    JsonNode args = jsonMapper.readTree("""
+        {"locations":["Turku","Oulu"]}
+        """);
+
+    JsonNode result = jsonMapper.readTree(registry.execute("weather.compare", args));
+
+    assertThat(result.path("tool").asString()).isEqualTo("weather.compare");
+    assertThat(result.path("formattedText").asString())
+        .isEqualTo("""
+            Turku 2026-06-03 21:40  12.4°C - difference
+            Oulu  2026-06-03 21:40   8.1°C - 4.30°C""");
+    assertThat(result.path("locations")).hasSize(2);
+    assertThat(result.path("results")).hasSize(2);
   }
 
   @Test
@@ -156,7 +187,7 @@ class AiCommandToolRegistryTest {
   private ForecastResponse forecast(String name, String tempC) {
     return new ForecastResponse(
         null,
-        new Location(name, "", "", "60.45", "22.27", "Europe/Helsinki", 0L, LocalDateTime.now()),
+        new Location(name, "", "", "60.45", "22.27", "Europe/Helsinki", 0L, FIXED_TIME),
         new Current(
             0L,
             "2026-06-03 21:40",
@@ -196,6 +227,14 @@ class AiCommandToolRegistryTest {
         .forecastResponseModel(forecast)
         .build();
     response.setStatus("OK: WeatherAPI service");
+    return response;
+  }
+
+  private CmpWeatherResponse compareResponse(List<ForecastResponse> forecasts) {
+    CmpWeatherResponse response = CmpWeatherResponse.builder()
+        .forecastResponses(forecasts)
+        .build();
+    response.setStatus("OK: data size " + forecasts.size());
     return response;
   }
 }
