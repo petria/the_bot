@@ -86,7 +86,7 @@ class BotEngineCommandInvocationStatsTest {
     AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
     AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
     when(aiCommandRegistryService.resolve(anyString())).thenAnswer(invocation ->
-        "!dynping".equals(invocation.getArgument(0)) ? Optional.of(dynping) : Optional.empty());
+        "dynping".equals(invocation.getArgument(0)) ? Optional.of(dynping) : Optional.empty());
     HermesAiCommandService hermesAiCommandService = mock(HermesAiCommandService.class);
     BotEngine botEngine = botEngine(statsService, aiCommandRegistryService, hermesAiCommandService);
 
@@ -96,6 +96,23 @@ class BotEngineCommandInvocationStatsTest {
     assertThat(reply).contains("Help     : Test dynamic command.");
     assertThat(statsService.getCommandInvocationCount("ai::dynping")).isEqualTo(1);
     assertThat(statsService.getProviderInvocationCount("ai")).isEqualTo(1);
+    verify(hermesAiCommandService, never()).ask(any(), any(), anyString());
+  }
+
+  @Test
+  void namespacedDynamicAiQuestionReturnsUsageWithoutCallingHermes() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
+    AiCommandRegistryService aiCommandRegistryService = mock(AiCommandRegistryService.class);
+    when(aiCommandRegistryService.resolve("dynping")).thenReturn(Optional.of(dynping));
+    HermesAiCommandService hermesAiCommandService = mock(HermesAiCommandService.class);
+    BotEngine botEngine = botEngine(statsService, aiCommandRegistryService, hermesAiCommandService);
+
+    String reply = botEngine.handleEngineRequest(request("!ai::dynping ?"), true).getReplyMessage();
+
+    assertThat(reply).contains("Usage    : !dynping <text>");
+    assertThat(reply).contains("Help     : Test dynamic command.");
+    assertThat(statsService.getCommandInvocationCount("ai::dynping")).isEqualTo(1);
     verify(hermesAiCommandService, never()).ask(any(), any(), anyString());
   }
 
