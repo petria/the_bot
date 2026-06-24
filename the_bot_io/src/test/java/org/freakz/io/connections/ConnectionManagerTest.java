@@ -272,6 +272,37 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void sendsWhatsAppPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .whatsappId("162251029934316:96@lid")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection whatsappConnection = new CapturingBotConnection(BotConnectionType.WHATSAPP_CONNECTION, "WhatsApp");
+    connectionManager.addConnection(whatsappConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("WHATSAPP_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-WHATSAPP-162251029934316:96@lid");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("162251029934316:96@lid");
+    assertThat(whatsappConnection.lastMessage.getId()).isEqualTo("162251029934316:96@lid");
+    assertThat(whatsappConnection.lastMessage.getTarget()).isEqualTo("WhatsApp DM petria");
+    assertThat(whatsappConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
   void mentionsDiscordUserWhenSendingToPublicDiscordChannel() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()

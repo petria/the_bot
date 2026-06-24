@@ -336,6 +336,12 @@ public class ConnectionManager implements CommandLineRunner {
 
     List<KnownUserTargetResponse> candidates = filterKnownUserTargets(request);
     if (candidates.isEmpty()) {
+      if (Boolean.TRUE.equals(request.getRequirePrivate())) {
+        Optional<KnownUserTargetResponse> configuredTarget = synthesizeConfiguredPrivateTarget(request);
+        if (configuredTarget.isPresent()) {
+          return sendToKnownUserResponse("OK", "Resolved configured private target", configuredTarget.get(), candidates);
+        }
+      }
       return sendToKnownUserResponse("NOK", "No known user target found for query: " + request.getQuery(), null, candidates);
     }
 
@@ -356,6 +362,9 @@ public class ConnectionManager implements CommandLineRunner {
         Boolean.TRUE.equals(request.getRequirePrivate()));
     if (selected.isEmpty() && Boolean.TRUE.equals(request.getRequirePrivate())) {
       selected = synthesizePrivateTarget(identityCandidates, request);
+      if (selected.isEmpty()) {
+        selected = synthesizeConfiguredPrivateTarget(request);
+      }
     }
     return selected
         .map(target -> sendToKnownUserResponse("OK", "Resolved target", target, candidates))
@@ -431,6 +440,88 @@ public class ConnectionManager implements CommandLineRunner {
         .map(this::synthesizeIrcPrivateTarget)
         .flatMap(Optional::stream)
         .findFirst();
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizeConfiguredPrivateTarget(SendMessageToKnownUserRequest request) {
+    BotConnectionType requestedType = parseConnectionType(request.getConnectionType());
+    if (requestedType != BotConnectionType.WHATSAPP_CONNECTION) {
+      return Optional.empty();
+    }
+    Optional<BotConnection> connection = findConnectionByType(requestedType);
+    if (connection.isEmpty()) {
+      return Optional.empty();
+    }
+    Optional<User> user = findSingleConfiguredUser(request.getQuery());
+    if (user.isEmpty()) {
+      return Optional.empty();
+    }
+    String whatsappId = configuredWhatsAppTarget(user.get());
+    if (whatsappId == null) {
+      return Optional.empty();
+    }
+    String echoToAlias = "PRIVATE-WHATSAPP-" + whatsappId;
+    return Optional.of(new KnownUserTargetResponse(
+        "configured:" + user.get().getId(),
+        user.get().getId(),
+        user.get().getUsername(),
+        user.get().getName(),
+        true,
+        "CONFIGURED_WHATSAPP_ID",
+        null,
+        whatsappId,
+        user.get().getUsername(),
+        user.get().getName(),
+        connection.get().getId(),
+        requestedType.name(),
+        connection.get().getNetwork(),
+        whatsappId,
+        "WhatsApp DM " + firstNonBlank(user.get().getUsername(), whatsappId),
+        echoToAlias,
+        "PRIVATE",
+        System.currentTimeMillis(),
+        "CONFIGURED_USER"));
+  }
+
+  private Optional<BotConnection> findConnectionByType(BotConnectionType connectionType) {
+    return connectionMap.values().stream()
+        .filter(connection -> connection.getType() == connectionType)
+        .findFirst();
+  }
+
+  private Optional<User> findSingleConfiguredUser(String query) {
+    String normalizedQuery = normalizeLookup(query);
+    if (normalizedQuery == null) {
+      return Optional.empty();
+    }
+    List<User> matches = readConfiguredUsers().stream()
+        .filter(user -> configuredUserMatchesQuery(user, normalizedQuery))
+        .toList();
+    return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+  }
+
+  private boolean configuredUserMatchesQuery(User user, String normalizedQuery) {
+    if (user == null) {
+      return false;
+    }
+    return normalizedQuery.equals(normalizeLookup(user.getUsername()))
+        || normalizedQuery.equals(normalizeLookup(user.getName()))
+        || normalizedQuery.equals(user.getId() == null ? null : String.valueOf(user.getId()));
+  }
+
+  private String configuredWhatsAppTarget(User user) {
+    String direct = firstNonBlank(user == null ? null : user.getWhatsappId());
+    if (direct != null) {
+      return direct;
+    }
+    if (user == null || user.getChatIdentities() == null) {
+      return null;
+    }
+    return user.getChatIdentities().stream()
+        .filter(identity -> identity != null && "WHATSAPP_CONNECTION".equalsIgnoreCase(identity.getConnectionType()))
+        .map(org.freakz.common.model.users.UserChatIdentity::getUserId)
+        .filter(value -> firstNonBlank(value) != null)
+        .findFirst()
+        .orElse(null);
   }
 
   private Optional<KnownUserTargetResponse> synthesizeIrcPrivateTarget(KnownUserTargetResponse candidate) {
