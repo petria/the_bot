@@ -9,6 +9,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.lang.reflect.Method;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -199,6 +202,34 @@ class HermesAiCommandServiceTest {
     assertThat(formattedText).isEqualTo("""
         Turku: 21:40, 12.4°C
         Oulu: 21:40, 8.1°C""");
+  }
+
+  @Test
+  void buildInstructionsDocumentsWeatherFlags() throws Exception {
+    HermesAiCommandService service = newService();
+    org.freakz.common.model.engine.aicommand.AiCommandDefinition command =
+        new org.freakz.common.model.engine.aicommand.AiCommandDefinition(
+            "weather",
+            true,
+            "Weather command",
+            "!weather <location>",
+            List.of(),
+            null,
+            "Use weather.current before answering.",
+            List.of("weather.current"),
+            3);
+
+    Method method = HermesAiCommandService.class.getDeclaredMethod(
+        "buildInstructions",
+        org.freakz.common.model.engine.aicommand.AiCommandDefinition.class);
+    method.setAccessible(true);
+    String instructions = (String) method.invoke(service, command);
+
+    assertThat(instructions)
+        .contains("weather.current arguments:")
+        .contains("verbose=true")
+        .contains("feelsLike=true")
+        .contains("astronomy=true");
   }
 
   @Test

@@ -204,6 +204,19 @@ public class HermesAiCommandService {
     schema.put("final", "{\"type\":\"final\",\"answer\":\"text to send back to chat\"}");
     schema.put("tool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"location\":\"Helsinki\"}}");
     schema.put("multiTool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"locations\":[\"Helsinki\",\"Turku\"]}}");
+    schema.put("weatherOptions", """
+        weather.current arguments:
+        - location: one place name
+        - locations: array of place names
+        - verbose: boolean, use detailed place naming
+        - feelsLike: boolean, include feels-like temperature
+        - astronomy: boolean, include sun/moon details
+        Examples:
+        {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
+        {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
+        {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
+        {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
+        """.trim());
     ArrayNode tools = jsonMapper.createArrayNode();
     for (String tool : command.getAllowedTools()) {
       tools.add(tool);
@@ -242,7 +255,13 @@ public class HermesAiCommandService {
       switch (tool) {
         case "logs.read" -> sb.append("- logs.read: arguments may include scope, date, lines, includeAvailableFiles, chatTarget. Default scope is current-chat.\n");
         case "logs.search" -> sb.append("- logs.search: arguments may include query, nick, anyTerms, allTerms, dateFrom, dateTo, maxDays, maxMatches, chatTarget. Default scope is current-chat.\n");
-        case "weather.current" -> sb.append("- weather.current: arguments may include location or locations.\n");
+        case "weather.current" -> sb.append("""
+            - weather.current: arguments may include location or locations.
+              Optional flags: verbose, feelsLike, astronomy.
+              Use verbose=true for detailed place names.
+              Use feelsLike=true when the user asks for feels-like temperature.
+              Use astronomy=true when the user asks for sun/moon details.
+            """);
         default -> sb.append("- ").append(tool).append(": use concise JSON arguments.\n");
       }
     }

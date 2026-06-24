@@ -141,9 +141,17 @@ public class AiCommandJsonStore {
             Interpret the user's arguments as a weather location.
             Use weather.current before answering.
             If the user gives multiple locations, call weather.current with locations array.
-            If the user asks for feels-like temperature, pass feelsLike=true.
-            If the user asks for astronomy/sun/moon details, pass astronomy=true.
-            If the user asks for detailed place name, pass verbose=true.
+            weather.current arguments:
+            - location: one place name
+            - locations: array of place names
+            - feelsLike: true when the user asks for feels-like temperature
+            - astronomy: true when the user asks for sun/moon details
+            - verbose: true when the user asks for a detailed place name or verbose output
+            Examples:
+            - {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
+            - {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
+            - {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
+            - {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
             When weather.current returns formattedText, return that value exactly as the final answer.
             Do not reformat, translate, summarize, or add extra text.
             """,
