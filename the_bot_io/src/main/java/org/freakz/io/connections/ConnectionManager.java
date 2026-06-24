@@ -517,7 +517,7 @@ public class ConnectionManager implements CommandLineRunner {
       return configuredTargetId(user, connectionType, user == null ? null : user.getTelegramId());
     }
     if (connectionType == BotConnectionType.WHATSAPP_CONNECTION) {
-      return configuredTargetId(user, connectionType, user == null ? null : user.getWhatsappId());
+      return normalizeWhatsAppUserJid(configuredTargetId(user, connectionType, user == null ? null : user.getWhatsappId()));
     }
     return null;
   }
@@ -536,6 +536,14 @@ public class ConnectionManager implements CommandLineRunner {
         .filter(value -> firstNonBlank(value) != null)
         .findFirst()
         .orElse(null);
+  }
+
+  private String normalizeWhatsAppUserJid(String value) {
+    String target = firstNonBlank(value);
+    if (target == null) {
+      return null;
+    }
+    return target.replaceFirst(":\\d+(?=@)", "");
   }
 
   private String privateEchoToAlias(BotConnectionType connectionType, String targetId) {

@@ -295,9 +295,9 @@ class ConnectionManagerTest {
             .build());
 
     assertThat(response.getStatus()).isEqualTo("OK");
-    assertThat(response.getSentTo()).isEqualTo("PRIVATE-WHATSAPP-162251029934316:96@lid");
-    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("162251029934316:96@lid");
-    assertThat(whatsappConnection.lastMessage.getId()).isEqualTo("162251029934316:96@lid");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-WHATSAPP-162251029934316@lid");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("162251029934316@lid");
+    assertThat(whatsappConnection.lastMessage.getId()).isEqualTo("162251029934316@lid");
     assertThat(whatsappConnection.lastMessage.getTarget()).isEqualTo("WhatsApp DM petria");
     assertThat(whatsappConnection.lastMessage.getMessage()).isEqualTo("test");
   }
