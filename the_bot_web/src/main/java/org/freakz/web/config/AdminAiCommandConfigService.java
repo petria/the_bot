@@ -21,6 +21,7 @@ public class AdminAiCommandConfigService {
   private static final BotRuntimeBootstrapLoader BOOTSTRAP_LOADER = new BotRuntimeBootstrapLoader();
   private static final List<String> AVAILABLE_TOOLS = List.of(
       "weather.current",
+      "weather.compare",
       "users.search",
       "users.get",
       "dataValues.query",
