@@ -1,4 +1,4 @@
-import { getJson, postJson, putJson } from './client';
+import { deleteJson, getJson, postJson, putJson } from './client';
 
 export interface MeResponse {
   id: number | null;
@@ -51,4 +51,43 @@ export interface IrcClaimTokenResponse {
 
 export function createIrcClaimToken(): Promise<IrcClaimTokenResponse> {
   return postJson<IrcClaimTokenResponse>('/api/web/me/irc-claim-token', {});
+}
+
+export type NotifyPatternType = 'PRESET_MENTION' | 'REGEX';
+
+export interface UserNotifyRule {
+  id: string | null;
+  username: string | null;
+  enabled: boolean;
+  sourceEchoToAlias: string;
+  sourceDisplayName: string | null;
+  patternType: NotifyPatternType;
+  pattern: string | null;
+  destinationConnectionType: string;
+  cooldownSeconds: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type UserNotifyRuleInput = Omit<UserNotifyRule, 'id' | 'username' | 'createdAt' | 'updatedAt'>;
+
+type UserNotifyRuleListResponse = {
+  rules: UserNotifyRule[] | null;
+};
+
+export async function getNotifyRules(): Promise<UserNotifyRule[]> {
+  const response = await getJson<UserNotifyRuleListResponse>('/api/web/me/notify-rules');
+  return response.rules ?? [];
+}
+
+export function createNotifyRule(rule: UserNotifyRuleInput): Promise<UserNotifyRule> {
+  return postJson<UserNotifyRule>('/api/web/me/notify-rules', rule);
+}
+
+export function updateNotifyRule(id: string, rule: UserNotifyRuleInput): Promise<UserNotifyRule> {
+  return putJson<UserNotifyRule>(`/api/web/me/notify-rules/${encodeURIComponent(id)}`, rule);
+}
+
+export function deleteNotifyRule(id: string): Promise<void> {
+  return deleteJson<void>(`/api/web/me/notify-rules/${encodeURIComponent(id)}`);
 }

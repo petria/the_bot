@@ -2,9 +2,13 @@ package org.freakz.web.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.freakz.common.model.engine.notify.UserNotifyRule;
+import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.users.User;
+import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.security.BotUserPrincipal;
 import org.freakz.web.security.UsersJsonUserDetailsService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -12,7 +16,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,9 +33,11 @@ import java.util.List;
 public class MeController {
 
   private final UsersJsonUserDetailsService usersService;
+  private final RestEngineClient engineClient;
 
-  public MeController(UsersJsonUserDetailsService usersService) {
+  public MeController(UsersJsonUserDetailsService usersService, RestEngineClient engineClient) {
     this.usersService = usersService;
+    this.engineClient = engineClient;
   }
 
   @GetMapping("/me")
@@ -62,6 +70,36 @@ public class MeController {
   public UsersJsonUserDetailsService.IrcClaimTokenResponse createIrcClaimToken(
       @AuthenticationPrincipal BotUserPrincipal principal) {
     return usersService.createIrcClaimToken(principal.getUsername());
+  }
+
+  @GetMapping("/me/notify-rules")
+  public UserNotifyRuleListResponse getNotifyRules(@AuthenticationPrincipal BotUserPrincipal principal) {
+    ResponseEntity<UserNotifyRuleListResponse> response = engineClient.getUserNotifyRules(principal.getUsername());
+    UserNotifyRuleListResponse body = response.getBody();
+    return body == null ? new UserNotifyRuleListResponse() : body;
+  }
+
+  @PostMapping("/me/notify-rules")
+  public UserNotifyRule createNotifyRule(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody UserNotifyRule rule) {
+    return engineClient.createUserNotifyRule(principal.getUsername(), rule).getBody();
+  }
+
+  @PutMapping("/me/notify-rules/{id}")
+  public UserNotifyRule updateNotifyRule(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @PathVariable String id,
+      @RequestBody UserNotifyRule rule) {
+    return engineClient.updateUserNotifyRule(principal.getUsername(), id, rule).getBody();
+  }
+
+  @DeleteMapping("/me/notify-rules/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteNotifyRule(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @PathVariable String id) {
+    engineClient.deleteUserNotifyRule(principal.getUsername(), id);
   }
 
   @GetMapping("/csrf")

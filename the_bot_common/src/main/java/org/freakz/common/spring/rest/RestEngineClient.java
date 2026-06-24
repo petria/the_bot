@@ -13,6 +13,8 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.model.engine.notify.UserNotifyRule;
+import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @Component
@@ -151,7 +155,40 @@ public class RestEngineClient {
     }
   }
 
+  public ResponseEntity<UserNotifyRuleListResponse> getUserNotifyRules(String username) {
+    return restTemplate.getForEntity(
+        baseUrl + "/internal/user-notify-rules?username=" + encode(username),
+        UserNotifyRuleListResponse.class);
+  }
+
+  public ResponseEntity<UserNotifyRule> createUserNotifyRule(String username, UserNotifyRule rule) {
+    return restTemplate.postForEntity(
+        baseUrl + "/internal/user-notify-rules?username=" + encode(username),
+        rule,
+        UserNotifyRule.class);
+  }
+
+  public ResponseEntity<UserNotifyRule> updateUserNotifyRule(String username, String id, UserNotifyRule rule) {
+    return restTemplate.exchange(
+        baseUrl + "/internal/user-notify-rules/" + encode(id) + "?username=" + encode(username),
+        HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(rule),
+        UserNotifyRule.class);
+  }
+
+  public ResponseEntity<Void> deleteUserNotifyRule(String username, String id) {
+    return restTemplate.exchange(
+        baseUrl + "/internal/user-notify-rules/" + encode(id) + "?username=" + encode(username),
+        HttpMethod.DELETE,
+        null,
+        Void.class);
+  }
+
   private String trimTrailingSlash(String value) {
     return value == null ? "" : value.replaceFirst("/+$", "");
+  }
+
+  private String encode(String value) {
+    return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
   }
 }

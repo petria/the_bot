@@ -4,6 +4,8 @@ import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRespons
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
+import org.freakz.common.model.engine.notify.UserNotifyRule;
+import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
@@ -31,6 +33,7 @@ import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
+import org.freakz.engine.services.notifications.UserNotifyRuleService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +66,7 @@ public class EngineController {
   private final HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService;
   private final AiCommandRegistryService aiCommandRegistryService;
   private final AiCommandToolRegistry aiCommandToolRegistry;
+  private final UserNotifyRuleService userNotifyRuleService;
 
   public EngineController(
       BotEngine botEngine,
@@ -78,7 +82,8 @@ public class EngineController {
       HermesFallbackManagerService hermesFallbackManagerService,
       HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService,
       AiCommandRegistryService aiCommandRegistryService,
-      AiCommandToolRegistry aiCommandToolRegistry) {
+      AiCommandToolRegistry aiCommandToolRegistry,
+      UserNotifyRuleService userNotifyRuleService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -93,12 +98,14 @@ public class EngineController {
     this.hermesGlobalOverrideAlertService = hermesGlobalOverrideAlertService;
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.aiCommandToolRegistry = aiCommandToolRegistry;
+    this.userNotifyRuleService = userNotifyRuleService;
   }
 
   @PostMapping("/handle_request")
   public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) throws Exception {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
+    this.userNotifyRuleService.processInboundMessage(request);
     this.countService.calculateTopCounters(request);
     UserAndReply reply = this.botEngine.handleEngineRequest(request, true);
     EngineResponse response
@@ -266,6 +273,34 @@ public class EngineController {
   @PostMapping("/internal/security/web-login-failed")
   public ResponseEntity<Void> webLoginFailed(@RequestBody WebLoginFailedEvent event) {
     webLoginSecurityAlertService.notifyFailedLogin(event);
+    return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/internal/user-notify-rules")
+  public ResponseEntity<UserNotifyRuleListResponse> getUserNotifyRules(@RequestParam String username) {
+    return ResponseEntity.ok(userNotifyRuleService.list(username));
+  }
+
+  @PostMapping("/internal/user-notify-rules")
+  public ResponseEntity<UserNotifyRule> createUserNotifyRule(
+      @RequestParam String username,
+      @RequestBody UserNotifyRule rule) {
+    return ResponseEntity.ok(userNotifyRuleService.create(username, rule));
+  }
+
+  @PutMapping("/internal/user-notify-rules/{id}")
+  public ResponseEntity<UserNotifyRule> updateUserNotifyRule(
+      @RequestParam String username,
+      @PathVariable String id,
+      @RequestBody UserNotifyRule rule) {
+    return ResponseEntity.ok(userNotifyRuleService.update(username, id, rule));
+  }
+
+  @DeleteMapping("/internal/user-notify-rules/{id}")
+  public ResponseEntity<Void> deleteUserNotifyRule(
+      @RequestParam String username,
+      @PathVariable String id) {
+    userNotifyRuleService.delete(username, id);
     return ResponseEntity.noContent().build();
   }
 
