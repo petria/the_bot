@@ -204,6 +204,7 @@ public class HermesAiCommandService {
     schema.put("final", "{\"type\":\"final\",\"answer\":\"text to send back to chat\"}");
     schema.put("tool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"location\":\"Helsinki\"}}");
     schema.put("multiTool", "{\"type\":\"tool\",\"tool\":\"weather.current\",\"arguments\":{\"locations\":[\"Helsinki\",\"Turku\"]}}");
+    schema.put("compare", "{\"type\":\"tool\",\"tool\":\"weather.compare\",\"arguments\":{\"locations\":[\"Helsinki\",\"Turku\"]}}");
     schema.put("weatherOptions", """
         weather.current arguments:
         - location: one place name
@@ -211,11 +212,14 @@ public class HermesAiCommandService {
         - verbose: boolean, use detailed place naming
         - feelsLike: boolean, include feels-like temperature
         - astronomy: boolean, include sun/moon details
+        weather.compare arguments:
+        - locations: array of at least two place names
         Examples:
         {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
         {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
         {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
         {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
+        {"type":"tool","tool":"weather.compare","arguments":{"locations":["Helsinki","Turku"]}}
         """.trim());
     ArrayNode tools = jsonMapper.createArrayNode();
     for (String tool : command.getAllowedTools()) {
@@ -261,6 +265,10 @@ public class HermesAiCommandService {
               Use verbose=true for detailed place names.
               Use feelsLike=true when the user asks for feels-like temperature.
               Use astronomy=true when the user asks for sun/moon details.
+            """);
+        case "weather.compare" -> sb.append("""
+            - weather.compare: arguments must include locations array with at least two place names.
+              Use this when the user asks to compare temperatures or asks which place is warmer/cooler.
             """);
         default -> sb.append("- ").append(tool).append(": use concise JSON arguments.\n");
       }

@@ -35,12 +35,14 @@ class AiCommandJsonStoreTest {
     assertThat(weather.getUsage()).isEqualTo("!weather <location[, location2, ...]>");
     assertThat(weather.getAliases()).contains("!saa", "!sää", "!foreca", "!keli");
     assertThat(weather.getRequiredPermission()).isNull();
-    assertThat(weather.getAllowedTools()).containsExactly("weather.current");
+    assertThat(weather.getAllowedTools()).containsExactly("weather.current", "weather.compare");
     assertThat(weather.getInstructions())
         .contains("weather.current arguments:")
         .contains("feelsLike: true when the user asks for feels-like temperature")
         .contains("astronomy: true when the user asks for sun/moon details")
-        .contains("verbose: true when the user asks for a detailed place name or verbose output");
+        .contains("verbose: true when the user asks for a detailed place name or verbose output")
+        .contains("weather.compare arguments:")
+        .contains("compare cities");
   }
 
   @Test

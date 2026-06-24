@@ -229,7 +229,8 @@ class HermesAiCommandServiceTest {
         .contains("weather.current arguments:")
         .contains("verbose=true")
         .contains("feelsLike=true")
-        .contains("astronomy=true");
+        .contains("astronomy=true")
+        .contains("weather.compare");
   }
 
   @Test

@@ -141,21 +141,25 @@ public class AiCommandJsonStore {
             Interpret the user's arguments as a weather location.
             Use weather.current before answering.
             If the user gives multiple locations, call weather.current with locations array.
+            If the user asks to compare cities, use weather.compare with locations array.
             weather.current arguments:
             - location: one place name
             - locations: array of place names
             - feelsLike: true when the user asks for feels-like temperature
             - astronomy: true when the user asks for sun/moon details
             - verbose: true when the user asks for a detailed place name or verbose output
+            weather.compare arguments:
+            - locations: array of at least two place names
             Examples:
             - {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
             - {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
             - {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
             - {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
+            - {"type":"tool","tool":"weather.compare","arguments":{"locations":["Helsinki","Turku"]}}
             When weather.current returns formattedText, return that value exactly as the final answer.
             Do not reformat, translate, summarize, or add extra text.
             """,
-        List.of("weather.current"),
+        List.of("weather.current", "weather.compare"),
         DEFAULT_MAX_TOOL_ITERATIONS);
     return new AiCommandConfig(List.of(weather));
   }
@@ -218,7 +222,9 @@ public class AiCommandJsonStore {
         && tools.contains("weather.current")
         && (cleaned == null || !cleaned.toLowerCase(Locale.ROOT).contains("multiple locations"))) {
       String prefix = cleaned == null ? "" : cleaned.stripTrailing() + "\n";
-      return prefix + "If the user gives multiple locations, call weather.current with locations array.";
+      return prefix
+          + "If the user gives multiple locations, call weather.current with locations array.\n"
+          + "If the user asks to compare cities, use weather.compare with locations array.";
     }
     return cleaned;
   }
