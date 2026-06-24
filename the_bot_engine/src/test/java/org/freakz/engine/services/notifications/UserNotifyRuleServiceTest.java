@@ -5,6 +5,7 @@ import org.freakz.common.model.dto.DataNodeBase;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.connections.ConnectionManagerService;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,21 @@ class UserNotifyRuleServiceTest {
     verify(fixture.connectionManagerService).sendMessageToKnownUser(
         eq("pete"),
         contains("Notify match in IRCNet / #lowlife from friend: _Pete_: hey"),
+        eq(true),
+        eq("WHATSAPP_CONNECTION"),
+        isNull());
+  }
+
+  @Test
+  void mentionPresetMatchesLinkedChatIdentityDisplayName() {
+    Fixture fixture = fixture(ownerWithoutLegacyIrcNick());
+    fixture.service.create("pete", rule(UserNotifyRule.PATTERN_TYPE_PRESET_MENTION, null));
+
+    fixture.service.processInboundMessage(request("_Pete_: hey", "friend"));
+
+    verify(fixture.connectionManagerService).sendMessageToKnownUser(
+        eq("pete"),
+        contains("_Pete_: hey"),
         eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
@@ -118,6 +134,10 @@ class UserNotifyRuleServiceTest {
         .ircNick("_Pete_")
         .whatsappId("358501234567")
         .build();
+    return fixture(owner);
+  }
+
+  private Fixture fixture(User owner) {
     List<DataNodeBase> users = List.of(owner);
     UsersService usersService = new StaticUsersService(users);
     ConnectionManagerService connectionManagerService = mock(ConnectionManagerService.class);
@@ -132,6 +152,22 @@ class UserNotifyRuleServiceTest {
         tempDir.resolve("user-notify-rules.json"),
         JsonMapper.builder().build());
     return new Fixture(new UserNotifyRuleService(store, usersService, connectionManagerService), connectionManagerService);
+  }
+
+  private User ownerWithoutLegacyIrcNick() {
+    return User.builder()
+        .username("pete")
+        .name("Pete")
+        .whatsappId("358501234567")
+        .chatIdentities(List.of(UserChatIdentity.builder()
+            .connectionType("IRC_CONNECTION")
+            .network("IRCNet")
+            .userId("-pete@example")
+            .username("_Pete_")
+            .displayName("_Pete_")
+            .source("IRC_TOKEN_CLAIM")
+            .build()))
+        .build();
   }
 
   private UserNotifyRule rule(String patternType, String pattern) {

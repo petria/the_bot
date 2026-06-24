@@ -152,7 +152,10 @@ public class UserNotifyRuleService {
   }
 
   private List<String> mentionNames(User user) {
-    return Stream.of(user.getIrcNick(), user.getUsername(), user.getName())
+    Stream<String> profileNames = Stream.of(user.getIrcNick(), user.getUsername(), user.getName());
+    Stream<String> identityNames = UserChatIdentityUtil.normalizedIdentities(user).stream()
+        .flatMap(identity -> Stream.of(identity.getUsername(), identity.getDisplayName()));
+    return Stream.concat(profileNames, identityNames)
         .filter(Objects::nonNull)
         .map(String::trim)
         .filter(value -> !value.isBlank())
