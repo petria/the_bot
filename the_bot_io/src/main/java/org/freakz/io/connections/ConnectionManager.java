@@ -956,7 +956,9 @@ public class ConnectionManager implements CommandLineRunner {
       if (configuredNetwork != null && observedNetwork != null && !configuredNetwork.equals(observedNetwork)) {
         continue;
       }
-      if (configuredValueMatchesObserved(identity.getUserId(), presence.userId)) {
+      if (configuredValueMatchesObserved(identity.getUserId(), presence.userId)
+          || configuredValueMatchesObserved(identity.getUsername(), presence.username, presence.userId)
+          || configuredValueMatchesObserved(identity.getDisplayName(), presence.displayName, presence.username, presence.userId)) {
         return true;
       }
     }

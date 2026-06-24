@@ -198,6 +198,49 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void matchesIrcConfiguredIdentityByNickWhenHostmaskIsUnavailable() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .chatIdentities(List.of(UserChatIdentity.builder()
+            .connectionType("IRC_CONNECTION")
+            .network("IRCNet")
+            .userId("-petria@5900x-ddns-net")
+            .username("_Pete_")
+            .displayName("_Pete_")
+            .source("IRC_TOKEN_CLAIM")
+            .build()))
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection ircConnection = new CapturingBotConnection();
+    connectionManager.addConnection(ircConnection);
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.IRC_CONNECTION,
+        ircConnection,
+        new BotConnectionChannel("irc-channel-id", "IRC-AMIGAFIN", BotConnectionType.IRC_CONNECTION.name(), "IRCNet", "#AmigaFIN"));
+    connectionManager.markUserSeen(ircConnection, "IRC-AMIGAFIN", "_Pete_", "_Pete_", "PEtri Airio", "IRC_NAMES");
+    connectionManager.markUserSeen(ircConnection, "IRC-AMIGAFIN", "petria", "petria", "Petri Airio", "IRC_NAMES");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("IRC_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSelectedTarget().isMatchedConfiguredUser()).isTrue();
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(ircConnection.lastMessage.getTarget()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(ircConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
   void doesNotFallbackToPublicChannelWhenPrivateDeliveryIsRequired() {
     ConnectionManager connectionManager = new ConnectionManager();
     User configuredUser = User.builder()
