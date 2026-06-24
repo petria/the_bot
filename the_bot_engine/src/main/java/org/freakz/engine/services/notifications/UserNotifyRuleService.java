@@ -119,6 +119,7 @@ public class UserNotifyRuleService {
         rule.getUsername(),
         notificationMessage(rule, request, message),
         true,
+        true,
         rule.getDestinationConnectionType(),
         null);
     if (response == null || !"OK".equals(response.getStatus())) {

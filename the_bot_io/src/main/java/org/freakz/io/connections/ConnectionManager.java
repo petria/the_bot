@@ -308,7 +308,7 @@ public class ConnectionManager implements CommandLineRunner {
     }
     try {
       String message = formatKnownUserMessage(request.getMessage(), response.getSelectedTarget());
-      sendMessageByEchoToAlias(message, response.getSelectedTarget().getEchoToAlias());
+      sendMessageToKnownUserTarget(message, response.getSelectedTarget());
       response.setSentTo(response.getSelectedTarget().getEchoToAlias());
       response.setMessage("Sent to " + response.getSelectedTarget().getEchoToAlias());
       return response;
@@ -350,10 +350,22 @@ public class ConnectionManager implements CommandLineRunner {
       return sendToKnownUserResponse("AMBIGUOUS", "Multiple users match query: " + request.getQuery(), null, identityCandidates);
     }
 
-    Optional<KnownUserTargetResponse> selected = selectKnownUserTarget(identityCandidates, Boolean.TRUE.equals(request.getPreferPrivate()));
+    Optional<KnownUserTargetResponse> selected = selectKnownUserTarget(
+        identityCandidates,
+        Boolean.TRUE.equals(request.getPreferPrivate()),
+        Boolean.TRUE.equals(request.getRequirePrivate()));
+    if (selected.isEmpty() && Boolean.TRUE.equals(request.getRequirePrivate())) {
+      selected = synthesizePrivateTarget(identityCandidates, request);
+    }
     return selected
         .map(target -> sendToKnownUserResponse("OK", "Resolved target", target, candidates))
-        .orElseGet(() -> sendToKnownUserResponse("NOK", "No sendable target found for query: " + request.getQuery(), null, candidates));
+        .orElseGet(() -> sendToKnownUserResponse(
+            "NOK",
+            Boolean.TRUE.equals(request.getRequirePrivate())
+                ? "No private target found for query: " + request.getQuery()
+                : "No sendable target found for query: " + request.getQuery(),
+            null,
+            candidates));
   }
 
   void setConfiguredUsersForTesting(List<User> users) {
@@ -372,7 +384,10 @@ public class ConnectionManager implements CommandLineRunner {
         .toList();
   }
 
-  private Optional<KnownUserTargetResponse> selectKnownUserTarget(List<KnownUserTargetResponse> candidates, boolean preferPrivate) {
+  private Optional<KnownUserTargetResponse> selectKnownUserTarget(
+      List<KnownUserTargetResponse> candidates,
+      boolean preferPrivate,
+      boolean requirePrivate) {
     if (candidates.isEmpty()) {
       return Optional.empty();
     }
@@ -388,6 +403,9 @@ public class ConnectionManager implements CommandLineRunner {
         return privateTarget;
       }
     }
+    if (requirePrivate) {
+      return Optional.empty();
+    }
     return candidates.stream()
         .sorted(newestFirst)
         .findFirst();
@@ -396,6 +414,77 @@ public class ConnectionManager implements CommandLineRunner {
   private boolean isPrivateEchoToAlias(String echoToAlias) {
     String normalized = normalizeEchoToAlias(echoToAlias);
     return normalized != null && normalized.startsWith("PRIVATE-");
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizePrivateTarget(
+      List<KnownUserTargetResponse> candidates,
+      SendMessageToKnownUserRequest request) {
+    BotConnectionType requestedType = parseConnectionType(request.getConnectionType());
+    if (requestedType != BotConnectionType.IRC_CONNECTION) {
+      return Optional.empty();
+    }
+    return candidates.stream()
+        .filter(candidate -> parseConnectionType(candidate.getConnectionType()) == BotConnectionType.IRC_CONNECTION)
+        .sorted(Comparator
+            .comparing((KnownUserTargetResponse target) -> target.getLastSeenAt() == null ? Long.MIN_VALUE : target.getLastSeenAt())
+            .reversed())
+        .map(this::synthesizeIrcPrivateTarget)
+        .flatMap(Optional::stream)
+        .findFirst();
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizeIrcPrivateTarget(KnownUserTargetResponse candidate) {
+    String nick = firstNonBlank(candidate.getObservedUsername(), candidate.getConfiguredUsername());
+    if (nick == null) {
+      return Optional.empty();
+    }
+    String echoToAlias = "PRIVATE-" + nick;
+    return Optional.of(new KnownUserTargetResponse(
+        candidate.getLogicalUserKey(),
+        candidate.getConfiguredUserId(),
+        candidate.getConfiguredUsername(),
+        candidate.getConfiguredName(),
+        candidate.isMatchedConfiguredUser(),
+        candidate.getMatchSource(),
+        candidate.getObservedUserKey(),
+        candidate.getObservedUserId(),
+        candidate.getObservedUsername(),
+        candidate.getObservedDisplayName(),
+        candidate.getConnectionId(),
+        candidate.getConnectionType(),
+        candidate.getNetwork(),
+        echoToAlias,
+        echoToAlias,
+        echoToAlias,
+        "PRIVATE",
+        candidate.getLastSeenAt(),
+        candidate.getLastSeenSource()));
+  }
+
+  private void sendMessageToKnownUserTarget(String messageText, KnownUserTargetResponse target) throws InvalidEchoToAliasException {
+    if (target == null) {
+      throw new InvalidEchoToAliasException("No target selected");
+    }
+    Dual dual = findChannelByEchoToAlias(target.getEchoToAlias());
+    if (dual != null) {
+      sendMessageByEchoToAlias(messageText, target.getEchoToAlias());
+      return;
+    }
+    if (!isPrivateEchoToAlias(target.getEchoToAlias())) {
+      sendMessageByEchoToAlias(messageText, target.getEchoToAlias());
+      return;
+    }
+    BotConnection connection = connectionMap.get(target.getConnectionId());
+    if (connection == null) {
+      throw new InvalidEchoToAliasException("No connection found for id: " + target.getConnectionId());
+    }
+    Message message = Message.builder()
+        .id(target.getChannelId())
+        .message(messageText)
+        .messageSource(MessageSource.NONE)
+        .target(firstNonBlank(target.getChannelName(), target.getEchoToAlias()))
+        .build();
+    connection.sendMessageTo(message);
   }
 
   private SendMessageToKnownUserResponse sendToKnownUserResponse(

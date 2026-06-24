@@ -39,6 +39,7 @@ class UserNotifyRuleServiceTest {
         eq("pete"),
         contains("Notify match in IRCNet / #lowlife from friend: _Pete_: hey"),
         eq(true),
+        eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
   }
@@ -54,6 +55,7 @@ class UserNotifyRuleServiceTest {
         eq("pete"),
         contains("_Pete_: hey"),
         eq(true),
+        eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
   }
@@ -68,6 +70,7 @@ class UserNotifyRuleServiceTest {
     verify(fixture.connectionManagerService).sendMessageToKnownUser(
         eq("pete"),
         contains("Deploy failed on main"),
+        eq(true),
         eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
@@ -86,6 +89,7 @@ class UserNotifyRuleServiceTest {
         eq("pete"),
         contains("Notify match"),
         eq(true),
+        eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
   }
@@ -100,6 +104,7 @@ class UserNotifyRuleServiceTest {
     verify(fixture.connectionManagerService, never()).sendMessageToKnownUser(
         eq("pete"),
         contains("Notify match"),
+        eq(true),
         eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
@@ -117,11 +122,13 @@ class UserNotifyRuleServiceTest {
         eq("pete"),
         contains("_Pete_: first"),
         eq(true),
+        eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
     verify(fixture.connectionManagerService, never()).sendMessageToKnownUser(
         eq("pete"),
         contains("_Pete_: second"),
+        eq(true),
         eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull());
@@ -144,6 +151,7 @@ class UserNotifyRuleServiceTest {
     when(connectionManagerService.sendMessageToKnownUser(
         eq("pete"),
         contains("Notify match"),
+        eq(true),
         eq(true),
         eq("WHATSAPP_CONNECTION"),
         isNull()))

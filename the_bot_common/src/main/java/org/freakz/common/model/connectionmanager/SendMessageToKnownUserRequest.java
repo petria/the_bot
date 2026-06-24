@@ -5,6 +5,7 @@ public class SendMessageToKnownUserRequest {
   private String query;
   private String message;
   private Boolean preferPrivate;
+  private Boolean requirePrivate;
   private String connectionType;
   private String echoToAlias;
 
@@ -15,11 +16,13 @@ public class SendMessageToKnownUserRequest {
       String query,
       String message,
       Boolean preferPrivate,
+      Boolean requirePrivate,
       String connectionType,
       String echoToAlias) {
     this.query = query;
     this.message = message;
     this.preferPrivate = preferPrivate;
+    this.requirePrivate = requirePrivate;
     this.connectionType = connectionType;
     this.echoToAlias = echoToAlias;
   }
@@ -52,6 +55,14 @@ public class SendMessageToKnownUserRequest {
     this.preferPrivate = preferPrivate;
   }
 
+  public Boolean getRequirePrivate() {
+    return requirePrivate;
+  }
+
+  public void setRequirePrivate(Boolean requirePrivate) {
+    this.requirePrivate = requirePrivate;
+  }
+
   public String getConnectionType() {
     return connectionType;
   }
@@ -72,6 +83,7 @@ public class SendMessageToKnownUserRequest {
     private String query;
     private String message;
     private Boolean preferPrivate;
+    private Boolean requirePrivate;
     private String connectionType;
     private String echoToAlias;
 
@@ -90,6 +102,11 @@ public class SendMessageToKnownUserRequest {
       return this;
     }
 
+    public Builder requirePrivate(Boolean requirePrivate) {
+      this.requirePrivate = requirePrivate;
+      return this;
+    }
+
     public Builder connectionType(String connectionType) {
       this.connectionType = connectionType;
       return this;
@@ -101,7 +118,7 @@ public class SendMessageToKnownUserRequest {
     }
 
     public SendMessageToKnownUserRequest build() {
-      return new SendMessageToKnownUserRequest(query, message, preferPrivate, connectionType, echoToAlias);
+      return new SendMessageToKnownUserRequest(query, message, preferPrivate, requirePrivate, connectionType, echoToAlias);
     }
   }
 }
