@@ -65,8 +65,8 @@ export interface UserNotifyRule {
   pattern: string | null;
   destinationConnectionType: string;
   cooldownSeconds: number;
-  createdAt: number;
-  updatedAt: number;
+  createdAt: number | null;
+  updatedAt: number | null;
 }
 
 export type UserNotifyRuleInput = Omit<UserNotifyRule, 'id' | 'username' | 'createdAt' | 'updatedAt'>;

@@ -64,6 +64,13 @@ const emptyNotifyRule: UserNotifyRuleInput = {
   cooldownSeconds: 60,
 };
 
+const fallbackDestinationOptions = [
+  { value: 'WHATSAPP_CONNECTION', label: 'WhatsApp private message' },
+  { value: 'TELEGRAM_CONNECTION', label: 'Telegram private message' },
+  { value: 'DISCORD_CONNECTION', label: 'Discord private message' },
+  { value: 'IRC_CONNECTION', label: 'IRC private message' },
+];
+
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const meQuery = useQuery({
@@ -106,6 +113,16 @@ export function ProfilePage() {
           return true;
         })
         .sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }));
+  }, [connectionsQuery.data]);
+
+  const destinationOptions = useMemo(() => {
+    const connectionTypes = new Set(
+        (connectionsQuery.data?.connections ?? [])
+            .map((connection) => connection.type)
+            .filter((type): type is string => Boolean(type)),
+    );
+    const options = fallbackDestinationOptions.filter((option) => connectionTypes.has(option.value));
+    return options.length > 0 ? options : fallbackDestinationOptions;
   }, [connectionsQuery.data]);
 
   useEffect(() => {
@@ -389,9 +406,9 @@ export function ProfilePage() {
             <Group grow align="flex-start" className="profile-grid">
               <Select
                 label="Destination"
-                data={[{ value: 'WHATSAPP_CONNECTION', label: 'WhatsApp private message' }]}
+                data={destinationOptions}
                 value={notifyForm.destinationConnectionType}
-                onChange={(value) => setNotifyField('destinationConnectionType', value ?? 'WHATSAPP_CONNECTION')}
+                onChange={(value) => setNotifyField('destinationConnectionType', value ?? destinationOptions[0].value)}
               />
               <NumberInput
                 label="Cooldown seconds"
@@ -552,7 +569,8 @@ function formatExpiresAt(expiresAt: number): string {
 }
 
 function destinationLabel(connectionType: string): string {
-  return connectionType === 'WHATSAPP_CONNECTION' ? 'WhatsApp' : connectionType;
+  const label = fallbackDestinationOptions.find((option) => option.value === connectionType)?.label;
+  return label ? label.replace(' private message', '') : connectionType;
 }
 
 function toProfileForm(me: MeResponse): ProfileUpdateRequest {

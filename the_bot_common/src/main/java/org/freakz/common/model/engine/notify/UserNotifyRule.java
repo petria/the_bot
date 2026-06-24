@@ -16,8 +16,8 @@ public class UserNotifyRule {
   private String pattern;
   private String destinationConnectionType = DEFAULT_DESTINATION_CONNECTION_TYPE;
   private int cooldownSeconds = DEFAULT_COOLDOWN_SECONDS;
-  private long createdAt;
-  private long updatedAt;
+  private Long createdAt;
+  private Long updatedAt;
 
   public UserNotifyRule() {
   }
@@ -32,8 +32,8 @@ public class UserNotifyRule {
       String pattern,
       String destinationConnectionType,
       int cooldownSeconds,
-      long createdAt,
-      long updatedAt) {
+      Long createdAt,
+      Long updatedAt) {
     this.id = id;
     this.username = username;
     this.enabled = enabled;
@@ -119,19 +119,19 @@ public class UserNotifyRule {
     this.cooldownSeconds = cooldownSeconds;
   }
 
-  public long getCreatedAt() {
+  public Long getCreatedAt() {
     return createdAt;
   }
 
-  public void setCreatedAt(long createdAt) {
+  public void setCreatedAt(Long createdAt) {
     this.createdAt = createdAt;
   }
 
-  public long getUpdatedAt() {
+  public Long getUpdatedAt() {
     return updatedAt;
   }
 
-  public void setUpdatedAt(long updatedAt) {
+  public void setUpdatedAt(Long updatedAt) {
     this.updatedAt = updatedAt;
   }
 }
