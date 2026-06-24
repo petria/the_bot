@@ -308,7 +308,7 @@ public class ConnectionManager implements CommandLineRunner {
     }
     try {
       String message = formatKnownUserMessage(request.getMessage(), response.getSelectedTarget());
-      sendMessageByEchoToAlias(message, response.getSelectedTarget().getEchoToAlias());
+      sendMessageToKnownUserTarget(message, response.getSelectedTarget());
       response.setSentTo(response.getSelectedTarget().getEchoToAlias());
       response.setMessage("Sent to " + response.getSelectedTarget().getEchoToAlias());
       return response;
@@ -336,6 +336,12 @@ public class ConnectionManager implements CommandLineRunner {
 
     List<KnownUserTargetResponse> candidates = filterKnownUserTargets(request);
     if (candidates.isEmpty()) {
+      if (Boolean.TRUE.equals(request.getRequirePrivate())) {
+        Optional<KnownUserTargetResponse> configuredTarget = synthesizeConfiguredPrivateTarget(request);
+        if (configuredTarget.isPresent()) {
+          return sendToKnownUserResponse("OK", "Resolved configured private target", configuredTarget.get(), candidates);
+        }
+      }
       return sendToKnownUserResponse("NOK", "No known user target found for query: " + request.getQuery(), null, candidates);
     }
 
@@ -350,10 +356,25 @@ public class ConnectionManager implements CommandLineRunner {
       return sendToKnownUserResponse("AMBIGUOUS", "Multiple users match query: " + request.getQuery(), null, identityCandidates);
     }
 
-    Optional<KnownUserTargetResponse> selected = selectKnownUserTarget(identityCandidates, Boolean.TRUE.equals(request.getPreferPrivate()));
+    Optional<KnownUserTargetResponse> selected = selectKnownUserTarget(
+        identityCandidates,
+        Boolean.TRUE.equals(request.getPreferPrivate()),
+        Boolean.TRUE.equals(request.getRequirePrivate()));
+    if (selected.isEmpty() && Boolean.TRUE.equals(request.getRequirePrivate())) {
+      selected = synthesizePrivateTarget(identityCandidates, request);
+      if (selected.isEmpty()) {
+        selected = synthesizeConfiguredPrivateTarget(request);
+      }
+    }
     return selected
         .map(target -> sendToKnownUserResponse("OK", "Resolved target", target, candidates))
-        .orElseGet(() -> sendToKnownUserResponse("NOK", "No sendable target found for query: " + request.getQuery(), null, candidates));
+        .orElseGet(() -> sendToKnownUserResponse(
+            "NOK",
+            Boolean.TRUE.equals(request.getRequirePrivate())
+                ? "No private target found for query: " + request.getQuery()
+                : "No sendable target found for query: " + request.getQuery(),
+            null,
+            candidates));
   }
 
   void setConfiguredUsersForTesting(List<User> users) {
@@ -372,7 +393,10 @@ public class ConnectionManager implements CommandLineRunner {
         .toList();
   }
 
-  private Optional<KnownUserTargetResponse> selectKnownUserTarget(List<KnownUserTargetResponse> candidates, boolean preferPrivate) {
+  private Optional<KnownUserTargetResponse> selectKnownUserTarget(
+      List<KnownUserTargetResponse> candidates,
+      boolean preferPrivate,
+      boolean requirePrivate) {
     if (candidates.isEmpty()) {
       return Optional.empty();
     }
@@ -388,6 +412,9 @@ public class ConnectionManager implements CommandLineRunner {
         return privateTarget;
       }
     }
+    if (requirePrivate) {
+      return Optional.empty();
+    }
     return candidates.stream()
         .sorted(newestFirst)
         .findFirst();
@@ -396,6 +423,199 @@ public class ConnectionManager implements CommandLineRunner {
   private boolean isPrivateEchoToAlias(String echoToAlias) {
     String normalized = normalizeEchoToAlias(echoToAlias);
     return normalized != null && normalized.startsWith("PRIVATE-");
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizePrivateTarget(
+      List<KnownUserTargetResponse> candidates,
+      SendMessageToKnownUserRequest request) {
+    BotConnectionType requestedType = parseConnectionType(request.getConnectionType());
+    if (requestedType != BotConnectionType.IRC_CONNECTION) {
+      return Optional.empty();
+    }
+    return candidates.stream()
+        .filter(candidate -> parseConnectionType(candidate.getConnectionType()) == BotConnectionType.IRC_CONNECTION)
+        .sorted(Comparator
+            .comparing((KnownUserTargetResponse target) -> target.getLastSeenAt() == null ? Long.MIN_VALUE : target.getLastSeenAt())
+            .reversed())
+        .map(this::synthesizeIrcPrivateTarget)
+        .flatMap(Optional::stream)
+        .findFirst();
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizeConfiguredPrivateTarget(SendMessageToKnownUserRequest request) {
+    BotConnectionType requestedType = parseConnectionType(request.getConnectionType());
+    if (requestedType == null) {
+      return Optional.empty();
+    }
+    Optional<BotConnection> connection = findConnectionByType(requestedType);
+    if (connection.isEmpty()) {
+      return Optional.empty();
+    }
+    Optional<User> user = findSingleConfiguredUser(request.getQuery());
+    if (user.isEmpty()) {
+      return Optional.empty();
+    }
+    String targetId = configuredPrivateTargetId(user.get(), requestedType);
+    if (targetId == null) {
+      return Optional.empty();
+    }
+    String echoToAlias = privateEchoToAlias(requestedType, targetId);
+    String displayName = privateDisplayName(requestedType, firstNonBlank(user.get().getUsername(), targetId));
+    return Optional.of(new KnownUserTargetResponse(
+        "configured:" + user.get().getId(),
+        user.get().getId(),
+        user.get().getUsername(),
+        user.get().getName(),
+        true,
+        "CONFIGURED_" + requestedType.name(),
+        null,
+        targetId,
+        user.get().getUsername(),
+        user.get().getName(),
+        connection.get().getId(),
+        requestedType.name(),
+        connection.get().getNetwork(),
+        targetId,
+        displayName,
+        echoToAlias,
+        "PRIVATE",
+        System.currentTimeMillis(),
+        "CONFIGURED_USER"));
+  }
+
+  private Optional<BotConnection> findConnectionByType(BotConnectionType connectionType) {
+    return connectionMap.values().stream()
+        .filter(connection -> connection.getType() == connectionType)
+        .findFirst();
+  }
+
+  private Optional<User> findSingleConfiguredUser(String query) {
+    String normalizedQuery = normalizeLookup(query);
+    if (normalizedQuery == null) {
+      return Optional.empty();
+    }
+    List<User> matches = readConfiguredUsers().stream()
+        .filter(user -> configuredUserMatchesQuery(user, normalizedQuery))
+        .toList();
+    return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+  }
+
+  private boolean configuredUserMatchesQuery(User user, String normalizedQuery) {
+    if (user == null) {
+      return false;
+    }
+    return normalizedQuery.equals(normalizeLookup(user.getUsername()))
+        || normalizedQuery.equals(normalizeLookup(user.getName()))
+        || normalizedQuery.equals(user.getId() == null ? null : String.valueOf(user.getId()));
+  }
+
+  private String configuredPrivateTargetId(User user, BotConnectionType connectionType) {
+    if (connectionType == BotConnectionType.DISCORD_CONNECTION) {
+      return configuredTargetId(user, connectionType, user == null ? null : user.getDiscordId());
+    }
+    if (connectionType == BotConnectionType.TELEGRAM_CONNECTION) {
+      return configuredTargetId(user, connectionType, user == null ? null : user.getTelegramId());
+    }
+    if (connectionType == BotConnectionType.WHATSAPP_CONNECTION) {
+      return normalizeWhatsAppUserJid(configuredTargetId(user, connectionType, user == null ? null : user.getWhatsappId()));
+    }
+    return null;
+  }
+
+  private String configuredTargetId(User user, BotConnectionType connectionType, String legacyId) {
+    String direct = firstNonBlank(legacyId);
+    if (direct != null) {
+      return direct;
+    }
+    if (user == null || user.getChatIdentities() == null) {
+      return null;
+    }
+    return user.getChatIdentities().stream()
+        .filter(identity -> identity != null && connectionType.name().equalsIgnoreCase(identity.getConnectionType()))
+        .map(org.freakz.common.model.users.UserChatIdentity::getUserId)
+        .filter(value -> firstNonBlank(value) != null)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private String normalizeWhatsAppUserJid(String value) {
+    String target = firstNonBlank(value);
+    if (target == null) {
+      return null;
+    }
+    return target.replaceFirst(":\\d+(?=@)", "");
+  }
+
+  private String privateEchoToAlias(BotConnectionType connectionType, String targetId) {
+    return switch (connectionType) {
+      case DISCORD_CONNECTION -> "PRIVATE-DISCORD-" + targetId;
+      case TELEGRAM_CONNECTION -> "PRIVATE-TELEGRAM-" + targetId;
+      case WHATSAPP_CONNECTION -> "PRIVATE-WHATSAPP-" + targetId;
+      case IRC_CONNECTION -> "PRIVATE-" + targetId;
+    };
+  }
+
+  private String privateDisplayName(BotConnectionType connectionType, String label) {
+    return switch (connectionType) {
+      case DISCORD_CONNECTION -> "Discord DM " + label;
+      case TELEGRAM_CONNECTION -> "Telegram DM " + label;
+      case WHATSAPP_CONNECTION -> "WhatsApp DM " + label;
+      case IRC_CONNECTION -> "PRIVATE-" + label;
+    };
+  }
+
+  private Optional<KnownUserTargetResponse> synthesizeIrcPrivateTarget(KnownUserTargetResponse candidate) {
+    String nick = firstNonBlank(candidate.getObservedUsername(), candidate.getConfiguredUsername());
+    if (nick == null) {
+      return Optional.empty();
+    }
+    String echoToAlias = "PRIVATE-" + nick;
+    return Optional.of(new KnownUserTargetResponse(
+        candidate.getLogicalUserKey(),
+        candidate.getConfiguredUserId(),
+        candidate.getConfiguredUsername(),
+        candidate.getConfiguredName(),
+        candidate.isMatchedConfiguredUser(),
+        candidate.getMatchSource(),
+        candidate.getObservedUserKey(),
+        candidate.getObservedUserId(),
+        candidate.getObservedUsername(),
+        candidate.getObservedDisplayName(),
+        candidate.getConnectionId(),
+        candidate.getConnectionType(),
+        candidate.getNetwork(),
+        echoToAlias,
+        echoToAlias,
+        echoToAlias,
+        "PRIVATE",
+        candidate.getLastSeenAt(),
+        candidate.getLastSeenSource()));
+  }
+
+  private void sendMessageToKnownUserTarget(String messageText, KnownUserTargetResponse target) throws InvalidEchoToAliasException {
+    if (target == null) {
+      throw new InvalidEchoToAliasException("No target selected");
+    }
+    Dual dual = findChannelByEchoToAlias(target.getEchoToAlias());
+    if (dual != null) {
+      sendMessageByEchoToAlias(messageText, target.getEchoToAlias());
+      return;
+    }
+    if (!isPrivateEchoToAlias(target.getEchoToAlias())) {
+      sendMessageByEchoToAlias(messageText, target.getEchoToAlias());
+      return;
+    }
+    BotConnection connection = connectionMap.get(target.getConnectionId());
+    if (connection == null) {
+      throw new InvalidEchoToAliasException("No connection found for id: " + target.getConnectionId());
+    }
+    Message message = Message.builder()
+        .id(target.getChannelId())
+        .message(messageText)
+        .messageSource(MessageSource.NONE)
+        .target(firstNonBlank(target.getChannelName(), target.getEchoToAlias()))
+        .build();
+    connection.sendMessageTo(message);
   }
 
   private SendMessageToKnownUserResponse sendToKnownUserResponse(
@@ -867,7 +1087,9 @@ public class ConnectionManager implements CommandLineRunner {
       if (configuredNetwork != null && observedNetwork != null && !configuredNetwork.equals(observedNetwork)) {
         continue;
       }
-      if (configuredValueMatchesObserved(identity.getUserId(), presence.userId)) {
+      if (configuredValueMatchesObserved(identity.getUserId(), presence.userId)
+          || configuredValueMatchesObserved(identity.getUsername(), presence.username, presence.userId)
+          || configuredValueMatchesObserved(identity.getDisplayName(), presence.displayName, presence.username, presence.userId)) {
         return true;
       }
     }

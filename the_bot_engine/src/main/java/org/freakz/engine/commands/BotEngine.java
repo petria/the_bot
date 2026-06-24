@@ -48,6 +48,7 @@ public class BotEngine {
   private final AccessService accessService;
 
   private final CommandHandlerLoader commandHandlerLoader;
+  private final CommandProviderRegistry commandProviderRegistry;
   private final HokanServices hokanServices;
   private final ConfigService configService;
   private final UrlResolutionService urlResolutionService;
@@ -92,11 +93,16 @@ public class BotEngine {
     }
     this.commandHandlerLoader =
         new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
+    this.commandProviderRegistry = new CommandProviderRegistry(this.commandHandlerLoader, this.aiCommandRegistryService);
     this.wholeLineTriggers = new WholeLineTriggersImpl(this);
   }
 
   public CommandHandlerLoader getCommandHandlerLoader() {
     return commandHandlerLoader;
+  }
+
+  public CommandProviderRegistry getCommandProviderRegistry() {
+    return commandProviderRegistry;
   }
 
   public HokanServices getHokanServices() {
@@ -202,28 +208,29 @@ public class BotEngine {
     String message = request.getMessage();
     CommandArgs args = new CommandArgs(message);
 
-    AiCommandExecutionResult aiMatch = executeAiCommandIfMatched(request, user, args, sendProcessingIndicator);
-    if (aiMatch.matched()) {
-      return aiMatch.reply();
+    CommandProviderRegistry.ResolvedCommand resolvedCommand = commandProviderRegistry.resolve(args.getCommand()).orElse(null);
+    if (resolvedCommand == null) {
+      CommandHandlerLoader.AliasResolution aliasResolution = commandProviderRegistry.resolveAlias(message);
+      if (aliasResolution.isError()) {
+        return aliasResolution.errorMessage();
+      }
+      if (aliasResolution.isAliased()) {
+        HandlerAlias handlerAlias = aliasResolution.alias();
+        log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
+        message = aliasResolution.resolvedMessage();
+        args = new CommandArgs(message);
+        resolvedCommand = commandProviderRegistry.resolve(args.getCommand()).orElse(null);
+      }
     }
 
-    CommandHandlerLoader.AliasResolution aliasResolution = getCommandHandlerLoader().resolveAlias(message);
-    if (aliasResolution.isError()) {
-      return aliasResolution.errorMessage();
+    if (resolvedCommand == null) {
+      return null;
     }
-    if (aliasResolution.isAliased()) {
-      HandlerAlias handlerAlias = aliasResolution.alias();
-      log.debug("Using alias: {} = {}", handlerAlias.getAlias(), handlerAlias.getTarget());
-      message = aliasResolution.resolvedMessage();
-      args = new CommandArgs(message);
+    if (resolvedCommand.command().isAiCommand()) {
+      return executeAiCommand(request, user, args, resolvedCommand.command(), sendProcessingIndicator).reply();
     }
 
-    aiMatch = executeAiCommandIfMatched(request, user, args, sendProcessingIndicator);
-    if (aiMatch.matched()) {
-      return aiMatch.reply();
-    }
-
-    HandlerClass handlerClass = this.commandHandlerLoader.getHandlerClassForCommand(args.getCommand());
+    HandlerClass handlerClass = resolvedCommand.command().handlerClass();
     AbstractCmd abstractCmd = (AbstractCmd) getCommandHandler(args.getCommand());
     if (abstractCmd != null) {
       commandInvocationStatsService.recordInvocation(handlerClass);
@@ -293,32 +300,28 @@ public class BotEngine {
     return null;
   }
 
-  private AiCommandExecutionResult executeAiCommandIfMatched(
+  private AiCommandExecutionResult executeAiCommand(
       EngineRequest request,
       User user,
       CommandArgs args,
+      CommandProviderRegistry.CommandRegistration commandRegistration,
       boolean sendProcessingIndicator) {
-    return aiCommandRegistryService.resolve(args.getCommand())
-        .map(command -> {
-          commandInvocationStatsService.recordDynamicInvocation(
-              AiCommandRegistryService.PROVIDER_NAMESPACE,
-              command.getName());
-          request.setUser(user);
-          if (!hasAiCommandPermission(user, command)) {
-            log.debug("User lacks required AI command permission: {}", command.getRequiredPermission());
-            return AiCommandExecutionResult.matched(null);
-          }
-          if (args.hasArgs() && "?".equals(args.getArg(0))) {
-            return AiCommandExecutionResult.matched(
-                sendReplyMessage(request, AiCommandHelpFormatter.formatDetailed(command)));
-          }
-          if (sendProcessingIndicator) {
-            sendProcessingIndicator(request);
-          }
-          hermesAiCommandService.ask(request, command, args.joinArgs(0));
-          return AiCommandExecutionResult.matched(null);
-        })
-        .orElse(AiCommandExecutionResult.notMatched());
+    AiCommandDefinition command = commandRegistration.aiCommand();
+    commandInvocationStatsService.recordDynamicInvocation(commandRegistration.namespace(), command.getName());
+    request.setUser(user);
+    if (!hasAiCommandPermission(user, command)) {
+      log.debug("User lacks required AI command permission: {}", command.getRequiredPermission());
+      return AiCommandExecutionResult.matched(null);
+    }
+    if (args.hasArgs() && "?".equals(args.getArg(0))) {
+      return AiCommandExecutionResult.matched(
+          sendReplyMessage(request, AiCommandHelpFormatter.formatDetailed(command)));
+    }
+    if (sendProcessingIndicator) {
+      sendProcessingIndicator(request);
+    }
+    hermesAiCommandService.ask(request, command, args.joinArgs(0));
+    return AiCommandExecutionResult.matched(null);
   }
 
   private boolean hasAiCommandPermission(User user, AiCommandDefinition command) {

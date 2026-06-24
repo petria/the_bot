@@ -1,8 +1,6 @@
 package org.freakz.engine.commands.handlers;
 
-import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
-import org.freakz.engine.commands.HandlerClass;
-import org.freakz.engine.commands.api.AbstractCmd;
+import org.freakz.engine.commands.CommandProviderRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,37 +12,38 @@ class HelpCmdTest {
   @Test
   void formatsCommandsByProviderUsingSameCompactLayout() {
     HelpCmd helpCmd = new HelpCmd();
-    List<HandlerClass> handlers = List.of(
-        handler("extra", "Zulu"),
-        handler("main", "Weather"),
-        handler("main", "Help"),
-        handler("extra", "Alpha"));
-    List<AiCommandDefinition> aiCommands = List.of(
-        aiCommand("DynPing", false),
-        aiCommand("Forecast", true));
+    List<CommandProviderRegistry.ProviderRegistration> providers = List.of(
+        provider("main", "weather", "help"),
+        provider("extra", "zulu", "alpha"),
+        provider("ai", "dynping", "forecast"));
 
-    String output = helpCmd.formatCommandOverview(handlers, aiCommands);
+    String output = helpCmd.formatCommandOverview(providers);
 
     assertThat(output).isEqualTo("""
         == HELP: COMMANDS BY PROVIDER ==
          = main:: help, weather
          = extra:: alpha, zulu
-         = dynai:: dynping, forecast
+         = ai:: dynping, forecast
         Use !help commandName for details.""");
   }
 
-  private HandlerClass handler(String namespace, String commandName) {
-    return HandlerClass.builder()
-        .clazz(AbstractCmd.class)
-        .namespace(namespace)
-        .commandName(commandName)
-        .build();
-  }
-
-  private AiCommandDefinition aiCommand(String name, boolean enabled) {
-    AiCommandDefinition command = new AiCommandDefinition();
-    command.setName(name);
-    command.setEnabled(enabled);
-    return command;
+  private CommandProviderRegistry.ProviderRegistration provider(String namespace, String... commandNames) {
+    return new CommandProviderRegistry.ProviderRegistration(
+        namespace,
+        namespace,
+        "",
+        List.of(commandNames).stream()
+            .map(commandName -> new CommandProviderRegistry.CommandRegistration(
+                namespace,
+                commandName,
+                commandName,
+                "!" + commandName,
+                "test",
+                null,
+                "",
+                List.of(),
+                null,
+                null))
+            .toList());
   }
 }

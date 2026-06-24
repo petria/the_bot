@@ -78,10 +78,21 @@ public class ConnectionManagerService {
       Boolean preferPrivate,
       String connectionType,
       String echoToAlias) {
+    return sendMessageToKnownUser(query, message, preferPrivate, false, connectionType, echoToAlias);
+  }
+
+  public SendMessageToKnownUserResponse sendMessageToKnownUser(
+      String query,
+      String message,
+      Boolean preferPrivate,
+      Boolean requirePrivate,
+      String connectionType,
+      String echoToAlias) {
     SendMessageToKnownUserRequest request = SendMessageToKnownUserRequest.builder()
         .query(query)
         .message(message)
         .preferPrivate(preferPrivate)
+        .requirePrivate(requirePrivate)
         .connectionType(connectionType)
         .echoToAlias(echoToAlias)
         .build();

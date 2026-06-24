@@ -142,6 +142,7 @@ class ConnectionManagerTest {
     connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
 
     CapturingBotConnection ircConnection = new CapturingBotConnection();
+    connectionManager.addConnection(ircConnection);
     connectionManager.updateJoinedChannelsMap(
         BotConnectionType.IRC_CONNECTION,
         ircConnection,
@@ -158,6 +159,209 @@ class ConnectionManagerTest {
     assertThat(response.getStatus()).isEqualTo("OK");
     assertThat(response.getSentTo()).isEqualTo("IRC-HOKANDEV");
     assertThat(ircConnection.lastMessage.getMessage()).isEqualTo("_Pete_: test");
+  }
+
+  @Test
+  void synthesizesIrcPrivateTargetWhenPrivateDeliveryIsRequired() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .ircNick("_Pete_")
+        .chatIdentities(List.of(ircIdentity("~petria@host.invalid")))
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection ircConnection = new CapturingBotConnection();
+    connectionManager.addConnection(ircConnection);
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.IRC_CONNECTION,
+        ircConnection,
+        new BotConnectionChannel("irc-channel-id", "IRC-HOKANDEV", BotConnectionType.IRC_CONNECTION.name(), "IRCNet", "#HokanDEV"));
+    connectionManager.markUserSeen(ircConnection, "IRC-HOKANDEV", "~petria@host.invalid", "_Pete_", "Petri Airio", "IRC_MESSAGE");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("IRC_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(response.getSelectedTarget().getTargetType()).isEqualTo("PRIVATE");
+    assertThat(ircConnection.lastMessage.getTarget()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(ircConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
+  void matchesIrcConfiguredIdentityByNickWhenHostmaskIsUnavailable() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .chatIdentities(List.of(UserChatIdentity.builder()
+            .connectionType("IRC_CONNECTION")
+            .network("IRCNet")
+            .userId("-petria@5900x-ddns-net")
+            .username("_Pete_")
+            .displayName("_Pete_")
+            .source("IRC_TOKEN_CLAIM")
+            .build()))
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection ircConnection = new CapturingBotConnection();
+    connectionManager.addConnection(ircConnection);
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.IRC_CONNECTION,
+        ircConnection,
+        new BotConnectionChannel("irc-channel-id", "IRC-AMIGAFIN", BotConnectionType.IRC_CONNECTION.name(), "IRCNet", "#AmigaFIN"));
+    connectionManager.markUserSeen(ircConnection, "IRC-AMIGAFIN", "_Pete_", "_Pete_", "PEtri Airio", "IRC_NAMES");
+    connectionManager.markUserSeen(ircConnection, "IRC-AMIGAFIN", "petria", "petria", "Petri Airio", "IRC_NAMES");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("IRC_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSelectedTarget().isMatchedConfiguredUser()).isTrue();
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(ircConnection.lastMessage.getTarget()).isEqualTo("PRIVATE-_Pete_");
+    assertThat(ircConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
+  void doesNotFallbackToPublicChannelWhenPrivateDeliveryIsRequired() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .discordId("265828694445129728")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection discordConnection = new CapturingBotConnection(BotConnectionType.DISCORD_CONNECTION, "Discord");
+    connectionManager.updateJoinedChannelsMap(
+        BotConnectionType.DISCORD_CONNECTION,
+        discordConnection,
+        new BotConnectionChannel("1033431599708123278", "DISCORD-HOKANDEV", BotConnectionType.DISCORD_CONNECTION.name(), "Discord", "hokandev"));
+    connectionManager.markUserSeen(discordConnection, "DISCORD-HOKANDEV", "265828694445129728", "petria", "Petri Airio", "DISCORD_MESSAGE");
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("DISCORD_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("NOK");
+    assertThat(response.getMessage()).contains("No private target found");
+    assertThat(discordConnection.lastMessage).isNull();
+  }
+
+  @Test
+  void sendsWhatsAppPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .whatsappId("162251029934316:96@lid")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection whatsappConnection = new CapturingBotConnection(BotConnectionType.WHATSAPP_CONNECTION, "WhatsApp");
+    connectionManager.addConnection(whatsappConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("WHATSAPP_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-WHATSAPP-162251029934316@lid");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("162251029934316@lid");
+    assertThat(whatsappConnection.lastMessage.getId()).isEqualTo("162251029934316@lid");
+    assertThat(whatsappConnection.lastMessage.getTarget()).isEqualTo("WhatsApp DM petria");
+    assertThat(whatsappConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
+  void sendsTelegramPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .telegramId("138695441")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection telegramConnection = new CapturingBotConnection(BotConnectionType.TELEGRAM_CONNECTION, "TelegramNetwork");
+    connectionManager.addConnection(telegramConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("TELEGRAM_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-TELEGRAM-138695441");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getId()).isEqualTo("138695441");
+    assertThat(telegramConnection.lastMessage.getTarget()).isEqualTo("Telegram DM petria");
+    assertThat(telegramConnection.lastMessage.getMessage()).isEqualTo("test");
+  }
+
+  @Test
+  void sendsDiscordPrivateMessageFromConfiguredUserTargetWhenNoPresenceExists() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    User configuredUser = User.builder()
+        .username("petria")
+        .name("Petri Airio")
+        .discordId("265828694445129728")
+        .build();
+    configuredUser.setId(42L);
+    connectionManager.setConfiguredUsersForTesting(List.of(configuredUser));
+
+    CapturingBotConnection discordConnection = new CapturingBotConnection(BotConnectionType.DISCORD_CONNECTION, "Discord");
+    connectionManager.addConnection(discordConnection);
+
+    SendMessageToKnownUserResponse response = connectionManager.sendMessageToKnownUser(
+        SendMessageToKnownUserRequest.builder()
+            .query("petria")
+            .message("test")
+            .preferPrivate(true)
+            .requirePrivate(true)
+            .connectionType("DISCORD_CONNECTION")
+            .build());
+
+    assertThat(response.getStatus()).isEqualTo("OK");
+    assertThat(response.getSentTo()).isEqualTo("PRIVATE-DISCORD-265828694445129728");
+    assertThat(response.getSelectedTarget().getChannelId()).isEqualTo("265828694445129728");
+    assertThat(discordConnection.lastMessage.getId()).isEqualTo("265828694445129728");
+    assertThat(discordConnection.lastMessage.getTarget()).isEqualTo("Discord DM petria");
+    assertThat(discordConnection.lastMessage.getMessage()).isEqualTo("test");
   }
 
   @Test

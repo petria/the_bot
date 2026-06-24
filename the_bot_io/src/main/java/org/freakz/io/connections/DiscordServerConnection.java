@@ -11,6 +11,7 @@ import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,6 +156,28 @@ public class DiscordServerConnection extends BotConnection {
       if (t.contains("name: " + message.getTarget())) {
         return Optional.of(ch);
       }
+    }
+    Optional<String> privateUserId = resolvePrivateUserId(message);
+    if (privateUserId.isPresent()) {
+      try {
+        User user = api.getUserById(privateUserId.get()).join();
+        PrivateChannel privateChannel = user.openPrivateChannel().join();
+        return Optional.of(privateChannel);
+      } catch (RuntimeException e) {
+        log.warn("Could not resolve Discord private channel for user {}", privateUserId.get(), e);
+      }
+    }
+    return Optional.empty();
+  }
+
+  private Optional<String> resolvePrivateUserId(Message message) {
+    String target = clean(message.getTarget());
+    if (target != null && target.startsWith("PRIVATE-DISCORD-")) {
+      return Optional.of(target.substring("PRIVATE-DISCORD-".length()));
+    }
+    String id = clean(message.getId());
+    if (id != null && id.matches("\\d+")) {
+      return Optional.of(id);
     }
     return Optional.empty();
   }

@@ -19,8 +19,10 @@ class CommandCatalogServiceTest {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
     BotEngine botEngine = mock(BotEngine.class);
     when(botEngine.getCommandHandlerLoader()).thenReturn(loader);
+    AiCommandRegistryService aiCommandRegistryService = aiCommandRegistryService();
+    when(botEngine.getCommandProviderRegistry()).thenReturn(new CommandProviderRegistry(loader, aiCommandRegistryService));
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
-    CommandCatalogService service = new CommandCatalogService(botEngine, statsService, aiCommandRegistryService());
+    CommandCatalogService service = new CommandCatalogService(botEngine, statsService);
 
     GetCommandsResponse response = service.getCommands();
     List<CommandInfo> commands = response.getProviders().stream()
@@ -46,10 +48,11 @@ class CommandCatalogServiceTest {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
     BotEngine botEngine = mock(BotEngine.class);
     when(botEngine.getCommandHandlerLoader()).thenReturn(loader);
+    AiCommandRegistryService aiCommandRegistryService = aiCommandRegistryService();
+    when(botEngine.getCommandProviderRegistry()).thenReturn(new CommandProviderRegistry(loader, aiCommandRegistryService));
     CommandCatalogService service = new CommandCatalogService(
         botEngine,
-        new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null),
-        aiCommandRegistryService());
+        new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null));
 
     GetCommandsResponse response = service.getCommands();
     List<CommandInfo> commands = response.getProviders().stream()
@@ -68,10 +71,12 @@ class CommandCatalogServiceTest {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
     BotEngine botEngine = mock(BotEngine.class);
     when(botEngine.getCommandHandlerLoader()).thenReturn(loader);
+    AiCommandRegistryService aiCommandRegistryService = aiCommandRegistryService();
+    when(botEngine.getCommandProviderRegistry()).thenReturn(new CommandProviderRegistry(loader, aiCommandRegistryService));
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     statsService.recordInvocation(loader.getHandlerClassForCommand("!ping"));
     statsService.recordInvocation(loader.getHandlerClassForCommand("!ping"));
-    CommandCatalogService service = new CommandCatalogService(botEngine, statsService, aiCommandRegistryService());
+    CommandCatalogService service = new CommandCatalogService(botEngine, statsService);
 
     GetCommandsResponse response = service.getCommands();
 
