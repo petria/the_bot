@@ -4,6 +4,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.common.model.engine.console.ConsoleEventsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
@@ -66,6 +67,11 @@ public class RestEngineClient {
   public ResponseEntity<Void> reloadUsers() {
     String url = baseUrl + "/internal/users/reload";
     return restTemplate.exchange(url, HttpMethod.POST, null, Void.class);
+  }
+
+  public ResponseEntity<ConsoleEventsResponse> getConsoleEvents(String sessionKey, long afterId) {
+    String url = baseUrl + "/internal/console/events?sessionKey=" + encode(sessionKey) + "&afterId=" + afterId;
+    return restTemplate.getForEntity(url, ConsoleEventsResponse.class);
   }
 
   public ResponseEntity<GetCommandsResponse> getCommands() {

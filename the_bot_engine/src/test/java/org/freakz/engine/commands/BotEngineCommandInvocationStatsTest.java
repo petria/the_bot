@@ -14,6 +14,7 @@ import org.freakz.engine.config.ConfiguredChannelResolver;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
+import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlResolutionService;
 import org.junit.jupiter.api.Test;
@@ -179,7 +180,8 @@ class BotEngineCommandInvocationStatsTest {
         statsService,
         aiCommandRegistryService,
         hermesAiCommandService,
-        new ConfiguredChannelResolver());
+        new ConfiguredChannelResolver(),
+        new ConsoleOutputService());
   }
 
   private AiCommandRegistryService emptyAiRegistry() {

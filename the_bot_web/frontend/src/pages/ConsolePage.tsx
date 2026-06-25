@@ -9,11 +9,11 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CornerDownLeft, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
-import { executeConsoleCommand } from '../api/console';
+import { executeConsoleCommand, getConsoleEvents } from '../api/console';
 
 type ConsoleLine = {
   id: number;
@@ -22,7 +22,9 @@ type ConsoleLine = {
 };
 
 export function ConsolePage() {
+  const [sessionId] = useState(getConsoleSessionId);
   const [command, setCommand] = useState('');
+  const [lastEventId, setLastEventId] = useState(0);
   const [lines, setLines] = useState<ConsoleLine[]>([
     {
       id: 1,
@@ -32,12 +34,22 @@ export function ConsolePage() {
   ]);
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
   const nextIdRef = useRef(2);
+  const seenEventIdsRef = useRef(new Set<number>());
   const trimmedCommand = command.trim();
 
+  const eventsQuery = useQuery({
+    queryKey: ['console-events', sessionId, lastEventId],
+    queryFn: () => getConsoleEvents(sessionId, lastEventId),
+    refetchInterval: 1000,
+    refetchIntervalInBackground: true,
+  });
+
   const commandMutation = useMutation({
-    mutationFn: executeConsoleCommand,
+    mutationFn: (value: string) => executeConsoleCommand(sessionId, value),
     onSuccess: (response) => {
-      appendLine('reply', response.reply?.trim() || 'Command accepted; no immediate reply.');
+      if (response.accepted) {
+        eventsQuery.refetch();
+      }
     },
     onError: (error) => {
       const apiError = error instanceof ApiError ? error : null;
@@ -51,6 +63,28 @@ export function ConsolePage() {
       output.scrollTop = output.scrollHeight;
     }
   }, [lines]);
+
+  useEffect(() => {
+    const events = eventsQuery.data ?? [];
+    if (events.length === 0) {
+      return;
+    }
+
+    const unseen = events.filter((event) => !seenEventIdsRef.current.has(event.id));
+    if (unseen.length === 0) {
+      return;
+    }
+    unseen.forEach((event) => seenEventIdsRef.current.add(event.id));
+    setLines((current) => [
+      ...current,
+      ...unseen.map((event) => ({
+        id: nextId(),
+        kind: 'reply' as const,
+        text: event.message,
+      })),
+    ]);
+    setLastEventId(Math.max(...unseen.map((event) => event.id), lastEventId));
+  }, [eventsQuery.data]);
 
   const canSubmit = trimmedCommand.length > 0 && !commandMutation.isPending;
 
@@ -158,6 +192,11 @@ export function ConsolePage() {
           <Text>{commandMutation.error instanceof ApiError ? commandMutation.error.message : commandMutation.error.message}</Text>
         </Alert>
       ) : null}
+      {eventsQuery.isError ? (
+        <Alert color="red" variant="light" icon={<AlertTriangle size={18} />} title="Could not load console output">
+          <Text>{eventsQuery.error instanceof ApiError ? eventsQuery.error.message : eventsQuery.error.message}</Text>
+        </Alert>
+      ) : null}
     </Stack>
   );
 }
@@ -174,4 +213,15 @@ function formatLine(line: ConsoleLine) {
     default:
       return `system> ${line.text}`;
   }
+}
+
+function getConsoleSessionId() {
+  const key = 'the-bot-console-session-id';
+  const existing = window.sessionStorage.getItem(key);
+  if (existing) {
+    return existing;
+  }
+  const generated = crypto.randomUUID();
+  window.sessionStorage.setItem(key, generated);
+  return generated;
 }

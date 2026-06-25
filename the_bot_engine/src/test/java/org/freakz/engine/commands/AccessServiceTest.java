@@ -79,6 +79,18 @@ class AccessServiceTest {
     assertThat(resolved.getUsername()).isEqualTo("test");
   }
 
+  @Test
+  void webConsoleResolvesByAuthenticatedUsername() {
+    AccessService accessService = new AccessService(new FixedUsersService(List.of(
+        user("test", "SomeoneElse", List.of()),
+        unknownUser()
+    )));
+
+    User resolved = accessService.getUser(consoleRequest("test", "WEB-CONSOLE:7"));
+
+    assertThat(resolved.getUsername()).isEqualTo("test");
+  }
+
   private EngineRequest ircRequest(String nick, String userHost) {
     return EngineRequest.builder()
         .network("IRCNet")
@@ -92,6 +104,16 @@ class AccessServiceTest {
     return EngineRequest.builder()
         .network("BOT_CLI_CLIENT")
         .chatProtocol("cli")
+        .fromSender(username)
+        .fromSenderId(senderId)
+        .build();
+  }
+
+  private EngineRequest consoleRequest(String username, String senderId) {
+    return EngineRequest.builder()
+        .network("BOT_WEB_CONSOLE")
+        .chatProtocol("web")
+        .chatType("console")
         .fromSender(username)
         .fromSenderId(senderId)
         .build();

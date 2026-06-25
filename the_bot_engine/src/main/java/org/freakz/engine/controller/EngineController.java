@@ -32,6 +32,7 @@ import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.howto.HowtoIndexService;
+import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -69,6 +70,7 @@ public class EngineController {
   private final AiCommandToolRegistry aiCommandToolRegistry;
   private final UserNotifyRuleService userNotifyRuleService;
   private final HowtoIndexService howtoIndexService;
+  private final ConsoleOutputService consoleOutputService;
 
   public EngineController(
       BotEngine botEngine,
@@ -86,7 +88,8 @@ public class EngineController {
       AiCommandRegistryService aiCommandRegistryService,
       AiCommandToolRegistry aiCommandToolRegistry,
       UserNotifyRuleService userNotifyRuleService,
-      HowtoIndexService howtoIndexService) {
+      HowtoIndexService howtoIndexService,
+      ConsoleOutputService consoleOutputService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -103,6 +106,7 @@ public class EngineController {
     this.aiCommandToolRegistry = aiCommandToolRegistry;
     this.userNotifyRuleService = userNotifyRuleService;
     this.howtoIndexService = howtoIndexService;
+    this.consoleOutputService = consoleOutputService;
   }
 
   @PostMapping("/handle_request")
@@ -200,6 +204,13 @@ public class EngineController {
       @RequestParam String q,
       @RequestParam(defaultValue = "5") int limit) {
     return ResponseEntity.ok(howtoIndexService.search(q, limit));
+  }
+
+  @GetMapping("/internal/console/events")
+  public ResponseEntity<?> getConsoleEvents(
+      @RequestParam String sessionKey,
+      @RequestParam(defaultValue = "0") long afterId) {
+    return ResponseEntity.ok(consoleOutputService.eventsAfter(sessionKey, afterId));
   }
 
   @PostMapping("/internal/users/reload")
