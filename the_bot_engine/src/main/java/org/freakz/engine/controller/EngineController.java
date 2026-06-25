@@ -236,7 +236,7 @@ public class EngineController {
       return ResponseEntity.badRequest().body(new LiveChannelSendResponse(false, null, "Missing target or message"));
     }
 
-    String formattedMessage = webUsername + "@web-ui>: " + message;
+    String formattedMessage = "<" + webUsername + "@web-ui>: " + message;
     SendMessageByEchoToAliasResponse response =
         connectionManagerService.sendMessageByEchoToAlias(formattedMessage, echoToAlias);
     if (response == null || response.getSentTo() == null) {
