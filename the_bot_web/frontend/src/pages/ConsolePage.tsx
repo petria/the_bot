@@ -33,6 +33,7 @@ export function ConsolePage() {
     },
   ]);
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
+  const commandInputRef = useRef<HTMLInputElement | null>(null);
   const nextIdRef = useRef(2);
   const seenEventIdsRef = useRef(new Set<number>());
   const trimmedCommand = command.trim();
@@ -55,7 +56,14 @@ export function ConsolePage() {
       const apiError = error instanceof ApiError ? error : null;
       appendLine('error', apiError?.detail || apiError?.message || error.message);
     },
+    onSettled: () => {
+      focusCommandInput();
+    },
   });
+
+  useEffect(() => {
+    focusCommandInput();
+  }, []);
 
   useEffect(() => {
     const output = outputRef.current;
@@ -84,6 +92,7 @@ export function ConsolePage() {
       })),
     ]);
     setLastEventId(Math.max(...unseen.map((event) => event.id), lastEventId));
+    focusCommandInput();
   }, [eventsQuery.data]);
 
   const canSubmit = trimmedCommand.length > 0 && !commandMutation.isPending;
@@ -106,6 +115,7 @@ export function ConsolePage() {
       },
     ]);
     commandMutation.reset();
+    focusCommandInput();
   };
 
   const transcript = lines.map(formatLine).join('\n');
@@ -125,6 +135,12 @@ export function ConsolePage() {
     const value = nextIdRef.current;
     nextIdRef.current += 1;
     return value;
+  }
+
+  function focusCommandInput() {
+    window.setTimeout(() => {
+      commandInputRef.current?.focus();
+    }, 0);
   }
 
   return (
@@ -158,6 +174,7 @@ export function ConsolePage() {
 
           <Group gap="sm" align="flex-end" wrap="nowrap" className="console-input-row">
             <TextInput
+              ref={commandInputRef}
               className="console-command-input"
               label="Command"
               placeholder="!ping"
