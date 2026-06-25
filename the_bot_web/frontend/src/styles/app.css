@@ -116,6 +116,15 @@ body,
   flex: 1 1 auto;
 }
 
+.live-channel-select {
+  flex: 1 1 360px;
+  min-width: min(100%, 260px);
+}
+
+.live-channel-card {
+  min-width: 0;
+}
+
 .system-card {
   min-width: 0;
 }
