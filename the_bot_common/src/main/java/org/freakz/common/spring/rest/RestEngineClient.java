@@ -27,6 +27,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -70,8 +73,13 @@ public class RestEngineClient {
   }
 
   public ResponseEntity<ConsoleEventsResponse> getConsoleEvents(String sessionKey, long afterId) {
-    String url = baseUrl + "/internal/console/events?sessionKey=" + encode(sessionKey) + "&afterId=" + afterId;
-    return restTemplate.getForEntity(url, ConsoleEventsResponse.class);
+    URI uri = UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/console/events")
+        .queryParam("sessionKey", sessionKey)
+        .queryParam("afterId", afterId)
+        .build()
+        .toUri();
+    return restTemplate.getForEntity(uri, ConsoleEventsResponse.class);
   }
 
   public ResponseEntity<GetCommandsResponse> getCommands() {
