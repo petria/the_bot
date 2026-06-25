@@ -36,6 +36,7 @@ public class AccessService {
       switch (request.getNetwork()) {
         case "BOT_WEB_CLIENT":
         case "BOT_CLI_CLIENT":
+        case "BOT_WEB_CONSOLE":
           if (Objects.equals(request.getFromSender(), user.getUsername())) {
             foundUser = user;
           }

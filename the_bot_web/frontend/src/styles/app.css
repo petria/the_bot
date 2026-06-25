@@ -100,6 +100,22 @@ body,
   overflow-wrap: anywhere;
 }
 
+.console-card {
+  min-width: 0;
+}
+
+.console-output textarea {
+  min-height: 440px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.console-command-input {
+  flex: 1 1 auto;
+}
+
 .system-card {
   min-width: 0;
 }
@@ -200,6 +216,15 @@ body,
 
   .admin-users-cards {
     display: flex;
+  }
+
+  .console-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .console-input-row > * {
+    width: 100%;
   }
 
   .generated-page-shell {

@@ -4,6 +4,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
+import org.freakz.common.model.engine.console.ConsoleEventsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
@@ -26,6 +27,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -66,6 +70,16 @@ public class RestEngineClient {
   public ResponseEntity<Void> reloadUsers() {
     String url = baseUrl + "/internal/users/reload";
     return restTemplate.exchange(url, HttpMethod.POST, null, Void.class);
+  }
+
+  public ResponseEntity<ConsoleEventsResponse> getConsoleEvents(String sessionKey, long afterId) {
+    URI uri = UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/console/events")
+        .queryParam("sessionKey", sessionKey)
+        .queryParam("afterId", afterId)
+        .build()
+        .toUri();
+    return restTemplate.getForEntity(uri, ConsoleEventsResponse.class);
   }
 
   public ResponseEntity<GetCommandsResponse> getCommands() {

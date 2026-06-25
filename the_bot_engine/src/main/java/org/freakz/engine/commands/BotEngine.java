@@ -24,6 +24,7 @@ import org.freakz.engine.config.ConfiguredChannelResolver;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
+import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.urls.UrlExtractor;
 import org.freakz.engine.services.urls.UrlResolutionService;
@@ -60,6 +61,7 @@ public class BotEngine {
   private final AiCommandRegistryService aiCommandRegistryService;
   private final HermesAiCommandService hermesAiCommandService;
   private final ConfiguredChannelResolver configuredChannelResolver;
+  private final ConsoleOutputService consoleOutputService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -73,7 +75,8 @@ public class BotEngine {
       CommandInvocationStatsService commandInvocationStatsService,
       AiCommandRegistryService aiCommandRegistryService,
       HermesAiCommandService hermesAiCommandService,
-      ConfiguredChannelResolver configuredChannelResolver)
+      ConfiguredChannelResolver configuredChannelResolver,
+      ConsoleOutputService consoleOutputService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -87,6 +90,7 @@ public class BotEngine {
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.hermesAiCommandService = hermesAiCommandService;
     this.configuredChannelResolver = configuredChannelResolver;
+    this.consoleOutputService = consoleOutputService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -378,6 +382,11 @@ public class BotEngine {
   }
 
   public String sendReplyMessage(EngineRequest request, String reply) {
+
+    if (ConsoleOutputService.NETWORK.equals(request.getNetwork())) {
+      consoleOutputService.recordReply(request, reply);
+      return reply;
+    }
 
     if ("BOT_CLI_CLIENT".equals(request.getNetwork()) || "BOT_INTERNAL".equals(request.getNetwork())) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
