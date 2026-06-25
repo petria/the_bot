@@ -97,6 +97,10 @@ public class HokanServices {
     return (T) new ServiceResponse();
   }
 
+  public ApplicationContext getApplicationContext() {
+    return applicationContext;
+  }
+
   public <T extends ServiceResponse> T doServiceRequest(ServiceRequest request, ServiceRequestType serviceRequestType) {
     try {
 

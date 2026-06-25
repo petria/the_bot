@@ -31,6 +31,7 @@ import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
 import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
+import org.freakz.engine.services.howto.HowtoIndexService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -67,6 +68,7 @@ public class EngineController {
   private final AiCommandRegistryService aiCommandRegistryService;
   private final AiCommandToolRegistry aiCommandToolRegistry;
   private final UserNotifyRuleService userNotifyRuleService;
+  private final HowtoIndexService howtoIndexService;
 
   public EngineController(
       BotEngine botEngine,
@@ -83,7 +85,8 @@ public class EngineController {
       HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService,
       AiCommandRegistryService aiCommandRegistryService,
       AiCommandToolRegistry aiCommandToolRegistry,
-      UserNotifyRuleService userNotifyRuleService) {
+      UserNotifyRuleService userNotifyRuleService,
+      HowtoIndexService howtoIndexService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -99,6 +102,7 @@ public class EngineController {
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.aiCommandToolRegistry = aiCommandToolRegistry;
     this.userNotifyRuleService = userNotifyRuleService;
+    this.howtoIndexService = howtoIndexService;
   }
 
   @PostMapping("/handle_request")
@@ -184,6 +188,18 @@ public class EngineController {
   @GetMapping("/commands")
   public ResponseEntity<?> getCommands() {
     return ResponseEntity.ok(commandCatalogService.getCommands());
+  }
+
+  @GetMapping("/howto/index")
+  public ResponseEntity<?> getHowtoIndex() {
+    return ResponseEntity.ok(howtoIndexService.summary());
+  }
+
+  @GetMapping("/howto/search")
+  public ResponseEntity<?> searchHowtoIndex(
+      @RequestParam String q,
+      @RequestParam(defaultValue = "5") int limit) {
+    return ResponseEntity.ok(howtoIndexService.search(q, limit));
   }
 
   @PostMapping("/internal/users/reload")
