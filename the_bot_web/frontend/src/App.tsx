@@ -1,6 +1,6 @@
 import { Alert, AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Stack, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, BrainCircuit, ChevronDown, ListTree, LogOut, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, Terminal, User, Users } from 'lucide-react';
+import { Bot, BrainCircuit, ChevronDown, ListTree, LogOut, MessageSquare, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, Terminal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { ConsolePage } from './pages/ConsolePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GeneratedPage } from './pages/GeneratedPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
+import { LiveChannelsPage } from './pages/LiveChannelsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
@@ -31,6 +32,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
+  { label: 'Live Channels', path: '/admin/live-channels', icon: MessageSquare },
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
@@ -147,6 +149,7 @@ function AuthenticatedApp() {
             <Route path="/commands" element={<RequireWebUser allowed={webUser}><CommandsPage /></RequireWebUser>} />
             <Route path="/console" element={<RequireWebUser allowed={webUser}><ConsolePage /></RequireWebUser>} />
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
+            <Route path="/admin/live-channels" element={<RequireWebAdmin allowed={webAdmin}><LiveChannelsPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />

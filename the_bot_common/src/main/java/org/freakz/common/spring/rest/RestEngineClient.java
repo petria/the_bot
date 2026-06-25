@@ -5,6 +5,9 @@ import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
 import org.freakz.common.model.engine.commands.GetCommandsResponse;
 import org.freakz.common.model.engine.console.ConsoleEventsResponse;
+import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
+import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
+import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
@@ -80,6 +83,23 @@ public class RestEngineClient {
         .build()
         .toUri();
     return restTemplate.getForEntity(uri, ConsoleEventsResponse.class);
+  }
+
+  public ResponseEntity<LiveChannelEventsResponse> getLiveChannelEvents(String echoToAlias, long afterId) {
+    URI uri = UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/live-channels/events")
+        .queryParam("echoToAlias", echoToAlias)
+        .queryParam("afterId", afterId)
+        .build()
+        .toUri();
+    return restTemplate.getForEntity(uri, LiveChannelEventsResponse.class);
+  }
+
+  public ResponseEntity<LiveChannelSendResponse> sendLiveChannelMessage(LiveChannelSendRequest request) {
+    return restTemplate.postForEntity(
+        baseUrl + "/internal/live-channels/send",
+        request,
+        LiveChannelSendResponse.class);
   }
 
   public ResponseEntity<GetCommandsResponse> getCommands() {

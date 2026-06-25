@@ -4,6 +4,8 @@ import org.freakz.common.model.connectionmanager.SendMessageByEchoToAliasRespons
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
+import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
+import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
@@ -33,6 +35,7 @@ import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.howto.HowtoIndexService;
 import org.freakz.engine.services.console.ConsoleOutputService;
+import org.freakz.engine.services.livechannel.LiveChannelEventService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -71,6 +74,7 @@ public class EngineController {
   private final UserNotifyRuleService userNotifyRuleService;
   private final HowtoIndexService howtoIndexService;
   private final ConsoleOutputService consoleOutputService;
+  private final LiveChannelEventService liveChannelEventService;
 
   public EngineController(
       BotEngine botEngine,
@@ -89,7 +93,8 @@ public class EngineController {
       AiCommandToolRegistry aiCommandToolRegistry,
       UserNotifyRuleService userNotifyRuleService,
       HowtoIndexService howtoIndexService,
-      ConsoleOutputService consoleOutputService) {
+      ConsoleOutputService consoleOutputService,
+      LiveChannelEventService liveChannelEventService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -107,12 +112,14 @@ public class EngineController {
     this.userNotifyRuleService = userNotifyRuleService;
     this.howtoIndexService = howtoIndexService;
     this.consoleOutputService = consoleOutputService;
+    this.liveChannelEventService = liveChannelEventService;
   }
 
   @PostMapping("/handle_request")
   public ResponseEntity<?> handleEngineRequest(@RequestBody EngineRequest request) throws Exception {
 //        log.debug("request: {}", request);
 //        log.debug(">>> Start handle");
+    this.liveChannelEventService.recordInbound(request);
     this.userNotifyRuleService.processInboundMessage(request);
     this.countService.calculateTopCounters(request);
     UserAndReply reply = this.botEngine.handleEngineRequest(request, true);
@@ -213,6 +220,36 @@ public class EngineController {
     return ResponseEntity.ok(consoleOutputService.eventsAfter(sessionKey, afterId));
   }
 
+  @GetMapping("/internal/live-channels/events")
+  public ResponseEntity<?> getLiveChannelEvents(
+      @RequestParam String echoToAlias,
+      @RequestParam(defaultValue = "0") long afterId) {
+    return ResponseEntity.ok(liveChannelEventService.eventsAfter(echoToAlias, afterId));
+  }
+
+  @PostMapping("/internal/live-channels/send")
+  public ResponseEntity<?> sendLiveChannelMessage(@RequestBody LiveChannelSendRequest request) {
+    String echoToAlias = trim(request == null ? null : request.echoToAlias());
+    String webUsername = trim(request == null ? null : request.webUsername());
+    String message = trim(request == null ? null : request.message());
+    if (echoToAlias.isBlank() || webUsername.isBlank() || message.isBlank()) {
+      return ResponseEntity.badRequest().body(new LiveChannelSendResponse(false, null, "Missing target or message"));
+    }
+
+    String formattedMessage = webUsername + "@web-ui>: " + message;
+    SendMessageByEchoToAliasResponse response =
+        connectionManagerService.sendMessageByEchoToAlias(formattedMessage, echoToAlias);
+    if (response == null || response.getSentTo() == null) {
+      return ResponseEntity.internalServerError().body(new LiveChannelSendResponse(false, null, "send failed"));
+    }
+    if (response.getSentTo().startsWith("NOK:")) {
+      return ResponseEntity.badRequest().body(new LiveChannelSendResponse(false, response.getSentTo(), response.getSentTo()));
+    }
+
+    liveChannelEventService.recordWebOutbound(echoToAlias, webUsername, formattedMessage);
+    return ResponseEntity.ok(new LiveChannelSendResponse(true, response.getSentTo(), formattedMessage));
+  }
+
   @PostMapping("/internal/users/reload")
   public ResponseEntity<Void> reloadUsers() {
     usersService.reloadUsers();
@@ -228,6 +265,10 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  private String trim(String value) {
+    return value == null ? "" : value.trim();
   }
 
   @GetMapping("/internal/ai-commands")
