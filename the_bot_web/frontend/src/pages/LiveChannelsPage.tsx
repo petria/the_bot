@@ -31,11 +31,13 @@ type ChannelLine = {
 };
 
 const maxMessageLength = 900;
+const openChannelsStorageKey = 'the-bot-live-channels-open';
+const activeAliasStorageKey = 'the-bot-live-channels-active';
 
 export function LiveChannelsPage() {
   const [selectedAlias, setSelectedAlias] = useState<string | null>(null);
-  const [openChannels, setOpenChannels] = useState<OpenChannel[]>([]);
-  const [activeAlias, setActiveAlias] = useState<string | null>(null);
+  const [openChannels, setOpenChannels] = useState<OpenChannel[]>(readOpenChannels);
+  const [activeAlias, setActiveAlias] = useState<string | null>(readActiveAlias);
   const connectionsQuery = useQuery({
     queryKey: ['live-channel-connections-overview'],
     queryFn: getConnectionsOverview,
@@ -81,6 +83,27 @@ export function LiveChannelsPage() {
       return next;
     });
   };
+
+  useEffect(() => {
+    if (openChannels.length === 0) {
+      if (activeAlias != null) {
+        setActiveAlias(null);
+      }
+      return;
+    }
+    if (!activeAlias || !openChannels.some((channel) => channel.echoToAlias === activeAlias)) {
+      setActiveAlias(openChannels[0].echoToAlias);
+    }
+  }, [activeAlias, openChannels]);
+
+  useEffect(() => {
+    window.sessionStorage.setItem(openChannelsStorageKey, JSON.stringify(openChannels));
+    if (activeAlias && openChannels.some((channel) => channel.echoToAlias === activeAlias)) {
+      window.sessionStorage.setItem(activeAliasStorageKey, activeAlias);
+    } else {
+      window.sessionStorage.removeItem(activeAliasStorageKey);
+    }
+  }, [activeAlias, openChannels]);
 
   return (
     <Stack gap="md">
@@ -129,7 +152,7 @@ export function LiveChannelsPage() {
           </Group>
         </Card>
       ) : (
-        <Tabs value={activeAlias} onChange={setActiveAlias} keepMounted={false}>
+        <Tabs value={activeAlias} onChange={setActiveAlias} keepMounted>
           <Tabs.List>
             {openChannels.map((channel) => (
               <Tabs.Tab
@@ -373,4 +396,24 @@ function formatTime(value: number) {
     date.getMinutes(),
     date.getSeconds(),
   ].map((part) => part.toString().padStart(2, '0')).join(':');
+}
+
+function readOpenChannels() {
+  try {
+    const raw = window.sessionStorage.getItem(openChannelsStorageKey);
+    if (!raw) {
+      return [];
+    }
+    const parsed = JSON.parse(raw) as OpenChannel[];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((channel) => typeof channel.echoToAlias === 'string' && typeof channel.label === 'string');
+  } catch {
+    return [];
+  }
+}
+
+function readActiveAlias() {
+  return window.sessionStorage.getItem(activeAliasStorageKey);
 }
