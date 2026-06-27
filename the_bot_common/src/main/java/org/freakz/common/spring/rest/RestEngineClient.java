@@ -95,6 +95,15 @@ public class RestEngineClient {
     return restTemplate.getForEntity(uri, LiveChannelEventsResponse.class);
   }
 
+  public URI liveChannelEventStreamUri(String echoToAlias, long afterId) {
+    return UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/live-channels/stream")
+        .queryParam("echoToAlias", echoToAlias)
+        .queryParam("afterId", afterId)
+        .build()
+        .toUri();
+  }
+
   public ResponseEntity<LiveChannelSendResponse> sendLiveChannelMessage(LiveChannelSendRequest request) {
     return restTemplate.postForEntity(
         baseUrl + "/internal/live-channels/send",
