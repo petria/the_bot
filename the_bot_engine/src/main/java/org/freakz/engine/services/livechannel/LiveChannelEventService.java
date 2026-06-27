@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -24,6 +25,7 @@ public class LiveChannelEventService {
 
   private final AtomicLong nextEventId = new AtomicLong(1);
   private final Map<String, Deque<LiveChannelEvent>> eventsByEchoToAlias = new ConcurrentHashMap<>();
+  private final Map<String, List<Consumer<LiveChannelEvent>>> subscribersByEchoToAlias = new ConcurrentHashMap<>();
 
   public void recordInbound(EngineRequest request) {
     if (!isPublicChannelRequest(request)) {
@@ -121,6 +123,49 @@ public class LiveChannelEventService {
       events.addLast(event);
       prune(events);
     }
+    publish(echoToAlias, event);
+  }
+
+  public LiveChannelSubscription subscribe(String echoToAlias, long afterId, Consumer<LiveChannelEvent> subscriber) {
+    if (echoToAlias == null || echoToAlias.isBlank() || subscriber == null) {
+      return new LiveChannelSubscription(() -> {
+      });
+    }
+    String alias = echoToAlias.trim();
+    List<LiveChannelEvent> backlog = eventsAfter(alias, afterId).events();
+    List<Consumer<LiveChannelEvent>> subscribers = subscribersByEchoToAlias.computeIfAbsent(alias, ignored -> new ArrayList<>());
+    synchronized (subscribers) {
+      subscribers.add(subscriber);
+    }
+    backlog.forEach(subscriber);
+    return new LiveChannelSubscription(() -> {
+      synchronized (subscribers) {
+        subscribers.remove(subscriber);
+        if (subscribers.isEmpty()) {
+          subscribersByEchoToAlias.remove(alias, subscribers);
+        }
+      }
+    });
+  }
+
+  private void publish(String echoToAlias, LiveChannelEvent event) {
+    List<Consumer<LiveChannelEvent>> subscribers = subscribersByEchoToAlias.get(echoToAlias);
+    if (subscribers == null) {
+      return;
+    }
+    List<Consumer<LiveChannelEvent>> snapshot;
+    synchronized (subscribers) {
+      snapshot = List.copyOf(subscribers);
+    }
+    snapshot.forEach(subscriber -> {
+      try {
+        subscriber.accept(event);
+      } catch (RuntimeException e) {
+        synchronized (subscribers) {
+          subscribers.remove(subscriber);
+        }
+      }
+    });
   }
 
   private void prune(Deque<LiveChannelEvent> events) {
@@ -136,6 +181,13 @@ public class LiveChannelEventService {
     }
     while (events.size() > MAX_EVENTS_PER_CHANNEL) {
       events.removeFirst();
+    }
+  }
+
+  public record LiveChannelSubscription(Runnable closeAction) implements AutoCloseable {
+    @Override
+    public void close() {
+      closeAction.run();
     }
   }
 }

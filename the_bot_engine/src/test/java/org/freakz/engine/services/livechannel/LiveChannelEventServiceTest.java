@@ -1,8 +1,12 @@
 package org.freakz.engine.services.livechannel;
 
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.livechannel.LiveChannelEvent;
 import org.freakz.common.model.engine.livechannel.LiveChannelDirection;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -59,6 +63,25 @@ class LiveChannelEventServiceTest {
           assertThat(event.message()).isEqualTo("petria@web-ui>: hello");
           assertThat(event.direction()).isEqualTo(LiveChannelDirection.WEB_OUTBOUND);
         });
+  }
+
+  @Test
+  void subscriberReceivesBacklogAndNewEventsUntilClosed() {
+    LiveChannelEventService service = new LiveChannelEventService();
+    service.recordInbound(request("IRC-HOKANDEV", "petria", "before", 100, false));
+    long firstEventId = service.eventsAfter("IRC-HOKANDEV", 0).events().getFirst().id();
+    service.recordInbound(request("IRC-HOKANDEV", "petria", "backlog", 101, false));
+    List<LiveChannelEvent> received = new ArrayList<>();
+
+    LiveChannelEventService.LiveChannelSubscription subscription =
+        service.subscribe("IRC-HOKANDEV", firstEventId, received::add);
+    service.recordInbound(request("IRC-HOKANDEV", "petria", "new", 102, false));
+    subscription.close();
+    service.recordInbound(request("IRC-HOKANDEV", "petria", "after close", 103, false));
+
+    assertThat(received)
+        .extracting(LiveChannelEvent::message)
+        .containsExactly("backlog", "new");
   }
 
   private EngineRequest request(String echoToAlias, String sender, String message, long timestamp, boolean privateChannel) {

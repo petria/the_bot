@@ -45,15 +45,28 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/hokan/engine")
 public class EngineController {
 
   private static final Logger log = LoggerFactory.getLogger(EngineController.class);
+  private static final ScheduledExecutorService liveChannelSseHeartbeatExecutor =
+      Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "live-channel-sse-heartbeat");
+        thread.setDaemon(true);
+        return thread;
+      });
 
   private final BotEngine botEngine;
   private final TopCountService countService;
@@ -225,6 +238,48 @@ public class EngineController {
       @RequestParam String echoToAlias,
       @RequestParam(defaultValue = "0") long afterId) {
     return ResponseEntity.ok(liveChannelEventService.eventsAfter(echoToAlias, afterId));
+  }
+
+  @GetMapping(value = "/internal/live-channels/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter streamLiveChannelEvents(
+      @RequestParam String echoToAlias,
+      @RequestParam(defaultValue = "0") long afterId) {
+    String alias = trim(echoToAlias);
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    SseEmitter emitter = new SseEmitter(0L);
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      emitter.completeWithError(e);
+      return emitter;
+    }
+    LiveChannelEventService.LiveChannelSubscription subscription = liveChannelEventService.subscribe(alias, afterId, event -> {
+      try {
+        emitter.send(SseEmitter.event()
+            .id(String.valueOf(event.id()))
+            .name("message")
+            .data(event));
+      } catch (IOException | IllegalStateException e) {
+        emitter.completeWithError(e);
+      }
+    });
+    ScheduledFuture<?> heartbeat = liveChannelSseHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      try {
+        emitter.send(SseEmitter.event().comment("heartbeat"));
+      } catch (IOException | IllegalStateException e) {
+        emitter.completeWithError(e);
+      }
+    }, 25, 25, TimeUnit.SECONDS);
+    Runnable cleanup = () -> {
+      heartbeat.cancel(true);
+      subscription.close();
+    };
+    emitter.onCompletion(cleanup);
+    emitter.onTimeout(cleanup);
+    emitter.onError(error -> cleanup.run());
+    return emitter;
   }
 
   @PostMapping("/internal/live-channels/send")

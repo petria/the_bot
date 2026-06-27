@@ -55,6 +55,14 @@ export async function getLiveChannelEvents(echoToAlias: string, afterId: number)
   return response.events ?? [];
 }
 
+export function getLiveChannelEventStreamUrl(echoToAlias: string, afterId: number): string {
+  const params = new URLSearchParams({
+    echoToAlias,
+    afterId: `${afterId}`,
+  });
+  return `/api/web/admin/live-channels/stream?${params.toString()}`;
+}
+
 export async function getLiveChannelUsers(echoToAlias: string): Promise<LiveChannelUser[]> {
   const params = new URLSearchParams({ echoToAlias });
   const response = await getJson<LiveChannelUsersResponse>(`/api/web/admin/live-channels/users?${params.toString()}`);
