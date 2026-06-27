@@ -172,6 +172,21 @@ public class ConnectionManager implements CommandLineRunner {
       String source,
       String channelId,
       String channelName) {
+    markUserSeen(connection, echoToAlias, userId, username, displayName, source, channelId, channelName, null, List.of(), List.of());
+  }
+
+  public void markUserSeen(
+      BotConnection connection,
+      String echoToAlias,
+      String userId,
+      String username,
+      String displayName,
+      String source,
+      String channelId,
+      String channelName,
+      String displayPrefix,
+      List<String> channelModes,
+      List<String> channelRoles) {
     String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
     if (connection == null || normalizedEchoToAlias == null) {
       return;
@@ -208,7 +223,10 @@ public class ConnectionManager implements CommandLineRunner {
             connection,
             channel,
             System.currentTimeMillis(),
-            source)
+            source,
+            clean(displayPrefix),
+            cleanValues(channelModes),
+            cleanValues(channelRoles))
     );
   }
 
@@ -1005,6 +1023,25 @@ public class ConnectionManager implements CommandLineRunner {
     return null;
   }
 
+  private static String clean(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private static List<String> cleanValues(List<String> values) {
+    if (values == null || values.isEmpty()) {
+      return List.of();
+    }
+    return values.stream()
+        .map(ConnectionManager::clean)
+        .filter(value -> value != null)
+        .distinct()
+        .toList();
+  }
+
   private BotConnectionChannel syntheticChannel(BotConnection connection, String echoToAlias) {
     return syntheticChannel(connection, echoToAlias, null, null);
   }
@@ -1225,6 +1262,9 @@ public class ConnectionManager implements CommandLineRunner {
     private String echoToAlias;
     private long lastSeenAt;
     private String lastSeenSource;
+    private String displayPrefix;
+    private List<String> channelModes = List.of();
+    private List<String> channelRoles = List.of();
 
     static KnownUserPresence from(
         String userKey,
@@ -1234,7 +1274,10 @@ public class ConnectionManager implements CommandLineRunner {
         BotConnection connection,
         BotConnectionChannel channel,
         long lastSeenAt,
-        String lastSeenSource) {
+        String lastSeenSource,
+        String displayPrefix,
+        List<String> channelModes,
+        List<String> channelRoles) {
       KnownUserPresence presence = new KnownUserPresence();
       presence.userKey = userKey;
       presence.userId = userId;
@@ -1248,6 +1291,9 @@ public class ConnectionManager implements CommandLineRunner {
       presence.echoToAlias = channel.getEchoToAlias();
       presence.lastSeenAt = lastSeenAt;
       presence.lastSeenSource = lastSeenSource;
+      presence.displayPrefix = displayPrefix;
+      presence.channelModes = channelModes == null ? List.of() : List.copyOf(channelModes);
+      presence.channelRoles = channelRoles == null ? List.of() : List.copyOf(channelRoles);
       return presence;
     }
 
@@ -1264,7 +1310,10 @@ public class ConnectionManager implements CommandLineRunner {
           channelName,
           echoToAlias,
           lastSeenAt,
-          lastSeenSource);
+          lastSeenSource,
+          displayPrefix,
+          channelModes,
+          channelRoles);
     }
 
     ChannelUser toChannelUser() {
@@ -1274,6 +1323,9 @@ public class ConnectionManager implements CommandLineRunner {
           .realName(username)
           .server(network)
           .userString(userKey)
+          .displayPrefix(displayPrefix)
+          .channelModes(channelModes)
+          .channelRoles(channelRoles)
           .build();
     }
 

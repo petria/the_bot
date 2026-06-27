@@ -409,13 +409,21 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
 }
 
 function userDisplayName(user: LiveChannelUser) {
-  return user.nick || user.realName || user.account || user.userString || 'unknown';
+  const baseName = user.nick || user.realName || user.account || user.userString || 'unknown';
+  const prefix = user.displayPrefix?.trim() || '';
+  return `${prefix}${baseName}`;
 }
 
 function userDetail(user: LiveChannelUser) {
+  const roles = user.channelRoles?.filter(Boolean) ?? [];
+  const modes = user.channelModes?.filter((mode) => mode && mode !== user.displayPrefix) ?? [];
   const parts = [
     user.realName && user.realName !== user.nick ? user.realName : null,
-    user.operatorInformation,
+    ...roles,
+    ...modes,
+    user.operatorInformation && !roles.some((role) => role.toLowerCase() === user.operatorInformation?.toLowerCase())
+      ? user.operatorInformation
+      : null,
     user.away ? 'away' : null,
   ].filter(Boolean);
   return parts.length === 0 ? (user.account || user.userString || '-') : parts.join(' / ');

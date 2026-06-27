@@ -10,6 +10,7 @@ import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
+import org.kitteh.irc.client.library.element.mode.ChannelUserMode;
 import org.kitteh.irc.client.library.event.channel.*;
 import org.kitteh.irc.client.library.event.client.ClientNegotiationCompleteEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionClosedEvent;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Service
@@ -66,7 +68,7 @@ public class IrcServerConnection extends BotConnection {
     updateChannelMap(event.getChannel().getName());
     org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
     if (channel != null) {
-      markIrcUserSeen(channel.getEchoToAlias(), event.getUser(), "IRC_JOIN");
+      markIrcUserSeen(channel.getEchoToAlias(), event.getChannel(), event.getUser(), "IRC_JOIN");
     }
     if (event.getClient().isUser(event.getUser())) { // It's me!
 //            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
@@ -117,7 +119,9 @@ public class IrcServerConnection extends BotConnection {
       org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
       if (channel != null) {
         removeIrcUserSeen(channel.getEchoToAlias(), event.getOldUser());
-        markIrcUserSeen(channel.getEchoToAlias(), event.getNewUser(), "IRC_NICK");
+        client.getChannel(channelName).ifPresentOrElse(
+            ircChannel -> markIrcUserSeen(channel.getEchoToAlias(), ircChannel, event.getNewUser(), "IRC_NICK"),
+            () -> markIrcUserSeen(channel.getEchoToAlias(), event.getNewUser(), "IRC_NICK"));
       }
     }
   }
@@ -132,7 +136,7 @@ public class IrcServerConnection extends BotConnection {
       log.debug("{} -> user -> {}", channelName, user.toString());
       org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
       if (channel != null) {
-        markIrcUserSeen(channel.getEchoToAlias(), user, "IRC_NAMES");
+        markIrcUserSeen(channel.getEchoToAlias(), event.getChannel(), user, "IRC_NAMES");
       }
     }
   }
@@ -191,7 +195,7 @@ public class IrcServerConnection extends BotConnection {
       echoToAlias = channel.getEchoToAlias();
     }
     this.connectionManager.markMessageReceived(echoToAlias, event.getActor().getNick(), "IRC");
-    markIrcUserSeen(echoToAlias, event.getActor(), "IRC_MESSAGE");
+    markIrcUserSeen(echoToAlias, event.getChannel(), event.getActor(), "IRC_MESSAGE");
     publisher.publishEvent(this, event, echoToAlias);
     updateChannelMap(event.getChannel().getName());
     BridgeEchoService.echoToConfiguredTargets(
@@ -204,16 +208,26 @@ public class IrcServerConnection extends BotConnection {
   }
 
   private void markIrcUserSeen(String echoToAlias, User user, String source) {
+    markIrcUserSeen(echoToAlias, null, user, source);
+  }
+
+  private void markIrcUserSeen(String echoToAlias, Channel ircChannel, User user, String source) {
     if (user == null) {
       return;
     }
+    IrcChannelModeMetadata modeMetadata = ircModeMetadata(ircChannel, user);
     this.connectionManager.markUserSeen(
         this,
         echoToAlias,
         user.getNick(),
         user.getNick(),
         user.getRealName().orElse(null),
-        source);
+        source,
+        null,
+        null,
+        modeMetadata.displayPrefix(),
+        modeMetadata.channelModes(),
+        List.of());
   }
 
   private void removeIrcUserSeen(String echoToAlias, User user) {
@@ -363,6 +377,7 @@ public class IrcServerConnection extends BotConnection {
       Channel ircChannel = optional.get();
       List<User> ircUsers = ircChannel.getUsers();
       for (User user : ircUsers) {
+        IrcChannelModeMetadata modeMetadata = ircModeMetadata(ircChannel, user);
         ChannelUser channelUser
             = ChannelUser.builder()
             .account(user.getAccount().orElse(""))
@@ -373,6 +388,9 @@ public class IrcServerConnection extends BotConnection {
             .realName(user.getRealName().orElse(""))
             .server(user.getServer().orElse(""))
             .userString(user.getUserString())
+            .displayPrefix(modeMetadata.displayPrefix())
+            .channelModes(modeMetadata.channelModes())
+            .channelRoles(List.of())
             .isAway(user.isAway())
             .build();
         channelUsers.add(channelUser);
@@ -381,6 +399,31 @@ public class IrcServerConnection extends BotConnection {
       }
     }
     return channelUsers;
+  }
+
+  private IrcChannelModeMetadata ircModeMetadata(Channel ircChannel, User user) {
+    if (ircChannel == null || user == null) {
+      return IrcChannelModeMetadata.empty();
+    }
+    Optional<SortedSet<ChannelUserMode>> modes = ircChannel.getUserModes(user);
+    if (modes.isEmpty()) {
+      return IrcChannelModeMetadata.empty();
+    }
+    List<String> prefixes = modes.get().stream()
+        .map(ChannelUserMode::getNickPrefix)
+        .map(String::valueOf)
+        .filter(prefix -> !prefix.isBlank())
+        .distinct()
+        .toList();
+    return prefixes.isEmpty()
+        ? IrcChannelModeMetadata.empty()
+        : new IrcChannelModeMetadata(String.join("", prefixes), prefixes);
+  }
+
+  private record IrcChannelModeMetadata(String displayPrefix, List<String> channelModes) {
+    static IrcChannelModeMetadata empty() {
+      return new IrcChannelModeMetadata(null, List.of());
+    }
   }
 
   @Handler

@@ -99,6 +99,8 @@ class ConnectionManagerTest {
             .nick("_Pete_")
             .userString("~pair01")
             .realName("Petri Airio")
+            .displayPrefix("@")
+            .channelModes(List.of("@"))
             .build());
       }
     };
@@ -116,6 +118,51 @@ class ConnectionManagerTest {
 
     assertThat(users).hasSize(1);
     assertThat(users.getFirst().getNick()).isEqualTo("_Pete_");
+    assertThat(users.getFirst().getDisplayPrefix()).isEqualTo("@");
+    assertThat(users.getFirst().getChannelModes()).containsExactly("@");
+  }
+
+  @Test
+  void channelUsersIncludesObservedModeAndRoleMetadata() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {
+      @Override
+      public String getNetwork() {
+        return "IRCNet";
+      }
+    };
+    BotConnectionChannel channel = new BotConnectionChannel(
+        "irc-channel-id",
+        "IRC-HOKANDEV",
+        BotConnectionType.IRC_CONNECTION.name(),
+        "IRCNet",
+        "#HokanDEV");
+
+    connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, connection, channel);
+    connectionManager.markUserSeen(
+        connection,
+        "IRC-HOKANDEV",
+        "_Pete_",
+        "_Pete_",
+        "Petri Airio",
+        "IRC_MESSAGE",
+        null,
+        null,
+        "@",
+        List.of("@"),
+        List.of("operator"));
+
+    List<KnownChatUserResponse> knownUsers = connectionManager.findKnownUsers("_Pete_");
+    List<ChannelUser> channelUsers = connectionManager.getChannelUsersByEchoToAlias("IRC-HOKANDEV");
+
+    assertThat(knownUsers).hasSize(1);
+    assertThat(knownUsers.getFirst().getDisplayPrefix()).isEqualTo("@");
+    assertThat(knownUsers.getFirst().getChannelModes()).containsExactly("@");
+    assertThat(knownUsers.getFirst().getChannelRoles()).containsExactly("operator");
+    assertThat(channelUsers).hasSize(1);
+    assertThat(channelUsers.getFirst().getDisplayPrefix()).isEqualTo("@");
+    assertThat(channelUsers.getFirst().getChannelModes()).containsExactly("@");
+    assertThat(channelUsers.getFirst().getChannelRoles()).containsExactly("operator");
   }
 
   @Test

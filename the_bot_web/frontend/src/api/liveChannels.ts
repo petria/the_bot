@@ -32,6 +32,9 @@ export type LiveChannelUser = {
   realName: string | null;
   server: string | null;
   userString: string | null;
+  displayPrefix: string | null;
+  channelModes: string[] | null;
+  channelRoles: string[] | null;
   away: boolean;
 };
 

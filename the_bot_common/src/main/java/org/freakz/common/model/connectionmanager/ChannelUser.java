@@ -1,5 +1,6 @@
 package org.freakz.common.model.connectionmanager;
 
+import java.util.List;
 import java.util.Objects;
 
 public class ChannelUser {
@@ -12,12 +13,15 @@ public class ChannelUser {
   private String realName;
   private String server;
   private String userString;
+  private String displayPrefix;
+  private List<String> channelModes;
+  private List<String> channelRoles;
   private boolean isAway;
 
   public ChannelUser() {
   }
 
-  private ChannelUser(String account, String awayMessage, String host, String nick, String operatorInformation, String realName, String server, String userString, boolean isAway) {
+  private ChannelUser(String account, String awayMessage, String host, String nick, String operatorInformation, String realName, String server, String userString, String displayPrefix, List<String> channelModes, List<String> channelRoles, boolean isAway) {
     this.account = account;
     this.awayMessage = awayMessage;
     this.host = host;
@@ -26,6 +30,9 @@ public class ChannelUser {
     this.realName = realName;
     this.server = server;
     this.userString = userString;
+    this.displayPrefix = displayPrefix;
+    this.channelModes = channelModes;
+    this.channelRoles = channelRoles;
     this.isAway = isAway;
   }
 
@@ -97,6 +104,30 @@ public class ChannelUser {
     this.userString = userString;
   }
 
+  public String getDisplayPrefix() {
+    return displayPrefix;
+  }
+
+  public void setDisplayPrefix(String displayPrefix) {
+    this.displayPrefix = displayPrefix;
+  }
+
+  public List<String> getChannelModes() {
+    return channelModes;
+  }
+
+  public void setChannelModes(List<String> channelModes) {
+    this.channelModes = channelModes;
+  }
+
+  public List<String> getChannelRoles() {
+    return channelRoles;
+  }
+
+  public void setChannelRoles(List<String> channelRoles) {
+    this.channelRoles = channelRoles;
+  }
+
   public boolean isAway() {
     return isAway;
   }
@@ -110,12 +141,12 @@ public class ChannelUser {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     ChannelUser that = (ChannelUser) o;
-    return isAway == that.isAway && Objects.equals(account, that.account) && Objects.equals(awayMessage, that.awayMessage) && Objects.equals(host, that.host) && Objects.equals(nick, that.nick) && Objects.equals(operatorInformation, that.operatorInformation) && Objects.equals(realName, that.realName) && Objects.equals(server, that.server) && Objects.equals(userString, that.userString);
+    return isAway == that.isAway && Objects.equals(account, that.account) && Objects.equals(awayMessage, that.awayMessage) && Objects.equals(host, that.host) && Objects.equals(nick, that.nick) && Objects.equals(operatorInformation, that.operatorInformation) && Objects.equals(realName, that.realName) && Objects.equals(server, that.server) && Objects.equals(userString, that.userString) && Objects.equals(displayPrefix, that.displayPrefix) && Objects.equals(channelModes, that.channelModes) && Objects.equals(channelRoles, that.channelRoles);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(account, awayMessage, host, nick, operatorInformation, realName, server, userString, isAway);
+    return Objects.hash(account, awayMessage, host, nick, operatorInformation, realName, server, userString, displayPrefix, channelModes, channelRoles, isAway);
   }
 
   @Override
@@ -129,6 +160,9 @@ public class ChannelUser {
         ", realName='" + realName + '\'' +
         ", server='" + server + '\'' +
         ", userString='" + userString + '\'' +
+        ", displayPrefix='" + displayPrefix + '\'' +
+        ", channelModes=" + channelModes +
+        ", channelRoles=" + channelRoles +
         ", isAway=" + isAway +
         '}';
   }
@@ -142,6 +176,9 @@ public class ChannelUser {
     private String realName;
     private String server;
     private String userString;
+    private String displayPrefix;
+    private List<String> channelModes;
+    private List<String> channelRoles;
     private boolean isAway;
 
     public Builder account(String account) {
@@ -184,13 +221,28 @@ public class ChannelUser {
       return this;
     }
 
+    public Builder displayPrefix(String displayPrefix) {
+      this.displayPrefix = displayPrefix;
+      return this;
+    }
+
+    public Builder channelModes(List<String> channelModes) {
+      this.channelModes = channelModes;
+      return this;
+    }
+
+    public Builder channelRoles(List<String> channelRoles) {
+      this.channelRoles = channelRoles;
+      return this;
+    }
+
     public Builder isAway(boolean isAway) {
       this.isAway = isAway;
       return this;
     }
 
     public ChannelUser build() {
-      return new ChannelUser(account, awayMessage, host, nick, operatorInformation, realName, server, userString, isAway);
+      return new ChannelUser(account, awayMessage, host, nick, operatorInformation, realName, server, userString, displayPrefix, channelModes, channelRoles, isAway);
     }
   }
 }
