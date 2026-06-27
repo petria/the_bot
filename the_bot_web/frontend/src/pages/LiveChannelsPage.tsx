@@ -17,11 +17,12 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CornerDownLeft, MessageSquare, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
-import { getConnectionsOverview, type BotConnectionChannel } from '../api/connections';
 import {
   getLiveChannelEventStreamUrl,
+  getLiveChannels,
   getLiveChannelUsers,
   sendLiveChannelMessage,
+  type LiveChannel,
   type LiveChannelEvent,
   type LiveChannelUser,
 } from '../api/liveChannels';
@@ -29,6 +30,7 @@ import {
 type OpenChannel = {
   echoToAlias: string;
   label: string;
+  sendAllowed: boolean;
 };
 
 type ChannelLine = {
@@ -44,27 +46,20 @@ export function LiveChannelsPage() {
   const [selectedAlias, setSelectedAlias] = useState<string | null>(null);
   const [openChannels, setOpenChannels] = useState<OpenChannel[]>(readOpenChannels);
   const [activeAlias, setActiveAlias] = useState<string | null>(readActiveAlias);
-  const connectionsQuery = useQuery({
-    queryKey: ['live-channel-connections-overview'],
-    queryFn: getConnectionsOverview,
+  const liveChannelsQuery = useQuery({
+    queryKey: ['live-channels'],
+    queryFn: getLiveChannels,
     refetchInterval: 15000,
   });
 
   const channelOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [];
-    for (const connection of connectionsQuery.data?.connections ?? []) {
-      for (const channel of connection.channels ?? []) {
-        if (!isPublicChannel(channel)) {
-          continue;
-        }
-        options.push({
-          value: channel.echoToAlias,
-          label: channelLabel(channel, connection.type, connection.network),
-        });
-      }
-    }
+    const options = (liveChannelsQuery.data ?? []).map((channel) => ({
+      value: channel.echoToAlias,
+      label: channel.label,
+      channel,
+    }));
     return options.sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }));
-  }, [connectionsQuery.data]);
+  }, [liveChannelsQuery.data]);
 
   const addChannel = () => {
     if (!selectedAlias || openChannels.some((channel) => channel.echoToAlias === selectedAlias)) {
@@ -74,6 +69,7 @@ export function LiveChannelsPage() {
     const channel = {
       echoToAlias: selectedAlias,
       label: option?.label ?? selectedAlias,
+      sendAllowed: option?.channel.sendAllowed ?? false,
     };
     setOpenChannels((current) => [...current, channel]);
     setActiveAlias(selectedAlias);
@@ -89,6 +85,23 @@ export function LiveChannelsPage() {
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!liveChannelsQuery.data) {
+      return;
+    }
+    const allowedChannels = new Map(liveChannelsQuery.data.map((channel) => [channel.echoToAlias, channel]));
+    setOpenChannels((current) => current
+        .filter((channel) => allowedChannels.has(channel.echoToAlias))
+        .map((channel) => {
+          const allowedChannel = allowedChannels.get(channel.echoToAlias) as LiveChannel;
+          return {
+            ...channel,
+            label: allowedChannel.label,
+            sendAllowed: allowedChannel.sendAllowed,
+          };
+        }));
+  }, [liveChannelsQuery.data]);
 
   useEffect(() => {
     if (openChannels.length === 0) {
@@ -124,13 +137,13 @@ export function LiveChannelsPage() {
         <Group gap="sm" align="flex-end">
           <Select
             label="Channel"
-            placeholder={connectionsQuery.isLoading ? 'Loading channels' : 'Select public channel'}
+            placeholder={liveChannelsQuery.isLoading ? 'Loading channels' : 'Select public channel'}
             data={channelOptions}
             value={selectedAlias}
             onChange={setSelectedAlias}
             searchable
             clearable
-            disabled={connectionsQuery.isLoading || channelOptions.length === 0}
+            disabled={liveChannelsQuery.isLoading || channelOptions.length === 0}
             className="live-channel-select"
           />
           <Button
@@ -143,10 +156,10 @@ export function LiveChannelsPage() {
         </Group>
       </Card>
 
-      {connectionsQuery.isLoading ? <Loader size="sm" /> : null}
-      {connectionsQuery.isError ? (
+      {liveChannelsQuery.isLoading ? <Loader size="sm" /> : null}
+      {liveChannelsQuery.isError ? (
         <Alert color="red" variant="light" icon={<AlertTriangle size={18} />} title="Could not load channels">
-          <Text>{connectionsQuery.error instanceof ApiError ? connectionsQuery.error.message : connectionsQuery.error.message}</Text>
+          <Text>{liveChannelsQuery.error instanceof ApiError ? liveChannelsQuery.error.message : liveChannelsQuery.error.message}</Text>
         </Alert>
       ) : null}
 
@@ -289,6 +302,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
 
   const canSend = trimmedMessage.length > 0
       && trimmedMessage.length <= maxMessageLength
+      && channel.sendAllowed
       && !sendMutation.isPending;
 
   const send = () => {
@@ -361,7 +375,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                     send();
                   }
                 }}
-                disabled={sendMutation.isPending}
+                disabled={sendMutation.isPending || !channel.sendAllowed}
               />
               <Button
                 leftSection={<CornerDownLeft size={18} />}
@@ -409,6 +423,10 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
             {streamConnected ? 'Live stream connected' : 'Live stream reconnecting...'}
           </Text>
         </Group>
+
+        {!channel.sendAllowed ? (
+          <Text size="sm" c="dimmed">You have view-only access to this channel.</Text>
+        ) : null}
 
         {streamError ? (
           <Alert color="red" variant="light" icon={<AlertTriangle size={18} />} title="Could not load live messages">
@@ -476,22 +494,6 @@ function userKey(user: LiveChannelUser, index: number) {
   return user.account || user.userString || user.nick || user.realName || `user-${index}`;
 }
 
-function isPublicChannel(channel: BotConnectionChannel): channel is BotConnectionChannel & { echoToAlias: string } {
-  return !!channel.echoToAlias
-      && !channel.echoToAlias.startsWith('PRIVATE-')
-      && (channel.type == null || !channel.type.toLowerCase().includes('private'));
-}
-
-function channelLabel(channel: BotConnectionChannel, connectionType: string | null, network: string | null) {
-  const parts = [
-    connectionType || 'UNKNOWN',
-    network || 'unknown',
-    channel.name || channel.id || channel.echoToAlias || '-',
-    channel.echoToAlias || '-',
-  ];
-  return parts.join(' / ');
-}
-
 function formatEvent(event: LiveChannelEvent) {
   const timestamp = formatTime(event.createdAt);
   const message = event.message || '';
@@ -524,7 +526,13 @@ function readOpenChannels() {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed.filter((channel) => typeof channel.echoToAlias === 'string' && typeof channel.label === 'string');
+    return parsed
+        .filter((channel) => typeof channel.echoToAlias === 'string' && typeof channel.label === 'string')
+        .map((channel) => ({
+          echoToAlias: channel.echoToAlias,
+          label: channel.label,
+          sendAllowed: channel.sendAllowed === true,
+        }));
   } catch {
     return [];
   }

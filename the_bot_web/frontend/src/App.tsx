@@ -20,7 +20,14 @@ import { LiveChannelsPage } from './pages/LiveChannelsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
-import { hasPermission, WEB_ADMIN_PERMISSION, WEB_USER_PERMISSION } from './permissions';
+import {
+  hasPermission,
+  hasPermissionPrefix,
+  LIVE_CHANNELS_VIEW_ALL_PERMISSION,
+  LIVE_CHANNELS_VIEW_PREFIX,
+  WEB_ADMIN_PERMISSION,
+  WEB_USER_PERMISSION,
+} from './permissions';
 
 const navItems = [
   { label: 'System', path: '/', icon: Server },
@@ -29,10 +36,10 @@ const navItems = [
   { label: 'Connections', path: '/connections', icon: RadioTower },
   { label: 'Commands', path: '/commands', icon: ListTree },
   { label: 'Console', path: '/console', icon: Terminal },
+  { label: 'Live Channels', path: '/live-channels', icon: MessageSquare },
 ];
 
 const adminNavItems = [
-  { label: 'Live Channels', path: '/admin/live-channels', icon: MessageSquare },
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
@@ -88,6 +95,9 @@ function AuthenticatedApp() {
   }
   const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
   const webUser = hasPermission(meQuery.data?.permissions, WEB_USER_PERMISSION);
+  const liveChannelsAllowed = hasPermission(meQuery.data?.permissions, LIVE_CHANNELS_VIEW_ALL_PERMISSION)
+      || hasPermissionPrefix(meQuery.data?.permissions, LIVE_CHANNELS_VIEW_PREFIX);
+  const userNavItems = navItems.filter((item) => item.path !== '/live-channels' || liveChannelsAllowed);
 
   return (
     <AppShell
@@ -124,7 +134,7 @@ function AuthenticatedApp() {
           {webUser && (
             <NavSection
               label="User"
-              items={navItems}
+              items={userNavItems}
               activePath={location.pathname}
               onNavigate={handleNavigate}
             />
@@ -148,8 +158,8 @@ function AuthenticatedApp() {
             <Route path="/users" element={<RequireWebUser allowed={webUser}><KnownUsersPage /></RequireWebUser>} />
             <Route path="/commands" element={<RequireWebUser allowed={webUser}><CommandsPage /></RequireWebUser>} />
             <Route path="/console" element={<RequireWebUser allowed={webUser}><ConsolePage /></RequireWebUser>} />
+            <Route path="/live-channels" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveChannelsPage /></RequireWebUser>} />
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
-            <Route path="/admin/live-channels" element={<RequireWebAdmin allowed={webAdmin}><LiveChannelsPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />

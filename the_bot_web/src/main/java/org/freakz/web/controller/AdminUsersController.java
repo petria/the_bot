@@ -5,6 +5,8 @@ import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
 import org.freakz.common.users.UserChatIdentityUtil;
+import org.freakz.web.livechannels.LiveChannelAccessService;
+import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.UsersJsonUserDetailsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,15 +23,23 @@ import org.freakz.web.security.BotUserPrincipal;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.TreeSet;
 
 @RestController
 @RequestMapping("/api/web/admin/users")
 public class AdminUsersController {
 
   private final UsersJsonUserDetailsService usersService;
+  private final LiveChannelCatalogService liveChannelCatalogService;
+  private final LiveChannelAccessService liveChannelAccessService;
 
-  public AdminUsersController(UsersJsonUserDetailsService usersService) {
+  public AdminUsersController(
+      UsersJsonUserDetailsService usersService,
+      LiveChannelCatalogService liveChannelCatalogService,
+      LiveChannelAccessService liveChannelAccessService) {
     this.usersService = usersService;
+    this.liveChannelCatalogService = liveChannelCatalogService;
+    this.liveChannelAccessService = liveChannelAccessService;
   }
 
   @GetMapping
@@ -37,7 +47,7 @@ public class AdminUsersController {
     return new AdminUsersResponse(usersService.findAllUsers().stream()
         .sorted(Comparator.comparing(AdminUsersController::sortUsername))
         .map(AdminUserResponse::from)
-        .toList());
+        .toList(), availablePermissions());
   }
 
   @PostMapping
@@ -101,6 +111,19 @@ public class AdminUsersController {
 
   private static String sortUsername(User user) {
     return user.getUsername() == null ? "" : user.getUsername().toLowerCase();
+  }
+
+  private List<String> availablePermissions() {
+    TreeSet<String> permissions = new TreeSet<>(BotPermission.known());
+    try {
+      liveChannelCatalogService.publicChannels().forEach(channel -> {
+        permissions.add(liveChannelAccessService.viewPermission(channel.echoToAlias()));
+        permissions.add(liveChannelAccessService.sendPermission(channel.echoToAlias()));
+      });
+    } catch (RuntimeException ignored) {
+      // User management should remain available even when bot-io is temporarily down.
+    }
+    return permissions.stream().toList();
   }
 
   private interface AdminAction<T> {

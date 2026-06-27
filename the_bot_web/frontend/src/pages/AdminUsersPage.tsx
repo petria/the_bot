@@ -57,6 +57,8 @@ const permissionLabels: Record<string, string> = {
   'hermes.use': 'Use Hermes',
   'openclaw.use': 'Use OpenClaw',
   'openclaw.tools.send-message': 'OpenClaw send message',
+  'live-channels.view.all': 'View all live channels',
+  'live-channels.send.all': 'Send to all live channels',
   'logs.read.current-chat': 'Read current chat logs',
   'logs.read.current-channel': 'Read current channel logs',
   'logs.read.current-user-dm': 'Read own DM logs',

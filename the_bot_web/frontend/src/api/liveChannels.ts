@@ -23,6 +23,15 @@ export type LiveChannelSendResponse = {
   message: string | null;
 };
 
+export type LiveChannel = {
+  echoToAlias: string;
+  label: string;
+  connectionType: string | null;
+  network: string | null;
+  channelType: string | null;
+  sendAllowed: boolean;
+};
+
 export type LiveChannelUser = {
   account: string | null;
   awayMessage: string | null;
@@ -46,12 +55,21 @@ type LiveChannelUsersResponse = {
   channelUsers: LiveChannelUser[] | null;
 };
 
+type LiveChannelsResponse = {
+  channels: LiveChannel[] | null;
+};
+
+export async function getLiveChannels(): Promise<LiveChannel[]> {
+  const response = await getJson<LiveChannelsResponse>('/api/web/live-channels/channels');
+  return response.channels ?? [];
+}
+
 export async function getLiveChannelEvents(echoToAlias: string, afterId: number): Promise<LiveChannelEvent[]> {
   const params = new URLSearchParams({
     echoToAlias,
     afterId: `${afterId}`,
   });
-  const response = await getJson<LiveChannelEventsResponse>(`/api/web/admin/live-channels/events?${params.toString()}`);
+  const response = await getJson<LiveChannelEventsResponse>(`/api/web/live-channels/events?${params.toString()}`);
   return response.events ?? [];
 }
 
@@ -60,17 +78,17 @@ export function getLiveChannelEventStreamUrl(echoToAlias: string, afterId: numbe
     echoToAlias,
     afterId: `${afterId}`,
   });
-  return `/api/web/admin/live-channels/stream?${params.toString()}`;
+  return `/api/web/live-channels/stream?${params.toString()}`;
 }
 
 export async function getLiveChannelUsers(echoToAlias: string): Promise<LiveChannelUser[]> {
   const params = new URLSearchParams({ echoToAlias });
-  const response = await getJson<LiveChannelUsersResponse>(`/api/web/admin/live-channels/users?${params.toString()}`);
+  const response = await getJson<LiveChannelUsersResponse>(`/api/web/live-channels/users?${params.toString()}`);
   return response.channelUsers ?? [];
 }
 
 export async function sendLiveChannelMessage(echoToAlias: string, message: string): Promise<LiveChannelSendResponse> {
-  return postJson<LiveChannelSendResponse>('/api/web/admin/live-channels/send', {
+  return postJson<LiveChannelSendResponse>('/api/web/live-channels/send', {
     echoToAlias,
     message,
   });
