@@ -13,7 +13,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.net.URI;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,6 +64,22 @@ class ConsoleControllerTest {
 
     assertThat(response.events()).hasSize(1);
     verify(engineClient).getConsoleEvents("web-console:7:session-1", 0);
+  }
+
+  @Test
+  void streamUsesAuthenticatedUserScopedSessionKey() {
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.consoleEventStreamUri("web-console:7:session-1", 5))
+        .thenReturn(URI.create("http://bot-engine:8100/api/hokan/engine/internal/console/stream?sessionKey=web-console:7:session-1&afterId=5"));
+    ConsoleController controller = new ConsoleController(engineClient);
+
+    ResponseEntity<SseEmitter> response = controller.stream(principal("petria"), "session-1", 5);
+
+    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+    assertThat(response.getHeaders().getContentType().toString()).isEqualTo("text/event-stream");
+    assertThat(response.getHeaders().getFirst("X-Accel-Buffering")).isEqualTo("no");
+    assertThat(response.getBody()).isNotNull();
+    verify(engineClient).consoleEventStreamUri("web-console:7:session-1", 5);
   }
 
   @Test

@@ -9,11 +9,11 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle, CornerDownLeft, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
-import { executeConsoleCommand, getConsoleEvents } from '../api/console';
+import { executeConsoleCommand, getConsoleEventStreamUrl, type ConsoleEvent } from '../api/console';
 
 type ConsoleLine = {
   id: number;
@@ -24,7 +24,8 @@ type ConsoleLine = {
 export function ConsolePage() {
   const [sessionId] = useState(getConsoleSessionId);
   const [command, setCommand] = useState('');
-  const [lastEventId, setLastEventId] = useState(0);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [streamConnected, setStreamConnected] = useState(false);
   const [lines, setLines] = useState<ConsoleLine[]>([
     {
       id: 1,
@@ -35,23 +36,12 @@ export function ConsolePage() {
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
   const commandInputRef = useRef<HTMLInputElement | null>(null);
   const nextIdRef = useRef(2);
+  const latestEventIdRef = useRef(0);
   const seenEventIdsRef = useRef(new Set<number>());
   const trimmedCommand = command.trim();
 
-  const eventsQuery = useQuery({
-    queryKey: ['console-events', sessionId, lastEventId],
-    queryFn: () => getConsoleEvents(sessionId, lastEventId),
-    refetchInterval: 1000,
-    refetchIntervalInBackground: true,
-  });
-
   const commandMutation = useMutation({
     mutationFn: (value: string) => executeConsoleCommand(sessionId, value),
-    onSuccess: (response) => {
-      if (response.accepted) {
-        eventsQuery.refetch();
-      }
-    },
     onError: (error) => {
       const apiError = error instanceof ApiError ? error : null;
       appendLine('error', apiError?.detail || apiError?.message || error.message);
@@ -73,27 +63,45 @@ export function ConsolePage() {
   }, [lines]);
 
   useEffect(() => {
-    const events = eventsQuery.data ?? [];
-    if (events.length === 0) {
-      return;
-    }
-
-    const unseen = events.filter((event) => !seenEventIdsRef.current.has(event.id));
-    if (unseen.length === 0) {
-      return;
-    }
-    unseen.forEach((event) => seenEventIdsRef.current.add(event.id));
-    setLines((current) => [
-      ...current,
-      ...unseen.map((event) => ({
-        id: nextId(),
-        kind: 'reply' as const,
-        text: event.message,
-      })),
-    ]);
-    setLastEventId(Math.max(...unseen.map((event) => event.id), lastEventId));
-    focusCommandInput();
-  }, [eventsQuery.data]);
+    let closed = false;
+    const source = new EventSource(getConsoleEventStreamUrl(sessionId, latestEventIdRef.current));
+    source.onopen = () => {
+      if (closed) {
+        return;
+      }
+      setStreamConnected(true);
+      setStreamError(null);
+    };
+    source.onmessage = (messageEvent) => {
+      if (closed || !messageEvent.data) {
+        return;
+      }
+      try {
+        const event = JSON.parse(messageEvent.data) as ConsoleEvent;
+        if (!event.id || seenEventIdsRef.current.has(event.id)) {
+          return;
+        }
+        seenEventIdsRef.current.add(event.id);
+        latestEventIdRef.current = Math.max(latestEventIdRef.current, event.id);
+        appendLine('reply', event.message);
+        focusCommandInput();
+      } catch {
+        setStreamError('Console stream returned an unreadable event.');
+      }
+    };
+    source.onerror = () => {
+      if (closed) {
+        return;
+      }
+      setStreamConnected(false);
+      setStreamError('Console stream disconnected; reconnecting...');
+    };
+    return () => {
+      closed = true;
+      source.close();
+      setStreamConnected(false);
+    };
+  }, [sessionId]);
 
   const canSubmit = trimmedCommand.length > 0 && !commandMutation.isPending;
 
@@ -172,6 +180,10 @@ export function ConsolePage() {
             minRows={18}
           />
 
+          <Text size="sm" c={streamConnected ? 'dimmed' : 'orange'}>
+            {streamConnected ? 'Console stream connected' : 'Console stream reconnecting...'}
+          </Text>
+
           <Group gap="sm" align="flex-end" wrap="nowrap" className="console-input-row">
             <TextInput
               ref={commandInputRef}
@@ -209,9 +221,9 @@ export function ConsolePage() {
           <Text>{commandMutation.error instanceof ApiError ? commandMutation.error.message : commandMutation.error.message}</Text>
         </Alert>
       ) : null}
-      {eventsQuery.isError ? (
+      {streamError ? (
         <Alert color="red" variant="light" icon={<AlertTriangle size={18} />} title="Could not load console output">
-          <Text>{eventsQuery.error instanceof ApiError ? eventsQuery.error.message : eventsQuery.error.message}</Text>
+          <Text>{streamError}</Text>
         </Alert>
       ) : null}
     </Stack>

@@ -12,6 +12,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -24,6 +25,7 @@ public class ConsoleOutputService {
 
   private final AtomicLong nextEventId = new AtomicLong(1);
   private final Map<String, Deque<ConsoleEvent>> eventsBySession = new ConcurrentHashMap<>();
+  private final Map<String, List<Consumer<ConsoleEvent>>> subscribersBySession = new ConcurrentHashMap<>();
 
   public void recordReply(EngineRequest request, String message) {
     if (request == null || message == null || message.isBlank()) {
@@ -43,6 +45,7 @@ public class ConsoleOutputService {
       events.addLast(event);
       prune(events);
     }
+    publish(sessionKey, event);
   }
 
   public ConsoleEventsResponse eventsAfter(String sessionKey, long afterId) {
@@ -62,6 +65,44 @@ public class ConsoleOutputService {
         }
       }
       return new ConsoleEventsResponse(matching);
+    }
+  }
+
+  public ConsoleSubscription subscribe(String sessionKey, long afterId, Consumer<ConsoleEvent> subscriber) {
+    String key = sessionKey == null ? "" : sessionKey.trim();
+    if (key.isBlank()) {
+      return () -> {
+      };
+    }
+
+    ConsoleEventsResponse backlog = eventsAfter(key, afterId);
+    List<Consumer<ConsoleEvent>> subscribers =
+        subscribersBySession.computeIfAbsent(key, ignored -> new ArrayList<>());
+    synchronized (subscribers) {
+      subscribers.add(subscriber);
+    }
+    backlog.events().forEach(subscriber);
+    return () -> {
+      synchronized (subscribers) {
+        subscribers.remove(subscriber);
+        if (subscribers.isEmpty()) {
+          subscribersBySession.remove(key, subscribers);
+        }
+      }
+    };
+  }
+
+  private void publish(String sessionKey, ConsoleEvent event) {
+    List<Consumer<ConsoleEvent>> subscribers = subscribersBySession.get(sessionKey);
+    if (subscribers == null) {
+      return;
+    }
+    List<Consumer<ConsoleEvent>> snapshot;
+    synchronized (subscribers) {
+      snapshot = List.copyOf(subscribers);
+    }
+    for (Consumer<ConsoleEvent> subscriber : snapshot) {
+      subscriber.accept(event);
     }
   }
 
@@ -87,5 +128,10 @@ public class ConsoleOutputService {
     while (events.size() > MAX_EVENTS_PER_SESSION) {
       events.removeFirst();
     }
+  }
+
+  public interface ConsoleSubscription extends AutoCloseable {
+    @Override
+    void close();
   }
 }

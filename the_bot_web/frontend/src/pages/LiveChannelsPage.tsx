@@ -221,7 +221,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
 
   const channelUsers = useMemo(() => {
     return [...(usersQuery.data ?? [])].sort((left, right) =>
-        userDisplayName(left).localeCompare(userDisplayName(right), undefined, { sensitivity: 'base' }));
+        compareChannelUsers(left, right));
   }, [usersQuery.data]);
 
   const sendMutation = useMutation({
@@ -429,6 +429,32 @@ function userDisplayName(user: LiveChannelUser) {
   const baseName = user.nick || user.realName || user.account || user.userString || 'unknown';
   const prefix = user.displayPrefix?.trim() || '';
   return `${prefix}${baseName}`;
+}
+
+function compareChannelUsers(left: LiveChannelUser, right: LiveChannelUser) {
+  const leftOperator = isChannelOperator(left);
+  const rightOperator = isChannelOperator(right);
+  if (leftOperator !== rightOperator) {
+    return leftOperator ? -1 : 1;
+  }
+  return userSortName(left).localeCompare(userSortName(right), undefined, { sensitivity: 'base' });
+}
+
+function userSortName(user: LiveChannelUser) {
+  return user.nick || user.realName || user.account || user.userString || 'unknown';
+}
+
+function isChannelOperator(user: LiveChannelUser) {
+  const prefix = user.displayPrefix?.trim();
+  if (prefix === '@') {
+    return true;
+  }
+  const modes = user.channelModes?.map((mode) => mode.trim().toLowerCase()) ?? [];
+  if (modes.includes('@') || modes.includes('o')) {
+    return true;
+  }
+  const roles = user.channelRoles?.map((role) => role.trim().toLowerCase()) ?? [];
+  return roles.includes('operator') || roles.includes('op');
 }
 
 function userDetail(user: LiveChannelUser) {
