@@ -249,6 +249,12 @@ public class EngineController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
     }
     SseEmitter emitter = new SseEmitter(0L);
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      emitter.completeWithError(e);
+      return emitter;
+    }
     LiveChannelEventService.LiveChannelSubscription subscription = liveChannelEventService.subscribe(alias, afterId, event -> {
       try {
         emitter.send(SseEmitter.event()

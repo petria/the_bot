@@ -24,10 +24,12 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 @RestController
@@ -84,6 +86,7 @@ public class AdminLiveChannelsController {
     }
     URI uri = engineClient.liveChannelEventStreamUri(alias, afterId);
     StreamingResponseBody body = outputStream -> {
+      writeSseComment(outputStream, "connected");
       HttpRequest request = HttpRequest.newBuilder(uri)
           .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
           .timeout(Duration.ofHours(1))
@@ -92,10 +95,11 @@ public class AdminLiveChannelsController {
       try {
         HttpResponse<InputStream> response = streamingHttpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-          throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return live channel stream");
+          writeSseError(outputStream, "bot-engine did not return live channel stream");
+          return;
         }
         try (InputStream inputStream = response.body()) {
-          inputStream.transferTo(outputStream);
+          copyAndFlush(inputStream, outputStream);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -144,5 +148,24 @@ public class AdminLiveChannelsController {
 
   private String trim(String value) {
     return value == null ? "" : value.trim();
+  }
+
+  private static void writeSseComment(OutputStream outputStream, String comment) throws java.io.IOException {
+    outputStream.write((":" + comment + "\n\n").getBytes(StandardCharsets.UTF_8));
+    outputStream.flush();
+  }
+
+  private static void writeSseError(OutputStream outputStream, String message) throws java.io.IOException {
+    outputStream.write(("event: error\ndata: " + message + "\n\n").getBytes(StandardCharsets.UTF_8));
+    outputStream.flush();
+  }
+
+  private static void copyAndFlush(InputStream inputStream, OutputStream outputStream) throws java.io.IOException {
+    byte[] buffer = new byte[8192];
+    int bytesRead;
+    while ((bytesRead = inputStream.read(buffer)) != -1) {
+      outputStream.write(buffer, 0, bytesRead);
+      outputStream.flush();
+    }
   }
 }
