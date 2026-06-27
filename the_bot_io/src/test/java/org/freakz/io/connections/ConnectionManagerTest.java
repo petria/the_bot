@@ -85,6 +85,40 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void channelUsersDeduplicatesAdapterAndObservedUsers() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {
+      @Override
+      public String getNetwork() {
+        return "IRCNet";
+      }
+
+      @Override
+      public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias, BotConnectionChannel channel) {
+        return List.of(ChannelUser.builder()
+            .nick("_Pete_")
+            .userString("~pair01")
+            .realName("Petri Airio")
+            .build());
+      }
+    };
+    BotConnectionChannel channel = new BotConnectionChannel(
+        "irc-channel-id",
+        "IRC-HOKANDEV",
+        BotConnectionType.IRC_CONNECTION.name(),
+        "IRCNet",
+        "#HokanDEV");
+
+    connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, connection, channel);
+    connectionManager.markUserSeen(connection, "IRC-HOKANDEV", "_Pete_", "_Pete_", "Petri Airio", "IRC_MESSAGE");
+
+    List<ChannelUser> users = connectionManager.getChannelUsersByEchoToAlias("IRC-HOKANDEV");
+
+    assertThat(users).hasSize(1);
+    assertThat(users.getFirst().getNick()).isEqualTo("_Pete_");
+  }
+
+  @Test
   void resolvesKnownUserTargetsAgainstConfiguredUsers() {
     ConnectionManager connectionManager = new ConnectionManager();
     User placeholderUser = User.builder()

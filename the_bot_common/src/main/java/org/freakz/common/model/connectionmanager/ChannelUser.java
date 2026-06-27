@@ -17,7 +17,7 @@ public class ChannelUser {
   public ChannelUser() {
   }
 
-  public ChannelUser(String account, String awayMessage, String host, String nick, String operatorInformation, String realName, String server, String userString, boolean isAway) {
+  private ChannelUser(String account, String awayMessage, String host, String nick, String operatorInformation, String realName, String server, String userString, boolean isAway) {
     this.account = account;
     this.awayMessage = awayMessage;
     this.host = host;

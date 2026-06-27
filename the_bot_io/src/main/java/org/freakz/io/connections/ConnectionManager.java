@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -920,7 +921,7 @@ public class ConnectionManager implements CommandLineRunner {
         .sorted(Comparator.comparing(KnownUserPresence::sortKey))
         .map(KnownUserPresence::toChannelUser)
         .forEach(user -> addChannelUser(usersByKey, user));
-    return new ArrayList<>(usersByKey.values());
+    return new ArrayList<>(new LinkedHashSet<>(usersByKey.values()));
   }
 
   private void addChannelUser(Map<String, ChannelUser> usersByKey, ChannelUser user) {
@@ -934,7 +935,7 @@ public class ConnectionManager implements CommandLineRunner {
     if (keys.stream().anyMatch(usersByKey::containsKey)) {
       return;
     }
-    usersByKey.put(keys.getFirst(), user);
+    keys.forEach(key -> usersByKey.put(key, user));
   }
 
   private List<String> channelUserKeys(ChannelUser user) {
