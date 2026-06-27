@@ -33,3 +33,11 @@ export async function getConsoleEvents(sessionId: string, afterId: number): Prom
   const response = await getJson<ConsoleEventsResponse>(`/api/web/console/events?${params.toString()}`);
   return response.events ?? [];
 }
+
+export function getConsoleEventStreamUrl(sessionId: string, afterId: number): string {
+  const params = new URLSearchParams({
+    sessionId,
+    afterId: `${afterId}`,
+  });
+  return `/api/web/console/stream?${params.toString()}`;
+}

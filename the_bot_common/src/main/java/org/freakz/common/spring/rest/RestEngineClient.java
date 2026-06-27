@@ -85,6 +85,15 @@ public class RestEngineClient {
     return restTemplate.getForEntity(uri, ConsoleEventsResponse.class);
   }
 
+  public URI consoleEventStreamUri(String sessionKey, long afterId) {
+    return UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/console/stream")
+        .queryParam("sessionKey", sessionKey)
+        .queryParam("afterId", afterId)
+        .build()
+        .toUri();
+  }
+
   public ResponseEntity<LiveChannelEventsResponse> getLiveChannelEvents(String echoToAlias, long afterId) {
     URI uri = UriComponentsBuilder
         .fromUriString(baseUrl + "/internal/live-channels/events")

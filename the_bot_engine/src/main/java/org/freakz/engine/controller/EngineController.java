@@ -233,6 +233,48 @@ public class EngineController {
     return ResponseEntity.ok(consoleOutputService.eventsAfter(sessionKey, afterId));
   }
 
+  @GetMapping(value = "/internal/console/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter streamConsoleEvents(
+      @RequestParam String sessionKey,
+      @RequestParam(defaultValue = "0") long afterId) {
+    String key = trim(sessionKey);
+    if (key.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session key is required");
+    }
+    SseEmitter emitter = new SseEmitter(0L);
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      emitter.completeWithError(e);
+      return emitter;
+    }
+    ConsoleOutputService.ConsoleSubscription subscription = consoleOutputService.subscribe(key, afterId, event -> {
+      try {
+        emitter.send(SseEmitter.event()
+            .id(String.valueOf(event.id()))
+            .name("message")
+            .data(event));
+      } catch (IOException | IllegalStateException e) {
+        emitter.completeWithError(e);
+      }
+    });
+    ScheduledFuture<?> heartbeat = liveChannelSseHeartbeatExecutor.scheduleAtFixedRate(() -> {
+      try {
+        emitter.send(SseEmitter.event().comment("heartbeat"));
+      } catch (IOException | IllegalStateException e) {
+        emitter.completeWithError(e);
+      }
+    }, 25, 25, TimeUnit.SECONDS);
+    Runnable cleanup = () -> {
+      heartbeat.cancel(true);
+      subscription.close();
+    };
+    emitter.onCompletion(cleanup);
+    emitter.onTimeout(cleanup);
+    emitter.onError(error -> cleanup.run());
+    return emitter;
+  }
+
   @GetMapping("/internal/live-channels/events")
   public ResponseEntity<?> getLiveChannelEvents(
       @RequestParam String echoToAlias,
