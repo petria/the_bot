@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
@@ -50,11 +50,12 @@ class AdminLiveChannelsControllerTest {
         .thenReturn(URI.create("http://bot-engine:8100/api/hokan/engine/internal/live-channels/stream?echoToAlias=IRC-HOKANDEV&afterId=5"));
     AdminLiveChannelsController controller = controller(engineClient);
 
-    ResponseEntity<StreamingResponseBody> response = controller.stream("IRC-HOKANDEV", 5);
+    ResponseEntity<SseEmitter> response = controller.stream("IRC-HOKANDEV", 5);
 
     assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     assertThat(response.getHeaders().getContentType().toString()).isEqualTo("text/event-stream");
     assertThat(response.getHeaders().getFirst("X-Accel-Buffering")).isEqualTo("no");
+    assertThat(response.getBody()).isNotNull();
     verify(engineClient).liveChannelEventStreamUri("IRC-HOKANDEV", 5);
   }
 

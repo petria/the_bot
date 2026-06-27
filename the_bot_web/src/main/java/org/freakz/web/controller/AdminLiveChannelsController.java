@@ -21,20 +21,30 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RestController
 @RequestMapping("/api/web/admin/live-channels")
 public class AdminLiveChannelsController {
+
+  private static final ExecutorService liveChannelStreamExecutor = Executors.newCachedThreadPool(runnable -> {
+    Thread thread = new Thread(runnable, "live-channel-web-stream");
+    thread.setDaemon(true);
+    return thread;
+  });
 
   private final RestEngineClient engineClient;
   private final RestConnectionManagerClient connectionManagerClient;
@@ -77,7 +87,7 @@ public class AdminLiveChannelsController {
   }
 
   @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public ResponseEntity<StreamingResponseBody> stream(
+  public ResponseEntity<SseEmitter> stream(
       @RequestParam String echoToAlias,
       @RequestParam(defaultValue = "0") long afterId) {
     String alias = trim(echoToAlias);
@@ -85,8 +95,18 @@ public class AdminLiveChannelsController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
     }
     URI uri = engineClient.liveChannelEventStreamUri(alias, afterId);
-    StreamingResponseBody body = outputStream -> {
-      writeSseComment(outputStream, "connected");
+    SseEmitter emitter = new SseEmitter(0L);
+    try {
+      emitter.send(SseEmitter.event().comment("connected"));
+    } catch (IOException e) {
+      emitter.completeWithError(e);
+      return ResponseEntity.ok()
+          .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+          .header("X-Accel-Buffering", "no")
+          .contentType(MediaType.TEXT_EVENT_STREAM)
+          .body(emitter);
+    }
+    liveChannelStreamExecutor.execute(() -> {
       HttpRequest request = HttpRequest.newBuilder(uri)
           .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
           .timeout(Duration.ofHours(1))
@@ -95,21 +115,25 @@ public class AdminLiveChannelsController {
       try {
         HttpResponse<InputStream> response = streamingHttpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-          writeSseError(outputStream, "bot-engine did not return live channel stream");
+          emitter.send(SseEmitter.event().name("error").data("bot-engine did not return live channel stream"));
+          emitter.complete();
           return;
         }
         try (InputStream inputStream = response.body()) {
-          copyAndFlush(inputStream, outputStream);
+          forwardSse(inputStream, emitter);
         }
+      } catch (IOException | IllegalStateException e) {
+        emitter.completeWithError(e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        emitter.completeWithError(e);
       }
-    };
+    });
     return ResponseEntity.ok()
         .header(HttpHeaders.CACHE_CONTROL, "no-cache")
         .header("X-Accel-Buffering", "no")
         .contentType(MediaType.TEXT_EVENT_STREAM)
-        .body(body);
+        .body(emitter);
   }
 
   @GetMapping("/users")
@@ -150,22 +174,55 @@ public class AdminLiveChannelsController {
     return value == null ? "" : value.trim();
   }
 
-  private static void writeSseComment(OutputStream outputStream, String comment) throws java.io.IOException {
-    outputStream.write((":" + comment + "\n\n").getBytes(StandardCharsets.UTF_8));
-    outputStream.flush();
-  }
-
-  private static void writeSseError(OutputStream outputStream, String message) throws java.io.IOException {
-    outputStream.write(("event: error\ndata: " + message + "\n\n").getBytes(StandardCharsets.UTF_8));
-    outputStream.flush();
-  }
-
-  private static void copyAndFlush(InputStream inputStream, OutputStream outputStream) throws java.io.IOException {
-    byte[] buffer = new byte[8192];
-    int bytesRead;
-    while ((bytesRead = inputStream.read(buffer)) != -1) {
-      outputStream.write(buffer, 0, bytesRead);
-      outputStream.flush();
+  private static void forwardSse(InputStream inputStream, SseEmitter emitter) throws IOException {
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+      String id = null;
+      String eventName = null;
+      StringBuilder data = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        if (line.isEmpty()) {
+          sendBufferedEvent(emitter, id, eventName, data);
+          id = null;
+          eventName = null;
+          data.setLength(0);
+          continue;
+        }
+        if (line.startsWith(":")) {
+          emitter.send(SseEmitter.event().comment(line.substring(1)));
+          continue;
+        }
+        if (line.startsWith("id:")) {
+          id = line.substring(3).trim();
+          continue;
+        }
+        if (line.startsWith("event:")) {
+          eventName = line.substring(6).trim();
+          continue;
+        }
+        if (line.startsWith("data:")) {
+          if (!data.isEmpty()) {
+            data.append('\n');
+          }
+          data.append(line.substring(5).stripLeading());
+        }
+      }
+      sendBufferedEvent(emitter, id, eventName, data);
     }
+  }
+
+  private static void sendBufferedEvent(SseEmitter emitter, String id, String eventName, StringBuilder data)
+      throws IOException {
+    if (data.isEmpty()) {
+      return;
+    }
+    SseEmitter.SseEventBuilder event = SseEmitter.event().data(data.toString());
+    if (id != null && !id.isBlank()) {
+      event.id(id);
+    }
+    if (eventName != null && !eventName.isBlank()) {
+      event.name(eventName);
+    }
+    emitter.send(event);
   }
 }
