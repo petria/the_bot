@@ -14,6 +14,10 @@ public final class BotPermission {
   public static final String HERMES_USE = "hermes.use";
   public static final String OPENCLAW_USE = "openclaw.use";
   public static final String OPENCLAW_SEND_MESSAGE = "openclaw.tools.send-message";
+  public static final String LIVE_CHANNELS_VIEW_ALL = "live-channels.view.all";
+  public static final String LIVE_CHANNELS_SEND_ALL = "live-channels.send.all";
+  public static final String LIVE_CHANNELS_VIEW_PREFIX = "live-channels.view.";
+  public static final String LIVE_CHANNELS_SEND_PREFIX = "live-channels.send.";
   public static final String LOGS_READ_CURRENT_CHAT = "logs.read.current-chat";
   public static final String LOGS_READ_CURRENT_CHANNEL = "logs.read.current-channel";
   public static final String LOGS_READ_CURRENT_USER_DM = "logs.read.current-user-dm";
@@ -32,6 +36,8 @@ public final class BotPermission {
       HERMES_USE,
       OPENCLAW_USE,
       OPENCLAW_SEND_MESSAGE,
+      LIVE_CHANNELS_VIEW_ALL,
+      LIVE_CHANNELS_SEND_ALL,
       LOGS_READ_CURRENT_CHAT,
       LOGS_READ_CURRENT_CHANNEL,
       LOGS_READ_CURRENT_USER_DM,

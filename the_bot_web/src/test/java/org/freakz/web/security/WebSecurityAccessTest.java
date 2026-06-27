@@ -41,6 +41,8 @@ class WebSecurityAccessTest {
   void webUserCanUseNormalApiButNotAdminApi() throws Exception {
     mockMvc.perform(get("/api/web/test").with(user("web-user").authorities(() -> BotPermission.WEB_USER)))
         .andExpect(status().isOk());
+    mockMvc.perform(get("/api/web/live-channels/test").with(user("web-user").authorities(() -> BotPermission.WEB_USER)))
+        .andExpect(status().isOk());
     mockMvc.perform(get("/api/web/admin/test").with(user("web-user").authorities(() -> BotPermission.WEB_USER)))
         .andExpect(status().isForbidden());
   }
@@ -76,6 +78,11 @@ class WebSecurityAccessTest {
 
     @GetMapping("/api/web/test")
     String normalApi() {
+      return "ok";
+    }
+
+    @GetMapping("/api/web/live-channels/test")
+    String liveChannelsApi() {
       return "ok";
     }
 
