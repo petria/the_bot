@@ -125,6 +125,30 @@ body,
   min-width: 0;
 }
 
+.live-channel-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: var(--mantine-spacing-md);
+  align-items: stretch;
+}
+
+.live-channel-transcript,
+.live-channel-users {
+  min-width: 0;
+}
+
+.live-channel-users-list {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.live-channel-user-row {
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--mantine-radius-sm);
+  background: color-mix(in srgb, var(--mantine-color-dark-7), var(--mantine-color-dark-6) 20%);
+}
+
 .system-card {
   min-width: 0;
 }
@@ -234,6 +258,14 @@ body,
 
   .console-input-row > * {
     width: 100%;
+  }
+
+  .live-channel-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .live-channel-users-list {
+    max-height: 260px;
   }
 
   .generated-page-shell {

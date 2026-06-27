@@ -33,11 +33,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -907,9 +909,40 @@ public class ConnectionManager implements CommandLineRunner {
     if (dual == null) {
       throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
-    List<ChannelUser> users = dual.connection.getChannelUsersByEchoToAlias(echoToAlias, dual.channel);
+    Map<String, ChannelUser> usersByKey = new LinkedHashMap<>();
+    List<ChannelUser> adapterUsers = dual.connection.getChannelUsersByEchoToAlias(echoToAlias, dual.channel);
+    if (adapterUsers != null) {
+      adapterUsers.forEach(user -> addChannelUser(usersByKey, user));
+    }
+    knownUsersByUserAndChannel.values().stream()
+        .filter(presence -> normalizeEchoToAlias(presence.echoToAlias) != null)
+        .filter(presence -> normalizeEchoToAlias(presence.echoToAlias).equals(normalizeEchoToAlias(echoToAlias)))
+        .sorted(Comparator.comparing(KnownUserPresence::sortKey))
+        .map(KnownUserPresence::toChannelUser)
+        .forEach(user -> addChannelUser(usersByKey, user));
+    return new ArrayList<>(usersByKey.values());
+  }
 
-    return users;
+  private void addChannelUser(Map<String, ChannelUser> usersByKey, ChannelUser user) {
+    if (user == null) {
+      return;
+    }
+    List<String> keys = channelUserKeys(user);
+    if (keys.isEmpty()) {
+      return;
+    }
+    if (keys.stream().anyMatch(usersByKey::containsKey)) {
+      return;
+    }
+    usersByKey.put(keys.getFirst(), user);
+  }
+
+  private List<String> channelUserKeys(ChannelUser user) {
+    return Stream.of(user.getAccount(), user.getUserString(), user.getNick(), user.getRealName())
+        .filter(value -> value != null && !value.isBlank())
+        .map(value -> value.toLowerCase())
+        .distinct()
+        .toList();
   }
 
   private Dual findChannelByEchoToAlias(String echoToAlias) {
@@ -962,7 +995,7 @@ public class ConnectionManager implements CommandLineRunner {
         + (normalizedId == null ? "name:" + fallback : "id:" + normalizedId);
   }
 
-  private String firstNonBlank(String... values) {
+  private static String firstNonBlank(String... values) {
     for (String value : values) {
       if (value != null && !value.isBlank()) {
         return value;
@@ -1231,6 +1264,16 @@ public class ConnectionManager implements CommandLineRunner {
           echoToAlias,
           lastSeenAt,
           lastSeenSource);
+    }
+
+    ChannelUser toChannelUser() {
+      return ChannelUser.builder()
+          .account(userId)
+          .nick(firstNonBlank(displayName, username, userId))
+          .realName(username)
+          .server(network)
+          .userString(userKey)
+          .build();
     }
 
     boolean matches(String normalizedQuery) {

@@ -1,5 +1,6 @@
 package org.freakz.io.connections;
 
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.KnownChatChannelResponse;
 import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
 import org.freakz.common.model.connectionmanager.KnownUserTargetResponse;
@@ -55,6 +56,32 @@ class ConnectionManagerTest {
     assertThat(connectionManager.getKnownChannels()).isEmpty();
     assertThat(connectionManager.getKnownUsers()).isEmpty();
     assertThat(connection.getChannelMap()).isEmpty();
+  }
+
+  @Test
+  void channelUsersIncludesObservedUsersWhenConnectionHasNoLiveUserList() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    BotConnection connection = new BotConnection(BotConnectionType.WHATSAPP_CONNECTION) {
+      @Override
+      public String getNetwork() {
+        return "WhatsApp";
+      }
+    };
+    BotConnectionChannel channel = new BotConnectionChannel(
+        "group@g.us",
+        "WHATSAPP-DEV",
+        BotConnectionType.WHATSAPP_CONNECTION.name(),
+        "WhatsApp",
+        "Dev group");
+
+    connectionManager.updateJoinedChannelsMap(BotConnectionType.WHATSAPP_CONNECTION, connection, channel);
+    connectionManager.markUserSeen(connection, "WHATSAPP-DEV", "358441234567@s.whatsapp.net", "Petri", "Petri A", "WHATSAPP_MESSAGE");
+
+    List<ChannelUser> users = connectionManager.getChannelUsersByEchoToAlias("whatsapp-dev");
+
+    assertThat(users).hasSize(1);
+    assertThat(users.getFirst().getAccount()).isEqualTo("358441234567@s.whatsapp.net");
+    assertThat(users.getFirst().getNick()).isEqualTo("Petri A");
   }
 
   @Test

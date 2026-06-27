@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.model.botconfig.DiscordConfig;
+import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
@@ -16,6 +17,8 @@ import org.javacord.api.event.message.MessageCreateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -57,6 +60,7 @@ public class DiscordServerConnection extends BotConnection {
           }
         })
         .setAllIntents()
+        .setUserCacheEnabled(true)
         .setToken(token)
         .setWaitForServersOnStartup(false)
         .login()
@@ -110,6 +114,55 @@ public class DiscordServerConnection extends BotConnection {
       }
     }
     return null;
+  }
+
+  @Override
+  public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias, BotConnectionChannel channel) {
+    if (api == null || channel == null || channel.getId() == null || channel.getId().isBlank()) {
+      return List.of();
+    }
+    Optional<ServerTextChannel> textChannel = api.getServers().stream()
+        .map(server -> server.getTextChannelById(channel.getId()))
+        .flatMap(Optional::stream)
+        .findFirst();
+    if (textChannel.isEmpty()) {
+      return List.of();
+    }
+
+    ServerTextChannel discordChannel = textChannel.get();
+    Server server = discordChannel.getServer();
+    if (!server.hasAllMembersInCache()) {
+      server.requestMembersChunks();
+    }
+
+    return server.getMembers().stream()
+        .filter(user -> server.getVisibleChannels(user).contains(discordChannel))
+        .sorted(Comparator.comparing(user -> user.getDisplayName(server), String.CASE_INSENSITIVE_ORDER))
+        .map(user -> toChannelUser(echoToAlias, channel, server, user))
+        .toList();
+  }
+
+  private ChannelUser toChannelUser(String echoToAlias, BotConnectionChannel channel, Server server, User user) {
+    String userId = user.getIdAsString();
+    String displayName = user.getDisplayName(server);
+    String username = user.getName();
+    this.connectionManager.markUserSeen(
+        this,
+        echoToAlias,
+        userId,
+        username,
+        displayName,
+        "DISCORD_MEMBERS",
+        channel.getId(),
+        channel.getName());
+    return ChannelUser.builder()
+        .account(userId)
+        .nick(displayName)
+        .realName(username)
+        .server(server.getName())
+        .userString(user.getMentionTag())
+        .operatorInformation(user.isBot() ? "bot" : null)
+        .build();
   }
 
   @Override
