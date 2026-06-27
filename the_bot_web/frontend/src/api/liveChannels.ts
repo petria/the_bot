@@ -23,8 +23,24 @@ export type LiveChannelSendResponse = {
   message: string | null;
 };
 
+export type LiveChannelUser = {
+  account: string | null;
+  awayMessage: string | null;
+  host: string | null;
+  nick: string | null;
+  operatorInformation: string | null;
+  realName: string | null;
+  server: string | null;
+  userString: string | null;
+  away: boolean;
+};
+
 type LiveChannelEventsResponse = {
   events: LiveChannelEvent[] | null;
+};
+
+type LiveChannelUsersResponse = {
+  channelUsers: LiveChannelUser[] | null;
 };
 
 export async function getLiveChannelEvents(echoToAlias: string, afterId: number): Promise<LiveChannelEvent[]> {
@@ -34,6 +50,12 @@ export async function getLiveChannelEvents(echoToAlias: string, afterId: number)
   });
   const response = await getJson<LiveChannelEventsResponse>(`/api/web/admin/live-channels/events?${params.toString()}`);
   return response.events ?? [];
+}
+
+export async function getLiveChannelUsers(echoToAlias: string): Promise<LiveChannelUser[]> {
+  const params = new URLSearchParams({ echoToAlias });
+  const response = await getJson<LiveChannelUsersResponse>(`/api/web/admin/live-channels/users?${params.toString()}`);
+  return response.channelUsers ?? [];
 }
 
 export async function sendLiveChannelMessage(echoToAlias: string, message: string): Promise<LiveChannelSendResponse> {

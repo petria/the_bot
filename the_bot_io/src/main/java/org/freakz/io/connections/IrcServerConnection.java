@@ -16,6 +16,8 @@ import org.kitteh.irc.client.library.event.connection.ClientConnectionClosedEven
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEndedEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionEstablishedEvent;
 import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
+import org.kitteh.irc.client.library.event.user.UserNickChangeEvent;
+import org.kitteh.irc.client.library.event.user.UserQuitEvent;
 import org.kitteh.irc.client.library.event.user.WhoisEvent;
 import org.kitteh.irc.client.library.util.Cutter;
 import org.slf4j.Logger;
@@ -93,7 +95,31 @@ public class IrcServerConnection extends BotConnection {
 
   @Handler
   public void onChannelKickEvent(ChannelKickEvent event) {
-    int foo = 0;
+    org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
+    if (channel != null) {
+      removeIrcUserSeen(channel.getEchoToAlias(), event.getTarget());
+    }
+  }
+
+  @Handler
+  public void onUserQuitEvent(UserQuitEvent event) {
+    event.getAffectedChannel().ifPresent(channel -> {
+      org.freakz.common.model.botconfig.Channel configuredChannel = resolveByEchoTo(channel.getName());
+      if (configuredChannel != null) {
+        removeIrcUserSeen(configuredChannel.getEchoToAlias(), event.getUser());
+      }
+    });
+  }
+
+  @Handler
+  public void onUserNickChangeEvent(UserNickChangeEvent event) {
+    for (String channelName : event.getNewUser().getChannels()) {
+      org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
+      if (channel != null) {
+        removeIrcUserSeen(channel.getEchoToAlias(), event.getOldUser());
+        markIrcUserSeen(channel.getEchoToAlias(), event.getNewUser(), "IRC_NICK");
+      }
+    }
   }
 
   @Handler
@@ -188,6 +214,18 @@ public class IrcServerConnection extends BotConnection {
         user.getNick(),
         user.getRealName().orElse(null),
         source);
+  }
+
+  private void removeIrcUserSeen(String echoToAlias, User user) {
+    if (user == null) {
+      return;
+    }
+    this.connectionManager.removeUserFromChannel(
+        this,
+        echoToAlias,
+        user.getNick(),
+        user.getNick(),
+        user.getRealName().orElse(null));
   }
 
   @Handler

@@ -84,9 +84,6 @@ public class BotConnection {
 
   public List<ChannelUser> getChannelUsersByEchoToAlias(
       String echoToAlias, BotConnectionChannel channel) {
-    //        List<String> list = List.of("getChannelUsersByEchoToAlias(String echoToAlias) not
-    // implemented: " + this.getClass());
-    //        log.error(list.get(0));
-    return null;
+    return List.of();
   }
 }

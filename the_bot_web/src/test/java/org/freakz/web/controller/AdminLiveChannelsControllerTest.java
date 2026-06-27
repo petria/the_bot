@@ -1,10 +1,14 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelEvent;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.model.users.User;
+import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.security.BotUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -29,7 +33,7 @@ class AdminLiveChannelsControllerTest {
     LiveChannelEventsResponse events = new LiveChannelEventsResponse(
         List.of(new LiveChannelEvent(1, 10, 20, "IRC-HOKANDEV", "petria", "id", "hello", "irc", "IRCNet", "channel", "chat", null)));
     when(engineClient.getLiveChannelEvents("IRC-HOKANDEV", 5)).thenReturn(ResponseEntity.ok(events));
-    AdminLiveChannelsController controller = new AdminLiveChannelsController(engineClient);
+    AdminLiveChannelsController controller = controller(engineClient);
 
     LiveChannelEventsResponse response = controller.events("IRC-HOKANDEV", 5);
 
@@ -42,7 +46,7 @@ class AdminLiveChannelsControllerTest {
     RestEngineClient engineClient = mock(RestEngineClient.class);
     when(engineClient.sendLiveChannelMessage(org.mockito.ArgumentMatchers.any()))
         .thenReturn(ResponseEntity.ok(new LiveChannelSendResponse(true, "IRC-HOKANDEV", "petria@web-ui>: hello")));
-    AdminLiveChannelsController controller = new AdminLiveChannelsController(engineClient);
+    AdminLiveChannelsController controller = controller(engineClient);
 
     LiveChannelSendResponse response = controller.send(
         principal("petria"),
@@ -58,7 +62,7 @@ class AdminLiveChannelsControllerTest {
 
   @Test
   void sendRequiresTargetAndMessage() {
-    AdminLiveChannelsController controller = new AdminLiveChannelsController(mock(RestEngineClient.class));
+    AdminLiveChannelsController controller = controller(mock(RestEngineClient.class));
 
     assertThatThrownBy(() -> controller.send(principal("petria"), new LiveChannelSendRequest(" ", null, "hello")))
         .isInstanceOf(ResponseStatusException.class)
@@ -69,6 +73,25 @@ class AdminLiveChannelsControllerTest {
         .isInstanceOf(ResponseStatusException.class)
         .extracting("statusCode.value")
         .isEqualTo(400);
+  }
+
+  @Test
+  void usersFetchesChannelUsersFromConnectionManager() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    ChannelUsersByEchoToAliasResponse users = new ChannelUsersByEchoToAliasResponse(
+        List.of(ChannelUser.builder().nick("petria").account("petria").build()));
+    when(connectionManagerClient.getChannelUsersByEchoToAlias(new ChannelUsersByEchoToAliasRequest("IRC-HOKANDEV")))
+        .thenReturn(ResponseEntity.ok(users));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(mock(RestEngineClient.class), connectionManagerClient);
+
+    ChannelUsersByEchoToAliasResponse response = controller.users("IRC-HOKANDEV");
+
+    assertThat(response.getChannelUsers()).hasSize(1);
+    verify(connectionManagerClient).getChannelUsersByEchoToAlias(new ChannelUsersByEchoToAliasRequest("IRC-HOKANDEV"));
+  }
+
+  private AdminLiveChannelsController controller(RestEngineClient engineClient) {
+    return new AdminLiveChannelsController(engineClient, mock(RestConnectionManagerClient.class));
   }
 
   private BotUserPrincipal principal(String username) {

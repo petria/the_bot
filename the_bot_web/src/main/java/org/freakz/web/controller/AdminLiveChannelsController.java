@@ -1,9 +1,12 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
+import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
+import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.web.security.BotUserPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +24,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminLiveChannelsController {
 
   private final RestEngineClient engineClient;
+  private final RestConnectionManagerClient connectionManagerClient;
 
-  public AdminLiveChannelsController(RestEngineClient engineClient) {
+  public AdminLiveChannelsController(
+      RestEngineClient engineClient,
+      RestConnectionManagerClient connectionManagerClient) {
     this.engineClient = engineClient;
+    this.connectionManagerClient = connectionManagerClient;
   }
 
   @GetMapping("/events")
@@ -37,6 +44,20 @@ public class AdminLiveChannelsController {
     ResponseEntity<LiveChannelEventsResponse> response = engineClient.getLiveChannelEvents(alias, afterId);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return live channel events");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/users")
+  public ChannelUsersByEchoToAliasResponse users(@RequestParam String echoToAlias) {
+    String alias = trim(echoToAlias);
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    ResponseEntity<ChannelUsersByEchoToAliasResponse> response = connectionManagerClient.getChannelUsersByEchoToAlias(
+        new ChannelUsersByEchoToAliasRequest(alias));
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-io did not return channel users");
     }
     return response.getBody();
   }

@@ -18,7 +18,13 @@ import { AlertTriangle, CornerDownLeft, MessageSquare, Plus, X } from 'lucide-re
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { getConnectionsOverview, type BotConnectionChannel } from '../api/connections';
-import { getLiveChannelEvents, sendLiveChannelMessage, type LiveChannelEvent } from '../api/liveChannels';
+import {
+  getLiveChannelEvents,
+  getLiveChannelUsers,
+  sendLiveChannelMessage,
+  type LiveChannelEvent,
+  type LiveChannelUser,
+} from '../api/liveChannels';
 
 type OpenChannel = {
   echoToAlias: string;
@@ -211,6 +217,18 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     refetchIntervalInBackground: true,
   });
 
+  const usersQuery = useQuery({
+    queryKey: ['live-channel-users', channel.echoToAlias],
+    queryFn: () => getLiveChannelUsers(channel.echoToAlias),
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
+  });
+
+  const channelUsers = useMemo(() => {
+    return [...(usersQuery.data ?? [])].sort((left, right) =>
+        userDisplayName(left).localeCompare(userDisplayName(right), undefined, { sensitivity: 'base' }));
+  }, [usersQuery.data]);
+
   const sendMutation = useMutation({
     mutationFn: () => sendLiveChannelMessage(channel.echoToAlias, trimmedMessage),
     onError: (error) => {
@@ -298,45 +316,75 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
           <Text size="sm" c="dimmed">{channel.label}</Text>
         </Group>
 
-        <Textarea
-          ref={outputRef}
-          aria-label={`${channel.echoToAlias} live output`}
-          className="console-output"
-          value={transcript}
-          readOnly
-          autosize={false}
-          minRows={18}
-        />
+        <div className="live-channel-panel">
+          <Stack gap="md" className="live-channel-transcript">
+            <Textarea
+              ref={outputRef}
+              aria-label={`${channel.echoToAlias} live output`}
+              className="console-output"
+              value={transcript}
+              readOnly
+              autosize={false}
+              minRows={18}
+            />
 
-        <Group gap="sm" align="flex-end" wrap="nowrap" className="console-input-row">
-          <TextInput
-            ref={inputRef}
-            className="console-command-input"
-            label="Message"
-            placeholder="Message to channel"
-            value={message}
-            leftSection={<MessageSquare size={18} />}
-            onChange={(event) => {
-              setMessage(event.currentTarget.value);
-              sendMutation.reset();
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                send();
-              }
-            }}
-            disabled={sendMutation.isPending}
-          />
-          <Button
-            leftSection={<CornerDownLeft size={18} />}
-            loading={sendMutation.isPending}
-            disabled={!canSend}
-            onClick={send}
-          >
-            Send
-          </Button>
-        </Group>
+            <Group gap="sm" align="flex-end" wrap="nowrap" className="console-input-row">
+              <TextInput
+                ref={inputRef}
+                className="console-command-input"
+                label="Message"
+                placeholder="Message to channel"
+                value={message}
+                leftSection={<MessageSquare size={18} />}
+                onChange={(event) => {
+                  setMessage(event.currentTarget.value);
+                  sendMutation.reset();
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    send();
+                  }
+                }}
+                disabled={sendMutation.isPending}
+              />
+              <Button
+                leftSection={<CornerDownLeft size={18} />}
+                loading={sendMutation.isPending}
+                disabled={!canSend}
+                onClick={send}
+              >
+                Send
+              </Button>
+            </Group>
+          </Stack>
+
+          <Card withBorder radius="sm" className="live-channel-users">
+            <Stack gap="sm">
+              <Group justify="space-between" gap="xs">
+                <Text fw={600}>Users</Text>
+                <Badge variant="light">{channelUsers.length}</Badge>
+              </Group>
+              {usersQuery.isLoading ? <Loader size="sm" /> : null}
+              {usersQuery.isError ? (
+                <Text size="sm" c="red">
+                  {usersQuery.error instanceof ApiError ? usersQuery.error.message : usersQuery.error.message}
+                </Text>
+              ) : null}
+              {!usersQuery.isLoading && !usersQuery.isError && channelUsers.length === 0 ? (
+                <Text size="sm" c="dimmed">No users reported.</Text>
+              ) : null}
+              <Stack gap="xs" className="live-channel-users-list">
+                {channelUsers.map((user, index) => (
+                  <div key={userKey(user, index)} className="live-channel-user-row">
+                    <Text size="sm" fw={500} truncate="end">{userDisplayName(user)}</Text>
+                    <Text size="xs" c="dimmed" truncate="end">{userDetail(user)}</Text>
+                  </div>
+                ))}
+              </Stack>
+            </Stack>
+          </Card>
+        </div>
 
         <Group justify="space-between">
           <Text size="sm" c={trimmedMessage.length > maxMessageLength ? 'red' : 'dimmed'}>
@@ -358,6 +406,23 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
       </Stack>
     </Card>
   );
+}
+
+function userDisplayName(user: LiveChannelUser) {
+  return user.nick || user.realName || user.account || user.userString || 'unknown';
+}
+
+function userDetail(user: LiveChannelUser) {
+  const parts = [
+    user.realName && user.realName !== user.nick ? user.realName : null,
+    user.operatorInformation,
+    user.away ? 'away' : null,
+  ].filter(Boolean);
+  return parts.length === 0 ? (user.account || user.userString || '-') : parts.join(' / ');
+}
+
+function userKey(user: LiveChannelUser, index: number) {
+  return user.account || user.userString || user.nick || user.realName || `user-${index}`;
 }
 
 function isPublicChannel(channel: BotConnectionChannel): channel is BotConnectionChannel & { echoToAlias: string } {
