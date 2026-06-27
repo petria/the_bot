@@ -11,12 +11,14 @@ import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -146,6 +148,7 @@ public class DiscordServerConnection extends BotConnection {
     String userId = user.getIdAsString();
     String displayName = user.getDisplayName(server);
     String username = user.getName();
+    List<String> channelRoles = discordChannelRoles(server, user);
     this.connectionManager.markUserSeen(
         this,
         echoToAlias,
@@ -154,7 +157,10 @@ public class DiscordServerConnection extends BotConnection {
         displayName,
         "DISCORD_MEMBERS",
         channel.getId(),
-        channel.getName());
+        channel.getName(),
+        null,
+        List.of(),
+        channelRoles);
     return ChannelUser.builder()
         .account(userId)
         .nick(displayName)
@@ -162,7 +168,23 @@ public class DiscordServerConnection extends BotConnection {
         .server(server.getName())
         .userString(user.getMentionTag())
         .operatorInformation(user.isBot() ? "bot" : null)
+        .channelModes(List.of())
+        .channelRoles(channelRoles)
         .build();
+  }
+
+  private List<String> discordChannelRoles(Server server, User user) {
+    List<String> roles = new ArrayList<>(user.getRoles(server).stream()
+        .filter(role -> !role.isEveryoneRole())
+        .sorted(Comparator.comparingInt(Role::getPosition).reversed().thenComparing(Role::getName, String.CASE_INSENSITIVE_ORDER))
+        .map(Role::getName)
+        .filter(name -> name != null && !name.isBlank())
+        .distinct()
+        .toList());
+    if (user.isBot() && roles.stream().noneMatch(role -> role.equalsIgnoreCase("bot"))) {
+      roles.add("bot");
+    }
+    return List.copyOf(roles);
   }
 
   @Override
@@ -321,6 +343,9 @@ public class DiscordServerConnection extends BotConnection {
         .orElse(String.valueOf(event.getMessageAuthor().getId()));
     String displayName = event.getMessageAuthor().getDisplayName();
     String username = event.getMessageAuthor().getName();
+    List<String> channelRoles = event.getServer()
+        .flatMap(server -> event.getMessageAuthor().asUser().map(user -> discordChannelRoles(server, user)))
+        .orElse(List.of());
     this.connectionManager.markUserSeen(
         this,
         echoToAlias,
@@ -329,7 +354,10 @@ public class DiscordServerConnection extends BotConnection {
         displayName == null || displayName.isBlank() ? (isPrivate ? "Discord DM " + username : username) : displayName,
         "DISCORD_MESSAGE",
         isPrivate ? event.getChannel().getIdAsString() : null,
-        isPrivate ? "Discord DM " + username : null);
+        isPrivate ? "Discord DM " + username : null,
+        null,
+        List.of(),
+        channelRoles);
   }
 
   private org.freakz.common.model.botconfig.Channel resolveConfiguredChannel(MessageCreateEvent event) {

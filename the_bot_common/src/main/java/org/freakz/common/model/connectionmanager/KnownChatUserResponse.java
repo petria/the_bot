@@ -1,5 +1,7 @@
 package org.freakz.common.model.connectionmanager;
 
+import java.util.List;
+
 public class KnownChatUserResponse {
 
   private String userKey;
@@ -14,6 +16,9 @@ public class KnownChatUserResponse {
   private String echoToAlias;
   private Long lastSeenAt;
   private String lastSeenSource;
+  private String displayPrefix;
+  private List<String> channelModes;
+  private List<String> channelRoles;
 
   public KnownChatUserResponse() {
   }
@@ -31,6 +36,40 @@ public class KnownChatUserResponse {
       String echoToAlias,
       Long lastSeenAt,
       String lastSeenSource) {
+    this(
+        userKey,
+        userId,
+        username,
+        displayName,
+        connectionId,
+        connectionType,
+        network,
+        channelId,
+        channelName,
+        echoToAlias,
+        lastSeenAt,
+        lastSeenSource,
+        null,
+        List.of(),
+        List.of());
+  }
+
+  public KnownChatUserResponse(
+      String userKey,
+      String userId,
+      String username,
+      String displayName,
+      int connectionId,
+      String connectionType,
+      String network,
+      String channelId,
+      String channelName,
+      String echoToAlias,
+      Long lastSeenAt,
+      String lastSeenSource,
+      String displayPrefix,
+      List<String> channelModes,
+      List<String> channelRoles) {
     this.userKey = userKey;
     this.userId = userId;
     this.username = username;
@@ -43,6 +82,9 @@ public class KnownChatUserResponse {
     this.echoToAlias = echoToAlias;
     this.lastSeenAt = lastSeenAt;
     this.lastSeenSource = lastSeenSource;
+    this.displayPrefix = displayPrefix;
+    this.channelModes = channelModes;
+    this.channelRoles = channelRoles;
   }
 
   public String getUserKey() {
@@ -139,5 +181,29 @@ public class KnownChatUserResponse {
 
   public void setLastSeenSource(String lastSeenSource) {
     this.lastSeenSource = lastSeenSource;
+  }
+
+  public String getDisplayPrefix() {
+    return displayPrefix;
+  }
+
+  public void setDisplayPrefix(String displayPrefix) {
+    this.displayPrefix = displayPrefix;
+  }
+
+  public List<String> getChannelModes() {
+    return channelModes;
+  }
+
+  public void setChannelModes(List<String> channelModes) {
+    this.channelModes = channelModes;
+  }
+
+  public List<String> getChannelRoles() {
+    return channelRoles;
+  }
+
+  public void setChannelRoles(List<String> channelRoles) {
+    this.channelRoles = channelRoles;
   }
 }
