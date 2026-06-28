@@ -273,7 +273,7 @@ class HermesAiServiceTest {
     assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8645");
     assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(settings.model()).isEqualTo("hermes-ai-command");
-    assertThat(settings.apiMode()).isEqualTo("responses");
+    assertThat(settings.apiMode()).isEqualTo("chat-completions");
   }
 
   @Test
@@ -296,6 +296,7 @@ class HermesAiServiceTest {
         "hermes.ai-command.base-url", "http://ai.example:9000/",
         "hermes.ai-command.api-key", "ai-direct-secret",
         "hermes.ai-command.model", "custom-ai-command",
+        "hermes.ai-command.api-mode", "responses",
         "hermes.ai-command.timeout-seconds", "30"
     )), mock(EnvValuesService.class));
 
@@ -304,6 +305,7 @@ class HermesAiServiceTest {
     assertThat(settings.baseUrl()).isEqualTo("http://ai.example:9000");
     assertThat(settings.apiKey()).isEqualTo("ai-direct-secret");
     assertThat(settings.model()).isEqualTo("custom-ai-command");
+    assertThat(settings.apiMode()).isEqualTo("responses");
     assertThat(settings.timeoutSeconds()).isEqualTo(30);
   }
 
@@ -341,7 +343,7 @@ class HermesAiServiceTest {
     assertThat(aiCommandSettings.baseUrl()).isEqualTo("http://ubuntu-server.local:8645");
     assertThat(aiCommandSettings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(aiCommandSettings.model()).isEqualTo("hermes-ai-command");
-    assertThat(aiCommandSettings.apiMode()).isEqualTo("responses");
+    assertThat(aiCommandSettings.apiMode()).isEqualTo("chat-completions");
     assertThat(aiCommandSettings.timeoutSeconds()).isEqualTo(31);
   }
 
@@ -377,6 +379,7 @@ class HermesAiServiceTest {
     assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8665");
     assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(settings.model()).isEqualTo("hermes-ai-command");
+    assertThat(settings.apiMode()).isEqualTo("chat-completions");
     assertThat(settings.timeoutSeconds()).isEqualTo(120);
   }
 

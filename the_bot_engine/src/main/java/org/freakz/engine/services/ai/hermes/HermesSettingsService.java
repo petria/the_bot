@@ -23,6 +23,7 @@ public class HermesSettingsService {
   private static final String DEFAULT_BASE_URL = "http://ubuntu-server.local:8643";
   private static final String DEFAULT_MODEL = "hermes-chat";
   private static final String DEFAULT_API_MODE = "responses";
+  private static final String AI_COMMAND_DEFAULT_API_MODE = "chat-completions";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final String BASE_URL_KEY = "hermes.chat.base-url";
   private static final String API_KEY_KEY = "hermes.chat.api-key";
@@ -234,7 +235,13 @@ public class HermesSettingsService {
     return List.of(
         publicProfiles.get(0),
         publicProfiles.get(1),
-        profile(AI_COMMAND_PROFILE_ID, "AI command profile", AI_COMMAND_DEFAULT_BASE_URL, AI_COMMAND_DEFAULT_MODEL, selectedProfileId));
+        profile(
+            AI_COMMAND_PROFILE_ID,
+            "AI command profile",
+            AI_COMMAND_DEFAULT_BASE_URL,
+            AI_COMMAND_DEFAULT_MODEL,
+            AI_COMMAND_DEFAULT_API_MODE,
+            selectedProfileId));
   }
 
   private java.util.Optional<HermesProfileConfig> profileConfigById(String profileId, boolean includeInternalProfiles) {
@@ -247,12 +254,22 @@ public class HermesSettingsService {
   }
 
   private HermesProfileConfig profile(String id, String label, String baseUrl, String model, String selectedProfileId) {
+    return profile(id, label, baseUrl, model, DEFAULT_API_MODE, selectedProfileId);
+  }
+
+  private HermesProfileConfig profile(
+      String id,
+      String label,
+      String baseUrl,
+      String model,
+      String apiMode,
+      String selectedProfileId) {
     HermesProfileOption option = new HermesProfileOption(
         id,
         label,
         baseUrl,
         model,
-        DEFAULT_API_MODE,
+        apiMode,
         DEFAULT_TIMEOUT_SECONDS,
         healthUrl(baseUrl),
         id.equals(selectedProfileId));
@@ -348,7 +365,7 @@ public class HermesSettingsService {
           apiKey == null ? "" : apiKey.trim(),
           gatewayModelAlias(profile.id()),
           timeoutSeconds,
-          DEFAULT_API_MODE);
+          local.apiMode());
     } catch (Exception e) {
       log.debug("Could not load Hermes profile {} from manager: {}", profileId, e.getMessage());
       return null;
