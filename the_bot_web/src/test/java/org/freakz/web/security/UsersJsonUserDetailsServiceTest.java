@@ -2,6 +2,7 @@ package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.users.BotPermission;
+import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
 import org.freakz.web.config.TheBotWebProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -276,6 +277,84 @@ class UsersJsonUserDetailsServiceTest {
 
     service.deleteUser(created.getId());
     assertThat(service.findByUsername("normal")).isEmpty();
+  }
+
+  @Test
+  void adminCreatesUserFromObservedIdentityAtomically() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 0,
+              "permissions": [],
+              "username": "unknown",
+              "password": "hash"
+            },
+            {
+              "id": 3,
+              "permissions": ["*"],
+              "username": "admin",
+              "password": "%s"
+            }
+          ]
+        }
+        """.formatted(passwordEncoder.encode("admin-password")));
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    User created = service.createUserFromObservedIdentity(
+        new UsersJsonUserDetailsService.AdminObservedUserCreate(
+            "pete",
+            "normal-password",
+            "Petri",
+            "",
+            "IRC_CONNECTION",
+            "IRCNet",
+            "IRC-AMIGAFIN",
+            "pete!user@example.invalid",
+            "_Pete_",
+            "Petri",
+            "KNOWN_USERS"),
+        "admin");
+
+    assertThat(created.getId()).isEqualTo(4L);
+    assertThat(passwordEncoder.matches("normal-password", created.getPassword())).isTrue();
+    assertThat(created.getName()).isEqualTo("Petri");
+    assertThat(created.getIrcNick()).isEqualTo("_Pete_");
+    assertThat(created.getPermissions()).containsExactly(
+        "channels.view.irc.irc-amigafin",
+        BotPermission.WEB_USER);
+    assertThat(created.getChatIdentities()).singleElement().satisfies(identity -> {
+      assertThat(identity.getConnectionType()).isEqualTo("IRC_CONNECTION");
+      assertThat(identity.getNetwork()).isEqualTo("IRCNet");
+      assertThat(identity.getUserId()).isEqualTo("pete!user@example.invalid");
+      assertThat(identity.getUsername()).isEqualTo("_Pete_");
+      assertThat(identity.getDisplayName()).isEqualTo("Petri");
+      assertThat(identity.getSource()).isEqualTo("KNOWN_USERS");
+      assertThat(identity.getLinkedBy()).isEqualTo("admin");
+      assertThat(identity.getLinkedAt()).isNotNull();
+    });
+
+    assertThatThrownBy(() -> service.createUserFromObservedIdentity(
+        new UsersJsonUserDetailsService.AdminObservedUserCreate(
+            "duplicate",
+            "normal-password",
+            "Duplicate",
+            "",
+            "IRC_CONNECTION",
+            "IRCNet",
+            "IRC-AMIGAFIN",
+            "pete!user@example.invalid",
+            "_Pete_",
+            "Petri",
+            "KNOWN_USERS"),
+        "admin"))
+        .isInstanceOf(UserChatIdentityAlreadyLinkedException.class);
+
+    assertThat(service.findAllUsers()).extracting(User::getUsername)
+        .containsExactly("unknown", "admin", "pete");
   }
 
   private UsersJsonUserDetailsService serviceFor(Path usersFile) {

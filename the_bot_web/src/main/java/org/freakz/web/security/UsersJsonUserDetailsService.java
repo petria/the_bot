@@ -2,6 +2,8 @@ package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.users.BotPermission;
+import org.freakz.common.users.ChannelPermissionUtil;
 import org.freakz.common.users.IrcClaimTokenStore;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.UserPermissions;
@@ -108,6 +110,43 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         .permissions(create.permissions())
         .build();
     User created = usersStore.addUser(user);
+    notifyEngineUsersReload();
+    return UsersJsonStore.copyUser(created);
+  }
+
+  public User createUserFromObservedIdentity(AdminObservedUserCreate create, String linkedBy) {
+    if (create == null) {
+      throw new IllegalArgumentException("Create observed user request is required");
+    }
+    String username = blankToNull(create.username());
+    if (username == null) {
+      throw new IllegalArgumentException("Username is required");
+    }
+    validateNewPassword(create.password(), create.password());
+
+    UserChatIdentity identity = UserChatIdentity.builder()
+        .connectionType(blankToNull(create.connectionType()))
+        .network(blankToNull(create.network()))
+        .userId(blankToNull(create.observedUserId()))
+        .username(blankToNull(create.observedUsername()))
+        .displayName(blankToNull(create.observedDisplayName()))
+        .source(blankToNull(create.source()))
+        .linkedAt(System.currentTimeMillis())
+        .linkedBy(blankToNull(linkedBy))
+        .build();
+
+    User user = User.builder()
+        .username(username)
+        .password(passwordEncoder.encode(create.password()))
+        .name(blankToNull(create.name()))
+        .email(blankToNull(create.email()))
+        .ircNick(legacyIrcNick(create))
+        .telegramId(legacyId(create, "TELEGRAM_CONNECTION"))
+        .discordId(legacyId(create, "DISCORD_CONNECTION"))
+        .whatsappId(legacyId(create, "WHATSAPP_CONNECTION"))
+        .permissions(defaultObservedUserPermissions(create.connectionType(), create.echoToAlias()))
+        .build();
+    User created = usersStore.addUserWithChatIdentity(user, identity);
     notifyEngineUsersReload();
     return UsersJsonStore.copyUser(created);
   }
@@ -284,6 +323,30 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
   }
 
+  private List<String> defaultObservedUserPermissions(String connectionType, String echoToAlias) {
+    String alias = blankToNull(echoToAlias);
+    if (blankToNull(connectionType) == null || alias == null) {
+      return List.of(BotPermission.WEB_USER);
+    }
+    return List.of(
+        BotPermission.WEB_USER,
+        ChannelPermissionUtil.viewPermission(connectionType, alias));
+  }
+
+  private String legacyIrcNick(AdminObservedUserCreate create) {
+    if (!"IRC_CONNECTION".equalsIgnoreCase(blankToNull(create.connectionType()))) {
+      return null;
+    }
+    return blankToNull(create.observedUsername());
+  }
+
+  private String legacyId(AdminObservedUserCreate create, String connectionType) {
+    if (!connectionType.equalsIgnoreCase(blankToNull(create.connectionType()))) {
+      return null;
+    }
+    return blankToNull(create.observedUserId());
+  }
+
   public record ProfileUpdate(
       String name,
       String email,
@@ -335,5 +398,19 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String observedDisplayName,
       String source,
       boolean moveIfOwned) {
+  }
+
+  public record AdminObservedUserCreate(
+      String username,
+      String password,
+      String name,
+      String email,
+      String connectionType,
+      String network,
+      String echoToAlias,
+      String observedUserId,
+      String observedUsername,
+      String observedDisplayName,
+      String source) {
   }
 }
