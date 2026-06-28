@@ -14,6 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 public class UsersRepositoryImpl extends RepositoryBaseImpl
     implements UsersRepository, DataSavingService {
@@ -56,6 +57,11 @@ public class UsersRepositoryImpl extends RepositoryBaseImpl
   @Override
   public User addChatIdentity(long userId, UserChatIdentity identity, boolean moveIfOwned) {
     return usersStore.addChatIdentity(userId, identity, moveIfOwned);
+  }
+
+  @Override
+  public User updateByUsername(String username, UnaryOperator<User> updater) {
+    return usersStore.updateByUsername(username, updater);
   }
 
   @Override

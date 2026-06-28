@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 @Service
 public class UsersServiceImpl implements DataSavingService, UsersService {
@@ -60,6 +61,11 @@ public class UsersServiceImpl implements DataSavingService, UsersService {
   @Override
   public User addChatIdentity(long userId, UserChatIdentity identity, boolean moveIfOwned) {
     return usersRepository.addChatIdentity(userId, identity, moveIfOwned);
+  }
+
+  @Override
+  public User updateByUsername(String username, UnaryOperator<User> updater) {
+    return usersRepository.updateByUsername(username, updater);
   }
 
   @Override
