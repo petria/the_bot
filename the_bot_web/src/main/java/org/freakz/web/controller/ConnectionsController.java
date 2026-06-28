@@ -2,17 +2,25 @@ package org.freakz.web.controller;
 
 import org.freakz.common.model.connectionmanager.BotConnectionChannelResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.ChannelActivityResponse;
+import org.freakz.common.model.connectionmanager.GetChannelActivityResponse;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.config.AdminConnectionConfigService;
 import org.freakz.web.config.TheBotWebProperties;
+import org.freakz.web.security.BotUserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/web/connections")
@@ -23,20 +31,24 @@ public class ConnectionsController {
   private final RestConnectionManagerClient connectionManagerClient;
   private final AdminConnectionConfigService configService;
   private final TheBotWebProperties properties;
+  private final ChannelAccessService channelAccessService;
 
   public ConnectionsController(
       RestConnectionManagerClient connectionManagerClient,
       AdminConnectionConfigService configService,
-      TheBotWebProperties properties) {
+      TheBotWebProperties properties,
+      ChannelAccessService channelAccessService) {
     this.connectionManagerClient = connectionManagerClient;
     this.configService = configService;
     this.properties = properties;
+    this.channelAccessService = channelAccessService;
   }
 
   @GetMapping("/map")
-  public ResponseEntity<?> getConnectionMap() {
+  public ResponseEntity<?> getConnectionMap(@AuthenticationPrincipal BotUserPrincipal principal) {
     try {
       GetConnectionMapResponse response = connectionManagerClient.getConnectionMapRequired();
+      filterConnectionMap(principal, response);
       enrichConfiguredChannels(response);
       return ResponseEntity.ok(response);
     } catch (RestClientException e) {
@@ -62,12 +74,49 @@ public class ConnectionsController {
   }
 
   @GetMapping("/activity")
-  public ResponseEntity<?> getChannelActivity() {
+  public ResponseEntity<?> getChannelActivity(@AuthenticationPrincipal BotUserPrincipal principal) {
     try {
-      return ResponseEntity.ok(connectionManagerClient.getChannelActivityRequired());
+      return ResponseEntity.ok(filterActivity(principal, connectionManagerClient.getChannelActivityRequired()));
     } catch (RestClientException e) {
       return botIoUnavailable(e);
     }
+  }
+
+  private void filterConnectionMap(BotUserPrincipal principal, GetConnectionMapResponse response) {
+    if (response == null || response.getConnectionMap() == null) {
+      return;
+    }
+    Map<Integer, org.freakz.common.model.connectionmanager.BotConnectionResponse> filtered = new LinkedHashMap<>();
+    response.getConnectionMap().forEach((id, connection) -> {
+      if (connection == null || connection.getChannels() == null) {
+        return;
+      }
+      connection.setChannels(connection.getChannels().stream()
+          .filter(channel -> channelAccessService.canView(principal, connection.getType(), channel.getEchoToAlias()))
+          .toList());
+      if (!connection.getChannels().isEmpty()) {
+        filtered.put(id, connection);
+      }
+    });
+    response.setConnectionMap(filtered);
+  }
+
+  private GetChannelActivityResponse filterActivity(
+      BotUserPrincipal principal,
+      GetChannelActivityResponse response) {
+    if (response == null || response.getChannels() == null) {
+      return new GetChannelActivityResponse();
+    }
+    return new GetChannelActivityResponse(response.getChannels().stream()
+        .filter(activity -> canViewActivity(principal, activity))
+        .toList());
+  }
+
+  private boolean canViewActivity(BotUserPrincipal principal, ChannelActivityResponse activity) {
+    if (activity == null) {
+      return false;
+    }
+    return channelAccessService.canView(principal, activity.getType(), activity.getEchoToAlias());
   }
 
   private ResponseEntity<?> botIoUnavailable(RestClientException e) {

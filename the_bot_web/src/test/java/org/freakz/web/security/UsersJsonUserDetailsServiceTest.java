@@ -250,7 +250,7 @@ class UsersJsonUserDetailsServiceTest {
         "111",
         "222",
         "333",
-        List.of(BotPermission.OPENCLAW_USE)));
+        List.of(BotPermission.HERMES_USE)));
 
     User created = service.findByUsername("normal").orElseThrow();
     assertThat(created.getId()).isEqualTo(4L);

@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class LiveChannelCatalogService {
@@ -54,6 +55,16 @@ public class LiveChannelCatalogService {
     return channels.values().stream()
         .sorted(Comparator.comparing(LiveChannelCatalogItem::label, String.CASE_INSENSITIVE_ORDER))
         .toList();
+  }
+
+  public Optional<LiveChannelCatalogItem> findPublicChannel(String echoToAlias) {
+    String alias = echoToAlias == null ? "" : echoToAlias.trim();
+    if (alias.isBlank()) {
+      return Optional.empty();
+    }
+    return publicChannels().stream()
+        .filter(channel -> alias.equalsIgnoreCase(channel.echoToAlias()))
+        .findFirst();
   }
 
   private LiveChannelCatalogItem fromConnectionChannel(

@@ -282,24 +282,22 @@ public class OpenClawNodeGatewayService {
       HokanNodeContextTokenService.VerifiedNodeContext verifiedContext =
           hokanNodeContextTokenService.verifyToken(hokanContextToken);
 
-      if (!verifiedContext.hasPermission(BotPermission.OPENCLAW_SEND_MESSAGE)) {
-        String sourceEchoToAlias = verifiedContext.sourceEchoToAlias();
-        if (sourceEchoToAlias == null || sourceEchoToAlias.isBlank() || !sourceEchoToAlias.equalsIgnoreCase(echoToAlias)) {
-          String error = "permission denied for cross-alias send to " + echoToAlias;
-          log.warn(
-              "OpenClaw node invoke denied reqId={} requestedBy={} sourceEchoToAlias={} targetEchoToAlias={}",
-              reqId,
-              verifiedContext.requestedByUsername(),
-              sourceEchoToAlias,
-              echoToAlias
-          );
-          session.send(Mono.just(session.textMessage(
-              eventProtocol
-                  ? buildNodeInvokeErrorEvent(reqId, nodeId, error)
-                  : buildErrorResponse(reqId, error)
-          ))).subscribe();
-          return;
-        }
+      String sourceEchoToAlias = verifiedContext.sourceEchoToAlias();
+      if (sourceEchoToAlias == null || sourceEchoToAlias.isBlank() || !sourceEchoToAlias.equalsIgnoreCase(echoToAlias)) {
+        String error = "permission denied for cross-alias send to " + echoToAlias;
+        log.warn(
+            "OpenClaw node invoke denied reqId={} requestedBy={} sourceEchoToAlias={} targetEchoToAlias={}",
+            reqId,
+            verifiedContext.requestedByUsername(),
+            sourceEchoToAlias,
+            echoToAlias
+        );
+        session.send(Mono.just(session.textMessage(
+            eventProtocol
+                ? buildNodeInvokeErrorEvent(reqId, nodeId, error)
+                : buildErrorResponse(reqId, error)
+        ))).subscribe();
+        return;
       }
 
       log.debug(

@@ -7,7 +7,7 @@ import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
-import org.freakz.web.livechannels.LiveChannelAccessService;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.BotUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -51,7 +51,7 @@ public class AdminLiveChannelsController {
 
   private final RestEngineClient engineClient;
   private final RestConnectionManagerClient connectionManagerClient;
-  private final LiveChannelAccessService accessService;
+  private final ChannelAccessService accessService;
   private final LiveChannelCatalogService catalogService;
   private final HttpClient streamingHttpClient;
 
@@ -59,7 +59,7 @@ public class AdminLiveChannelsController {
   public AdminLiveChannelsController(
       RestEngineClient engineClient,
       RestConnectionManagerClient connectionManagerClient,
-      LiveChannelAccessService accessService,
+      ChannelAccessService accessService,
       LiveChannelCatalogService catalogService) {
     this(
         engineClient,
@@ -74,7 +74,7 @@ public class AdminLiveChannelsController {
   AdminLiveChannelsController(
       RestEngineClient engineClient,
       RestConnectionManagerClient connectionManagerClient,
-      LiveChannelAccessService accessService,
+      ChannelAccessService accessService,
       LiveChannelCatalogService catalogService,
       HttpClient streamingHttpClient) {
     this.engineClient = engineClient;
@@ -87,14 +87,14 @@ public class AdminLiveChannelsController {
   @GetMapping("/channels")
   public LiveChannelsResponse channels(@AuthenticationPrincipal BotUserPrincipal principal) {
     List<LiveChannelResponse> channels = catalogService.publicChannels().stream()
-        .filter(channel -> accessService.canView(principal, channel.echoToAlias()))
+        .filter(channel -> accessService.canView(principal, channel.connectionType(), channel.echoToAlias()))
         .map(channel -> new LiveChannelResponse(
             channel.echoToAlias(),
             channel.label(),
             channel.connectionType(),
             channel.network(),
             channel.channelType(),
-            accessService.canSend(principal, channel.echoToAlias())))
+            accessService.canSend(principal, channel.connectionType(), channel.echoToAlias())))
         .toList();
     return new LiveChannelsResponse(channels);
   }
@@ -108,7 +108,8 @@ public class AdminLiveChannelsController {
     if (alias.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
     }
-    accessService.requireView(principal, alias);
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    accessService.requireView(principal, channel.connectionType(), alias);
     ResponseEntity<LiveChannelEventsResponse> response = engineClient.getLiveChannelEvents(alias, afterId);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return live channel events");
@@ -125,7 +126,8 @@ public class AdminLiveChannelsController {
     if (alias.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
     }
-    accessService.requireView(principal, alias);
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    accessService.requireView(principal, channel.connectionType(), alias);
     URI uri = engineClient.liveChannelEventStreamUri(alias, afterId);
     SseEmitter emitter = new SseEmitter(0L);
     try {
@@ -176,7 +178,8 @@ public class AdminLiveChannelsController {
     if (alias.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
     }
-    accessService.requireView(principal, alias);
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    accessService.requireView(principal, channel.connectionType(), alias);
     ResponseEntity<ChannelUsersByEchoToAliasResponse> response = connectionManagerClient.getChannelUsersByEchoToAlias(
         new ChannelUsersByEchoToAliasRequest(alias));
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
@@ -197,7 +200,8 @@ public class AdminLiveChannelsController {
     if (message.isBlank()) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is required");
     }
-    accessService.requireSend(principal, echoToAlias);
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(echoToAlias);
+    accessService.requireSend(principal, channel.connectionType(), echoToAlias);
     ResponseEntity<LiveChannelSendResponse> response = engineClient.sendLiveChannelMessage(
         new LiveChannelSendRequest(echoToAlias, principal.getUsername(), message));
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
@@ -208,6 +212,16 @@ public class AdminLiveChannelsController {
 
   private String trim(String value) {
     return value == null ? "" : value.trim();
+  }
+
+  private LiveChannelCatalogService.LiveChannelCatalogItem liveChannel(String echoToAlias) {
+    return catalogService.findPublicChannel(echoToAlias)
+        .orElseGet(() -> new LiveChannelCatalogService.LiveChannelCatalogItem(
+            echoToAlias,
+            echoToAlias,
+            null,
+            null,
+            null));
   }
 
   public record LiveChannelsResponse(List<LiveChannelResponse> channels) {

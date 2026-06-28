@@ -12,12 +12,18 @@ public final class BotPermission {
   public static final String COMMANDS_ADMIN = "commands.admin";
   public static final String HOWTO_USE = "howto.use";
   public static final String HERMES_USE = "hermes.use";
-  public static final String OPENCLAW_USE = "openclaw.use";
-  public static final String OPENCLAW_SEND_MESSAGE = "openclaw.tools.send-message";
-  public static final String LIVE_CHANNELS_VIEW_ALL = "live-channels.view.all";
-  public static final String LIVE_CHANNELS_SEND_ALL = "live-channels.send.all";
-  public static final String LIVE_CHANNELS_VIEW_PREFIX = "live-channels.view.";
-  public static final String LIVE_CHANNELS_SEND_PREFIX = "live-channels.send.";
+  public static final String CHANNELS_VIEW_ALL = "channels.view.all";
+  public static final String CHANNELS_SEND_ALL = "channels.send.all";
+  public static final String CHANNELS_VIEW_PREFIX = "channels.view.";
+  public static final String CHANNELS_SEND_PREFIX = "channels.send.";
+  public static final String CHANNELS_VIEW_IRC = "channels.view.irc";
+  public static final String CHANNELS_SEND_IRC = "channels.send.irc";
+  public static final String CHANNELS_VIEW_DISCORD = "channels.view.discord";
+  public static final String CHANNELS_SEND_DISCORD = "channels.send.discord";
+  public static final String CHANNELS_VIEW_TELEGRAM = "channels.view.telegram";
+  public static final String CHANNELS_SEND_TELEGRAM = "channels.send.telegram";
+  public static final String CHANNELS_VIEW_WHATSAPP = "channels.view.whatsapp";
+  public static final String CHANNELS_SEND_WHATSAPP = "channels.send.whatsapp";
   public static final String LOGS_READ_CURRENT_CHAT = "logs.read.current-chat";
   public static final String LOGS_READ_CURRENT_CHANNEL = "logs.read.current-channel";
   public static final String LOGS_READ_CURRENT_USER_DM = "logs.read.current-user-dm";
@@ -34,10 +40,16 @@ public final class BotPermission {
       COMMANDS_ADMIN,
       HOWTO_USE,
       HERMES_USE,
-      OPENCLAW_USE,
-      OPENCLAW_SEND_MESSAGE,
-      LIVE_CHANNELS_VIEW_ALL,
-      LIVE_CHANNELS_SEND_ALL,
+      CHANNELS_VIEW_ALL,
+      CHANNELS_SEND_ALL,
+      CHANNELS_VIEW_IRC,
+      CHANNELS_SEND_IRC,
+      CHANNELS_VIEW_DISCORD,
+      CHANNELS_SEND_DISCORD,
+      CHANNELS_VIEW_TELEGRAM,
+      CHANNELS_SEND_TELEGRAM,
+      CHANNELS_VIEW_WHATSAPP,
+      CHANNELS_SEND_WHATSAPP,
       LOGS_READ_CURRENT_CHAT,
       LOGS_READ_CURRENT_CHANNEL,
       LOGS_READ_CURRENT_USER_DM,
