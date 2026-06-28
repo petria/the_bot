@@ -1,6 +1,7 @@
 package org.freakz.web.channels;
 
 import org.freakz.common.users.BotPermission;
+import org.freakz.common.users.ChannelPermissionUtil;
 import org.freakz.web.security.BotUserPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -62,22 +63,19 @@ public class ChannelAccessService {
   }
 
   public String viewPermission(String connectionType, String echoToAlias) {
-    return BotPermission.CHANNELS_VIEW_PREFIX + connectionKey(connectionType) + "." + channelKey(echoToAlias);
+    return ChannelPermissionUtil.viewPermission(connectionType, echoToAlias);
   }
 
   public String sendPermission(String connectionType, String echoToAlias) {
-    return BotPermission.CHANNELS_SEND_PREFIX + connectionKey(connectionType) + "." + channelKey(echoToAlias);
+    return ChannelPermissionUtil.sendPermission(connectionType, echoToAlias);
   }
 
   public String connectionKey(String connectionType) {
-    String value = connectionType == null ? "" : connectionType.trim().toLowerCase(Locale.ROOT);
-    value = value.replaceAll("_connection$", "");
-    return value.replaceAll("[^a-z0-9_-]", "_");
+    return ChannelPermissionUtil.connectionKey(connectionType);
   }
 
   public String channelKey(String echoToAlias) {
-    String value = echoToAlias == null ? "" : echoToAlias.trim().toLowerCase(Locale.ROOT);
-    return value.replaceAll("[^a-z0-9._-]", "_");
+    return ChannelPermissionUtil.channelKey(echoToAlias);
   }
 
   private boolean hasLegacyView(BotUserPrincipal principal, String channelKey) {
