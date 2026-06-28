@@ -440,6 +440,10 @@ for spec in "${SPECS[@]}"; do
   if [[ -z "${model_label:-}" ]]; then
     model_label="hermes-${profile}"
   fi
+  api_mode="responses"
+  if [[ "$profile" == "ai-command" ]]; then
+    api_mode="chat-completions"
+  fi
 
   if ! container_exec hermes profile show "$profile" >/dev/null 2>&1; then
     echo "Creating profile $profile"
@@ -472,6 +476,7 @@ for spec in "${SPECS[@]}"; do
   env_set "$BOT_ENV_FILE" "HERMES_${up}_BASE_URL" "$base_url"
   env_set "$BOT_ENV_FILE" "HERMES_${up}_API_KEY" "$api_key"
   env_set "$BOT_ENV_FILE" "HERMES_${up}_MODEL" "$model_label"
+  env_set "$BOT_ENV_FILE" "HERMES_${up}_API_MODE" "$api_mode"
   env_set "$BOT_ENV_FILE" "HERMES_${up}_TIMEOUT_SECONDS" "120"
   env_set "$BOT_ENV_FILE" "HERMES_${up}_MODE" "$mode"
 
@@ -479,11 +484,12 @@ for spec in "${SPECS[@]}"; do
     env_set "$BOT_ENV_FILE" HERMES_BASE_URL "$base_url"
     env_set "$BOT_ENV_FILE" HERMES_API_KEY "$api_key"
     env_set "$BOT_ENV_FILE" HERMES_MODEL "$model_label"
+    env_set "$BOT_ENV_FILE" HERMES_API_MODE "$api_mode"
     env_set "$BOT_ENV_FILE" HERMES_TIMEOUT_SECONDS "120"
     first=0
   fi
 
-  echo "Configured profile '$profile' at $base_url mode=$mode key=[REDACTED]"
+  echo "Configured profile '$profile' at $base_url mode=$mode apiMode=$api_mode key=[REDACTED]"
 
   if [[ "$VERIFY" == 1 ]]; then
     echo "Verifying $profile health"
