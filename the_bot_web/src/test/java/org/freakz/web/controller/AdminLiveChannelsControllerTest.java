@@ -11,7 +11,7 @@ import org.freakz.common.model.users.User;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.BotPermission;
-import org.freakz.web.livechannels.LiveChannelAccessService;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.BotUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -123,7 +123,7 @@ class AdminLiveChannelsControllerTest {
     AdminLiveChannelsController controller = controller(mock(RestEngineClient.class));
 
     assertThatThrownBy(() -> controller.send(
-        principal("viewer", BotPermission.WEB_USER, BotPermission.LIVE_CHANNELS_VIEW_PREFIX + "irc-hokandev"),
+        principal("viewer", BotPermission.WEB_USER, "live-channels.view.irc-hokandev"),
         new LiveChannelSendRequest("IRC-HOKANDEV", null, "hello")))
         .isInstanceOf(ResponseStatusException.class)
         .extracting("statusCode.value")
@@ -140,7 +140,7 @@ class AdminLiveChannelsControllerTest {
     AdminLiveChannelsController controller = new AdminLiveChannelsController(
         mock(RestEngineClient.class),
         connectionManagerClient,
-        new LiveChannelAccessService(),
+        new ChannelAccessService(),
         mock(LiveChannelCatalogService.class));
 
     ChannelUsersByEchoToAliasResponse response = controller.users(principal("petria"), "IRC-HOKANDEV");
@@ -153,12 +153,12 @@ class AdminLiveChannelsControllerTest {
     return new AdminLiveChannelsController(
         engineClient,
         mock(RestConnectionManagerClient.class),
-        new LiveChannelAccessService(),
+        new ChannelAccessService(),
         mock(LiveChannelCatalogService.class));
   }
 
   private BotUserPrincipal principal(String username) {
-    return principal(username, "web.admin");
+    return principal(username, BotPermission.ALL);
   }
 
   private BotUserPrincipal principal(String username, String... permissions) {

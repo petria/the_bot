@@ -22,9 +22,7 @@ import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
 import {
   hasPermission,
-  hasPermissionPrefix,
-  LIVE_CHANNELS_VIEW_ALL_PERMISSION,
-  LIVE_CHANNELS_VIEW_PREFIX,
+  hasAnyChannelViewPermission,
   WEB_ADMIN_PERMISSION,
   WEB_USER_PERMISSION,
 } from './permissions';
@@ -95,8 +93,7 @@ function AuthenticatedApp() {
   }
   const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
   const webUser = hasPermission(meQuery.data?.permissions, WEB_USER_PERMISSION);
-  const liveChannelsAllowed = hasPermission(meQuery.data?.permissions, LIVE_CHANNELS_VIEW_ALL_PERMISSION)
-      || hasPermissionPrefix(meQuery.data?.permissions, LIVE_CHANNELS_VIEW_PREFIX);
+  const liveChannelsAllowed = hasAnyChannelViewPermission(meQuery.data?.permissions);
   const userNavItems = navItems.filter((item) => item.path !== '/live-channels' || liveChannelsAllowed);
 
   return (

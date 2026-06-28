@@ -5,7 +5,7 @@ import org.freakz.common.model.users.UserChatIdentity;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
 import org.freakz.common.users.UserChatIdentityUtil;
-import org.freakz.web.livechannels.LiveChannelAccessService;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.UsersJsonUserDetailsService;
 import org.springframework.http.HttpStatus;
@@ -31,15 +31,15 @@ public class AdminUsersController {
 
   private final UsersJsonUserDetailsService usersService;
   private final LiveChannelCatalogService liveChannelCatalogService;
-  private final LiveChannelAccessService liveChannelAccessService;
+  private final ChannelAccessService channelAccessService;
 
   public AdminUsersController(
       UsersJsonUserDetailsService usersService,
       LiveChannelCatalogService liveChannelCatalogService,
-      LiveChannelAccessService liveChannelAccessService) {
+      ChannelAccessService channelAccessService) {
     this.usersService = usersService;
     this.liveChannelCatalogService = liveChannelCatalogService;
-    this.liveChannelAccessService = liveChannelAccessService;
+    this.channelAccessService = channelAccessService;
   }
 
   @GetMapping
@@ -117,8 +117,8 @@ public class AdminUsersController {
     TreeSet<String> permissions = new TreeSet<>(BotPermission.known());
     try {
       liveChannelCatalogService.publicChannels().forEach(channel -> {
-        permissions.add(liveChannelAccessService.viewPermission(channel.echoToAlias()));
-        permissions.add(liveChannelAccessService.sendPermission(channel.echoToAlias()));
+        permissions.add(channelAccessService.viewPermission(channel.connectionType(), channel.echoToAlias()));
+        permissions.add(channelAccessService.sendPermission(channel.connectionType(), channel.echoToAlias()));
       });
     } catch (RuntimeException ignored) {
       // User management should remain available even when bot-io is temporarily down.
