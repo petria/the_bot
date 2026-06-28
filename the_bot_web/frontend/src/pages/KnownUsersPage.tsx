@@ -28,12 +28,14 @@ import {
 } from '../api/knownUsers';
 import { getMe } from '../api/me';
 import { hasPermission, WEB_ADMIN_PERMISSION } from '../permissions';
+import { CreateObservedUserModal } from './CreateObservedUserModal';
 import { LinkObservedIdentityModal } from './LinkObservedIdentityModal';
 
 export function KnownUsersPage() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<RowSort>({ column: 'user', direction: 'asc' });
   const [linkTarget, setLinkTarget] = useState<KnownUserTarget | null>(null);
+  const [createTarget, setCreateTarget] = useState<KnownUserTarget | null>(null);
   const [debouncedSearch] = useDebouncedValue(search, 250);
   const meQuery = useQuery({
     queryKey: ['me'],
@@ -109,12 +111,18 @@ export function KnownUsersPage() {
           onSortChange={setSort}
           admin={webAdmin}
           onLink={setLinkTarget}
+          onCreate={setCreateTarget}
         />
       )}
       <LinkObservedIdentityModal
         opened={!!linkTarget}
         target={linkTarget}
         onClose={() => setLinkTarget(null)}
+      />
+      <CreateObservedUserModal
+        opened={!!createTarget}
+        target={createTarget}
+        onClose={() => setCreateTarget(null)}
       />
     </Stack>
   );
@@ -144,12 +152,14 @@ function KnownUserGroups({
   onSortChange,
   admin,
   onLink,
+  onCreate,
 }: {
   groups: ConnectionGroup[];
   sort: RowSort;
   onSortChange: (sort: RowSort) => void;
   admin: boolean;
   onLink: (target: KnownUserTarget) => void;
+  onCreate: (target: KnownUserTarget) => void;
 }) {
   return (
     <Stack gap="md">
@@ -178,6 +188,7 @@ function KnownUserGroups({
                   onSortChange={onSortChange}
                   admin={admin}
                   onLink={onLink}
+                  onCreate={onCreate}
                   withDivider={index > 0}
                 />
               ))}
@@ -195,6 +206,7 @@ function ChannelSection({
   onSortChange,
   admin,
   onLink,
+  onCreate,
   withDivider,
 }: {
   channel: ChannelGroup;
@@ -202,6 +214,7 @@ function ChannelSection({
   onSortChange: (sort: RowSort) => void;
   admin: boolean;
   onLink: (target: KnownUserTarget) => void;
+  onCreate: (target: KnownUserTarget) => void;
   withDivider: boolean;
 }) {
   const sortedTargets = sortTargets(channel.targets, sort);
@@ -225,8 +238,9 @@ function ChannelSection({
         onSortChange={onSortChange}
         admin={admin}
         onLink={onLink}
+        onCreate={onCreate}
       />
-      <ChannelTargetsCards targets={sortedTargets} admin={admin} onLink={onLink} />
+      <ChannelTargetsCards targets={sortedTargets} admin={admin} onLink={onLink} onCreate={onCreate} />
     </Stack>
   );
 }
@@ -237,12 +251,14 @@ function ChannelTargetsTable({
   onSortChange,
   admin,
   onLink,
+  onCreate,
 }: {
   targets: KnownUserTarget[];
   sort: RowSort;
   onSortChange: (sort: RowSort) => void;
   admin: boolean;
   onLink: (target: KnownUserTarget) => void;
+  onCreate: (target: KnownUserTarget) => void;
 }) {
   return (
     <Table.ScrollContainer minWidth={860} className="known-users-table">
@@ -265,7 +281,7 @@ function ChannelTargetsTable({
               <Table.Td>{formatLastSeen(target.lastSeenAt)}</Table.Td>
               {admin && (
                 <Table.Td>
-                  <LinkButton target={target} onLink={onLink} />
+                  <UserActionButtons target={target} onLink={onLink} onCreate={onCreate} />
                 </Table.Td>
               )}
             </Table.Tr>
@@ -323,10 +339,12 @@ function ChannelTargetsCards({
   targets,
   admin,
   onLink,
+  onCreate,
 }: {
   targets: KnownUserTarget[];
   admin: boolean;
   onLink: (target: KnownUserTarget) => void;
+  onCreate: (target: KnownUserTarget) => void;
 }) {
   return (
     <Stack gap="sm" className="known-users-cards">
@@ -339,7 +357,7 @@ function ChannelTargetsCards({
             </Group>
             <InfoLine label="Observed" value={observedName(target)} />
             <InfoLine label="Last seen" value={formatLastSeen(target.lastSeenAt)} />
-            {admin && <LinkButton target={target} onLink={onLink} />}
+            {admin && <UserActionButtons target={target} onLink={onLink} onCreate={onCreate} />}
           </Stack>
         </Card>
       ))}
@@ -347,25 +365,36 @@ function ChannelTargetsCards({
   );
 }
 
-function LinkButton({
+function UserActionButtons({
   target,
   onLink,
+  onCreate,
 }: {
   target: KnownUserTarget;
   onLink: (target: KnownUserTarget) => void;
+  onCreate: (target: KnownUserTarget) => void;
 }) {
   if (target.matchedConfiguredUser) {
     return null;
   }
   return (
-    <Button
-      size="xs"
-      variant="light"
-      leftSection={<Link2 size={14} />}
-      onClick={() => onLink(target)}
-    >
-      Link
-    </Button>
+    <Group gap="xs" wrap="nowrap">
+      <Button
+        size="xs"
+        variant="light"
+        leftSection={<Link2 size={14} />}
+        onClick={() => onLink(target)}
+      >
+        Link
+      </Button>
+      <Button
+        size="xs"
+        variant="light"
+        onClick={() => onCreate(target)}
+      >
+        Create user
+      </Button>
+    </Group>
   );
 }
 

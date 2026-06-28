@@ -59,12 +59,30 @@ export interface AdminChatIdentityLinkRequest {
   moveIfOwned: boolean;
 }
 
+export interface AdminObservedUserCreateRequest {
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  connectionType: string | null;
+  network: string | null;
+  echoToAlias: string | null;
+  observedUserId: string | null;
+  observedUsername: string | null;
+  observedDisplayName: string | null;
+  source: string | null;
+}
+
 export function getAdminUsers(): Promise<AdminUsersResponse> {
   return getJson<AdminUsersResponse>('/api/web/admin/users');
 }
 
 export function createAdminUser(request: AdminUserCreateRequest): Promise<AdminUser> {
   return postJson<AdminUser>('/api/web/admin/users', request);
+}
+
+export function createAdminUserFromObservedIdentity(request: AdminObservedUserCreateRequest): Promise<AdminUser> {
+  return postJson<AdminUser>('/api/web/admin/users/observed', request);
 }
 
 export function updateAdminUser(id: number, request: AdminUserUpdateRequest): Promise<AdminUser> {

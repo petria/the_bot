@@ -97,6 +97,37 @@ public class UsersJsonStore {
     }
   }
 
+  public User addUserWithChatIdentity(User user, UserChatIdentity identity) {
+    Objects.requireNonNull(user, "user");
+    String normalizedUsername = normalize(user.getUsername());
+    if (normalizedUsername == null) {
+      throw new IllegalArgumentException("Username is required");
+    }
+    String identityKey = UserChatIdentityUtil.identityKey(identity);
+    if (identityKey == null) {
+      throw new IllegalArgumentException("Chat identity is missing connection type and observed identity");
+    }
+
+    synchronized (this) {
+      List<User> currentUsers = new ArrayList<>(readUsersLocked());
+      if (currentUsers.stream().anyMatch(current -> normalizedUsername.equals(normalize(current.getUsername())))) {
+        throw new IllegalArgumentException("Username already exists: " + user.getUsername());
+      }
+      User owner = findOwnerByIdentityKey(currentUsers, identityKey);
+      if (owner != null) {
+        throw new UserChatIdentityAlreadyLinkedException(owner, identity);
+      }
+
+      User created = copyUser(user);
+      created.setUsername(user.getUsername().trim());
+      created.setId(nextId(currentUsers));
+      created.getChatIdentities().add(copyIdentity(identity));
+      currentUsers.add(created);
+      writeUsersLocked(currentUsers);
+      return copyUser(created);
+    }
+  }
+
   public User updateById(long id, UnaryOperator<User> updater) {
     if (id == 0L) {
       throw new IllegalArgumentException("Reserved unknown user cannot be edited");

@@ -55,6 +55,24 @@ public class AdminUsersController {
     return withBadRequest(() -> AdminUserResponse.from(usersService.createUser(create)));
   }
 
+  @PostMapping("/observed")
+  public AdminUserResponse createUserFromObservedIdentity(
+      @RequestBody UsersJsonUserDetailsService.AdminObservedUserCreate create,
+      @AuthenticationPrincipal BotUserPrincipal principal) {
+    try {
+      return AdminUserResponse.from(usersService.createUserFromObservedIdentity(
+          create,
+          principal == null ? null : principal.getUsername()));
+    } catch (UserChatIdentityAlreadyLinkedException e) {
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "Chat identity is already linked to " + e.getOwnerUsername(),
+          e);
+    } catch (IllegalArgumentException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+    }
+  }
+
   @PutMapping("/{id}")
   public AdminUserResponse updateUser(
       @PathVariable long id,
