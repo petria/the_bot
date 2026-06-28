@@ -1,6 +1,6 @@
 import { Alert, Button, Code, Group, Modal, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus } from 'lucide-react';
+import { KeyRound, UserPlus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   createAdminUserFromObservedIdentity,
@@ -90,6 +90,12 @@ export function CreateObservedUserModal({
     mutation.mutate(request);
   };
 
+  const handleGeneratePassword = () => {
+    setValidationError(null);
+    mutation.reset();
+    setPassword(generateSafePassword());
+  };
+
   const error = mutation.error;
 
   return (
@@ -112,16 +118,26 @@ export function CreateObservedUserModal({
             setUsername(event.currentTarget.value);
           }}
         />
-        <PasswordInput
-          label="Initial password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => {
-            setValidationError(null);
-            mutation.reset();
-            setPassword(event.currentTarget.value);
-          }}
-        />
+        <Group align="flex-end" gap="sm" wrap="nowrap">
+          <PasswordInput
+            label="Initial password"
+            autoComplete="new-password"
+            value={password}
+            style={{ flex: 1 }}
+            onChange={(event) => {
+              setValidationError(null);
+              mutation.reset();
+              setPassword(event.currentTarget.value);
+            }}
+          />
+          <Button
+            variant="default"
+            leftSection={<KeyRound size={16} />}
+            onClick={handleGeneratePassword}
+          >
+            Generate
+          </Button>
+        </Group>
         <TextInput
           label="Name"
           value={name}
@@ -211,4 +227,36 @@ function channelKey(echoToAlias: string) {
 
 function firstNonBlank(...values: Array<string | null | undefined>) {
   return values.find((value) => value !== null && value !== undefined && value.trim() !== '')?.trim() ?? '';
+}
+
+function generateSafePassword() {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%*-_=+?';
+  const all = upper + lower + digits + symbols;
+  return shuffle([
+    pick(upper),
+    pick(lower),
+    pick(digits),
+    pick(symbols),
+    ...Array.from({ length: 16 }, () => pick(all)),
+  ]).join('');
+}
+
+function pick(chars: string) {
+  const values = new Uint32Array(1);
+  window.crypto.getRandomValues(values);
+  return chars[values[0] % chars.length];
+}
+
+function shuffle(chars: string[]) {
+  const result = [...chars];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const values = new Uint32Array(1);
+    window.crypto.getRandomValues(values);
+    const swapIndex = values[0] % (index + 1);
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
 }
