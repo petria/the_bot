@@ -290,7 +290,9 @@ public class HermesSettingsService {
       case "openai" -> firstNonBlank(
           configService.getConfigValue("hermes.profiles.openai.api-key", "HERMES_CHAT_API_KEY", ""),
           configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", ""));
-      case "local" -> configService.getConfigValue("hermes.profiles.local.api-key", "HERMES_AI_COMMAND_API_KEY", "");
+      case "local" -> firstNonBlank(
+          configService.getConfigValue("hermes.profiles.local.api-key", "HERMES_LOCAL_API_KEY", ""),
+          configService.getConfigValue("hermes.profiles.local.api-key", "HERMES_AI_COMMAND_API_KEY", ""));
       default -> "";
     };
   }
