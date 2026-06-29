@@ -405,11 +405,14 @@ public class HermesSettingsService {
   }
 
   private String localBackendBaseUrl(String routeId) {
-    String configured = configService.getConfigValueWithoutOverride("hermes.local.base-url", "HERMES_LOCAL_BASE_URL", "");
-    String legacy = AI_COMMAND_PROFILE_ID.equals(routeId)
+    String routeSpecific = AI_COMMAND_PROFILE_ID.equals(routeId)
         ? configService.getConfigValueWithoutOverride(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", "")
         : "";
-    return normalizeApiRoot(firstNonBlank(configured, legacy, "http://ubuntu-server.local:8644"));
+    String configured = configService.getConfigValueWithoutOverride("hermes.local.base-url", "HERMES_LOCAL_BASE_URL", "");
+    String legacy = AI_COMMAND_PROFILE_ID.equals(routeId)
+        ? configService.getConfigValueWithoutOverride("hermes.ai-command.base-url", "HERMES_AI_COMMAND_BASE_URL", "")
+        : "";
+    return normalizeApiRoot(firstNonBlank(routeSpecific, configured, legacy, "http://ubuntu-server.local:8644"));
   }
 
   private String gatewayModelAlias(String backendId) {

@@ -381,6 +381,7 @@ class HermesAiServiceTest {
 
     HermesSettingsService service = new HermesSettingsService(
         new TestConfigService(Map.of(
+            "hermes.local.base-url", "http://ubuntu-server.local:8664",
             "hermes.ai-command.base-url", "http://ubuntu-server.local:8665",
             "hermes.profiles.local.api-key", "local-secret",
             "hermes.ai-command.timeout-seconds", "31"
