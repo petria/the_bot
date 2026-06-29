@@ -5,6 +5,9 @@ import java.util.List;
 
 public class AiCommandDefinition {
 
+  public static final String TOOL_RESULT_MODE_FORMATTED_TEXT = "FORMATTED_TEXT";
+  public static final String TOOL_RESULT_MODE_MODEL_FINAL = "MODEL_FINAL";
+
   private String name;
   private boolean enabled;
   private String description;
@@ -14,6 +17,7 @@ public class AiCommandDefinition {
   private String instructions;
   private List<String> allowedTools = new ArrayList<>();
   private int maxToolIterations;
+  private String toolResultMode;
 
   public AiCommandDefinition() {
   }
@@ -28,6 +32,30 @@ public class AiCommandDefinition {
       String instructions,
       List<String> allowedTools,
       int maxToolIterations) {
+    this(
+        name,
+        enabled,
+        description,
+        usage,
+        aliases,
+        requiredPermission,
+        instructions,
+        allowedTools,
+        maxToolIterations,
+        null);
+  }
+
+  public AiCommandDefinition(
+      String name,
+      boolean enabled,
+      String description,
+      String usage,
+      List<String> aliases,
+      String requiredPermission,
+      String instructions,
+      List<String> allowedTools,
+      int maxToolIterations,
+      String toolResultMode) {
     this.name = name;
     this.enabled = enabled;
     this.description = description;
@@ -37,6 +65,7 @@ public class AiCommandDefinition {
     this.instructions = instructions;
     this.allowedTools = allowedTools == null ? new ArrayList<>() : new ArrayList<>(allowedTools);
     this.maxToolIterations = maxToolIterations;
+    this.toolResultMode = toolResultMode;
   }
 
   public String getName() {
@@ -109,5 +138,13 @@ public class AiCommandDefinition {
 
   public void setMaxToolIterations(int maxToolIterations) {
     this.maxToolIterations = maxToolIterations;
+  }
+
+  public String getToolResultMode() {
+    return toolResultMode;
+  }
+
+  public void setToolResultMode(String toolResultMode) {
+    this.toolResultMode = toolResultMode;
   }
 }

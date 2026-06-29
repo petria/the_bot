@@ -8,6 +8,7 @@ import {
   Loader,
   MultiSelect,
   NumberInput,
+  Select,
   Stack,
   Switch,
   Text,
@@ -28,6 +29,10 @@ import {
 import { getCommands } from '../api/commands';
 
 const ADMIN_ONLY_PERMISSION = 'commands.admin';
+const TOOL_RESULT_MODES = [
+  { value: 'FORMATTED_TEXT', label: 'Formatted text' },
+  { value: 'MODEL_FINAL', label: 'Model final' },
+];
 
 export function AdminAiCommandsPage() {
   const queryClient = useQueryClient();
@@ -48,6 +53,7 @@ export function AdminAiCommandsPage() {
           ...command,
           aliases: command.aliases || [],
           allowedTools: command.allowedTools || [],
+          toolResultMode: command.toolResultMode || 'FORMATTED_TEXT',
         })),
       });
     }
@@ -86,6 +92,7 @@ export function AdminAiCommandsPage() {
           instructions: '',
           allowedTools: [],
           maxToolIterations: 3,
+          toolResultMode: 'FORMATTED_TEXT',
         },
       ],
     }));
@@ -160,6 +167,13 @@ export function AdminAiCommandsPage() {
                   max={10}
                   value={command.maxToolIterations || 3}
                   onChange={(value) => updateCommand(index, { maxToolIterations: Number(value) || 3 })}
+                />
+                <Select
+                  label="Tool result output"
+                  data={TOOL_RESULT_MODES}
+                  value={command.toolResultMode || 'FORMATTED_TEXT'}
+                  onChange={(value) => updateCommand(index, { toolResultMode: value || 'FORMATTED_TEXT' })}
+                  allowDeselect={false}
                 />
               </Group>
 

@@ -78,6 +78,9 @@ public class HermesAiCommandService {
       List<String> allowedTools = command.getAllowedTools() == null ? List.of() : command.getAllowedTools();
       String input = buildInitialInput(request, command, argumentsText, sessionKey, allowedTools);
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
+      if (usesModelFinalToolResult(command)) {
+        maxIterations = Math.max(2, maxIterations);
+      }
 
       for (int i = 0; i < maxIterations; i++) {
         String responseText = createModelResponse(client, settings, sessionKey, instructions, input);
@@ -101,13 +104,14 @@ public class HermesAiCommandService {
         }
 
         String toolResult = toolRegistry.execute(modelResponse.toolName(), modelResponse.arguments(), request);
-        String formattedText = extractFormattedText(toolResult);
-        if (!formattedText.isBlank()) {
-          processReply(request, formattedText);
-          return;
+        if (returnsFormattedTextDirectly(command)) {
+          String formattedText = extractFormattedText(toolResult);
+          if (!formattedText.isBlank()) {
+            processReply(request, formattedText);
+            return;
+          }
         }
-        input = "Tool result for " + modelResponse.toolName() + ":\n" + toolResult
-            + "\nReturn next response as JSON only.";
+        input = buildToolResultInput(command, argumentsText, modelResponse.toolName(), toolResult);
       }
 
       processReply(request, "AI command stopped before producing a final answer.");
@@ -284,6 +288,39 @@ public class HermesAiCommandService {
       List<String> allowedTools) {
     return promptContextService.buildAiCommandInput(request, sessionKey, command.getName(), argumentsText, allowedTools)
         + "\nReturn JSON only.";
+  }
+
+  boolean returnsFormattedTextDirectly(AiCommandDefinition command) {
+    return !usesModelFinalToolResult(command);
+  }
+
+  boolean usesModelFinalToolResult(AiCommandDefinition command) {
+    return command != null
+        && AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL.equalsIgnoreCase(command.getToolResultMode());
+  }
+
+  String buildToolResultInput(
+      AiCommandDefinition command,
+      String argumentsText,
+      String toolName,
+      String toolResult) {
+    return """
+        Original command: !%s
+        Original user arguments:
+        %s
+
+        Tool result for %s:
+        %s
+
+        Use the tool result above to answer the original request.
+        Return JSON only using {"type":"final","answer":"text to send back to chat"}.
+        Do not return tool JSON.
+        Do not mention internal tool names.
+        """.formatted(
+        command == null ? "" : command.getName(),
+        argumentsText == null ? "" : argumentsText,
+        toolName == null ? "" : toolName,
+        toolResult == null ? "" : toolResult);
   }
 
   AiCommandModelResponse parseModelResponse(String text) throws Exception {

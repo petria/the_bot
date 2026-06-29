@@ -23,6 +23,31 @@ public class AiCommandJsonStore {
   public static final String AI_COMMANDS_FILE = "ai-commands.json";
   public static final int DEFAULT_MAX_TOOL_ITERATIONS = 3;
 
+  private static final String DEFAULT_WEATHER_INSTRUCTIONS = """
+      Interpret the user's arguments as a weather location.
+      Use weather.current before answering.
+      If the user gives multiple locations, call weather.current with locations array.
+      If the user asks to compare cities, use weather.compare with locations array.
+      weather.current arguments:
+      - location: one place name
+      - locations: array of place names
+      - feelsLike: true when the user asks for feels-like temperature
+      - astronomy: true when the user asks for sun/moon details
+      - verbose: true when the user asks for a detailed place name or verbose output
+      weather.compare arguments:
+      - locations: array of at least two place names
+      Examples:
+      - {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
+      - {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
+      - {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
+      - {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
+      - {"type":"tool","tool":"weather.compare","arguments":{"locations":["Helsinki","Turku"]}}
+      Use the tool data to answer in one concise natural sentence.
+      Vary wording naturally.
+      Include location, temperature, condition, and any requested extras.
+      Keep the answer suitable for IRC, Discord, Telegram, and WhatsApp.
+      """;
+
   private final Path aiCommandsFile;
   private final JsonMapper jsonMapper;
 
@@ -137,30 +162,10 @@ public class AiCommandJsonStore {
         "!weather <location[, location2, ...]>",
         List.of("saa", "sää", "foreca", "keli"),
         null,
-        """
-            Interpret the user's arguments as a weather location.
-            Use weather.current before answering.
-            If the user gives multiple locations, call weather.current with locations array.
-            If the user asks to compare cities, use weather.compare with locations array.
-            weather.current arguments:
-            - location: one place name
-            - locations: array of place names
-            - feelsLike: true when the user asks for feels-like temperature
-            - astronomy: true when the user asks for sun/moon details
-            - verbose: true when the user asks for a detailed place name or verbose output
-            weather.compare arguments:
-            - locations: array of at least two place names
-            Examples:
-            - {"type":"tool","tool":"weather.current","arguments":{"location":"Helsinki"}}
-            - {"type":"tool","tool":"weather.current","arguments":{"location":"Turku","feelsLike":true}}
-            - {"type":"tool","tool":"weather.current","arguments":{"location":"Oulu","astronomy":true,"verbose":true}}
-            - {"type":"tool","tool":"weather.current","arguments":{"locations":["Helsinki","Turku"],"feelsLike":true}}
-            - {"type":"tool","tool":"weather.compare","arguments":{"locations":["Helsinki","Turku"]}}
-            When weather.current returns formattedText, return that value exactly as the final answer.
-            Do not reformat, translate, summarize, or add extra text.
-            """,
+        DEFAULT_WEATHER_INSTRUCTIONS,
         List.of("weather.current", "weather.compare"),
-        DEFAULT_MAX_TOOL_ITERATIONS);
+        DEFAULT_MAX_TOOL_ITERATIONS,
+        AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL);
     return new AiCommandConfig(List.of(weather));
   }
 
@@ -184,6 +189,7 @@ public class AiCommandJsonStore {
     int maxIterations = command.getMaxToolIterations() <= 0
         ? DEFAULT_MAX_TOOL_ITERATIONS
         : Math.min(command.getMaxToolIterations(), 10);
+    String toolResultMode = normalizeToolResultMode(name, command.getToolResultMode());
     return new AiCommandDefinition(
         name,
         command.isEnabled(),
@@ -191,9 +197,24 @@ public class AiCommandJsonStore {
         normalizeUsage(name, command.getUsage()),
         aliases,
         normalizePermission(command.getRequiredPermission()),
-        normalizeInstructions(name, tools, command.getInstructions()),
+        normalizeInstructions(name, tools, toolResultMode, command.getInstructions()),
         tools,
-        maxIterations);
+        maxIterations,
+        toolResultMode);
+  }
+
+  private String normalizeToolResultMode(String name, String mode) {
+    String cleaned = clean(mode);
+    if (cleaned == null || cleaned.isBlank()) {
+      return "weather".equals(name)
+          ? AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL
+          : AiCommandDefinition.TOOL_RESULT_MODE_FORMATTED_TEXT;
+    }
+    String normalized = cleaned.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+    if (AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL.equals(normalized)) {
+      return AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL;
+    }
+    return AiCommandDefinition.TOOL_RESULT_MODE_FORMATTED_TEXT;
   }
 
   private String normalizePermission(String permission) {
@@ -216,8 +237,13 @@ public class AiCommandJsonStore {
     return cleaned;
   }
 
-  private String normalizeInstructions(String name, List<String> tools, String instructions) {
+  private String normalizeInstructions(String name, List<String> tools, String toolResultMode, String instructions) {
     String cleaned = clean(instructions);
+    if ("weather".equals(name)
+        && AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL.equals(toolResultMode)
+        && (cleaned == null || isLegacyExactWeatherInstructions(cleaned))) {
+      return DEFAULT_WEATHER_INSTRUCTIONS;
+    }
     if ("weather".equals(name)
         && tools.contains("weather.current")
         && (cleaned == null || !cleaned.toLowerCase(Locale.ROOT).contains("multiple locations"))) {
@@ -227,6 +253,13 @@ public class AiCommandJsonStore {
           + "If the user asks to compare cities, use weather.compare with locations array.";
     }
     return cleaned;
+  }
+
+  private boolean isLegacyExactWeatherInstructions(String instructions) {
+    String normalized = instructions.toLowerCase(Locale.ROOT);
+    return normalized.contains("return that value exactly")
+        || normalized.contains("do not reformat")
+        || normalized.contains("return formattedtext exactly");
   }
 
   private static String clean(String value) {
