@@ -36,13 +36,15 @@ class AiCommandJsonStoreTest {
     assertThat(weather.getAliases()).contains("!saa", "!sää", "!foreca", "!keli");
     assertThat(weather.getRequiredPermission()).isNull();
     assertThat(weather.getAllowedTools()).containsExactly("weather.current", "weather.compare");
+    assertThat(weather.getToolResultMode()).isEqualTo(AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL);
     assertThat(weather.getInstructions())
         .contains("weather.current arguments:")
         .contains("feelsLike: true when the user asks for feels-like temperature")
         .contains("astronomy: true when the user asks for sun/moon details")
         .contains("verbose: true when the user asks for a detailed place name or verbose output")
         .contains("weather.compare arguments:")
-        .contains("compare cities");
+        .contains("Use the tool data to answer in one concise natural sentence")
+        .doesNotContain("return that value exactly");
   }
 
   @Test
@@ -71,6 +73,37 @@ class AiCommandJsonStoreTest {
     assertThat(command.getInstructions()).isEqualTo("Return pong");
     assertThat(command.getAllowedTools()).containsExactly("users.search");
     assertThat(command.getMaxToolIterations()).isEqualTo(AiCommandJsonStore.DEFAULT_MAX_TOOL_ITERATIONS);
+    assertThat(command.getToolResultMode()).isEqualTo(AiCommandDefinition.TOOL_RESULT_MODE_FORMATTED_TEXT);
+  }
+
+  @Test
+  void migratesLegacyWeatherCommandToModelFinalOutput() {
+    Path file = tempDir.resolve(AiCommandJsonStore.AI_COMMANDS_FILE);
+    AiCommandJsonStore store = new AiCommandJsonStore(file, jsonMapper);
+    AiCommandDefinition weather = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather",
+        "!weather <location>",
+        List.of(),
+        null,
+        """
+            Interpret the user's arguments as a weather location.
+            Use weather.current before answering.
+            When weather.current returns formattedText, return that value exactly as the final answer.
+            Do not reformat, translate, summarize, or add extra text.
+            """,
+        List.of("weather.current"),
+        3);
+
+    AiCommandConfig saved = store.save(new AiCommandConfig(List.of(weather)));
+
+    AiCommandDefinition command = saved.getCommands().getFirst();
+    assertThat(command.getToolResultMode()).isEqualTo(AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL);
+    assertThat(command.getInstructions())
+        .contains("Use the tool data to answer in one concise natural sentence")
+        .doesNotContain("return that value exactly")
+        .doesNotContain("Do not reformat");
   }
 
   @Test

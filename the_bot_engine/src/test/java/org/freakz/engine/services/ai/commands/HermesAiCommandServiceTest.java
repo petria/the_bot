@@ -1,6 +1,7 @@
 package org.freakz.engine.services.ai.commands;
 
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.notifications.AiStructuredResponseAlertService;
@@ -202,6 +203,71 @@ class HermesAiCommandServiceTest {
     assertThat(formattedText).isEqualTo("""
         Turku: 21:40, 12.4°C
         Oulu: 21:40, 8.1°C""");
+  }
+
+  @Test
+  void returnsFormattedTextDirectlyByDefault() {
+    HermesAiCommandService service = newService();
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of(),
+        null,
+        "Use weather.current before answering.",
+        List.of("weather.current"),
+        3,
+        AiCommandDefinition.TOOL_RESULT_MODE_FORMATTED_TEXT);
+
+    assertThat(service.returnsFormattedTextDirectly(command)).isTrue();
+  }
+
+  @Test
+  void skipsFormattedTextShortcutForModelFinalMode() {
+    HermesAiCommandService service = newService();
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of(),
+        null,
+        "Use weather.current before answering.",
+        List.of("weather.current"),
+        3,
+        AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL);
+
+    assertThat(service.returnsFormattedTextDirectly(command)).isFalse();
+  }
+
+  @Test
+  void buildsToolResultInputForModelFinalResponse() {
+    HermesAiCommandService service = newService();
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of(),
+        null,
+        "Use weather.current before answering.",
+        List.of("weather.current"),
+        3,
+        AiCommandDefinition.TOOL_RESULT_MODE_MODEL_FINAL);
+
+    String input = service.buildToolResultInput(
+        command,
+        "turku",
+        "weather.current",
+        "{\"tool\":\"weather.current\",\"formattedText\":\"Turku: 21:40, 12.4°C\"}");
+
+    assertThat(input)
+        .contains("Original command: !weather")
+        .contains("turku")
+        .contains("\"formattedText\":\"Turku: 21:40, 12.4°C\"")
+        .contains("{\"type\":\"final\",\"answer\":\"text to send back to chat\"}")
+        .contains("Do not return tool JSON");
   }
 
   @Test

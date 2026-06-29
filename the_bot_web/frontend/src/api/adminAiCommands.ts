@@ -10,6 +10,7 @@ export type AiCommandDefinition = {
   instructions: string | null;
   allowedTools: string[];
   maxToolIterations: number;
+  toolResultMode: string | null;
 };
 
 export type AiCommandConfig = {
