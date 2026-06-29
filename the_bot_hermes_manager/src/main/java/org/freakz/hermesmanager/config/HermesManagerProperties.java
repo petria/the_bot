@@ -19,27 +19,6 @@ public record HermesManagerProperties(
     String localCredentialKey,
     Integer localValidationTimeoutSeconds) {
 
-  public HermesManagerProperties(
-      Path dataDir,
-      String containerName,
-      List<String> profiles,
-      String profilePorts,
-      String defaultBaseUrl,
-      String defaultModel,
-      String token,
-      String localCredentialKey) {
-    this(
-        dataDir,
-        containerName,
-        profiles,
-        profilePorts,
-        defaultBaseUrl,
-        defaultModel,
-        token,
-        localCredentialKey,
-        null);
-  }
-
   public int resolvedLocalValidationTimeoutSeconds() {
     return localValidationTimeoutSeconds == null || localValidationTimeoutSeconds <= 0
         ? 180

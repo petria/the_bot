@@ -362,7 +362,8 @@ class HermesFallbackServiceTest {
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
-        "");
+        "",
+        null);
   }
 
   private HermesManagerProperties propertiesWithKey() {
@@ -374,7 +375,8 @@ class HermesFallbackServiceTest {
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
-        Base64.getEncoder().encodeToString(new byte[32]));
+        Base64.getEncoder().encodeToString(new byte[32]),
+        null);
   }
 
   private LocalLlmClient localClient() {
