@@ -32,6 +32,7 @@ export function AdminSystemPage() {
   const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
   const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
   const [overrideConfirmation, setOverrideConfirmation] = useState<'enable' | 'disable' | null>(null);
+  const [applyFailed, setApplyFailed] = useState(false);
   const fallback = backendConfig?.fallback || null;
   const globalOverride = backendConfig?.globalOverride || null;
   const overrideEnabled = Boolean(globalOverride?.enabled);
@@ -49,8 +50,14 @@ export function AdminSystemPage() {
   const updateBackendsMutation = useMutation({
     mutationFn: (config: HermesBackendConfigResponse) => updateHermesBackendConfig(config),
     onSuccess: (response) => {
+      setApplyFailed(false);
       queryClient.setQueryData(['admin-system-hermes-backends'], response);
       setBackendConfig(response);
+      queryClient.invalidateQueries({ queryKey: ['system-status'] });
+    },
+    onError: () => {
+      setApplyFailed(true);
+      queryClient.invalidateQueries({ queryKey: ['admin-system-hermes-backends'] });
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
     },
   });
@@ -104,6 +111,11 @@ export function AdminSystemPage() {
       {hermesBackendQuery.isError ? <SettingsError error={hermesBackendQuery.error} /> : null}
       {updateBackendsMutation.isError ? <SettingsError error={updateBackendsMutation.error} /> : null}
       {fallbackModelsMutation.isError ? <SettingsError error={fallbackModelsMutation.error} /> : null}
+      {applyFailed ? (
+        <Alert color="yellow" variant="light" icon={<AlertCircle size={18} />}>
+          Route changes were not applied. The values shown here are refreshed from the saved Hermes manager state.
+        </Alert>
+      ) : null}
 
       {backendConfig ? (
         <Stack gap="md">
@@ -515,6 +527,7 @@ export function AdminSystemPage() {
   );
 
   function updateProfile(profileId: string, patch: Partial<HermesProfile>) {
+    setApplyFailed(false);
     setBackendConfig((current) => current == null ? current : {
       ...current,
       profiles: current.profiles.map((profile) => profile.id === profileId ? { ...profile, ...patch } : profile),
@@ -522,6 +535,7 @@ export function AdminSystemPage() {
   }
 
   function updateFallback(patch: Partial<NonNullable<HermesBackendConfigResponse['fallback']>>) {
+    setApplyFailed(false);
     setBackendConfig((current) => current == null ? current : {
       ...current,
       fallback: {

@@ -16,7 +16,35 @@ public record HermesManagerProperties(
     String defaultBaseUrl,
     String defaultModel,
     String token,
-    String localCredentialKey) {
+    String localCredentialKey,
+    Integer localValidationTimeoutSeconds) {
+
+  public HermesManagerProperties(
+      Path dataDir,
+      String containerName,
+      List<String> profiles,
+      String profilePorts,
+      String defaultBaseUrl,
+      String defaultModel,
+      String token,
+      String localCredentialKey) {
+    this(
+        dataDir,
+        containerName,
+        profiles,
+        profilePorts,
+        defaultBaseUrl,
+        defaultModel,
+        token,
+        localCredentialKey,
+        null);
+  }
+
+  public int resolvedLocalValidationTimeoutSeconds() {
+    return localValidationTimeoutSeconds == null || localValidationTimeoutSeconds <= 0
+        ? 180
+        : localValidationTimeoutSeconds;
+  }
 
   public Map<String, Integer> ports() {
     return List.of(profilePorts.split(",")).stream()

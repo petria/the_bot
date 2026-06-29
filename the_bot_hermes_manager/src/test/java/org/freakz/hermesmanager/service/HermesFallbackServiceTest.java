@@ -1,6 +1,7 @@
 package org.freakz.hermesmanager.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -200,6 +201,47 @@ class HermesFallbackServiceTest {
     assertThat(response.models()).contains("openai/gpt-5.5", "gpt-5.5");
     assertThat(response.items()).allMatch(item -> Boolean.TRUE.equals(item.toolCapable()));
     verify(localLlmClient, never()).discover(eq("openai"), any(), any());
+  }
+
+  @Test
+  void localProfileValidationFailureDoesNotOverwriteSavedBackendConfig() throws Exception {
+    createProfiles();
+    RestTemplate restTemplate = mock(RestTemplate.class);
+    when(restTemplate.getForEntity(anyString(), eq(String.class)))
+        .thenReturn(ResponseEntity.ok("{\"status\":\"ok\"}"));
+    LocalLlmClient localLlmClient = localClient();
+    org.mockito.Mockito.doThrow(new HermesValidationException(
+        "Local LLM tool-call validation failed",
+        "provider endpoint=http://ollama.local:11434/v1/chat/completions, model=qwen3.5:27b, error=Read timed out",
+        null))
+        .when(localLlmClient)
+        .validateToolCall(any(), eq("qwen3.5:27b"), any());
+    HermesFallbackService service = new HermesFallbackService(
+        properties(),
+        mock(HermesGatewayService.class),
+        restTemplate,
+        localLlmClient,
+        new LocalCredentialCipher(properties()));
+    service.run(new DefaultApplicationArguments());
+
+    assertThatThrownBy(() -> service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        List.of(
+            localProfile("chat", "ollama", "http://ollama.local:11434/v1", "qwen3.5:27b", null),
+            profile("coder", false),
+            profile("ai-command", true)),
+        new HermesFallbackUpdateRequest("http://ollama.local:11434/v1", "qwen3.5:27b", false, 65536))))
+        .isInstanceOf(HermesValidationException.class)
+        .hasMessageContaining("profile chat")
+        .satisfies(error -> assertThat(((HermesValidationException) error).getDetail())
+            .contains("profile=chat", "provider=ollama", "model=qwen3.5:27b", "Read timed out"));
+
+    assertThat(service.getBackendConfig().profiles().stream()
+        .filter(profile -> "chat".equals(profile.id()))
+        .findFirst()
+        .orElseThrow()
+        .provider()).isEqualTo("openai");
+    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml")))
+        .contains("provider: \"openai-codex\"", "default: \"gpt-5.5\"");
   }
 
   @Test

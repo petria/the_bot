@@ -13,6 +13,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.web.client.RestClientException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -63,7 +64,7 @@ public class LocalLlmClient {
         "messages", List.of(Map.of("role", "user", "content", "Reply with OK.")),
         "max_tokens", 8,
         "stream", false);
-    Map<?, ?> response = postChat(baseUrl, request, apiKey);
+    Map<?, ?> response = postChat(baseUrl, request, apiKey, "chat completion validation", model);
     if (response == null || !response.containsKey("choices")) {
       throw new IllegalArgumentException("Selected local model did not return a chat completion");
     }
@@ -79,18 +80,26 @@ public class LocalLlmClient {
             "parameters", Map.of("type", "object", "properties", Map.of())))),
         "tool_choice", "required",
         "stream", false);
-    Map<?, ?> response = postChat(baseUrl, request, apiKey);
+    Map<?, ?> response = postChat(baseUrl, request, apiKey, "tool-call validation", model);
     if (response == null || !response.toString().contains("tool_calls")) {
       throw new IllegalArgumentException("Selected local model did not produce a tool call");
     }
   }
 
-  private Map<?, ?> postChat(URI baseUrl, Map<String, Object> request, String apiKey) {
-    return restTemplate.exchange(
-        endpoint(baseUrl, "chat/completions"),
-        HttpMethod.POST,
-        entity(request, apiKey),
-        Map.class).getBody();
+  private Map<?, ?> postChat(URI baseUrl, Map<String, Object> request, String apiKey, String validationType, String model) {
+    URI endpoint = endpoint(baseUrl, "chat/completions");
+    try {
+      return restTemplate.exchange(
+          endpoint,
+          HttpMethod.POST,
+          entity(request, apiKey),
+          Map.class).getBody();
+    } catch (RestClientException e) {
+      throw new HermesValidationException(
+          "Local LLM " + validationType + " failed",
+          "provider endpoint=" + endpoint + ", model=" + model + ", error=" + e.getMessage(),
+          e);
+    }
   }
 
   private HttpEntity<?> entity(Object body, String apiKey) {

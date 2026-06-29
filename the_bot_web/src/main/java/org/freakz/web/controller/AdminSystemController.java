@@ -14,6 +14,7 @@ import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientResponseException;
 
 @RestController
 @RequestMapping("/api/web/admin/system")
@@ -127,6 +129,17 @@ public class AdminSystemController {
   public ErrorResponse badRequest(RuntimeException e) {
     Throwable cause = e.getCause();
     return new ErrorResponse(e.getMessage(), cause == null ? null : cause.getMessage());
+  }
+
+  @ExceptionHandler(RestClientResponseException.class)
+  public ResponseEntity<String> upstreamRestError(RestClientResponseException e) {
+    String body = e.getResponseBodyAsString();
+    if (body == null || body.isBlank()) {
+      body = "{\"message\":\"Upstream service request failed\"}";
+    }
+    return ResponseEntity.status(e.getStatusCode())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(body);
   }
 
   public record ErrorResponse(String message, String detail) {

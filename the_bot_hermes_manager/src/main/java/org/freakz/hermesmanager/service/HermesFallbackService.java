@@ -219,14 +219,7 @@ public class HermesFallbackService implements ApplicationRunner {
     try {
       for (StoredProfile profile : config.profiles()) {
         if (LocalLlmClient.isLocal(profile.provider())) {
-          URI baseUrl = validatedBaseUrl(profile.baseUrl());
-          String apiKey = decryptCredential(profile.encryptedApiKey());
-          localLlmClient.discover(profile.provider(), baseUrl, apiKey);
-          if (requiresTools(profile.id())) {
-            localLlmClient.validateToolCall(baseUrl, profile.model(), apiKey);
-          } else {
-            localLlmClient.validateChat(baseUrl, profile.model(), apiKey);
-          }
+          validateLocalProfile(profile);
         }
       }
       if (fallback.enabled() || override.enabled()) {
@@ -252,10 +245,45 @@ public class HermesFallbackService implements ApplicationRunner {
       writeBackendConfig(config);
       writeFallbackConfig(fallback);
       return backendResponse(config, fallback, updateRuntimeState(config, fallback));
+    } catch (HermesValidationException e) {
+      throw e;
     } catch (Exception e) {
       throw new IllegalStateException("Could not apply Hermes backend configuration: " + e.getMessage(), e);
     } finally {
       updateLock.unlock();
+    }
+  }
+
+  private void validateLocalProfile(StoredProfile profile) {
+    URI baseUrl = validatedBaseUrl(profile.baseUrl());
+    String apiKey = decryptCredential(profile.encryptedApiKey());
+    try {
+      localLlmClient.discover(profile.provider(), baseUrl, apiKey);
+      if (requiresTools(profile.id())) {
+        localLlmClient.validateToolCall(baseUrl, profile.model(), apiKey);
+      } else {
+        localLlmClient.validateChat(baseUrl, profile.model(), apiKey);
+      }
+    } catch (HermesValidationException e) {
+      throw new HermesValidationException(
+          "Hermes profile " + profile.id() + " local LLM validation failed",
+          "profile=" + profile.id()
+              + ", provider=" + profile.provider()
+              + ", baseUrl=" + trimTrailingSlash(profile.baseUrl())
+              + ", model=" + profile.model()
+              + ", validation=" + (requiresTools(profile.id()) ? "tool-call" : "chat")
+              + ", detail=" + e.getDetail(),
+          e);
+    } catch (Exception e) {
+      throw new HermesValidationException(
+          "Hermes profile " + profile.id() + " local LLM validation failed",
+          "profile=" + profile.id()
+              + ", provider=" + profile.provider()
+              + ", baseUrl=" + trimTrailingSlash(profile.baseUrl())
+              + ", model=" + profile.model()
+              + ", validation=" + (requiresTools(profile.id()) ? "tool-call" : "chat")
+              + ", error=" + e.getMessage(),
+          e);
     }
   }
 
