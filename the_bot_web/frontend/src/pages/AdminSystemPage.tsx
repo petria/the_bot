@@ -13,6 +13,7 @@ import {
 } from '../api/adminSystem';
 
 const PROFILE_ORDER = ['chat', 'coder', 'ai-command'] as const;
+const HIDDEN_PROFILE_IDS = new Set(['coder']);
 const LOCAL_RUNNER_OPTIONS = [
   { value: 'ollama', label: 'Ollama' },
   { value: 'lmstudio', label: 'LM Studio' },
@@ -40,8 +41,9 @@ export function AdminSystemPage() {
       return;
     }
     setBackendConfig(hermesBackendQuery.data);
-    const firstLocal = hermesBackendQuery.data.profiles.find((profile) => isLocalRunner(profile.provider));
-    setModelProfileId(firstLocal?.id || hermesBackendQuery.data.profiles[0]?.id || '');
+    const visibleProfiles = hermesBackendQuery.data.profiles.filter(isProfileVisible);
+    const firstLocal = visibleProfiles.find((profile) => isLocalRunner(profile.provider));
+    setModelProfileId(firstLocal?.id || visibleProfiles[0]?.id || '');
   }, [hermesBackendQuery.data]);
 
   const updateBackendsMutation = useMutation({
@@ -68,7 +70,7 @@ export function AdminSystemPage() {
     },
   });
 
-  const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId) || null;
+  const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId && isProfileVisible(profile)) || null;
   const selectedDiscoveredModel = fallbackModelItems.find((model) => model.id === selectedModelProfile?.model) || null;
   const discoveredModelOptions = useMemo(
     () => fallbackModelItems.map((model) => ({
@@ -80,6 +82,10 @@ export function AdminSystemPage() {
   const orderedProfiles = useMemo(
     () => (backendConfig?.profiles || []).slice().sort((left, right) => PROFILE_ORDER.indexOf(left.id as never) - PROFILE_ORDER.indexOf(right.id as never)),
     [backendConfig?.profiles]
+  );
+  const visibleProfiles = useMemo(
+    () => orderedProfiles.filter(isProfileVisible),
+    [orderedProfiles]
   );
   const hasBackendChanges = Boolean(
     backendConfig && JSON.stringify(backendConfig) !== JSON.stringify(hermesBackendQuery.data)
@@ -107,7 +113,7 @@ export function AdminSystemPage() {
                 <div>
                   <Text fw={700}>Emergency local override</Text>
                   <Text size="sm" c="dimmed">
-                    Forces chat, coder, and AI-command routes through the configured local fallback backend.
+                    Forces all configured Hermes routes through the configured local fallback backend.
                   </Text>
                 </div>
                 <Badge color={overrideEnabled ? 'red' : 'gray'}>
@@ -259,13 +265,13 @@ export function AdminSystemPage() {
                   <Text fw={700}>Hermes Profiles</Text>
                   <Text size="sm" c="dimmed">Each logical Hermes profile chooses its provider directly.</Text>
                 </div>
-                <Badge color={backendConfig.profiles.every((profile) => profile.healthy !== false) ? 'green' : 'yellow'}>
-                  {backendConfig.profiles.length} profiles
+                <Badge color={visibleProfiles.every((profile) => profile.healthy !== false) ? 'green' : 'yellow'}>
+                  {visibleProfiles.length} profiles
                 </Badge>
               </Group>
 
             <Stack gap="sm">
-              {orderedProfiles.map((profile) => (
+              {visibleProfiles.map((profile) => (
                 <Card key={profile.id} withBorder radius="sm">
                   <Stack gap="sm">
                     <Group justify="space-between" align="flex-start" gap="sm">
@@ -399,7 +405,7 @@ export function AdminSystemPage() {
                 label="Model discovery profile"
                 value={modelProfileId}
                 disabled={overrideEnabled}
-                data={orderedProfiles
+                data={visibleProfiles
                   .filter((profile) => isLocalRunner(profile.provider))
                   .map((profile) => ({ value: profile.id, label: profile.label }))}
                 onChange={(value) => {
@@ -580,6 +586,10 @@ function CredentialFields({
 
 function isLocalRunner(provider: string | null | undefined) {
   return provider === 'ollama' || provider === 'lmstudio' || provider === 'vllm';
+}
+
+function isProfileVisible(profile: HermesProfile) {
+  return !HIDDEN_PROFILE_IDS.has(profile.id);
 }
 
 function defaultRunnerUrl(provider: string) {
