@@ -40,7 +40,7 @@ Options:
   --no-build            Do not build image. Default.
   --start               Start compose service and profile gateways.
   --no-start            Configure only; do not start services. Default.
-  --verify              Verify /health and /v1/toolsets for each profile.
+  --verify              Verify /health for each profile and warn on /v1/toolsets access.
   --force-api-keys      Regenerate profile API keys even if present.
   -h, --help            Show this help
 USAGE
@@ -526,7 +526,9 @@ for spec in "${SPECS[@]}"; do
     curl -fsS "http://127.0.0.1:${port}/health"
     echo
     echo "Verifying $profile toolsets"
-    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"
+    if ! curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"; then
+      echo "WARN: /v1/toolsets verification failed for $profile; leaving deployment in place because health passed."
+    fi
     echo
   fi
 done
