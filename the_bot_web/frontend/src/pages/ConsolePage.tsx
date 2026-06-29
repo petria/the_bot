@@ -14,6 +14,7 @@ import { AlertTriangle, CornerDownLeft, Terminal, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { executeConsoleCommand, getConsoleEventStreamUrl, type ConsoleEvent } from '../api/console';
+import { getMe } from '../api/me';
 
 type ConsoleLine = {
   id: number;
@@ -95,6 +96,7 @@ export function ConsolePage() {
       }
       setStreamConnected(false);
       setStreamError('Console stream disconnected; reconnecting...');
+      void getMe().catch(() => undefined);
     };
     return () => {
       closed = true;

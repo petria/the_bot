@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
+import { consumeAuthReturnTarget, handleAuthenticationRequired } from './auth/session';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminAiCommandsPage } from './pages/AdminAiCommandsPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
@@ -73,9 +74,21 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     if (authenticationRequired) {
-      window.location.replace('/login');
+      handleAuthenticationRequired();
     }
   }, [authenticationRequired]);
+
+  useEffect(() => {
+    if (!meQuery.data) {
+      return;
+    }
+
+    const returnTarget = consumeAuthReturnTarget();
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+    if (returnTarget && returnTarget !== currentPath) {
+      navigate(returnTarget, { replace: true });
+    }
+  }, [location.hash, location.pathname, location.search, meQuery.data, navigate]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
