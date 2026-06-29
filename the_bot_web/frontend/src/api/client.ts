@@ -1,3 +1,5 @@
+import { handleAuthenticationRequired } from '../auth/session';
+
 export async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path, {
     headers: {
@@ -6,20 +8,13 @@ export async function getJson<T>(path: string): Promise<T> {
     credentials: 'same-origin',
   });
 
-  if (response.redirected || response.url.includes('/login')) {
-    throw new ApiError('Authentication required', response.status, true);
-  }
+  assertAuthenticatedResponse(response);
 
   if (!response.ok) {
     throw await apiErrorFromResponse(response);
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    throw new ApiError('Expected JSON response', response.status, true);
-  }
-
-  return response.json() as Promise<T>;
+  return jsonResponse<T>(response);
 }
 
 export async function putJson<T>(path: string, body: unknown): Promise<T> {
@@ -38,6 +33,8 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
     response = await request(true);
   }
 
+  assertAuthenticatedResponse(response);
+
   if (!response.ok) {
     throw await apiErrorFromResponse(response);
   }
@@ -46,7 +43,7 @@ export async function putJson<T>(path: string, body: unknown): Promise<T> {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return jsonResponse<T>(response);
 }
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -66,15 +63,13 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
     response = await request(true);
   }
 
-  if (response.redirected || response.url.includes('/login')) {
-    throw new ApiError('Authentication required', response.status, true);
-  }
+  assertAuthenticatedResponse(response);
 
   if (!response.ok) {
     throw await apiErrorFromResponse(response);
   }
 
-  return response.json() as Promise<T>;
+  return jsonResponse<T>(response);
 }
 
 export async function deleteJson<T>(path: string): Promise<T> {
@@ -92,15 +87,13 @@ export async function deleteJson<T>(path: string): Promise<T> {
     response = await request(true);
   }
 
-  if (response.redirected || response.url.includes('/login')) {
-    throw new ApiError('Authentication required', response.status, true);
-  }
+  assertAuthenticatedResponse(response);
 
   if (!response.ok) {
     throw await apiErrorFromResponse(response);
   }
 
-  return response.json() as Promise<T>;
+  return jsonResponse<T>(response);
 }
 
 export async function postForm(path: string, form: URLSearchParams = new URLSearchParams()): Promise<Response> {
@@ -120,11 +113,33 @@ export async function postForm(path: string, form: URLSearchParams = new URLSear
     response = await request(true);
   }
 
+  assertAuthenticatedResponse(response);
+
   if (!response.ok && response.status !== 0 && response.status !== 302) {
     throw await apiErrorFromResponse(response);
   }
 
   return response;
+}
+
+function assertAuthenticatedResponse(response: Response) {
+  if (response.status === 401 || response.redirected || response.url.includes('/login')) {
+    handleAuthenticationRequired();
+    throw new ApiError('Authentication required', response.status, true);
+  }
+}
+
+async function jsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (contentType.includes('text/html')) {
+      handleAuthenticationRequired();
+      throw new ApiError('Authentication required', response.status, true);
+    }
+    throw new ApiError('Expected JSON response', response.status);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 async function csrfHeader(refresh = false): Promise<Record<string, string>> {
@@ -154,6 +169,10 @@ function readCookie(name: string): string | null {
 }
 
 async function apiErrorFromResponse(response: Response): Promise<ApiError> {
+  if (response.status === 401) {
+    handleAuthenticationRequired();
+  }
+
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     try {

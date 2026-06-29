@@ -26,6 +26,7 @@ import {
   type LiveChannelEvent,
   type LiveChannelUser,
 } from '../api/liveChannels';
+import { getMe } from '../api/me';
 
 type OpenChannel = {
   echoToAlias: string;
@@ -292,6 +293,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
       }
       setStreamConnected(false);
       setStreamError('Live stream disconnected; reconnecting...');
+      void getMe().catch(() => undefined);
     };
     return () => {
       closed = true;
