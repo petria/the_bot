@@ -62,6 +62,10 @@ public class HermesAiCommandService {
   @Async
   public void ask(EngineRequest request, AiCommandDefinition command, String argumentsText) {
     try {
+      if (!settingsService.aiEnabled()) {
+        processReply(request, "AI not available");
+        return;
+      }
       HermesSettings settings = settingsService.resolveAiCommandSettings();
       if (!settings.configured()) {
         processReply(request, "Hermes is not configured.");

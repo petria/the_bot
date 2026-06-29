@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,17 +15,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.freakz.common.model.engine.system.HermesBackend;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.HermesBackendUpdate;
 import org.freakz.common.model.engine.system.HermesFallbackModel;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesGlobalOverrideSettings;
-import org.freakz.common.model.engine.system.HermesGlobalOverrideUpdate;
 import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesProfile;
+import org.freakz.common.model.engine.system.HermesRoute;
+import org.freakz.common.model.engine.system.HermesRouteUpdate;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,16 +44,16 @@ import tools.jackson.dataformat.yaml.YAMLMapper;
 @Service
 public class HermesFallbackService implements ApplicationRunner {
 
-  private static final String SETTINGS_FILE = "the_bot_fallback.json";
-  private static final String BACKEND_SETTINGS_FILE = "the_bot_hermes_backends.json";
-  private static final String RUNTIME_STATE_FILE = "the_bot_hermes_runtime.json";
-  private static final String OPENAI_PROVIDER = "openai";
-  private static final String OLLAMA_PROVIDER = "ollama";
-  private static final String CHAT_COMPLETIONS_API_MODE = "chat-completions";
-  private static final String RESPONSES_API_MODE = "responses";
+  private static final Logger log = LoggerFactory.getLogger(HermesFallbackService.class);
+  private static final String CONFIG_FILE = "the_bot_hermes_backends.json";
+  private static final String LEGACY_FALLBACK_FILE = "the_bot_fallback.json";
+  private static final String OPENAI = "openai";
+  private static final String LOCAL = "local";
+  private static final String MODE_ENABLED = "enabled";
+  private static final String MODE_OFF = "off";
+  private static final String RESPONSES = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int MIN_CONTEXT_WINDOW = 65536;
-  private static final Logger log = LoggerFactory.getLogger(HermesFallbackService.class);
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
@@ -79,68 +81,76 @@ public class HermesFallbackService implements ApplicationRunner {
 
   @Override
   public void run(ApplicationArguments args) {
-    if (!Files.exists(settingsPath())) {
-      try {
-        writeFallbackConfig(defaultFallbackConfig());
-      } catch (IOException e) {
-        log.error("Could not initialize Hermes fallback settings: {}", e.getMessage());
-      }
-    }
-    if (!Files.exists(backendSettingsPath())) {
-      try {
-        writeBackendConfig(defaultBackendConfig());
-      } catch (IOException e) {
-        log.error("Could not initialize Hermes backend configuration: {}", e.getMessage());
-      }
-    }
     try {
-      applyHermesConfiguration(readBackendConfig(), readFallbackConfig());
+      StoredConfig config = readConfig();
+      applyHermesConfiguration(config);
+      writeConfig(config);
     } catch (Exception e) {
-      log.warn("Could not reconcile Hermes profile configuration during startup: {}", e.getMessage());
+      log.warn("Could not reconcile Hermes backend configuration during startup: {}", e.getMessage());
     }
   }
 
   public HermesFallbackSettingsResponse getSettings() {
-    StoredBackendConfig config = readBackendConfig();
-    StoredFallbackConfig fallback = readFallbackConfig();
-    return fallbackResponse(fallback, config, updateRuntimeState(config, fallback));
+    StoredConfig config = readConfig();
+    StoredBackend local = backendById(config, LOCAL);
+    BackendHealth health = backendHealth(local);
+    return new HermesFallbackSettingsResponse(
+        false,
+        local.provider(),
+        local.baseUrl(),
+        local.model(),
+        config.routes().stream()
+            .map(route -> new HermesFallbackProfileStatus(
+                route.id(),
+                route.backendId().toUpperCase() + "_ROUTE",
+                health.healthy(),
+                openAiCredentialAvailable(),
+                null,
+                health.detail(),
+                route.backendId(),
+                null,
+                null,
+                null,
+                null))
+            .toList(),
+        local.contextWindow(),
+        health.healthy(),
+        health.toolCapable(),
+        "Compatibility view; fallback routing has been removed",
+        local.lastValidatedAt(),
+        local.validationStatus(),
+        hasCredential(local.encryptedApiKey()));
   }
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
-    String provider = normalizeLocalProvider(request == null ? null : request.provider());
-    URI baseUrl = validatedBaseUrl(request == null ? null : request.baseUrl());
-    String model = requireValue(request == null ? null : request.model(), "model");
-    boolean enabled = request != null && Boolean.TRUE.equals(request.enabled());
-    StoredFallbackConfig current = readFallbackConfig();
-    String encryptedApiKey = updatedCredential(
-        current.encryptedApiKey(),
-        request == null ? null : request.apiKey(),
-        request != null && Boolean.TRUE.equals(request.clearApiKey()));
-    String apiKey = decryptCredential(encryptedApiKey);
-    localLlmClient.validateToolCall(baseUrl, model, apiKey);
-    StoredBackendConfig config = readBackendConfig();
-    if (config.globalOverride().enabled()) {
-      localLlmClient.validateChat(baseUrl, model, apiKey);
-    }
-
-    StoredFallbackConfig saved = new StoredFallbackConfig(
-        provider,
-        trimTrailingSlash(baseUrl.toString()),
-        model,
-        enabled,
-        request == null ? null : request.contextWindow(),
-        Instant.now().toString(),
-        "VALID",
-        true,
-        LocalLlmClient.displayName(provider) + " fallback validated successfully",
-        encryptedApiKey);
+    StoredConfig config = readConfig();
+    StoredBackend current = backendById(config, LOCAL);
+    StoredBackend updated = new StoredBackend(
+        LOCAL,
+        "Local LLM backend",
+        normalizeLocalProvider(firstNonBlank(request == null ? null : request.provider(), current.provider())),
+        trimTrailingSlash(firstNonBlank(request == null ? null : request.baseUrl(), current.baseUrl())),
+        firstNonBlank(request == null ? null : request.model(), current.model()),
+        firstNonBlank(current.apiMode(), RESPONSES),
+        current.timeoutSeconds(),
+        normalizeContextWindow(request == null || request.contextWindow() == null ? current.contextWindow() : request.contextWindow()),
+        current.lastValidatedAt(),
+        current.validationStatus(),
+        current.toolCapable(),
+        current.detail(),
+        updatedCredential(
+            current.encryptedApiKey(),
+            request == null ? null : request.apiKey(),
+            request != null && Boolean.TRUE.equals(request.clearApiKey())));
+    StoredConfig saved = new StoredConfig(config.systemMode(), replaceBackend(config.backends(), updated), config.routes());
     updateLock.lock();
     try {
-      applyHermesConfiguration(config, saved);
-      writeFallbackConfig(saved);
-      return fallbackResponse(saved, config, updateRuntimeState(config, saved));
+      validateBackend(updated);
+      applyHermesConfiguration(saved);
+      writeConfig(saved);
+      return getSettings();
     } catch (Exception e) {
-      throw new IllegalStateException("Could not apply Hermes fallback configuration: " + e.getMessage(), e);
+      throw new IllegalStateException("Could not update local Hermes backend: " + e.getMessage(), e);
     } finally {
       updateLock.unlock();
     }
@@ -148,103 +158,38 @@ public class HermesFallbackService implements ApplicationRunner {
 
   public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
     String provider = normalizeProvider(request == null ? null : request.provider());
-    if (OPENAI_PROVIDER.equals(provider)) {
-      return openAiModels(request);
+    if (OPENAI.equals(provider)) {
+      StoredBackend openAi = backendById(readConfig(), OPENAI);
+      List<String> models = List.of(openAi.model(), "gpt-5.5").stream()
+          .filter(value -> value != null && !value.isBlank())
+          .distinct()
+          .sorted(String.CASE_INSENSITIVE_ORDER)
+          .toList();
+      return new HermesFallbackModelsResponse(models, models.stream()
+          .map(model -> new HermesFallbackModel(
+              model,
+              "tool-capable",
+              "OpenAI/Codex model",
+              true,
+              "Configured OpenAI backend model"))
+          .toList());
     }
     URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
     return localLlmClient.discover(provider, uri, discoveryApiKey(request));
   }
 
-  private HermesFallbackModelsResponse openAiModels(HermesModelDiscoveryRequest request) {
-    StoredBackendConfig config = readBackendConfig();
-    List<String> models = new ArrayList<>();
-    StoredProfile selected = profileById(config, request == null ? null : blankToNull(request.profileId()));
-    if (selected != null && OPENAI_PROVIDER.equals(selected.provider())) {
-      models.add(selected.model());
-    }
-    for (StoredProfile profile : config.profiles()) {
-      if (OPENAI_PROVIDER.equals(profile.provider())) {
-        models.add(profile.model());
-      }
-    }
-    models.add("gpt-5.5");
-    List<String> sorted = models.stream()
-        .filter(model -> model != null && !model.isBlank())
-        .distinct()
-        .sorted(String.CASE_INSENSITIVE_ORDER)
-        .toList();
-    List<HermesFallbackModel> items = sorted.stream()
-        .map(model -> new HermesFallbackModel(
-            model,
-            "tool-capable",
-            "OpenAI/Codex profile model",
-            true,
-            "Managed by Hermes profile credentials"))
-        .toList();
-    return new HermesFallbackModelsResponse(sorted, items);
-  }
-
-  private String discoveryApiKey(HermesModelDiscoveryRequest request) {
-    if (request == null) {
-      return null;
-    }
-    String supplied = blankToNull(request.apiKey());
-    if (supplied != null) {
-      return supplied;
-    }
-    String profileId = blankToNull(request.profileId());
-    if ("__fallback__".equals(profileId)) {
-      return decryptCredential(readFallbackConfig().encryptedApiKey());
-    }
-    StoredProfile profile = profileById(readBackendConfig(), profileId);
-    return profile == null ? null : decryptCredential(profile.encryptedApiKey());
-  }
-
   public HermesBackendConfigResponse getBackendConfig() {
-    StoredBackendConfig config = readBackendConfig();
-    StoredFallbackConfig fallback = readFallbackConfig();
-    return backendResponse(config, fallback, updateRuntimeState(config, fallback));
+    return response(readConfig());
   }
 
   public HermesBackendConfigResponse updateBackendConfig(HermesBackendConfigUpdateRequest request) {
-    StoredBackendConfig config = sanitizeBackendConfig(request);
-    validateProfiles(config);
-    StoredFallbackConfig fallback = sanitizeFallbackConfig(request == null ? null : request.fallback());
-    StoredGlobalOverride override = sanitizeGlobalOverride(
-        request == null ? null : request.globalOverride(),
-        request == null ? null : request.requestedBy(),
-        config.globalOverride());
-
+    StoredConfig config = sanitizeConfig(request);
     updateLock.lock();
     try {
-      for (StoredProfile profile : config.profiles()) {
-        if (LocalLlmClient.isLocal(profile.provider())) {
-          validateLocalProfile(profile);
-        }
-      }
-      if (fallback.enabled() || override.enabled()) {
-        URI baseUrl = validatedBaseUrl(fallback.baseUrl());
-        String apiKey = decryptCredential(fallback.encryptedApiKey());
-        localLlmClient.discover(fallback.provider(), baseUrl, apiKey);
-        if (override.enabled()) {
-          localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
-          localLlmClient.validateChat(baseUrl, fallback.model(), apiKey);
-          override = override.validated(Instant.now(), LocalLlmClient.displayName(fallback.provider())
-              + " global override validated successfully");
-        } else {
-          localLlmClient.validateToolCall(baseUrl, fallback.model(), apiKey);
-        }
-        fallback = fallback.validated(
-            Instant.now(),
-            true,
-            "VALID",
-            LocalLlmClient.displayName(fallback.provider()) + " fallback validated successfully");
-      }
-      config = new StoredBackendConfig(config.profiles(), override);
-      applyHermesConfiguration(config, fallback);
-      writeBackendConfig(config);
-      writeFallbackConfig(fallback);
-      return backendResponse(config, fallback, updateRuntimeState(config, fallback));
+      validateConfig(config);
+      applyHermesConfiguration(config);
+      writeConfig(config);
+      return response(config);
     } catch (HermesValidationException e) {
       throw e;
     } catch (Exception e) {
@@ -254,235 +199,234 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private void validateLocalProfile(StoredProfile profile) {
-    URI baseUrl = validatedBaseUrl(profile.baseUrl());
-    String apiKey = decryptCredential(profile.encryptedApiKey());
+  private HermesBackendConfigResponse response(StoredConfig config) {
+    List<HermesBackend> backends = config.backends().stream()
+        .map(backend -> {
+          BackendHealth health = backendHealth(backend);
+          return new HermesBackend(
+              backend.id(),
+              backend.label(),
+              backend.provider(),
+              backend.baseUrl(),
+              backend.model(),
+              backend.apiMode(),
+              backend.timeoutSeconds(),
+              backend.contextWindow(),
+              health.healthy(),
+              health.toolCapable(),
+              firstNonBlank(health.detail(), backend.detail()),
+              backend.lastValidatedAt(),
+              backend.validationStatus(),
+              hasCredential(backend.encryptedApiKey()));
+        })
+        .toList();
+    List<HermesRoute> routes = config.routes().stream()
+        .map(route -> routeResponse(route, backendById(config, route.backendId())))
+        .toList();
+    return new HermesBackendConfigResponse(
+        config.systemMode(),
+        backends,
+        routes,
+        legacyProfiles(routes),
+        null,
+        new HermesGlobalOverrideSettings(
+            MODE_OFF.equals(config.systemMode()),
+            null,
+            null,
+            null,
+            null,
+            null,
+            MODE_OFF.equals(config.systemMode()) ? "AI system is off" : "AI system uses configured routes",
+            null,
+            null,
+            MODE_OFF.equals(config.systemMode()) ? "OFF" : "ENABLED",
+            null));
+  }
+
+  private HermesRoute routeResponse(StoredRoute route, StoredBackend backend) {
+    BackendHealth health = backendHealth(backend);
+    return new HermesRoute(
+        route.id(),
+        route.label(),
+        route.backendId(),
+        backend.provider(),
+        backend.baseUrl(),
+        backend.model(),
+        backend.apiMode(),
+        backend.timeoutSeconds(),
+        backend.contextWindow(),
+        health.healthy(),
+        health.toolCapable(),
+        firstNonBlank(health.detail(), "Route uses " + backend.label()));
+  }
+
+  private List<HermesProfile> legacyProfiles(List<HermesRoute> routes) {
+    return routes.stream()
+        .map(route -> new HermesProfile(
+            route.id(),
+            route.label(),
+            route.provider(),
+            route.baseUrl(),
+            route.model(),
+            route.apiMode(),
+            route.timeoutSeconds(),
+            route.healthy(),
+            route.toolCapable(),
+            route.detail(),
+            route.contextWindow(),
+            false,
+            route.provider(),
+            route.healthy(),
+            route.healthy(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false))
+        .toList();
+  }
+
+  private StoredConfig sanitizeConfig(HermesBackendConfigUpdateRequest request) {
+    StoredConfig current = readConfig();
+    if (request == null) {
+      return current;
+    }
+    String mode = normalizeMode(firstNonBlank(request.systemMode(), current.systemMode()));
+    List<StoredBackend> backends = request.backends() == null || request.backends().isEmpty()
+        ? current.backends()
+        : request.backends().stream()
+            .map(update -> sanitizeBackend(update, backendById(current, update.id())))
+            .toList();
+    List<StoredRoute> routes = request.routes() == null || request.routes().isEmpty()
+        ? current.routes()
+        : request.routes().stream()
+            .map(update -> new StoredRoute(
+                requireValue(update.id(), "route id"),
+                firstNonBlank(update.label(), defaultRouteLabel(update.id())),
+                normalizeBackendId(update.backendId())))
+            .toList();
+    return normalizeConfig(new StoredConfig(mode, backends, routes));
+  }
+
+  private StoredBackend sanitizeBackend(HermesBackendUpdate update, StoredBackend existing) {
+    if (update == null) {
+      throw new IllegalArgumentException("backend is required");
+    }
+    String id = normalizeBackendId(update.id());
+    StoredBackend defaults = existing == null ? defaultBackend(id) : existing;
+    String provider = OPENAI.equals(id)
+        ? OPENAI
+        : normalizeLocalProvider(firstNonBlank(update.provider(), defaults.provider()));
+    return new StoredBackend(
+        id,
+        firstNonBlank(update.label(), defaults.label()),
+        provider,
+        OPENAI.equals(id) ? null : trimTrailingSlash(firstNonBlank(update.baseUrl(), defaults.baseUrl())),
+        requireValue(firstNonBlank(update.model(), defaults.model()), id + " model"),
+        firstNonBlank(update.apiMode(), defaults.apiMode(), RESPONSES),
+        update.timeoutSeconds() == null ? defaults.timeoutSeconds() : update.timeoutSeconds(),
+        OPENAI.equals(id)
+            ? null
+            : normalizeContextWindow(update.contextWindow() == null ? defaults.contextWindow() : update.contextWindow()),
+        defaults.lastValidatedAt(),
+        defaults.validationStatus(),
+        defaults.toolCapable(),
+        defaults.detail(),
+        updatedCredential(
+            defaults.encryptedApiKey(),
+            update.apiKey(),
+            Boolean.TRUE.equals(update.clearApiKey())));
+  }
+
+  private void validateConfig(StoredConfig config) {
+    if (!MODE_ENABLED.equals(config.systemMode()) && !MODE_OFF.equals(config.systemMode())) {
+      throw new IllegalArgumentException("systemMode must be enabled or off");
+    }
+    validateBackend(backendById(config, OPENAI));
+    validateBackend(backendById(config, LOCAL));
+    for (StoredRoute route : config.routes()) {
+      backendById(config, route.backendId());
+    }
+  }
+
+  private void validateBackend(StoredBackend backend) {
+    if (backend.timeoutSeconds() == null || backend.timeoutSeconds() <= 0) {
+      throw new IllegalArgumentException("backend " + backend.id() + " timeoutSeconds must be positive");
+    }
+    if (OPENAI.equals(backend.id())) {
+      requireValue(backend.model(), "OpenAI model");
+      return;
+    }
+    URI baseUrl = validatedBaseUrl(backend.baseUrl());
+    requireValue(backend.model(), "local model");
+    validateContextWindow(backend.contextWindow(), "local backend");
+    String apiKey = decryptCredential(backend.encryptedApiKey());
     try {
-      localLlmClient.discover(profile.provider(), baseUrl, apiKey);
-      if (requiresTools(profile.id())) {
-        localLlmClient.validateToolCall(baseUrl, profile.model(), apiKey);
-      } else {
-        localLlmClient.validateChat(baseUrl, profile.model(), apiKey);
-      }
+      localLlmClient.discover(backend.provider(), baseUrl, apiKey);
+      localLlmClient.validateToolCall(baseUrl, backend.model(), apiKey);
+      localLlmClient.validateChat(baseUrl, backend.model(), apiKey);
     } catch (HermesValidationException e) {
       throw new HermesValidationException(
-          "Hermes profile " + profile.id() + " local LLM validation failed",
-          "profile=" + profile.id()
-              + ", provider=" + profile.provider()
-              + ", baseUrl=" + trimTrailingSlash(profile.baseUrl())
-              + ", model=" + profile.model()
-              + ", validation=" + (requiresTools(profile.id()) ? "tool-call" : "chat")
+          "Hermes local backend validation failed",
+          "backend=local, provider=" + backend.provider()
+              + ", baseUrl=" + trimTrailingSlash(backend.baseUrl())
+              + ", model=" + backend.model()
               + ", detail=" + e.getDetail(),
-          e);
-    } catch (Exception e) {
-      throw new HermesValidationException(
-          "Hermes profile " + profile.id() + " local LLM validation failed",
-          "profile=" + profile.id()
-              + ", provider=" + profile.provider()
-              + ", baseUrl=" + trimTrailingSlash(profile.baseUrl())
-              + ", model=" + profile.model()
-              + ", validation=" + (requiresTools(profile.id()) ? "tool-call" : "chat")
-              + ", error=" + e.getMessage(),
           e);
     }
   }
 
-  private HermesFallbackSettingsResponse fallbackResponse(
-      StoredFallbackConfig settings,
-      StoredBackendConfig config,
-      StoredRuntimeState runtimeState) {
-    PassiveLocalHealth fallbackHealth = passiveLocalHealth(settings);
-    List<HermesFallbackProfileStatus> statuses = properties.profiles().stream()
-        .map(profileId -> {
-          CredentialStatus credential = credentialStatus(profileId);
-          StoredProfile profile = profileById(config, profileId);
-          ProfileHealth health = openAiProfileHealth(profileId);
-          RuntimeProfileState runtime = runtimeState.profiles().get(profileId);
-          String activeProvider = runtime == null ? effectiveProvider(profile, settings, credential) : runtime.activeProvider();
-          boolean globalOverride = runtime != null && "GLOBAL_OVERRIDE".equals(runtime.routeMode());
-          boolean fallbackActive = !globalOverride && settings.provider().equals(activeProvider) && profile != null
-              && OPENAI_PROVIDER.equals(profile.provider());
-          return new HermesFallbackProfileStatus(
-              profileId,
-              globalOverride
-                  ? "GLOBAL_OVERRIDE"
-                  : fallbackActive ? activeProvider.toUpperCase() + "_FALLBACK" : activeProvider.toUpperCase() + "_PRIMARY",
-              Boolean.TRUE.equals(health.healthy()),
-              credential.openAiAvailable(),
-              credential.cooldownUntil(),
-              firstNonBlank(credential.detail(), health.detail()),
-              activeProvider,
-              fallbackActive ? credential.detail() : null,
-              runtime == null ? null : runtime.fallbackActivatedAt(),
-              runtime == null ? null : runtime.lastProviderError(),
-              runtime == null ? null : runtime.lastProviderErrorAt());
-        })
-        .toList();
-    return new HermesFallbackSettingsResponse(
-        settings.enabled(),
-        settings.provider(),
-        settings.baseUrl(),
-        settings.model(),
-        statuses,
-        settings.contextWindow(),
-        fallbackHealth.healthy(),
-        settings.toolCapable(),
-        firstNonBlank(fallbackHealth.detail(), settings.validationDetail()),
-        settings.lastValidatedAt(),
-        settings.validationStatus(),
-        hasCredential(settings.encryptedApiKey()));
+  private BackendHealth backendHealth(StoredBackend backend) {
+    if (OPENAI.equals(backend.id())) {
+      CredentialStatus credential = credentialStatus(OPENAI);
+      boolean healthy = openAiProfileHealthy() && credential.openAiAvailable();
+      return new BackendHealth(
+          healthy,
+          true,
+          healthy ? "OpenAI backend available" : firstNonBlank(credential.detail(), "OpenAI backend unavailable"));
+    }
+    try {
+      URI baseUrl = validatedBaseUrl(backend.baseUrl());
+      HermesFallbackModelsResponse models = localLlmClient.discover(
+          backend.provider(),
+          baseUrl,
+          decryptCredential(backend.encryptedApiKey()));
+      Boolean toolCapable = models.items().stream()
+          .filter(model -> backend.model().equals(model.id()))
+          .map(HermesFallbackModel::toolCapable)
+          .findFirst()
+          .orElse(backend.toolCapable());
+      return new BackendHealth(true, toolCapable, LocalLlmClient.displayName(backend.provider()) + " backend reachable");
+    } catch (Exception e) {
+      return new BackendHealth(false, null, LocalLlmClient.displayName(backend.provider()) + " backend check failed");
+    }
   }
 
-  private HermesBackendConfigResponse backendResponse(
-      StoredBackendConfig config,
-      StoredFallbackConfig fallback,
-      StoredRuntimeState runtimeState) {
-    HermesFallbackSettingsResponse fallbackResponse = fallbackResponse(fallback, config, runtimeState);
-    return new HermesBackendConfigResponse(
-        config.profiles().stream()
-            .map(profile -> profileResponse(profile, fallback, config.globalOverride(), runtimeState))
-            .toList(),
-        fallbackResponse,
-        globalOverrideResponse(config.globalOverride(), fallback));
-  }
-
-  private HermesProfile profileResponse(
-      StoredProfile profile,
-      StoredFallbackConfig fallback,
-      StoredGlobalOverride override,
-      StoredRuntimeState runtimeState) {
-    ProfileHealth health = OPENAI_PROVIDER.equals(profile.provider())
-        ? openAiProfileHealth(profile.id())
-        : localProfileHealth(profile);
-    CredentialStatus credential = credentialStatus(profile.id());
-    PassiveLocalHealth fallbackHealth = passiveLocalHealth(fallback, override.enabled());
-    RuntimeProfileState runtime = runtimeState.profiles().get(profile.id());
-    String activeProvider = runtime == null ? effectiveProvider(profile, fallback, credential) : runtime.activeProvider();
-    boolean overrideEnabled = configOverrideEnabled(runtime);
-    boolean primaryHealthy = overrideEnabled
-        ? Boolean.TRUE.equals(fallbackHealth.healthy())
-        : OPENAI_PROVIDER.equals(profile.provider())
-        ? credential.openAiAvailable()
-        : Boolean.TRUE.equals(health.healthy());
-    return new HermesProfile(
-        profile.id(),
-        profile.label(),
-        profile.provider(),
-        profile.baseUrl(),
-        profile.model(),
-        profile.apiMode(),
-        profile.timeoutSeconds(),
-        overrideEnabled ? fallbackHealth.healthy() : health.healthy(),
-        health.toolCapable(),
-        health.detail(),
-        profile.contextWindow(),
-        profile.fallbackAllowed(),
-        activeProvider,
-        overrideEnabled ? fallbackHealth.healthy() : health.healthy(),
-        primaryHealthy,
-        fallbackHealth.healthy(),
-        credential.cooldownUntil(),
-        runtime == null ? null : runtime.fallbackReason(),
-        runtime == null ? null : runtime.fallbackActivatedAt(),
-        runtime == null ? null : runtime.lastProviderError(),
-        runtime == null ? null : runtime.lastProviderErrorAt(),
-        profile.lastValidatedAt(),
-        profile.validationStatus(),
-        hasCredential(profile.encryptedApiKey()));
-  }
-
-  private boolean configOverrideEnabled(RuntimeProfileState runtime) {
-    return runtime != null && "GLOBAL_OVERRIDE".equals(runtime.routeMode());
-  }
-
-  private HermesGlobalOverrideSettings globalOverrideResponse(
-      StoredGlobalOverride override,
-      StoredFallbackConfig fallback) {
-    PassiveLocalHealth health = override.enabled()
-        ? passiveLocalHealth(fallback, true)
-        : new PassiveLocalHealth(null, "Global override disabled");
-    return new HermesGlobalOverrideSettings(
-        override.enabled(),
-        fallback.provider(),
-        fallback.baseUrl(),
-        fallback.model(),
-        fallback.contextWindow(),
-        health.healthy(),
-        firstNonBlank(health.detail(), override.detail()),
-        override.activatedAt(),
-        override.updatedBy(),
-        override.validationStatus(),
-        override.lastValidatedAt());
-  }
-
-  private ProfileHealth openAiProfileHealth(String profileId) {
-    Integer port = properties.ports().get(profileId);
+  private boolean openAiProfileHealthy() {
+    Integer port = properties.ports().get(OPENAI);
     if (port == null) {
-      return new ProfileHealth(false, true, "Hermes profile port is not configured");
+      return false;
     }
     try {
       restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
-      return new ProfileHealth(true, true, "Hermes profile healthy");
+      return true;
     } catch (Exception e) {
-      return new ProfileHealth(false, true, "Hermes profile health check failed");
+      return false;
     }
   }
 
-  private ProfileHealth localProfileHealth(StoredProfile profile) {
-    try {
-      URI baseUrl = validatedBaseUrl(profile.baseUrl());
-      HermesFallbackModelsResponse models = localLlmClient.discover(
-          profile.provider(),
-          baseUrl,
-          decryptCredential(profile.encryptedApiKey()));
-      Boolean toolCapable = models.items().stream()
-          .filter(model -> profile.model().equals(model.id()))
-          .map(HermesFallbackModel::toolCapable)
-          .findFirst()
-          .orElse(profile.toolCapable());
-      return new ProfileHealth(
-          true,
-          toolCapable,
-          LocalLlmClient.displayName(profile.provider()) + " backend reachable");
-    } catch (Exception e) {
-      return new ProfileHealth(
-          false,
-          null,
-          LocalLlmClient.displayName(profile.provider()) + " backend check failed");
-    }
-  }
-
-  private PassiveLocalHealth passiveLocalHealth(StoredFallbackConfig fallback) {
-    return passiveLocalHealth(fallback, false);
-  }
-
-  private PassiveLocalHealth passiveLocalHealth(StoredFallbackConfig fallback, boolean forceEnabled) {
-    if (fallback == null || (!forceEnabled && !fallback.enabled())) {
-      return new PassiveLocalHealth(null, "Local LLM fallback disabled");
-    }
-    try {
-      URI baseUrl = validatedBaseUrl(fallback.baseUrl());
-      HermesFallbackModelsResponse models = localLlmClient.discover(
-          fallback.provider(),
-          baseUrl,
-          decryptCredential(fallback.encryptedApiKey()));
-      if (!models.models().contains(fallback.model())) {
-        return new PassiveLocalHealth(false, "Configured fallback model is not available");
-      }
-      return new PassiveLocalHealth(
-          true,
-          LocalLlmClient.displayName(fallback.provider()) + " fallback reachable");
-    } catch (Exception e) {
-      return new PassiveLocalHealth(
-          false,
-          LocalLlmClient.displayName(fallback.provider()) + " fallback is not reachable");
-    }
+  private boolean openAiCredentialAvailable() {
+    return credentialStatus(OPENAI).openAiAvailable();
   }
 
   private CredentialStatus credentialStatus(String profile) {
     Path authPath = properties.dataDir().resolve("profiles").resolve(profile).resolve("auth.json");
     if (!Files.exists(authPath)) {
-      return new CredentialStatus(false, null, "OpenAI credentials are missing");
+      return new CredentialStatus(false, "OpenAI credentials are missing");
     }
     try {
       Map<String, Object> auth = jsonMapper.readValue(Files.readAllBytes(authPath), new TypeReference<>() {});
@@ -490,384 +434,231 @@ public class HermesFallbackService implements ApplicationRunner {
       if (!(poolValue instanceof Map<?, ?> pool)
           || !(pool.get("openai-codex") instanceof List<?> credentials)
           || credentials.isEmpty()) {
-        return new CredentialStatus(false, null, "OpenAI credential pool is empty");
+        return new CredentialStatus(false, "OpenAI credential pool is empty");
       }
-      Instant now = Instant.now();
-      Instant latestCooldown = null;
-      String latestError = null;
       for (Object value : credentials) {
-        if (!(value instanceof Map<?, ?> credential)) {
-          continue;
-        }
-        Object accessToken = credential.get("access_token");
-        Object refreshToken = credential.get("refresh_token");
-        if ((accessToken == null || accessToken.toString().isBlank())
-            && (refreshToken == null || refreshToken.toString().isBlank())) {
-          latestError = firstNonBlank(
-              stringValue(credential.get("last_error_message")),
-              stringValue(credential.get("last_error_reason")),
-              "OpenAI access token is missing");
-          continue;
-        }
-        Object resetValue = credential.get("last_error_reset_at");
-        if (resetValue == null || resetValue.toString().isBlank()) {
-          String lastStatus = stringValue(credential.get("last_status"));
-          if ("error".equalsIgnoreCase(lastStatus) || "failed".equalsIgnoreCase(lastStatus)) {
-            latestError = firstNonBlank(
-                stringValue(credential.get("last_error_message")),
-                stringValue(credential.get("last_error_reason")),
-                "OpenAI credential is in an error state");
-            continue;
+        if (value instanceof Map<?, ?> credential) {
+          Object accessToken = credential.get("access_token");
+          Object refreshToken = credential.get("refresh_token");
+          if ((accessToken != null && !accessToken.toString().isBlank())
+              || (refreshToken != null && !refreshToken.toString().isBlank())) {
+            return new CredentialStatus(true, "OpenAI credential available");
           }
-          return new CredentialStatus(true, null, "OpenAI credential available");
-        }
-        try {
-          Instant resetAt = Instant.parse(resetValue.toString());
-          if (!resetAt.isAfter(now)) {
-            return new CredentialStatus(true, null, "OpenAI credential available");
-          }
-          if (latestCooldown == null || resetAt.isAfter(latestCooldown)) {
-            latestCooldown = resetAt;
-          }
-        } catch (Exception ignored) {
-          return new CredentialStatus(true, null, "OpenAI credential available");
         }
       }
-      return new CredentialStatus(
-          false,
-          latestCooldown == null ? null : latestCooldown.toString(),
-          firstNonBlank(latestError, latestCooldown == null ? null : "OpenAI quota cooldown active", "OpenAI credential unavailable"));
+      return new CredentialStatus(false, "OpenAI access token is missing");
     } catch (Exception e) {
-      return new CredentialStatus(false, null, "Could not inspect OpenAI credential state");
+      return new CredentialStatus(false, "Could not inspect OpenAI credential state");
     }
   }
 
-  private StoredBackendConfig readBackendConfig() {
-    Path path = backendSettingsPath();
+  private StoredConfig readConfig() {
+    Path path = configPath();
     if (!Files.exists(path)) {
-      return defaultBackendConfig();
+      return defaultConfig();
     }
     try {
       JsonNode root = jsonMapper.readTree(Files.readAllBytes(path));
-      if (root != null && root.has("routes")) {
-        return normalizeBackendConfig(migrateLegacyBackendConfig(root));
+      if (root == null) {
+        return defaultConfig();
       }
-      StoredBackendConfig config = jsonMapper.treeToValue(root, StoredBackendConfig.class);
-      return normalizeBackendConfig(config);
+      if (root.has("backends") && root.has("routes")) {
+        return normalizeConfig(jsonMapper.treeToValue(root, StoredConfig.class));
+      }
+      return migrateLegacyConfig(root);
     } catch (IOException e) {
       throw new IllegalStateException("Could not read " + path, e);
     }
   }
 
-  private StoredFallbackConfig readFallbackConfig() {
-    Path path = settingsPath();
-    if (!Files.exists(path)) {
-      return defaultFallbackConfig();
-    }
-    try {
-      StoredFallbackConfig config = jsonMapper.readValue(Files.readAllBytes(path), StoredFallbackConfig.class);
-      StoredFallbackConfig normalized = config == null
-          ? defaultFallbackConfig()
-          : config.withDefaults(defaultFallbackConfig());
-      return new StoredFallbackConfig(
-          firstNonBlank(normalized.provider(), OLLAMA_PROVIDER),
-          normalized.baseUrl(),
-          normalized.model(),
-          normalized.enabled(),
-          normalizeContextWindow(normalized.contextWindow()),
-          normalized.lastValidatedAt(),
-          normalized.validationStatus(),
-          normalized.toolCapable(),
-          normalized.validationDetail(),
-          normalized.encryptedApiKey());
-    } catch (IOException e) {
-      throw new IllegalStateException("Could not read " + path, e);
-    }
-  }
-
-  private StoredBackendConfig sanitizeBackendConfig(HermesBackendConfigUpdateRequest request) {
-    if (request == null || request.profiles() == null) {
-      throw new IllegalArgumentException("profiles are required");
-    }
-    StoredBackendConfig current = readBackendConfig();
-    return normalizeBackendConfig(new StoredBackendConfig(request.profiles().stream()
-        .map(profile -> {
-          StoredProfile existing = profileById(current, profile.id());
-          String provider = normalizeProvider(profile.provider());
-          return new StoredProfile(
-            requireValue(profile.id(), "profile id"),
-            requireValue(profile.label(), "profile label"),
-            provider,
-            blankToNull(profile.baseUrl()),
-            requireValue(profile.model(), "profile model"),
-            firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
-            profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            LocalLlmClient.isLocal(provider)
-                ? normalizeContextWindow(profile.contextWindow())
-                : profile.contextWindow(),
-            Boolean.TRUE.equals(profile.fallbackAllowed()),
-            existing == null ? null : existing.toolCapable(),
-            existing == null ? null : existing.lastValidatedAt(),
-            existing == null ? null : existing.validationStatus(),
-            updatedCredential(
-                existing == null ? null : existing.encryptedApiKey(),
-                profile.apiKey(),
-                Boolean.TRUE.equals(profile.clearApiKey())));
-        })
-        .toList(), current.globalOverride()));
-  }
-
-  private StoredGlobalOverride sanitizeGlobalOverride(
-      HermesGlobalOverrideUpdate request,
-      String requestedBy,
-      StoredGlobalOverride current) {
-    StoredGlobalOverride existing = current == null ? defaultGlobalOverride() : current;
-    if (request == null || request.enabled() == null || request.enabled() == existing.enabled()) {
-      return existing;
-    }
-    boolean enabled = Boolean.TRUE.equals(request.enabled());
-    return new StoredGlobalOverride(
-        enabled,
-        enabled ? Instant.now().toString() : null,
-        firstNonBlank(requestedBy, "unknown"),
-        enabled ? "PENDING_VALIDATION" : "DISABLED",
-        existing.lastValidatedAt(),
-        enabled ? "Global override awaiting validation" : "Global override disabled");
-  }
-
-  private StoredFallbackConfig sanitizeFallbackConfig(HermesFallbackUpdateRequest request) {
-    StoredFallbackConfig current = readFallbackConfig();
-    if (request == null) {
-      return current;
-    }
-    boolean enabled = Boolean.TRUE.equals(request.enabled());
-    String provider = firstNonBlank(request.provider(), current.provider(), OLLAMA_PROVIDER);
-    provider = normalizeLocalProvider(provider);
-    String baseUrl = trimTrailingSlash(firstNonBlank(request.baseUrl(), current.baseUrl()));
-    String model = firstNonBlank(request.model(), current.model());
-    Integer contextWindow = normalizeContextWindow(
-        request.contextWindow() == null ? current.contextWindow() : request.contextWindow());
-    if (enabled) {
-      validatedBaseUrl(baseUrl);
-      requireValue(model, "fallback model");
-      validateContextWindow(contextWindow, "fallback");
-    }
-    return new StoredFallbackConfig(
-        provider,
-        baseUrl,
-        model,
-        enabled,
-        contextWindow,
-        current.lastValidatedAt(),
-        current.validationStatus(),
-        current.toolCapable(),
-        current.validationDetail(),
-        updatedCredential(
-            current.encryptedApiKey(),
-            request.apiKey(),
-            Boolean.TRUE.equals(request.clearApiKey())));
-  }
-
-  private StoredBackendConfig normalizeBackendConfig(StoredBackendConfig config) {
-    Map<String, StoredProfile> merged = new LinkedHashMap<>();
-    defaultBackendConfig().profiles().forEach(profile -> merged.put(profile.id(), profile));
-    if (config != null && config.profiles() != null) {
-      config.profiles().forEach(profile -> {
-        StoredProfile defaults = merged.get(profile.id());
-        String model = OPENAI_PROVIDER.equals(profile.provider()) && profile.model() != null
-            && profile.model().startsWith("hermes-")
-                ? upstreamModel(profile.id(), defaults == null ? "gpt-5.5" : defaults.model())
-                : profile.model();
-        merged.put(profile.id(), new StoredProfile(
-            profile.id(),
-            firstNonBlank(profile.label(), defaults == null ? profile.id() : defaults.label()),
-            normalizeProvider(firstNonBlank(
-                profile.provider(),
-                defaults == null ? OPENAI_PROVIDER : defaults.provider())),
-            profile.baseUrl(),
-            firstNonBlank(model, defaults == null ? "gpt-5.5" : defaults.model()),
-            firstNonBlank(profile.apiMode(), RESPONSES_API_MODE),
-            profile.timeoutSeconds() == null ? DEFAULT_TIMEOUT_SECONDS : profile.timeoutSeconds(),
-            LocalLlmClient.isLocal(profile.provider())
-                ? normalizeContextWindow(profile.contextWindow())
-                : profile.contextWindow(),
-            profile.fallbackAllowed() == null
-                ? defaults != null && Boolean.TRUE.equals(defaults.fallbackAllowed())
-                : profile.fallbackAllowed(),
-            profile.toolCapable(),
-            profile.lastValidatedAt(),
-            profile.validationStatus(),
-            profile.encryptedApiKey()));
-      });
-    }
-    StoredGlobalOverride override = config == null || config.globalOverride() == null
-        ? defaultGlobalOverride()
-        : config.globalOverride().withDefaults(defaultGlobalOverride());
-    return new StoredBackendConfig(List.copyOf(merged.values()), override);
-  }
-
-  private StoredBackendConfig migrateLegacyBackendConfig(JsonNode root) {
-    Map<String, JsonNode> profileMap = new LinkedHashMap<>();
+  private StoredConfig migrateLegacyConfig(JsonNode root) {
+    Map<String, JsonNode> profiles = new LinkedHashMap<>();
     JsonNode profilesNode = root.path("profiles");
     if (profilesNode.isArray()) {
-      for (JsonNode profileNode : profilesNode) {
-        String id = text(profileNode, "id");
+      for (JsonNode profile : profilesNode) {
+        String id = text(profile, "id");
         if (id != null) {
-          profileMap.put(id, profileNode);
+          profiles.put(id, profile);
         }
       }
     }
-    Map<String, String> routeTargets = new LinkedHashMap<>();
-    JsonNode routesNode = root.path("routes");
-    if (routesNode.isArray()) {
-      for (JsonNode routeNode : routesNode) {
-        String routeId = text(routeNode, "routeId");
-        String backendProfileId = text(routeNode, "backendProfileId");
-        if (routeId != null && backendProfileId != null) {
-          routeTargets.put(routeId, backendProfileId);
-        }
-      }
-    }
-
-    List<StoredProfile> profiles = new ArrayList<>();
-    for (StoredProfile defaults : defaultBackendConfig().profiles()) {
-      String targetId = routeTargets.getOrDefault(defaults.id(), defaults.id());
-      JsonNode targetNode = profileMap.get(targetId);
-      if (targetNode == null) {
-        profiles.add(defaults);
-        continue;
-      }
-      String type = text(targetNode, "type");
-      if ("OPENAI_COMPATIBLE".equalsIgnoreCase(type)) {
-        profiles.add(new StoredProfile(
-            defaults.id(),
-            defaults.label(),
-            OLLAMA_PROVIDER,
-            text(targetNode, "baseUrl"),
-            firstNonBlank(text(targetNode, "model"), properties.defaultModel()),
-            firstNonBlank(text(targetNode, "apiMode"), CHAT_COMPLETIONS_API_MODE),
-            intValue(targetNode, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
-            null,
-            false,
-            null,
-            null,
-            null,
-            null));
-      } else {
-        profiles.add(new StoredProfile(
-            defaults.id(),
-            defaults.label(),
-            OPENAI_PROVIDER,
-            null,
-            firstNonBlank(text(targetNode, "model"), defaults.model()),
-            firstNonBlank(text(targetNode, "apiMode"), defaults.apiMode()),
-            intValue(targetNode, "timeoutSeconds", defaults.timeoutSeconds()),
-            null,
-            true,
-            null,
-            null,
-            null,
-            null));
-      }
-    }
-    return new StoredBackendConfig(profiles, defaultGlobalOverride());
+    JsonNode legacyChat = profiles.get("chat");
+    JsonNode legacyAiCommand = profiles.get("ai-command");
+    JsonNode localSource = firstLocalProfile(legacyChat, legacyAiCommand);
+    StoredBackend openAi = new StoredBackend(
+        OPENAI,
+        "OpenAI backend",
+        OPENAI,
+        null,
+        firstNonBlank(openAiModel(legacyChat), openAiModel(legacyAiCommand), upstreamModel(OPENAI, "gpt-5.5")),
+        firstNonBlank(text(legacyChat, "apiMode"), RESPONSES),
+        intValue(legacyChat, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
+        null,
+        null,
+        null,
+        true,
+        null,
+        null);
+    StoredBackend local = localFromLegacy(localSource);
+    return normalizeConfig(new StoredConfig(
+        MODE_ENABLED,
+        List.of(openAi, local),
+        List.of(
+            new StoredRoute("chat", "Hermes chat", isLocal(legacyChat) ? LOCAL : OPENAI),
+            new StoredRoute("ai-command", "Hermes AI command", isLocal(legacyAiCommand) ? LOCAL : OPENAI))));
   }
 
-  private void validateProfiles(StoredBackendConfig config) {
-    if (config.profiles().isEmpty()) {
-      throw new IllegalArgumentException("Hermes profiles are required");
+  private StoredBackend localFromLegacy(JsonNode source) {
+    LegacyFallback legacyFallback = readLegacyFallback();
+    return new StoredBackend(
+        LOCAL,
+        "Local LLM backend",
+        normalizeLocalProvider(firstNonBlank(text(source, "provider"), legacyFallback.provider(), "ollama")),
+        trimTrailingSlash(firstNonBlank(text(source, "baseUrl"), legacyFallback.baseUrl(), properties.defaultBaseUrl())),
+        firstNonBlank(text(source, "model"), legacyFallback.model(), properties.defaultModel()),
+        firstNonBlank(text(source, "apiMode"), RESPONSES),
+        intValue(source, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
+        normalizeContextWindow(firstNonNull(intValueOrNull(source, "contextWindow"), legacyFallback.contextWindow(), MIN_CONTEXT_WINDOW)),
+        legacyFallback.lastValidatedAt(),
+        legacyFallback.validationStatus(),
+        legacyFallback.toolCapable(),
+        legacyFallback.validationDetail(),
+        legacyFallback.encryptedApiKey());
+  }
+
+  private LegacyFallback readLegacyFallback() {
+    Path path = properties.dataDir().resolve(LEGACY_FALLBACK_FILE);
+    if (!Files.exists(path)) {
+      return new LegacyFallback(null, null, null, null, null, null, null, null, null, null);
     }
-    for (String profileId : List.of("chat", "coder", "ai-command")) {
-      if (profileById(config, profileId) == null) {
-        throw new IllegalArgumentException("Missing Hermes profile: " + profileId);
-      }
-    }
-    for (StoredProfile profile : config.profiles()) {
-      if (profile.timeoutSeconds() == null || profile.timeoutSeconds() <= 0) {
-        throw new IllegalArgumentException("profile " + profile.id() + " timeoutSeconds must be positive");
-      }
-      if (OPENAI_PROVIDER.equals(profile.provider())) {
-        requireValue(profile.model(), "profile model");
-      } else if (LocalLlmClient.isLocal(profile.provider())) {
-        validatedBaseUrl(profile.baseUrl());
-        requireValue(profile.model(), "profile model");
-        validateContextWindow(profile.contextWindow(), "profile " + profile.id());
-      } else {
-        throw new IllegalArgumentException("Unsupported provider: " + profile.provider());
-      }
+    try {
+      return jsonMapper.readValue(Files.readAllBytes(path), LegacyFallback.class);
+    } catch (Exception e) {
+      return new LegacyFallback(null, null, null, null, null, null, null, null, null, null);
     }
   }
 
-  private StoredProfile profileById(StoredBackendConfig config, String id) {
-    if (config == null || config.profiles() == null || id == null) {
+  private JsonNode firstLocalProfile(JsonNode... profiles) {
+    for (JsonNode profile : profiles) {
+      if (isLocal(profile)) {
+        return profile;
+      }
+    }
+    return null;
+  }
+
+  private boolean isLocal(JsonNode profile) {
+    return profile != null && LocalLlmClient.isLocal(text(profile, "provider"));
+  }
+
+  private String openAiModel(JsonNode profile) {
+    if (profile == null || !OPENAI.equals(text(profile, "provider"))) {
       return null;
     }
-    return config.profiles().stream()
-        .filter(profile -> id.equals(profile.id()))
-        .findFirst()
-        .orElse(null);
+    return text(profile, "model");
   }
 
-  private boolean requiresTools(String profileId) {
-    return "chat".equals(profileId) || "ai-command".equals(profileId);
+  private StoredConfig normalizeConfig(StoredConfig config) {
+    Map<String, StoredBackend> backends = new LinkedHashMap<>();
+    backends.put(OPENAI, defaultBackend(OPENAI));
+    backends.put(LOCAL, defaultBackend(LOCAL));
+    if (config != null && config.backends() != null) {
+      for (StoredBackend backend : config.backends()) {
+        String id = normalizeBackendId(backend.id());
+        StoredBackend defaults = backends.get(id);
+        String provider = OPENAI.equals(id) ? OPENAI : normalizeLocalProvider(firstNonBlank(backend.provider(), defaults.provider()));
+        backends.put(id, new StoredBackend(
+            id,
+            firstNonBlank(backend.label(), defaults.label()),
+            provider,
+            OPENAI.equals(id) ? null : firstNonBlank(backend.baseUrl(), defaults.baseUrl()),
+            firstNonBlank(backend.model(), defaults.model()),
+            firstNonBlank(backend.apiMode(), defaults.apiMode(), RESPONSES),
+            backend.timeoutSeconds() == null ? defaults.timeoutSeconds() : backend.timeoutSeconds(),
+            OPENAI.equals(id) ? null : normalizeContextWindow(backend.contextWindow() == null ? defaults.contextWindow() : backend.contextWindow()),
+            backend.lastValidatedAt(),
+            backend.validationStatus(),
+            backend.toolCapable(),
+            backend.detail(),
+            backend.encryptedApiKey()));
+      }
+    }
+    Map<String, StoredRoute> routes = new LinkedHashMap<>();
+    routes.put("chat", new StoredRoute("chat", "Hermes chat", OPENAI));
+    routes.put("ai-command", new StoredRoute("ai-command", "Hermes AI command", OPENAI));
+    if (config != null && config.routes() != null) {
+      for (StoredRoute route : config.routes()) {
+        if ("chat".equals(route.id()) || "ai-command".equals(route.id())) {
+          routes.put(route.id(), new StoredRoute(
+              route.id(),
+              firstNonBlank(route.label(), defaultRouteLabel(route.id())),
+              normalizeBackendId(route.backendId())));
+        }
+      }
+    }
+    return new StoredConfig(
+        normalizeMode(config == null ? null : config.systemMode()),
+        List.copyOf(backends.values()),
+        List.copyOf(routes.values()));
   }
 
-  private StoredBackendConfig defaultBackendConfig() {
-    return new StoredBackendConfig(List.of(
-        new StoredProfile("chat", "Hermes chat", OPENAI_PROVIDER, null, upstreamModel("chat", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
-        new StoredProfile("coder", "Hermes coder", OPENAI_PROVIDER, null, upstreamModel("coder", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null),
-        new StoredProfile("ai-command", "Hermes AI command", OPENAI_PROVIDER, null, upstreamModel("ai-command", "gpt-5.5"), RESPONSES_API_MODE, DEFAULT_TIMEOUT_SECONDS, null, true, null, null, null, null)),
-        defaultGlobalOverride());
+  private StoredConfig defaultConfig() {
+    return new StoredConfig(
+        MODE_ENABLED,
+        List.of(defaultBackend(OPENAI), defaultBackend(LOCAL)),
+        List.of(
+            new StoredRoute("chat", "Hermes chat", OPENAI),
+            new StoredRoute("ai-command", "Hermes AI command", OPENAI)));
   }
 
-  private StoredGlobalOverride defaultGlobalOverride() {
-    return new StoredGlobalOverride(false, null, null, "DISABLED", null, "Global override disabled");
-  }
-
-  private StoredFallbackConfig defaultFallbackConfig() {
-    return new StoredFallbackConfig(
-        OLLAMA_PROVIDER,
+  private StoredBackend defaultBackend(String id) {
+    if (OPENAI.equals(id)) {
+      return new StoredBackend(
+          OPENAI,
+          "OpenAI backend",
+          OPENAI,
+          null,
+          upstreamModel(OPENAI, "gpt-5.5"),
+          RESPONSES,
+          DEFAULT_TIMEOUT_SECONDS,
+          null,
+          null,
+          null,
+          true,
+          null,
+          null);
+    }
+    return new StoredBackend(
+        LOCAL,
+        "Local LLM backend",
+        "ollama",
         properties.defaultBaseUrl(),
         properties.defaultModel(),
-        false,
+        RESPONSES,
+        DEFAULT_TIMEOUT_SECONDS,
         MIN_CONTEXT_WINDOW,
         null,
         "NOT_VALIDATED",
         null,
-        "Fallback has not been validated",
+        "Local backend has not been validated",
         null);
   }
 
-  private Integer normalizeContextWindow(Integer contextWindow) {
-    return contextWindow == null ? MIN_CONTEXT_WINDOW : Math.max(contextWindow, MIN_CONTEXT_WINDOW);
+  private void writeConfig(StoredConfig config) throws IOException {
+    writeAtomically(configPath(), jsonMapper.writeValueAsBytes(normalizeConfig(config)));
   }
 
-  private void validateContextWindow(Integer contextWindow, String owner) {
-    if (contextWindow == null || contextWindow < MIN_CONTEXT_WINDOW) {
-      throw new IllegalArgumentException(
-          owner + " contextWindow must be at least " + MIN_CONTEXT_WINDOW);
-    }
-  }
-
-  private void writeBackendConfig(StoredBackendConfig config) throws IOException {
-    writeAtomically(backendSettingsPath(), jsonMapper.writeValueAsBytes(normalizeBackendConfig(config)));
-  }
-
-  private void writeFallbackConfig(StoredFallbackConfig config) throws IOException {
-    writeAtomically(settingsPath(), jsonMapper.writeValueAsBytes(config));
-  }
-
-  private void applyHermesConfiguration(StoredBackendConfig config, StoredFallbackConfig fallback) throws IOException {
+  private void applyHermesConfiguration(StoredConfig config) throws IOException {
     Map<Path, byte[]> backups = new LinkedHashMap<>();
     List<String> changedProfiles = new ArrayList<>();
     try {
-      for (StoredProfile profile : config.profiles()) {
-        Path path = findProfileConfig(profile.id());
+      for (StoredBackend backend : config.backends()) {
+        Path path = findProfileConfig(backend.id());
         backups.put(path, Files.readAllBytes(path));
-        byte[] updated = updatedProfileYaml(path, profile, fallback, config.globalOverride());
+        byte[] updated = updatedProfileYaml(path, backend);
         if (!java.util.Arrays.equals(backups.get(path), updated)) {
           writeAtomically(path, updated);
-          changedProfiles.add(profile.id());
+          changedProfiles.add(backend.id());
         }
       }
       for (String profile : changedProfiles) {
@@ -880,53 +671,29 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private byte[] updatedProfileYaml(
-      Path path,
-      StoredProfile profile,
-      StoredFallbackConfig fallback,
-      StoredGlobalOverride override) throws IOException {
+  private byte[] updatedProfileYaml(Path path, StoredBackend backend) throws IOException {
     Map<String, Object> yaml = yamlMapper.readValue(Files.readAllBytes(path), new TypeReference<>() {});
     if (yaml == null) {
       yaml = new LinkedHashMap<>();
     }
     Map<String, Object> model = mutableMap(yaml.get("model"));
-    if (override.enabled()) {
-      model.put("default", fallback.model());
-      model.put("provider", "custom");
-      model.put("base_url", trimTrailingSlash(fallback.baseUrl()));
-      putOptionalApiKey(model, fallback.encryptedApiKey());
-      if (fallback.contextWindow() != null) {
-        model.put("context_length", fallback.contextWindow());
-      }
-      yaml.put("fallback_providers", List.of());
-    } else if (LocalLlmClient.isLocal(profile.provider())) {
-      model.put("default", profile.model());
-      model.put("provider", "custom");
-      model.put("base_url", trimTrailingSlash(profile.baseUrl()));
-      putOptionalApiKey(model, profile.encryptedApiKey());
-      if (profile.contextWindow() != null) {
-        model.put("context_length", profile.contextWindow());
-      }
-      yaml.put("fallback_providers", List.of());
-    } else {
-      model.put("default", profile.model());
+    model.put("default", backend.id().equals(OPENAI) ? backend.model() : "hermes-" + backend.id());
+    if (OPENAI.equals(backend.id())) {
       model.put("provider", "openai-codex");
       model.put("base_url", "https://chatgpt.com/backend-api/codex");
-      if (fallback.enabled() && profile.fallbackAllowed()) {
-        Map<String, Object> fallbackProvider = new LinkedHashMap<>();
-        fallbackProvider.put("provider", "custom");
-        fallbackProvider.put("model", fallback.model());
-        fallbackProvider.put("base_url", trimTrailingSlash(fallback.baseUrl()));
-        putOptionalApiKey(fallbackProvider, fallback.encryptedApiKey());
-        if (fallback.contextWindow() != null) {
-          fallbackProvider.put("context_length", fallback.contextWindow());
-        }
-        yaml.put("fallback_providers", List.of(fallbackProvider));
-      } else {
-        yaml.put("fallback_providers", List.of());
+      model.remove("context_length");
+      model.remove("api_key");
+    } else {
+      model.put("provider", "custom");
+      model.put("base_url", trimTrailingSlash(backend.baseUrl()));
+      model.put("default", backend.model());
+      putOptionalApiKey(model, backend.encryptedApiKey());
+      if (backend.contextWindow() != null) {
+        model.put("context_length", backend.contextWindow());
       }
     }
     yaml.put("model", model);
+    yaml.put("fallback_providers", List.of());
     return yamlMapper.writeValueAsBytes(yaml);
   }
 
@@ -1011,154 +778,143 @@ public class HermesFallbackService implements ApplicationRunner {
     return null;
   }
 
-  private String effectiveProvider(
-      StoredProfile profile,
-      StoredFallbackConfig fallback,
-      CredentialStatus credential) {
-    if (profile == null) {
-      return OPENAI_PROVIDER;
-    }
-    if (LocalLlmClient.isLocal(profile.provider())) {
-      return profile.provider();
-    }
-    if (!credential.openAiAvailable() && fallback.enabled() && profile.fallbackAllowed()) {
-      return fallback.provider();
-    }
-    return OPENAI_PROVIDER;
-  }
-
-  private StoredRuntimeState updateRuntimeState(
-      StoredBackendConfig config,
-      StoredFallbackConfig fallback) {
-    StoredRuntimeState previous = readRuntimeState();
-    Map<String, RuntimeProfileState> profiles = new LinkedHashMap<>();
-    Instant now = Instant.now();
-    for (StoredProfile profile : config.profiles()) {
-      CredentialStatus credential = credentialStatus(profile.id());
-      boolean globalOverride = config.globalOverride().enabled();
-      String activeProvider = globalOverride
-          ? fallback.provider()
-          : effectiveProvider(profile, fallback, credential);
-      RuntimeProfileState old = previous.profiles().get(profile.id());
-      boolean enteredFallback = !globalOverride && fallback.provider().equals(activeProvider)
-          && OPENAI_PROVIDER.equals(profile.provider())
-          && (old == null || !fallback.provider().equals(old.activeProvider()));
-      String activatedAt = globalOverride
-          ? config.globalOverride().activatedAt()
-          : enteredFallback
-          ? now.toString()
-          : old == null ? null : old.fallbackActivatedAt();
-      String reason = globalOverride
-          ? "Global local LLM override enabled"
-          : fallback.provider().equals(activeProvider) && OPENAI_PROVIDER.equals(profile.provider())
-          ? credential.detail()
-          : null;
-      String lastError = credential.openAiAvailable()
-          ? old == null ? null : old.lastProviderError()
-          : credential.detail();
-      String lastErrorAt = !credential.openAiAvailable()
-          ? enteredFallback || old == null || old.lastProviderErrorAt() == null
-              ? now.toString()
-              : old.lastProviderErrorAt()
-          : old == null ? null : old.lastProviderErrorAt();
-      profiles.put(profile.id(), new RuntimeProfileState(
-          activeProvider,
-          reason,
-          activatedAt,
-          lastError,
-          lastErrorAt,
-          globalOverride ? "GLOBAL_OVERRIDE" : "NORMAL"));
-    }
-    StoredRuntimeState updated = new StoredRuntimeState(profiles);
-    if (!updated.equals(previous)) {
-      try {
-        writeAtomically(runtimeStatePath(), jsonMapper.writeValueAsBytes(updated));
-      } catch (IOException e) {
-        log.warn("Could not persist Hermes runtime state: {}", e.getMessage());
-      }
-    }
-    return updated;
-  }
-
-  private StoredRuntimeState readRuntimeState() {
-    Path path = runtimeStatePath();
-    if (!Files.exists(path)) {
-      return new StoredRuntimeState(Map.of());
-    }
-    try {
-      StoredRuntimeState state = jsonMapper.readValue(Files.readAllBytes(path), StoredRuntimeState.class);
-      return state == null || state.profiles() == null ? new StoredRuntimeState(Map.of()) : state;
-    } catch (Exception e) {
-      return new StoredRuntimeState(Map.of());
+  private void putOptionalApiKey(Map<String, Object> model, String encryptedApiKey) {
+    String apiKey = decryptCredential(encryptedApiKey);
+    if (apiKey == null || apiKey.isBlank()) {
+      model.remove("api_key");
+    } else {
+      model.put("api_key", apiKey);
     }
   }
 
-  private URI validatedBaseUrl(String value) {
-    String cleaned = requireValue(value, "baseUrl").replaceFirst("/+$", "") + "/";
-    URI uri = URI.create(cleaned);
-    if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
-      throw new IllegalArgumentException("baseUrl must use http or https");
-    }
-    return uri;
-  }
-
-  private String normalizeProvider(String provider) {
-    String normalized = requireValue(provider, "provider").toLowerCase();
-    if (!OPENAI_PROVIDER.equals(normalized) && !LocalLlmClient.isLocal(normalized)) {
-      throw new IllegalArgumentException(
-          "provider must be openai, ollama, lmstudio, or vllm");
-    }
-    return normalized;
-  }
-
-  private String normalizeLocalProvider(String provider) {
-    return LocalLlmClient.normalizeProvider(firstNonBlank(provider, OLLAMA_PROVIDER));
-  }
-
-  private String updatedCredential(String current, String replacement, boolean clear) {
+  private String updatedCredential(String existing, String supplied, boolean clear) {
     if (clear) {
       return null;
     }
-    if (replacement == null || replacement.isBlank()) {
-      return current;
+    if (supplied == null || supplied.isBlank()) {
+      return existing;
     }
-    return credentialCipher.encrypt(replacement.trim());
+    return credentialCipher.encrypt(supplied.trim());
   }
 
   private String decryptCredential(String encrypted) {
-    return encrypted == null || encrypted.isBlank() ? null : credentialCipher.decrypt(encrypted);
+    return credentialCipher.decrypt(encrypted);
   }
 
   private boolean hasCredential(String encrypted) {
-    return encrypted != null && !encrypted.isBlank();
+    String credential = decryptCredential(encrypted);
+    return credential != null && !credential.isBlank();
   }
 
-  private void putOptionalApiKey(Map<String, Object> target, String encrypted) {
-    String apiKey = decryptCredential(encrypted);
-    if (apiKey == null || apiKey.isBlank()) {
-      target.remove("api_key");
-    } else {
-      target.put("api_key", apiKey);
+  private String discoveryApiKey(HermesModelDiscoveryRequest request) {
+    if (request == null) {
+      return null;
+    }
+    String supplied = blankToNull(request.apiKey());
+    if (supplied != null) {
+      return supplied;
+    }
+    String profileId = blankToNull(request.profileId());
+    if (profileId == null) {
+      return null;
+    }
+    StoredConfig config = readConfig();
+    if (OPENAI.equals(profileId) || LOCAL.equals(profileId)) {
+      return decryptCredential(backendById(config, profileId).encryptedApiKey());
+    }
+    StoredRoute route = routeById(config, profileId);
+    return decryptCredential(backendById(config, route.backendId()).encryptedApiKey());
+  }
+
+  private StoredBackend backendById(StoredConfig config, String id) {
+    String normalized = normalizeBackendId(id);
+    return config.backends().stream()
+        .filter(backend -> normalized.equals(backend.id()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Missing Hermes backend: " + normalized));
+  }
+
+  private StoredRoute routeById(StoredConfig config, String id) {
+    return config.routes().stream()
+        .filter(route -> id.equals(route.id()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Missing Hermes route: " + id));
+  }
+
+  private List<StoredBackend> replaceBackend(List<StoredBackend> backends, StoredBackend updated) {
+    return backends.stream()
+        .map(backend -> backend.id().equals(updated.id()) ? updated : backend)
+        .toList();
+  }
+
+  private URI validatedBaseUrl(String value) {
+    String trimmed = requireValue(value, "baseUrl");
+    try {
+      URI uri = URI.create(trimmed);
+      if (uri.getScheme() == null || uri.getHost() == null) {
+        throw new IllegalArgumentException("baseUrl must be absolute");
+      }
+      return uri;
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid baseUrl: " + value, e);
     }
   }
 
-  private String requireValue(String value, String field) {
-    if (value == null || value.isBlank()) {
-      throw new IllegalArgumentException(field + " is required");
+  private Integer normalizeContextWindow(Integer contextWindow) {
+    return contextWindow == null ? MIN_CONTEXT_WINDOW : Math.max(contextWindow, MIN_CONTEXT_WINDOW);
+  }
+
+  private void validateContextWindow(Integer contextWindow, String owner) {
+    if (contextWindow == null || contextWindow < MIN_CONTEXT_WINDOW) {
+      throw new IllegalArgumentException(owner + " contextWindow must be at least " + MIN_CONTEXT_WINDOW);
     }
-    return value.trim();
   }
 
-  private String blankToNull(String value) {
-    return value == null || value.isBlank() ? null : value.trim();
+  private String normalizeProvider(String value) {
+    String provider = firstNonBlank(value, "ollama").toLowerCase();
+    if (OPENAI.equals(provider) || LocalLlmClient.isLocal(provider)) {
+      return provider;
+    }
+    throw new IllegalArgumentException("Unsupported provider: " + value);
   }
 
-  private String stringValue(Object value) {
-    return value == null || value.toString().isBlank() ? null : value.toString().trim();
+  private String normalizeLocalProvider(String value) {
+    String provider = normalizeProvider(value);
+    if (OPENAI.equals(provider)) {
+      throw new IllegalArgumentException("local backend provider must be ollama, lmstudio, or vllm");
+    }
+    return provider;
   }
 
-  private String trimTrailingSlash(String value) {
-    return value == null ? null : value.replaceFirst("/+$", "");
+  private String normalizeBackendId(String value) {
+    String id = requireValue(value, "backend id").toLowerCase();
+    if (!OPENAI.equals(id) && !LOCAL.equals(id)) {
+      throw new IllegalArgumentException("backend id must be openai or local");
+    }
+    return id;
+  }
+
+  private String normalizeMode(String value) {
+    String mode = firstNonBlank(value, MODE_ENABLED).toLowerCase();
+    if (!MODE_ENABLED.equals(mode) && !MODE_OFF.equals(mode)) {
+      throw new IllegalArgumentException("systemMode must be enabled or off");
+    }
+    return mode;
+  }
+
+  private String defaultRouteLabel(String id) {
+    return switch (id) {
+      case "ai-command" -> "Hermes AI command";
+      default -> "Hermes chat";
+    };
+  }
+
+  private String requireValue(String value, String name) {
+    String trimmed = blankToNull(value);
+    if (trimmed == null) {
+      throw new IllegalArgumentException(name + " is required");
+    }
+    return trimmed;
   }
 
   private String firstNonBlank(String... values) {
@@ -1166,83 +922,83 @@ public class HermesFallbackService implements ApplicationRunner {
       return null;
     }
     for (String value : values) {
-      if (value != null && !value.isBlank()) {
-        return value.trim();
+      String trimmed = blankToNull(value);
+      if (trimmed != null) {
+        return trimmed;
       }
     }
     return null;
   }
 
+  @SafeVarargs
+  private final <T> T firstNonNull(T... values) {
+    if (values == null) {
+      return null;
+    }
+    for (T value : values) {
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private String blankToNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
+  }
+
+  private String trimTrailingSlash(String value) {
+    if (value == null) {
+      return null;
+    }
+    return value.trim().replaceFirst("/+$", "");
+  }
+
   private String text(JsonNode node, String field) {
-    if (node == null || !node.hasNonNull(field)) {
+    if (node == null || !node.has(field) || node.get(field).isNull()) {
       return null;
     }
     String value = node.get(field).asText();
-    return value == null || value.isBlank() ? null : value.trim();
+    return value == null || value.isBlank() ? null : value;
   }
 
-  private Integer intValue(JsonNode node, String field, Integer defaultValue) {
-    if (node == null || !node.hasNonNull(field)) {
-      return defaultValue;
+  private int intValue(JsonNode node, String field, int defaultValue) {
+    Integer value = intValueOrNull(node, field);
+    return value == null ? defaultValue : value;
+  }
+
+  private Integer intValueOrNull(JsonNode node, String field) {
+    if (node == null || !node.has(field) || node.get(field).isNull()) {
+      return null;
     }
-    return node.get(field).asInt(defaultValue == null ? DEFAULT_TIMEOUT_SECONDS : defaultValue);
+    return node.get(field).asInt();
   }
 
-  private String path(URI baseUrl, String suffix) {
-    String path = baseUrl.getPath();
-    return (path == null || path.isBlank() ? "/" : path) + suffix;
-  }
-
-  private Path settingsPath() {
-    return properties.dataDir().resolve(SETTINGS_FILE);
-  }
-
-  private Path backendSettingsPath() {
-    return properties.dataDir().resolve(BACKEND_SETTINGS_FILE);
-  }
-
-  private Path runtimeStatePath() {
-    return properties.dataDir().resolve(RUNTIME_STATE_FILE);
+  private Path configPath() {
+    return properties.dataDir().resolve(CONFIG_FILE);
   }
 
   private void writeAtomically(Path path, byte[] bytes) throws IOException {
     Files.createDirectories(path.getParent());
-    Path temporary = Files.createTempFile(path.getParent(), path.getFileName().toString(), ".tmp");
-    restrictOwnerAccess(temporary);
-    Files.write(temporary, bytes);
+    Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
+    Files.write(tmp, bytes);
     try {
-      Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-    } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-      Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
-    }
-    restrictOwnerAccess(path);
-  }
-
-  private void restrictOwnerAccess(Path path) throws IOException {
-    try {
-      Files.setPosixFilePermissions(
-          path,
-          EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+      Files.setPosixFilePermissions(tmp, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
     } catch (UnsupportedOperationException ignored) {
-      // Non-POSIX filesystems do not expose Unix file permissions.
     }
+    Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
-  private record CredentialStatus(boolean openAiAvailable, String cooldownUntil, String detail) {
+  private record StoredConfig(
+      String systemMode,
+      List<StoredBackend> backends,
+      List<StoredRoute> routes) {
   }
 
-  private record ProfileHealth(Boolean healthy, Boolean toolCapable, String detail) {
-  }
-
-  private record PassiveLocalHealth(Boolean healthy, String detail) {
-  }
-
-  private record StoredBackendConfig(
-      List<StoredProfile> profiles,
-      StoredGlobalOverride globalOverride) {
-  }
-
-  private record StoredProfile(
+  private record StoredBackend(
       String id,
       String label,
       String provider,
@@ -1251,96 +1007,35 @@ public class HermesFallbackService implements ApplicationRunner {
       String apiMode,
       Integer timeoutSeconds,
       Integer contextWindow,
-      Boolean fallbackAllowed,
-      Boolean toolCapable,
       String lastValidatedAt,
       String validationStatus,
+      Boolean toolCapable,
+      String detail,
       String encryptedApiKey) {
   }
 
-  private record StoredFallbackConfig(
+  private record StoredRoute(
+      String id,
+      String label,
+      String backendId) {
+  }
+
+  private record LegacyFallback(
       String provider,
       String baseUrl,
       String model,
-      boolean enabled,
+      Boolean enabled,
       Integer contextWindow,
       String lastValidatedAt,
       String validationStatus,
       Boolean toolCapable,
       String validationDetail,
       String encryptedApiKey) {
-
-    StoredFallbackConfig withDefaults(StoredFallbackConfig defaults) {
-      return new StoredFallbackConfig(
-          provider == null ? defaults.provider : provider,
-          baseUrl == null ? defaults.baseUrl : baseUrl,
-          model == null ? defaults.model : model,
-          enabled,
-          contextWindow == null ? defaults.contextWindow : contextWindow,
-          lastValidatedAt,
-          validationStatus == null ? defaults.validationStatus : validationStatus,
-          toolCapable,
-          validationDetail == null ? defaults.validationDetail : validationDetail,
-          encryptedApiKey);
-    }
-
-    StoredFallbackConfig validated(
-        Instant at,
-        Boolean validatedToolCapable,
-        String status,
-        String detail) {
-      return new StoredFallbackConfig(
-          provider,
-          baseUrl,
-          model,
-          enabled,
-          contextWindow,
-          at.toString(),
-          status,
-          validatedToolCapable,
-          detail,
-          encryptedApiKey);
-    }
   }
 
-  private record StoredGlobalOverride(
-      boolean enabled,
-      String activatedAt,
-      String updatedBy,
-      String validationStatus,
-      String lastValidatedAt,
-      String detail) {
-
-    StoredGlobalOverride withDefaults(StoredGlobalOverride defaults) {
-      return new StoredGlobalOverride(
-          enabled,
-          activatedAt,
-          updatedBy,
-          validationStatus == null ? defaults.validationStatus : validationStatus,
-          lastValidatedAt,
-          detail == null ? defaults.detail : detail);
-    }
-
-    StoredGlobalOverride validated(Instant at, String validationDetail) {
-      return new StoredGlobalOverride(
-          enabled,
-          activatedAt == null ? at.toString() : activatedAt,
-          updatedBy,
-          "VALID",
-          at.toString(),
-          validationDetail);
-    }
+  private record BackendHealth(Boolean healthy, Boolean toolCapable, String detail) {
   }
 
-  private record StoredRuntimeState(Map<String, RuntimeProfileState> profiles) {
-  }
-
-  private record RuntimeProfileState(
-      String activeProvider,
-      String fallbackReason,
-      String fallbackActivatedAt,
-      String lastProviderError,
-      String lastProviderErrorAt,
-      String routeMode) {
+  private record CredentialStatus(boolean openAiAvailable, String detail) {
   }
 }
