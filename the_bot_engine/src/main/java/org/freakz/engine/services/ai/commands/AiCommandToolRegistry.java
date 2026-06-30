@@ -153,7 +153,7 @@ public class AiCommandToolRegistry {
     out.put("tool", "weather.compare");
     out.set("locations", jsonMapper.valueToTree(locations));
     out.set("results", jsonMapper.valueToTree(response.getForecastResponses()));
-    out.put("formattedText", formatCompareWeatherResponse(response, locations));
+    out.put("formattedText", formatCompareWeatherResponse(response, locations, sortAscending(args)));
     if (response.getStatus() != null) {
       out.put("status", response.getStatus());
     }
@@ -202,7 +202,7 @@ public class AiCommandToolRegistry {
     return out;
   }
 
-  private String formatCompareWeatherResponse(CmpWeatherResponse response, List<String> locations) {
+  private String formatCompareWeatherResponse(CmpWeatherResponse response, List<String> locations, boolean ascending) {
     if (response == null || response.getStatus() == null || !response.getStatus().startsWith("OK")) {
       return "Check spelling, no weather data found with: " + String.join(" ", locations);
     }
@@ -212,16 +212,17 @@ public class AiCommandToolRegistry {
     }
     int longestCityName = findLongestCityNameLength(forecastResponses);
     forecastResponses = new ArrayList<>(forecastResponses);
-    forecastResponses.sort(
-        Comparator.comparing((ForecastResponse forecastResponse) -> Double.parseDouble(forecastResponse.current().temp_c()))
-            .reversed());
-    double highestTemp = Double.parseDouble(forecastResponses.getFirst().current().temp_c());
+    Comparator<ForecastResponse> comparator =
+        Comparator.comparing(forecastResponse -> Double.parseDouble(forecastResponse.current().temp_c()));
+    forecastResponses.sort(ascending ? comparator : comparator.reversed());
+    double baselineTemp = Double.parseDouble(forecastResponses.getFirst().current().temp_c());
     StringBuilder sb = new StringBuilder();
     int index = 0;
     for (ForecastResponse forecastResponse : forecastResponses) {
       String formatted;
       if (index != 0) {
-        double diff = highestTemp - Double.parseDouble(forecastResponse.current().temp_c());
+        double temp = Double.parseDouble(forecastResponse.current().temp_c());
+        double diff = ascending ? temp - baselineTemp : baselineTemp - temp;
         String differenceStr = String.format("%.2f°C", diff);
         formatted = formatCompareWeatherLine(forecastResponse, differenceStr, longestCityName);
         sb.append("\n");
@@ -232,6 +233,16 @@ public class AiCommandToolRegistry {
       index++;
     }
     return sb.toString();
+  }
+
+  private boolean sortAscending(JsonNode args) {
+    String sort = text(args, "sort", "order", "sortOrder", "sort_order").toLowerCase(Locale.ROOT);
+    return sort.equals("asc")
+        || sort.equals("ascending")
+        || sort.equals("coldest")
+        || sort.equals("coldest-first")
+        || sort.equals("kylmin")
+        || sort.equals("kylmin ensin");
   }
 
   private String formatCompareWeatherLine(ForecastResponse response, String diff, int longestCityName) {

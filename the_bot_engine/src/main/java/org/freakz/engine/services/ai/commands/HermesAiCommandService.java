@@ -25,8 +25,12 @@ import tools.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 @Service
@@ -76,6 +80,12 @@ public class HermesAiCommandService {
       }
       if (!settings.useResponsesApi() && !settings.useChatCompletionsApi()) {
         processReply(request, "AI commands require Hermes responses or chat-completions API mode.");
+        return;
+      }
+
+      String deterministicReply = tryExecuteDeterministicWeatherCommand(command, argumentsText, request);
+      if (deterministicReply != null) {
+        processReply(request, deterministicReply);
         return;
       }
 
@@ -168,6 +178,126 @@ public class HermesAiCommandService {
       clientBuilder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey());
     }
     return clientBuilder.build();
+  }
+
+  String tryExecuteDeterministicWeatherCommand(
+      AiCommandDefinition command,
+      String argumentsText,
+      EngineRequest request) {
+    if (command == null
+        || command.getName() == null
+        || !"weather".equalsIgnoreCase(command.getName())
+        || command.getAllowedTools() == null
+        || !command.getAllowedTools().contains("weather.current")) {
+      return null;
+    }
+    List<String> locations = extractWeatherLocations(argumentsText);
+    if (locations.size() < 2) {
+      return null;
+    }
+
+    boolean compare = asksForWeatherCompare(argumentsText) && command.getAllowedTools().contains("weather.compare");
+    ObjectNode args = jsonMapper.createObjectNode();
+    ArrayNode locationNodes = args.putArray("locations");
+    for (String location : locations) {
+      locationNodes.add(location);
+    }
+    if (asksForColdestFirst(argumentsText)) {
+      args.put("sort", "asc");
+    }
+
+    String toolName = compare ? "weather.compare" : "weather.current";
+    String toolResult = toolRegistry.execute(toolName, args, request);
+    String formattedText = extractFormattedText(toolResult);
+    return formattedText.isBlank() ? null : formattedText;
+  }
+
+  private boolean asksForWeatherCompare(String text) {
+    String normalized = normalizeWeatherText(text);
+    return normalized.contains("vertaa")
+        || normalized.contains("compare")
+        || normalized.contains("jarjesta")
+        || normalized.contains("järjestä")
+        || normalized.contains("kylmin")
+        || normalized.contains("lampimin")
+        || normalized.contains("lämpimin")
+        || normalized.contains("kuumin");
+  }
+
+  private boolean asksForColdestFirst(String text) {
+    String normalized = normalizeWeatherText(text);
+    return normalized.contains("kylmin")
+        || normalized.contains("kylmimm")
+        || normalized.contains("coldest")
+        || normalized.contains("coolest");
+  }
+
+  List<String> extractWeatherLocations(String text) {
+    if (text == null || text.isBlank()) {
+      return List.of();
+    }
+
+    Set<String> locations = new LinkedHashSet<>();
+    String normalized = normalizeWeatherText(text)
+        .replace(',', ' ')
+        .replace(';', ' ');
+    String[] words = normalized.split("\\s+");
+    for (String word : words) {
+      String location = finnishWeatherLocation(word);
+      if (location != null) {
+        locations.add(location);
+      }
+    }
+    if (!locations.isEmpty()) {
+      return List.copyOf(locations);
+    }
+
+    List<String> fallback = new ArrayList<>();
+    for (String part : text.split("[,;]")) {
+      String cleaned = cleanupWeatherLocationCandidate(part);
+      if (!cleaned.isBlank()) {
+        fallback.add(cleaned);
+      }
+    }
+    return fallback.size() > 1 ? fallback : List.of();
+  }
+
+  private String normalizeWeatherText(String text) {
+    return text == null ? "" : text.toLowerCase(Locale.ROOT).trim();
+  }
+
+  private String finnishWeatherLocation(String word) {
+    return switch (word == null ? "" : word.trim().toLowerCase(Locale.ROOT)) {
+      case "helsinki", "helsingin" -> "Helsinki";
+      case "espoo", "espoon" -> "Espoo";
+      case "vantaa", "vantaan" -> "Vantaa";
+      case "turku", "turun" -> "Turku";
+      case "tampere", "tampereen" -> "Tampere";
+      case "vaasa", "vaasan" -> "Vaasa";
+      case "oulu", "oulun" -> "Oulu";
+      case "jyväskylä", "jyvaskyla", "jyväskylän", "jyvaskylan" -> "Jyväskylä";
+      case "kuopio", "kuopion" -> "Kuopio";
+      case "lahti", "lahden" -> "Lahti";
+      case "pori", "porin" -> "Pori";
+      case "rovaniemi", "rovaniemen" -> "Rovaniemi";
+      default -> null;
+    };
+  }
+
+  private String cleanupWeatherLocationCandidate(String value) {
+    String cleaned = value == null ? "" : value.toLowerCase(Locale.ROOT)
+        .replaceAll("\\b(vertaa|compare|säätiloja|saatiloja|säätila|saatila|sää|saa|järjestä|jarjesta|kylmin|ensin|lämpimin|lampimin|kuumin|ja)\\b", " ")
+        .replaceAll("[^\\p{L}\\p{N} -]", " ")
+        .trim()
+        .replaceAll("\\s+", " ");
+    if (cleaned.isBlank()) {
+      return "";
+    }
+    String known = finnishWeatherLocation(cleaned);
+    if (known != null) {
+      return known;
+    }
+    return Character.toUpperCase(cleaned.charAt(0)) + cleaned.substring(1);
   }
 
   private String createResponse(

@@ -16,7 +16,10 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class HermesAiCommandServiceTest {
 
@@ -307,6 +310,41 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void extractsFinnishWeatherCompareLocations() {
+    HermesAiCommandService service = newService();
+
+    assertThat(service.extractWeatherLocations("vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin"))
+        .containsExactly("Turku", "Tampere", "Vaasa", "Oulu");
+  }
+
+  @Test
+  void deterministicWeatherShortcutUsesCompareWithColdestFirstSort() {
+    AiCommandToolRegistry toolRegistry = mock(AiCommandToolRegistry.class);
+    HermesAiCommandService service = newService(toolRegistry);
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of("!saa"),
+        null,
+        "Use weather tools.",
+        List.of("weather.current", "weather.compare"),
+        3);
+    when(toolRegistry.execute(eq("weather.compare"), any(), any()))
+        .thenReturn("""
+            {"tool":"weather.compare","formattedText":"Oulu first"}
+            """);
+
+    String reply = service.tryExecuteDeterministicWeatherCommand(
+        command,
+        "vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin",
+        new EngineRequest());
+
+    assertThat(reply).isEqualTo("Oulu first");
+  }
+
+  @Test
   void buildsToolResultInputForModelFinalResponse() {
     HermesAiCommandService service = newService();
     AiCommandDefinition command = new AiCommandDefinition(
@@ -387,9 +425,14 @@ class HermesAiCommandServiceTest {
 
   @SuppressWarnings("unchecked")
   private HermesAiCommandService newService() {
+    return newService(mock(AiCommandToolRegistry.class));
+  }
+
+  @SuppressWarnings("unchecked")
+  private HermesAiCommandService newService(AiCommandToolRegistry toolRegistry) {
     return new HermesAiCommandService(
         mock(HermesSettingsService.class),
-        mock(AiCommandToolRegistry.class),
+        toolRegistry,
         new JsonMapper(),
         mock(ObjectProvider.class),
         mock(HermesPromptContextService.class),
