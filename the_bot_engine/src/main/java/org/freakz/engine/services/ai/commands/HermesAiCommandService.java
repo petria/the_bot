@@ -197,15 +197,21 @@ public class HermesAiCommandService {
       return null;
     }
     List<String> locations = extractWeatherLocations(argumentsText);
-    if (locations.size() < 2) {
+    if (locations.isEmpty()) {
       return null;
     }
 
-    boolean compare = asksForWeatherCompare(argumentsText) && command.getAllowedTools().contains("weather.compare");
+    boolean compare = locations.size() > 1
+        && asksForWeatherCompare(argumentsText)
+        && command.getAllowedTools().contains("weather.compare");
     ObjectNode args = jsonMapper.createObjectNode();
-    ArrayNode locationNodes = args.putArray("locations");
-    for (String location : locations) {
-      locationNodes.add(location);
+    if (locations.size() == 1) {
+      args.put("location", locations.getFirst());
+    } else {
+      ArrayNode locationNodes = args.putArray("locations");
+      for (String location : locations) {
+        locationNodes.add(location);
+      }
     }
     if (asksForColdestFirst(argumentsText)) {
       args.put("sort", "asc");
