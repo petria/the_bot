@@ -401,6 +401,10 @@ public class HermesAiCommandService {
       }
       return AiCommandModelResponse.tool(firstText(node, "tool", "name"), arguments);
     }
+    String toolName = firstText(node, "tool", "name");
+    if (!toolName.isBlank() && looksLikeToolArguments(node.path("arguments"))) {
+      return AiCommandModelResponse.tool(toolName, node.path("arguments"));
+    }
     String answer = firstText(node, "answer", "text", "message", "response");
     if (!answer.isBlank()) {
       return parseModelResponse(answer);
@@ -438,6 +442,10 @@ public class HermesAiCommandService {
           arguments = jsonMapper.createObjectNode();
         }
         return AiCommandModelResponse.tool(firstText(candidate, "tool", "name"), arguments);
+      }
+      String toolName = firstText(candidate, "tool", "name");
+      if (!toolName.isBlank() && looksLikeToolArguments(candidate.path("arguments"))) {
+        return AiCommandModelResponse.tool(toolName, candidate.path("arguments"));
       }
       if ("final".equalsIgnoreCase(type)) {
         String answer = firstText(candidate, "answer", "text", "message", "response");
@@ -478,6 +486,10 @@ public class HermesAiCommandService {
       }
     }
     return -1;
+  }
+
+  private boolean looksLikeToolArguments(JsonNode arguments) {
+    return arguments != null && arguments.isObject();
   }
 
   private AiCommandModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {

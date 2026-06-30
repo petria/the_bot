@@ -99,6 +99,20 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void parsesDirectToolShorthandResponse() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"tool":"weather.compare","arguments":{"locations":["Turku","Tampere","Vaasa","Oulu"]}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.compare");
+    assertThat(response.arguments().path("locations")).hasSize(4);
+  }
+
+  @Test
   void recoversFinalResponseAppendedToConversationalText() throws Exception {
     HermesAiCommandService service = newService();
 
@@ -125,6 +139,20 @@ class HermesAiCommandServiceTest {
     assertThat(response.finalAnswer()).isNull();
     assertThat(response.toolName()).isEqualTo("weather.current");
     assertThat(response.arguments().path("location").asString()).isEqualTo("Turku");
+  }
+
+  @Test
+  void recoversDirectToolShorthandAppendedToConversationalText() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        Checking those cities now.
+        {"tool":"weather.compare","arguments":{"locations":["Turku","Tampere","Vaasa","Oulu"]}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.toolName()).isEqualTo("weather.compare");
+    assertThat(response.arguments().path("locations")).hasSize(4);
   }
 
   @Test
