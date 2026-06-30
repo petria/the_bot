@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 @Service
 public class HermesAiCommandService {
@@ -61,12 +62,14 @@ public class HermesAiCommandService {
 
   @Async
   public void ask(EngineRequest request, AiCommandDefinition command, String argumentsText) {
+    int timeoutSeconds = 120;
     try {
       if (!settingsService.aiEnabled()) {
         processReply(request, "AI not available");
         return;
       }
       HermesSettings settings = settingsService.resolveAiCommandSettings();
+      timeoutSeconds = settings.timeoutSeconds();
       if (!settings.configured()) {
         processReply(request, "Hermes is not configured.");
         return;
@@ -121,8 +124,40 @@ public class HermesAiCommandService {
       processReply(request, "AI command stopped before producing a final answer.");
     } catch (Exception e) {
       log.warn("Hermes AI command failed: {}", e.getMessage(), e);
-      processReply(request, AiReplyGuard.safeFailure("AI command failed:", e.getMessage()));
+      if (isTimeout(e)) {
+        processReply(request, timeoutFailure(request, command, timeoutSeconds));
+      } else {
+        processReply(request, AiReplyGuard.safeFailure("AI command failed:", e.getMessage()));
+      }
     }
+  }
+
+  boolean isTimeout(Throwable error) {
+    for (Throwable current = error; current != null; current = current.getCause()) {
+      if (current instanceof TimeoutException) {
+        return true;
+      }
+      String message = current.getMessage();
+      if (message != null && message.toLowerCase().contains("timeout on blocking read")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String timeoutFailure(EngineRequest request, AiCommandDefinition command, int timeoutSeconds) {
+    String commandName = invokedCommandName(request, command);
+    return "AI command " + commandName + " timed out after " + timeoutSeconds + " seconds.";
+  }
+
+  private String invokedCommandName(EngineRequest request, AiCommandDefinition command) {
+    if (request != null && request.getCommand() != null && !request.getCommand().isBlank()) {
+      return request.getCommand().trim().split("\\s+", 2)[0];
+    }
+    if (command != null && command.getName() != null && !command.getName().isBlank()) {
+      return "!ai::" + command.getName();
+    }
+    return "unknown";
   }
 
   private WebClient buildClient(HermesSettings settings) {
