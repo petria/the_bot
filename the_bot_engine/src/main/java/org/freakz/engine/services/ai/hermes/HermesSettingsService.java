@@ -362,7 +362,7 @@ public class HermesSettingsService {
           apiKey == null ? "" : apiKey.trim(),
           routeGatewayModelAlias(profileId),
           timeoutSeconds,
-          firstNonBlank(backend.apiMode(), local.apiMode()));
+          firstNonBlank(local.apiMode(), route.apiMode(), backend.apiMode()));
     } catch (Exception e) {
       log.debug("Could not load Hermes profile {} from manager: {}", profileId, e.getMessage());
       return null;

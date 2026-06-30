@@ -393,7 +393,7 @@ class HermesAiServiceTest {
     assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8665");
     assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(settings.model()).isEqualTo("hermes-ai-command");
-    assertThat(settings.apiMode()).isEqualTo("responses");
+    assertThat(settings.apiMode()).isEqualTo("chat-completions");
     assertThat(settings.timeoutSeconds()).isEqualTo(120);
   }
 

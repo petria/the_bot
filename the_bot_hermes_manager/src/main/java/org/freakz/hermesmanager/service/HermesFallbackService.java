@@ -254,7 +254,7 @@ public class HermesFallbackService implements ApplicationRunner {
         backend.provider(),
         routeGatewayBaseUrl(route.id()),
         routeGatewayModelAlias(route.id()),
-        backend.apiMode(),
+        routeGatewayApiMode(route.id(), backend.apiMode()),
         backend.timeoutSeconds(),
         backend.contextWindow(),
         health.healthy(),
@@ -943,6 +943,10 @@ public class HermesFallbackService implements ApplicationRunner {
   private String routeGatewayBaseUrl(String routeId) {
     Integer port = properties.ports().get(routeId);
     return port == null ? null : "http://127.0.0.1:" + port;
+  }
+
+  private String routeGatewayApiMode(String routeId, String backendApiMode) {
+    return AI_COMMAND.equals(routeId) ? "chat-completions" : firstNonBlank(backendApiMode, RESPONSES);
   }
 
   private String requireValue(String value, String name) {
