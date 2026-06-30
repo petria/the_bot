@@ -79,6 +79,26 @@ class HermesFallbackServiceTest {
   }
 
   @Test
+  void modelDiscoveryAllowsUnsavedLocalBackendIds() throws Exception {
+    createProfiles("chat", "ai-command");
+    LocalLlmClient localLlmClient = localClient();
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
+    service.run(new DefaultApplicationArguments());
+
+    HermesFallbackModelsResponse response = service.getModels(new HermesModelDiscoveryRequest(
+        "ollama",
+        "http://192.168.0.111:11434/v1",
+        null,
+        "local-1"));
+
+    assertThat(response.models()).contains("qwen3.5:27b");
+    verify(localLlmClient, atLeastOnce()).discover(
+        eq("ollama"),
+        eq(URI.create("http://192.168.0.111:11434/v1")),
+        eq(null));
+  }
+
+  @Test
   void saveUpdatesRoutesWithoutChangingBackendDefinitions() throws Exception {
     createProfiles("chat", "ai-command");
     RestTemplate restTemplate = healthyRestTemplate();

@@ -952,8 +952,10 @@ public class HermesFallbackService implements ApplicationRunner {
     if (backend.isPresent()) {
       return decryptCredential(backend.get().encryptedApiKey());
     }
-    StoredRoute route = routeById(config, profileId);
-    return decryptCredential(backendById(config, route.backendId()).encryptedApiKey());
+    Optional<StoredRoute> route = existingRouteById(config, profileId);
+    return route
+        .map(storedRoute -> decryptCredential(backendById(config, storedRoute.backendId()).encryptedApiKey()))
+        .orElse(null);
   }
 
   private StoredBackend firstLocalBackend(StoredConfig config) {
@@ -982,10 +984,17 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private StoredRoute routeById(StoredConfig config, String id) {
+    return existingRouteById(config, id)
+        .orElseThrow(() -> new IllegalArgumentException("Missing Hermes route: " + id));
+  }
+
+  private Optional<StoredRoute> existingRouteById(StoredConfig config, String id) {
+    if (config == null || id == null || id.isBlank()) {
+      return Optional.empty();
+    }
     return config.routes().stream()
         .filter(route -> id.equals(route.id()))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Missing Hermes route: " + id));
+        .findFirst();
   }
 
   private List<StoredBackend> replaceBackend(List<StoredBackend> backends, StoredBackend updated) {
