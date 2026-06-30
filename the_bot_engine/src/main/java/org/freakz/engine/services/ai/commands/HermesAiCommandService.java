@@ -25,12 +25,8 @@ import tools.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HexFormat;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 @Service
@@ -83,16 +79,16 @@ public class HermesAiCommandService {
         return;
       }
 
-      String deterministicReply = tryExecuteDeterministicWeatherCommand(command, argumentsText, request);
-      if (deterministicReply != null) {
-        processReply(request, deterministicReply);
+      WebClient client = buildClient(settings);
+      String sessionKey = buildStableSessionId(buildSessionId(request, command));
+      List<String> allowedTools = command.getAllowedTools() == null ? List.of() : command.getAllowedTools();
+
+      if (isWeatherCommand(command, allowedTools)) {
+        processReply(request, executeWeatherCommand(client, settings, sessionKey, command, argumentsText, request, allowedTools));
         return;
       }
 
-      WebClient client = buildClient(settings);
-      String sessionKey = buildStableSessionId(buildSessionId(request, command));
       String instructions = buildInstructions(command);
-      List<String> allowedTools = command.getAllowedTools() == null ? List.of() : command.getAllowedTools();
       String input = buildInitialInput(request, command, argumentsText, sessionKey, allowedTools);
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
       if (usesModelFinalToolResult(command)) {
@@ -185,130 +181,242 @@ public class HermesAiCommandService {
     return clientBuilder.build();
   }
 
-  String tryExecuteDeterministicWeatherCommand(
+  private boolean isWeatherCommand(AiCommandDefinition command, List<String> allowedTools) {
+    return command != null
+        && command.getName() != null
+        && "weather".equalsIgnoreCase(command.getName())
+        && allowedTools != null
+        && allowedTools.contains("weather.current");
+  }
+
+  String executeWeatherCommand(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
       AiCommandDefinition command,
       String argumentsText,
-      EngineRequest request) {
-    if (command == null
-        || command.getName() == null
-        || !"weather".equalsIgnoreCase(command.getName())
-        || command.getAllowedTools() == null
-        || !command.getAllowedTools().contains("weather.current")) {
-      return null;
+      EngineRequest request,
+      List<String> allowedTools) throws Exception {
+    String responseText = createModelResponse(
+        client,
+        settings,
+        sessionKey,
+        buildWeatherIntentInstructions(),
+        buildWeatherIntentInput(command, argumentsText));
+    WeatherIntent intent = parseWeatherIntentResponse(responseText);
+    if (intent.invalid()) {
+      responseText = createModelResponse(
+          client,
+          settings,
+          sessionKey,
+          buildWeatherIntentInstructions(),
+          buildWeatherIntentRepairInput(command, argumentsText, responseText));
+      intent = parseWeatherIntentResponse(responseText);
     }
-    List<String> locations = extractWeatherLocations(argumentsText);
-    if (locations.isEmpty()) {
-      return null;
+    if (intent.invalid()) {
+      notifyStructuredResponseRejected(request, command, settings);
+      return INVALID_STRUCTURED_RESPONSE;
+    }
+    if (intent.locations().isEmpty()) {
+      return "Please provide a weather location.";
     }
 
-    boolean compare = locations.size() > 1
-        && asksForWeatherCompare(argumentsText)
-        && command.getAllowedTools().contains("weather.compare");
+    String toolName = weatherToolName(intent, allowedTools);
+    String toolResult = toolRegistry.execute(toolName, weatherToolArguments(intent, toolName), request);
+    String formattedText = extractFormattedText(toolResult);
+    return formattedText.isBlank() ? "Weather returned no formatted response." : formattedText;
+  }
+
+  private String weatherToolName(WeatherIntent intent, List<String> allowedTools) {
+    if (intent.compare()
+        && intent.locations().size() > 1
+        && allowedTools != null
+        && allowedTools.contains("weather.compare")) {
+      return "weather.compare";
+    }
+    return "weather.current";
+  }
+
+  ObjectNode weatherToolArguments(WeatherIntent intent, String toolName) {
     ObjectNode args = jsonMapper.createObjectNode();
-    if (locations.size() == 1) {
-      args.put("location", locations.getFirst());
-    } else {
+    if ("weather.compare".equals(toolName) || intent.locations().size() > 1) {
       ArrayNode locationNodes = args.putArray("locations");
-      for (String location : locations) {
+      for (String location : intent.locations()) {
         locationNodes.add(location);
       }
+    } else {
+      args.put("location", intent.locations().getFirst());
     }
-    if (asksForColdestFirst(argumentsText)) {
-      args.put("sort", "asc");
+    if (intent.feelsLike()) {
+      args.put("feelsLike", true);
     }
-
-    String toolName = compare ? "weather.compare" : "weather.current";
-    String toolResult = toolRegistry.execute(toolName, args, request);
-    String formattedText = extractFormattedText(toolResult);
-    return formattedText.isBlank() ? null : formattedText;
+    if (intent.astronomy()) {
+      args.put("astronomy", true);
+    }
+    if (intent.verbose()) {
+      args.put("verbose", true);
+    }
+    if (intent.sort() != null && !intent.sort().isBlank()) {
+      args.put("sort", intent.sort());
+    }
+    return args;
   }
 
-  private boolean asksForWeatherCompare(String text) {
-    String normalized = normalizeWeatherText(text);
-    return normalized.contains("vertaa")
-        || normalized.contains("compare")
-        || normalized.contains("jarjesta")
-        || normalized.contains("järjestä")
-        || normalized.contains("kylmin")
-        || normalized.contains("lampimin")
-        || normalized.contains("lämpimin")
-        || normalized.contains("kuumin");
+  private String buildWeatherIntentInstructions() {
+    return """
+        You extract weather command intent for a bot.
+        Return exactly one JSON object and no other text.
+        Do not fetch weather. Do not answer the user.
+        Extract all city, town, village, region, or place names from the user's text.
+        Normalize grammatical forms into weather-searchable place names, but do not use a fixed city list.
+        Preserve arbitrary real place names, including multi-word names.
+
+        JSON shape:
+        {
+          "locations": ["place name"],
+          "compare": false,
+          "feelsLike": false,
+          "astronomy": false,
+          "verbose": false,
+          "sort": null
+        }
+
+        Rules:
+        - locations is an array of place names. Use [] if no place is provided.
+        - compare=true when the user asks to compare places or asks which place is warmer/cooler.
+        - feelsLike=true when the user asks what it feels like.
+        - astronomy=true when the user asks about sun, moon, sunrise, or sunset.
+        - verbose=true when the user asks for detailed place names.
+        - sort="asc" only when the user asks coldest/coolest first.
+        - sort="desc" only when the user asks warmest/hottest first.
+        """;
   }
 
-  private boolean asksForColdestFirst(String text) {
-    String normalized = normalizeWeatherText(text);
-    return normalized.contains("kylmin")
-        || normalized.contains("kylmimm")
-        || normalized.contains("coldest")
-        || normalized.contains("coolest");
+  String buildWeatherIntentInput(AiCommandDefinition command, String argumentsText) {
+    return """
+        Command: !%s
+        User weather arguments:
+        %s
+        """.formatted(
+        command == null ? "weather" : command.getName(),
+        argumentsText == null ? "" : argumentsText);
   }
 
-  List<String> extractWeatherLocations(String text) {
-    if (text == null || text.isBlank()) {
-      return List.of();
+  String buildWeatherIntentRepairInput(AiCommandDefinition command, String argumentsText, String invalidResponse) {
+    return """
+        The previous weather intent response was invalid.
+
+        Command: !%s
+        User weather arguments:
+        %s
+
+        Previous invalid response:
+        %s
+
+        Return exactly one JSON object using this shape:
+        {"locations":["place name"],"compare":false,"feelsLike":false,"astronomy":false,"verbose":false,"sort":null}
+        """.formatted(
+        command == null ? "weather" : command.getName(),
+        argumentsText == null ? "" : argumentsText,
+        invalidResponse == null ? "" : invalidResponse);
+  }
+
+  WeatherIntent parseWeatherIntentResponse(String text) throws Exception {
+    JsonNode node = parseWeatherIntentNode(text);
+    if (node == null || !node.isObject()) {
+      return WeatherIntent.invalidIntent();
     }
 
-    Set<String> locations = new LinkedHashSet<>();
-    String normalized = normalizeWeatherText(text)
-        .replace(',', ' ')
-        .replace(';', ' ');
-    String[] words = normalized.split("\\s+");
-    for (String word : words) {
-      String location = finnishWeatherLocation(word);
-      if (location != null) {
-        locations.add(location);
+    JsonNode arguments = node.path("arguments");
+    if (arguments.isObject()) {
+      node = arguments;
+    }
+
+    List<String> locations = weatherIntentLocations(node);
+    String toolName = firstText(node, "tool", "name");
+    boolean compare = boolValue(node.path("compare"))
+        || "weather.compare".equalsIgnoreCase(toolName);
+    return new WeatherIntent(
+        locations,
+        compare,
+        boolValue(node.path("feelsLike")) || boolValue(node.path("feels_like")),
+        boolValue(node.path("astronomy")),
+        boolValue(node.path("verbose")),
+        nullableText(node.path("sort")),
+        false);
+  }
+
+  private JsonNode parseWeatherIntentNode(String text) throws Exception {
+    String cleaned = AiReplyGuard.stripJsonFence(text);
+    try {
+      JsonNode node = jsonMapper.readTree(cleaned);
+      JsonNode unwrapped = unwrapWeatherIntentNode(node);
+      return unwrapped == null ? node : unwrapped;
+    } catch (Exception e) {
+      for (int start = cleaned.indexOf('{'); start >= 0; start = cleaned.indexOf('{', start + 1)) {
+        int end = findJsonObjectEnd(cleaned, start);
+        if (end < 0) {
+          continue;
+        }
+        try {
+          JsonNode node = jsonMapper.readTree(cleaned.substring(start, end + 1));
+          JsonNode unwrapped = unwrapWeatherIntentNode(node);
+          return unwrapped == null ? node : unwrapped;
+        } catch (Exception ignored) {
+          // Continue scanning for another JSON object.
+        }
+      }
+      return null;
+    }
+  }
+
+  private JsonNode unwrapWeatherIntentNode(JsonNode node) throws Exception {
+    if (node == null || !node.isObject()) {
+      return node;
+    }
+    for (String field : new String[]{"intent", "weatherIntent", "weather_intent", "arguments", "content", "answer", "text", "message", "response", "result"}) {
+      JsonNode wrappedNode = node.path(field);
+      if (wrappedNode.isObject()) {
+        return unwrapWeatherIntentNode(wrappedNode);
+      }
+      String value = textValue(wrappedNode);
+      if (!value.isBlank() && AiReplyGuard.looksLikeStructuredJson(value)) {
+        return unwrapWeatherIntentNode(jsonMapper.readTree(value));
       }
     }
-    if (!locations.isEmpty()) {
+    return node;
+  }
+
+  private List<String> weatherIntentLocations(JsonNode node) {
+    JsonNode locationsNode = node.path("locations");
+    if (locationsNode.isArray()) {
+      List<String> locations = new java.util.ArrayList<>();
+      for (JsonNode item : locationsNode) {
+        String location = item.asString("").trim();
+        if (!location.isBlank()) {
+          locations.add(location);
+        }
+      }
       return List.copyOf(locations);
     }
-
-    List<String> fallback = new ArrayList<>();
-    for (String part : text.split("[,;]")) {
-      String cleaned = cleanupWeatherLocationCandidate(part);
-      if (!cleaned.isBlank()) {
-        fallback.add(cleaned);
-      }
-    }
-    return fallback.size() > 1 ? fallback : List.of();
+    String location = firstText(node, "location", "place", "city", "town");
+    return location.isBlank() ? List.of() : List.of(location);
   }
 
-  private String normalizeWeatherText(String text) {
-    return text == null ? "" : text.toLowerCase(Locale.ROOT).trim();
+  private boolean boolValue(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return false;
+    }
+    if (node.isBoolean()) {
+      return node.asBoolean(false);
+    }
+    String value = node.asString("").trim();
+    return "true".equalsIgnoreCase(value) || "yes".equalsIgnoreCase(value) || "1".equals(value);
   }
 
-  private String finnishWeatherLocation(String word) {
-    return switch (word == null ? "" : word.trim().toLowerCase(Locale.ROOT)) {
-      case "helsinki", "helsingin" -> "Helsinki";
-      case "espoo", "espoon" -> "Espoo";
-      case "vantaa", "vantaan" -> "Vantaa";
-      case "turku", "turun" -> "Turku";
-      case "tampere", "tampereen" -> "Tampere";
-      case "vaasa", "vaasan" -> "Vaasa";
-      case "oulu", "oulun" -> "Oulu";
-      case "jyväskylä", "jyvaskyla", "jyväskylän", "jyvaskylan" -> "Jyväskylä";
-      case "kuopio", "kuopion" -> "Kuopio";
-      case "lahti", "lahden" -> "Lahti";
-      case "pori", "porin" -> "Pori";
-      case "rovaniemi", "rovaniemen" -> "Rovaniemi";
-      default -> null;
-    };
-  }
-
-  private String cleanupWeatherLocationCandidate(String value) {
-    String cleaned = value == null ? "" : value.toLowerCase(Locale.ROOT)
-        .replaceAll("\\b(vertaa|compare|säätiloja|saatiloja|säätila|saatila|sää|saa|järjestä|jarjesta|kylmin|ensin|lämpimin|lampimin|kuumin|ja)\\b", " ")
-        .replaceAll("[^\\p{L}\\p{N} -]", " ")
-        .trim()
-        .replaceAll("\\s+", " ");
-    if (cleaned.isBlank()) {
-      return "";
-    }
-    String known = finnishWeatherLocation(cleaned);
-    if (known != null) {
-      return known;
-    }
-    return Character.toUpperCase(cleaned.charAt(0)) + cleaned.substring(1);
+  private String nullableText(JsonNode node) {
+    String value = textValue(node);
+    return value.isBlank() || "null".equalsIgnoreCase(value) ? null : value;
   }
 
   private String createResponse(
@@ -871,6 +979,19 @@ public class HermesAiCommandService {
 
     static AiCommandModelResponse invalid() {
       return new AiCommandModelResponse(null, null, null, true);
+    }
+  }
+
+  record WeatherIntent(
+      List<String> locations,
+      boolean compare,
+      boolean feelsLike,
+      boolean astronomy,
+      boolean verbose,
+      String sort,
+      boolean invalid) {
+    static WeatherIntent invalidIntent() {
+      return new WeatherIntent(List.of(), false, false, false, false, null, true);
     }
   }
 }
