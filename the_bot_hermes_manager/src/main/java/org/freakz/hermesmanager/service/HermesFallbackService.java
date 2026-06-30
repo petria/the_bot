@@ -51,6 +51,8 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String LEGACY_FALLBACK_FILE = "the_bot_fallback.json";
   private static final String OPENAI = "openai";
   private static final String LOCAL = "local";
+  private static final String LOCAL_PREFIX = "local-";
+  private static final String DEFAULT_LOCAL = "local-0";
   private static final String AI_COMMAND = "ai-command";
   private static final String MODE_ENABLED = "enabled";
   private static final String MODE_OFF = "off";
@@ -97,7 +99,7 @@ public class HermesFallbackService implements ApplicationRunner {
 
   public HermesFallbackSettingsResponse getSettings() {
     StoredConfig config = readConfig();
-    StoredBackend local = backendById(config, LOCAL);
+    StoredBackend local = firstLocalBackend(config);
     BackendHealth health = backendHealth(local);
     return new HermesFallbackSettingsResponse(
         false,
@@ -129,10 +131,10 @@ public class HermesFallbackService implements ApplicationRunner {
 
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
     StoredConfig config = readConfig();
-    StoredBackend current = backendById(config, LOCAL);
+    StoredBackend current = firstLocalBackend(config);
     StoredBackend updated = new StoredBackend(
-        LOCAL,
-        "Local LLM backend",
+        current.id(),
+        current.label(),
         normalizeLocalProvider(firstNonBlank(request == null ? null : request.provider(), current.provider())),
         trimTrailingSlash(firstNonBlank(request == null ? null : request.baseUrl(), current.baseUrl())),
         firstNonBlank(request == null ? null : request.model(), current.model()),
@@ -298,8 +300,15 @@ public class HermesFallbackService implements ApplicationRunner {
     List<StoredBackend> backends = request.backends() == null || request.backends().isEmpty()
         ? current.backends()
         : request.backends().stream()
-            .map(update -> sanitizeBackend(update, backendById(current, update.id())))
+            .map(update -> sanitizeBackend(
+                update,
+                existingBackendById(current, update == null ? null : update.id()).orElse(null)))
             .toList();
+    if (request.backends() != null
+        && !request.backends().isEmpty()
+        && backends.stream().noneMatch(backend -> isLocalBackendId(backend.id()))) {
+      throw new IllegalArgumentException("at least one local backend is required");
+    }
     List<StoredRoute> routes = request.routes() == null || request.routes().isEmpty()
         ? current.routes()
         : request.routes().stream()
@@ -355,6 +364,9 @@ public class HermesFallbackService implements ApplicationRunner {
     for (StoredRoute route : config.routes()) {
       backendById(config, route.backendId());
     }
+    if (config.backends().stream().noneMatch(backend -> isLocalBackendId(backend.id()))) {
+      throw new IllegalArgumentException("at least one local backend is required");
+    }
   }
 
   private void validateBackend(StoredBackend backend) {
@@ -379,7 +391,7 @@ public class HermesFallbackService implements ApplicationRunner {
           : e.getMessage();
       throw new HermesValidationException(
           "Hermes local backend validation failed",
-          "backend=local, provider=" + backend.provider()
+          "backend=" + backend.id() + ", provider=" + backend.provider()
               + ", baseUrl=" + trimTrailingSlash(backend.baseUrl())
               + ", model=" + backend.model()
               + ", detail=" + detail,
@@ -511,15 +523,15 @@ public class HermesFallbackService implements ApplicationRunner {
         MODE_ENABLED,
         List.of(openAi, local),
         List.of(
-            new StoredRoute("chat", "Hermes chat", isLocal(legacyChat) ? LOCAL : OPENAI),
-            new StoredRoute("ai-command", "Hermes AI command", isLocal(legacyAiCommand) ? LOCAL : OPENAI))));
+            new StoredRoute("chat", "Hermes chat", isLocal(legacyChat) ? DEFAULT_LOCAL : OPENAI),
+            new StoredRoute("ai-command", "Hermes AI command", isLocal(legacyAiCommand) ? DEFAULT_LOCAL : OPENAI))));
   }
 
   private StoredBackend localFromLegacy(JsonNode source) {
     LegacyFallback legacyFallback = readLegacyFallback();
     return new StoredBackend(
-        LOCAL,
-        "Local LLM backend",
+        DEFAULT_LOCAL,
+        localLabel(DEFAULT_LOCAL),
         normalizeLocalProvider(firstNonBlank(text(source, "provider"), legacyFallback.provider(), "ollama")),
         trimTrailingSlash(firstNonBlank(text(source, "baseUrl"), legacyFallback.baseUrl(), properties.defaultBaseUrl())),
         firstNonBlank(text(source, "model"), legacyFallback.model(), properties.defaultModel()),
@@ -568,15 +580,14 @@ public class HermesFallbackService implements ApplicationRunner {
   private StoredConfig normalizeConfig(StoredConfig config) {
     Map<String, StoredBackend> backends = new LinkedHashMap<>();
     backends.put(OPENAI, defaultBackend(OPENAI));
-    backends.put(LOCAL, defaultBackend(LOCAL));
     if (config != null && config.backends() != null) {
       for (StoredBackend backend : config.backends()) {
         String id = normalizeBackendId(backend.id());
-        StoredBackend defaults = backends.get(id);
+        StoredBackend defaults = backends.containsKey(id) ? backends.get(id) : defaultBackend(id);
         String provider = OPENAI.equals(id) ? OPENAI : normalizeLocalProvider(firstNonBlank(backend.provider(), defaults.provider()));
         backends.put(id, new StoredBackend(
             id,
-            firstNonBlank(backend.label(), defaults.label()),
+            OPENAI.equals(id) ? firstNonBlank(backend.label(), defaults.label()) : localLabel(id),
             provider,
             OPENAI.equals(id) ? null : firstNonBlank(backend.baseUrl(), defaults.baseUrl()),
             firstNonBlank(backend.model(), defaults.model()),
@@ -589,6 +600,9 @@ public class HermesFallbackService implements ApplicationRunner {
             backend.detail(),
             backend.encryptedApiKey()));
       }
+    }
+    if (backends.values().stream().noneMatch(backend -> isLocalBackendId(backend.id()))) {
+      backends.put(DEFAULT_LOCAL, defaultBackend(DEFAULT_LOCAL));
     }
     Map<String, StoredRoute> routes = new LinkedHashMap<>();
     routes.put("chat", new StoredRoute("chat", "Hermes chat", OPENAI));
@@ -605,14 +619,14 @@ public class HermesFallbackService implements ApplicationRunner {
     }
     return new StoredConfig(
         normalizeMode(config == null ? null : config.systemMode()),
-        List.copyOf(backends.values()),
+        orderedBackends(backends),
         List.copyOf(routes.values()));
   }
 
   private StoredConfig defaultConfig() {
     return new StoredConfig(
         MODE_ENABLED,
-        List.of(defaultBackend(OPENAI), defaultBackend(LOCAL)),
+        List.of(defaultBackend(OPENAI), defaultBackend(DEFAULT_LOCAL)),
         List.of(
             new StoredRoute("chat", "Hermes chat", OPENAI),
             new StoredRoute("ai-command", "Hermes AI command", OPENAI)));
@@ -636,8 +650,8 @@ public class HermesFallbackService implements ApplicationRunner {
           null);
     }
     return new StoredBackend(
-        LOCAL,
-        "Local LLM backend",
+        normalizeBackendId(id),
+        localLabel(id),
         "ollama",
         properties.defaultBaseUrl(),
         properties.defaultModel(),
@@ -934,11 +948,29 @@ public class HermesFallbackService implements ApplicationRunner {
       return null;
     }
     StoredConfig config = readConfig();
-    if (OPENAI.equals(profileId) || LOCAL.equals(profileId)) {
-      return decryptCredential(backendById(config, profileId).encryptedApiKey());
+    Optional<StoredBackend> backend = existingBackendById(config, profileId);
+    if (backend.isPresent()) {
+      return decryptCredential(backend.get().encryptedApiKey());
     }
     StoredRoute route = routeById(config, profileId);
     return decryptCredential(backendById(config, route.backendId()).encryptedApiKey());
+  }
+
+  private StoredBackend firstLocalBackend(StoredConfig config) {
+    return config.backends().stream()
+        .filter(backend -> isLocalBackendId(backend.id()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Missing Hermes local backend"));
+  }
+
+  private Optional<StoredBackend> existingBackendById(StoredConfig config, String id) {
+    if (config == null || id == null || id.isBlank()) {
+      return Optional.empty();
+    }
+    String normalized = normalizeBackendId(id);
+    return config.backends().stream()
+        .filter(backend -> normalized.equals(backend.id()))
+        .findFirst();
   }
 
   private StoredBackend backendById(StoredConfig config, String id) {
@@ -960,6 +992,16 @@ public class HermesFallbackService implements ApplicationRunner {
     return backends.stream()
         .map(backend -> backend.id().equals(updated.id()) ? updated : backend)
         .toList();
+  }
+
+  private List<StoredBackend> orderedBackends(Map<String, StoredBackend> backends) {
+    List<StoredBackend> ordered = new ArrayList<>();
+    ordered.add(backends.get(OPENAI));
+    backends.values().stream()
+        .filter(backend -> isLocalBackendId(backend.id()))
+        .sorted(Comparator.comparingInt(backend -> localIndex(backend.id())))
+        .forEach(ordered::add);
+    return ordered;
   }
 
   private URI validatedBaseUrl(String value) {
@@ -1003,10 +1045,35 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private String normalizeBackendId(String value) {
     String id = requireValue(value, "backend id").toLowerCase();
-    if (!OPENAI.equals(id) && !LOCAL.equals(id)) {
-      throw new IllegalArgumentException("backend id must be openai or local");
+    if (LOCAL.equals(id)) {
+      return DEFAULT_LOCAL;
+    }
+    if (!OPENAI.equals(id) && !isLocalBackendId(id)) {
+      throw new IllegalArgumentException("backend id must be openai or local-N");
     }
     return id;
+  }
+
+  private boolean isLocalBackendId(String id) {
+    if (id == null || !id.startsWith(LOCAL_PREFIX)) {
+      return false;
+    }
+    try {
+      return Integer.parseInt(id.substring(LOCAL_PREFIX.length())) >= 0;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
+  private int localIndex(String id) {
+    if (!isLocalBackendId(id)) {
+      return Integer.MAX_VALUE;
+    }
+    return Integer.parseInt(id.substring(LOCAL_PREFIX.length()));
+  }
+
+  private String localLabel(String id) {
+    return "#" + localIndex(normalizeBackendId(id)) + " local";
   }
 
   private String normalizeMode(String value) {

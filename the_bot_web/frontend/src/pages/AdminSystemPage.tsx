@@ -1,6 +1,6 @@
 import { Alert, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, RefreshCw, Save } from 'lucide-react';
+import { AlertCircle, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
@@ -18,11 +18,6 @@ const LOCAL_RUNNER_OPTIONS = [
   { value: 'vllm', label: 'vLLM' },
 ];
 
-const ROUTE_OPTIONS = [
-  { value: 'openai', label: 'OpenAI backend' },
-  { value: 'local', label: 'Local LLM backend' },
-];
-
 const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
   { id: 'gpt-5.5', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
   { id: 'gpt-5.4', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
@@ -38,7 +33,7 @@ export function AdminSystemPage() {
     queryFn: getHermesBackendConfig,
   });
   const [config, setConfig] = useState<HermesBackendConfigResponse | null>(null);
-  const [modelBackendId, setModelBackendId] = useState<string>('local');
+  const [modelBackendId, setModelBackendId] = useState<string>('local-0');
   const [loadedModelBackendId, setLoadedModelBackendId] = useState<string>('');
   const [models, setModels] = useState<string[]>([]);
   const [modelItems, setModelItems] = useState<HermesFallbackModel[]>([]);
@@ -47,7 +42,7 @@ export function AdminSystemPage() {
   useEffect(() => {
     if (backendQuery.data) {
       setConfig(backendQuery.data);
-      setModelBackendId('local');
+      setModelBackendId(firstLocalBackend(backendQuery.data)?.id || 'local-0');
     }
   }, [backendQuery.data]);
 
@@ -83,7 +78,7 @@ export function AdminSystemPage() {
   });
 
   const openAi = backendById(config, 'openai');
-  const local = backendById(config, 'local');
+  const localBackends = config?.backends.filter((backend) => isLocalBackend(backend)) || [];
   const selectedModelBackend = backendById(config, modelBackendId);
   const activeModelItems = selectedModelBackend?.id === 'openai' ? OPENAI_MODEL_ITEMS : modelItems;
   const activeModels = activeModelItems.map((model) => model.id);
@@ -92,6 +87,10 @@ export function AdminSystemPage() {
   const discoveredModelOptions = useMemo(
     () => activeModelItems.map((model) => ({ value: model.id, label: `${model.id} - ${model.label}` })),
     [activeModelItems]
+  );
+  const routeOptions = useMemo(
+    () => config?.backends.map((backend) => ({ value: backend.id, label: backend.label })) || [],
+    [config]
   );
 
   return (
@@ -147,14 +146,25 @@ export function AdminSystemPage() {
             />
           ) : null}
 
-          {local ? (
+          {localBackends.map((backend) => (
             <BackendCard
-              title="Local LLM backend"
-              backend={local}
-              modelOptions={loadedModelBackendId === 'local' ? models : []}
-              onChange={(patch) => updateBackend('local', patch)}
+              key={backend.id}
+              title={backend.label}
+              backend={backend}
+              modelOptions={loadedModelBackendId === backend.id ? models : []}
+              canDelete={localBackends.length > 1 && !routeUsesBackend(backend.id)}
+              onDelete={() => deleteLocalBackend(backend.id)}
+              onChange={(patch) => updateBackend(backend.id, patch)}
             />
-          ) : null}
+          ))}
+
+          <Button
+            variant="light"
+            leftSection={<Plus size={18} />}
+            onClick={addLocalBackend}
+          >
+            Add local backend
+          </Button>
 
           <Card withBorder radius="sm">
             <Stack gap="md">
@@ -172,7 +182,7 @@ export function AdminSystemPage() {
                   <Select
                     key={route.id}
                     label={route.label}
-                    data={ROUTE_OPTIONS}
+                    data={routeOptions}
                     value={route.backendId}
                     onChange={(value) => updateRoute(route.id, value || 'openai')}
                   />
@@ -197,7 +207,7 @@ export function AdminSystemPage() {
                   label="Model list source"
                   data={config.backends.map((backend) => ({ value: backend.id, label: backend.label }))}
                   value={modelBackendId}
-                  onChange={(value) => setModelBackendId(value || 'local')}
+                  onChange={(value) => setModelBackendId(value || firstLocalBackend(config)?.id || 'local-0')}
                 />
                 <Button
                   variant="light"
@@ -250,6 +260,64 @@ export function AdminSystemPage() {
       routes: current.routes.map((route) => route.id === routeId ? { ...route, backendId } : route),
     } : current);
   }
+
+  function addLocalBackend() {
+    setApplyFailed(false);
+    setConfig((current) => {
+      if (!current) {
+        return current;
+      }
+      const locals = current.backends.filter((backend) => isLocalBackend(backend));
+      const source = locals[0];
+      const nextId = nextLocalBackendId(locals);
+      const nextBackend: HermesBackend = {
+        id: nextId,
+        label: localLabel(nextId),
+        provider: source?.provider || 'ollama',
+        baseUrl: source?.baseUrl || defaultRunnerUrl(source?.provider || 'ollama'),
+        model: source?.model || '',
+        apiMode: source?.apiMode || 'responses',
+        timeoutSeconds: source?.timeoutSeconds || 120,
+        contextWindow: source?.contextWindow || 65536,
+        healthy: null,
+        toolCapable: null,
+        detail: 'Local backend has not been validated',
+        lastValidatedAt: null,
+        validationStatus: 'NOT_VALIDATED',
+        apiKeyConfigured: false,
+        apiKey: '',
+        clearApiKey: false,
+      };
+      return {
+        ...current,
+        backends: [...current.backends, nextBackend],
+      };
+    });
+  }
+
+  function deleteLocalBackend(backendId: string) {
+    setApplyFailed(false);
+    setConfig((current) => {
+      if (!current) {
+        return current;
+      }
+      const locals = current.backends.filter((backend) => isLocalBackend(backend));
+      if (locals.length <= 1 || current.routes.some((route) => route.backendId === backendId)) {
+        return current;
+      }
+      if (modelBackendId === backendId) {
+        setModelBackendId(locals.find((backend) => backend.id !== backendId)?.id || 'local-0');
+      }
+      return {
+        ...current,
+        backends: current.backends.filter((backend) => backend.id !== backendId),
+      };
+    });
+  }
+
+  function routeUsesBackend(backendId: string) {
+    return Boolean(config?.routes.some((route) => route.backendId === backendId));
+  }
 }
 
 function BackendCard({
@@ -257,15 +325,19 @@ function BackendCard({
   backend,
   modelOptions,
   disabledProvider,
+  canDelete,
+  onDelete,
   onChange,
 }: {
   title: string;
   backend: HermesBackend;
   modelOptions: string[];
   disabledProvider?: boolean;
+  canDelete?: boolean;
+  onDelete?: () => void;
   onChange: (patch: Partial<HermesBackend>) => void;
 }) {
-  const local = backend.id === 'local';
+  const local = isLocalBackend(backend);
   return (
     <Card withBorder radius="sm">
       <Stack gap="md">
@@ -278,6 +350,19 @@ function BackendCard({
             {statusText(backend.healthy)}
           </Badge>
         </Group>
+        {onDelete ? (
+          <Group justify="flex-end">
+            <Button
+              color="red"
+              variant="subtle"
+              leftSection={<Trash2 size={16} />}
+              disabled={!canDelete}
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+          </Group>
+        ) : null}
         <Group grow align="flex-start">
           <Select
             label="Provider"
@@ -399,6 +484,30 @@ function SettingsError({ error }: { error: Error }) {
 
 function backendById(config: HermesBackendConfigResponse | null, id: string) {
   return config?.backends.find((backend) => backend.id === id) || null;
+}
+
+function firstLocalBackend(config: HermesBackendConfigResponse | null) {
+  return config?.backends.find((backend) => isLocalBackend(backend)) || null;
+}
+
+function isLocalBackend(backend: HermesBackend | null | undefined) {
+  return Boolean(backend?.id.match(/^local-\d+$/));
+}
+
+function nextLocalBackendId(backends: HermesBackend[]) {
+  const maxIndex = backends
+    .map((backend) => localIndex(backend.id))
+    .reduce((max, index) => Math.max(max, index), -1);
+  return `local-${maxIndex + 1}`;
+}
+
+function localIndex(id: string) {
+  const match = id.match(/^local-(\d+)$/);
+  return match ? Number(match[1]) : -1;
+}
+
+function localLabel(id: string) {
+  return `#${localIndex(id)} local`;
 }
 
 function defaultRunnerUrl(provider: string) {

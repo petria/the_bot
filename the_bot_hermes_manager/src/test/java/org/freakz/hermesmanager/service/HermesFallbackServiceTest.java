@@ -46,7 +46,7 @@ class HermesFallbackServiceTest {
 
     HermesBackendConfigResponse response = service.getBackendConfig();
     assertThat(response.systemMode()).isEqualTo("enabled");
-    assertThat(response.backends()).extracting("id").containsExactly("openai", "local");
+    assertThat(response.backends()).extracting("id").containsExactly("openai", "local-0");
     assertThat(response.backends().stream()
         .filter(backend -> "openai".equals(backend.id()))
         .findFirst()
@@ -97,7 +97,7 @@ class HermesFallbackServiceTest {
         .filter(route -> "chat".equals(route.id()))
         .findFirst()
         .orElseThrow()
-        .backendId()).isEqualTo("local");
+        .backendId()).isEqualTo("local-0");
     assertThat(response.backends().stream()
         .filter(backend -> "openai".equals(backend.id()))
         .findFirst()
@@ -145,7 +145,7 @@ class HermesFallbackServiceTest {
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local")))))
         .isInstanceOf(HermesValidationException.class)
         .satisfies(error -> assertThat(((HermesValidationException) error).getDetail())
-            .contains("backend=local", "model=bad-model", "Read timed out"));
+            .contains("backend=local-0", "model=bad-model", "Read timed out"));
 
     assertThat(service.getBackendConfig().routes()).allMatch(route -> "openai".equals(route.backendId()));
     assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-5.4-mini");
@@ -170,10 +170,80 @@ class HermesFallbackServiceTest {
 
     assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
     assertThat(response.backends().stream()
-        .filter(backend -> "local".equals(backend.id()))
+        .filter(backend -> "local-0".equals(backend.id()))
         .findFirst()
         .orElseThrow()
         .model()).isEqualTo("bad-model");
+  }
+
+  @Test
+  void multipleLocalBackendsPersistAndRoutesCanSelectSecondLocal() throws Exception {
+    createProfiles("chat", "ai-command");
+    HermesGatewayService gatewayService = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(healthyRestTemplate(), gatewayService, localClient(), propertiesWithKey());
+    service.run(new DefaultApplicationArguments());
+
+    HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(
+            openAiBackend("gpt-5.5"),
+            localBackend("local-0", "qwen3.5:27b", null),
+            localBackend("local-1", "qwen3.5:27b", "secret-key")),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "local-1"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
+
+    assertThat(response.backends()).extracting("id").containsExactly("openai", "local-0", "local-1");
+    assertThat(response.routes().stream()
+        .filter(route -> "chat".equals(route.id()))
+        .findFirst()
+        .orElseThrow()
+        .backendId()).isEqualTo("local-1");
+    String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
+    assertThat(yaml)
+        .contains("default: \"qwen3.5:27b\"")
+        .contains("api_key: \"secret-key\"");
+    verify(gatewayService, atLeastOnce()).restart("chat");
+  }
+
+  @Test
+  void invalidUnusedExtraLocalBackendDoesNotBlockOpenAiRoutes() throws Exception {
+    createProfiles("chat", "ai-command");
+    LocalLlmClient localLlmClient = localClient();
+    org.mockito.Mockito.doThrow(new IllegalArgumentException("Selected local model did not produce a tool call"))
+        .when(localLlmClient)
+        .validateToolCall(any(), eq("bad-model"), any());
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
+    service.run(new DefaultApplicationArguments());
+
+    HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(
+            openAiBackend("gpt-5.5"),
+            localBackend("local-0", "qwen3.5:27b", null),
+            localBackend("local-1", "bad-model", null)),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "openai"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
+
+    assertThat(response.backends()).extracting("id").containsExactly("openai", "local-0", "local-1");
+    assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
+  }
+
+  @Test
+  void missingLocalBackendsAreRejected() throws Exception {
+    createProfiles("chat", "ai-command");
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
+    service.run(new DefaultApplicationArguments());
+
+    assertThatThrownBy(() -> service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(openAiBackend("gpt-5.5")),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "openai"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "openai")))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("at least one local backend is required");
   }
 
   @Test
@@ -196,7 +266,7 @@ class HermesFallbackServiceTest {
     assertThat(stored).contains("aesgcm:").doesNotContain("secret-key");
     assertThat(yaml).contains("api_key: \"secret-key\"");
     assertThat(response.backends().stream()
-        .filter(backend -> "local".equals(backend.id()))
+        .filter(backend -> "local-0".equals(backend.id()))
         .findFirst()
         .orElseThrow()
         .apiKeyConfigured()).isTrue();
@@ -263,7 +333,7 @@ class HermesFallbackServiceTest {
         .filter(route -> "chat".equals(route.id()))
         .findFirst()
         .orElseThrow()
-        .backendId()).isEqualTo("local");
+        .backendId()).isEqualTo("local-0");
     assertThat(response.routes().stream()
         .filter(route -> "ai-command".equals(route.id()))
         .findFirst()
@@ -325,13 +395,17 @@ class HermesFallbackServiceTest {
   }
 
   private HermesBackendUpdate localBackend(String model) {
-    return localBackend(model == null ? "qwen3.5:27b" : model, null);
+    return localBackend("local-0", model == null ? "qwen3.5:27b" : model, null);
   }
 
   private HermesBackendUpdate localBackend(String model, String apiKey) {
+    return localBackend("local-0", model, apiKey);
+  }
+
+  private HermesBackendUpdate localBackend(String id, String model, String apiKey) {
     return new HermesBackendUpdate(
-        "local",
-        "Local LLM backend",
+        id,
+        "#" + id.substring(id.indexOf('-') + 1) + " local",
         "ollama",
         "http://ollama.local:11434/v1",
         model,
