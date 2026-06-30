@@ -14,5 +14,6 @@ public record HermesBackend(
     String detail,
     String lastValidatedAt,
     String validationStatus,
-    Boolean apiKeyConfigured) {
+    Boolean apiKeyConfigured,
+    Boolean reasoningDisabled) {
 }

@@ -285,6 +285,7 @@ export function AdminSystemPage() {
         lastValidatedAt: null,
         validationStatus: 'NOT_VALIDATED',
         apiKeyConfigured: false,
+        reasoningDisabled: nextBackendProviderDisablesReasoning(source?.provider || 'ollama'),
         apiKey: '',
         clearApiKey: false,
       };
@@ -372,6 +373,7 @@ function BackendCard({
             onChange={(value) => onChange({
               provider: value || backend.provider,
               baseUrl: local ? defaultRunnerUrl(value || backend.provider) : null,
+              reasoningDisabled: nextBackendProviderDisablesReasoning(value || backend.provider),
             })}
           />
           <TextInput
@@ -418,6 +420,13 @@ function BackendCard({
               clear={Boolean(backend.clearApiKey)}
               onChange={(apiKey) => onChange({ apiKey, clearApiKey: false })}
               onClear={(clearApiKey) => onChange({ clearApiKey, apiKey: '' })}
+            />
+            <Switch
+              label="Disable reasoning"
+              description="For Ollama thinking models, sends reasoning_effort=none through Hermes."
+              checked={Boolean(backend.reasoningDisabled)}
+              disabled={backend.provider !== 'ollama'}
+              onChange={(event) => onChange({ reasoningDisabled: event.currentTarget.checked })}
             />
           </Group>
         ) : null}
@@ -519,6 +528,10 @@ function defaultRunnerUrl(provider: string) {
     default:
       return 'http://localhost:11434/v1';
   }
+}
+
+function nextBackendProviderDisablesReasoning(provider: string) {
+  return provider === 'ollama';
 }
 
 function statusText(value: boolean | null | undefined) {
