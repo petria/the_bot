@@ -374,6 +374,27 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void buildsInvalidResponseRepairInput() {
+    HermesAiCommandService service = newService();
+    AiCommandDefinition command = new AiCommandDefinition();
+    command.setName("dynping");
+
+    String input = service.buildInvalidResponseRepairInput(
+        command,
+        "",
+        "{\"unexpected\":\"raw\"}",
+        List.of());
+
+    assertThat(input)
+        .contains("previous AI command response was invalid")
+        .contains("Original command: !dynping")
+        .contains("Allowed tools: []")
+        .contains("{\"unexpected\":\"raw\"}")
+        .contains("{\"type\":\"final\",\"answer\":\"text to send back to chat\"}")
+        .contains("Return exactly one valid JSON object and no other text");
+  }
+
+  @Test
   void buildInstructionsDocumentsWeatherFlags() throws Exception {
     HermesAiCommandService service = newService();
     org.freakz.common.model.engine.aicommand.AiCommandDefinition command =
