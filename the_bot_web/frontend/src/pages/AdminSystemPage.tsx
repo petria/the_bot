@@ -23,6 +23,14 @@ const ROUTE_OPTIONS = [
   { value: 'local', label: 'Local LLM backend' },
 ];
 
+const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
+  { id: 'gpt-5.5', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+  { id: 'gpt-5.4', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+  { id: 'gpt-5.4-mini', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+];
+
+const OPENAI_MODEL_OPTIONS = OPENAI_MODEL_ITEMS.map((model) => model.id);
+
 export function AdminSystemPage() {
   const queryClient = useQueryClient();
   const backendQuery = useQuery({
@@ -77,11 +85,13 @@ export function AdminSystemPage() {
   const openAi = backendById(config, 'openai');
   const local = backendById(config, 'local');
   const selectedModelBackend = backendById(config, modelBackendId);
-  const selectedModel = modelItems.find((item) => item.id === selectedModelBackend?.model) || null;
+  const activeModelItems = selectedModelBackend?.id === 'openai' ? OPENAI_MODEL_ITEMS : modelItems;
+  const activeModels = activeModelItems.map((model) => model.id);
+  const selectedModel = activeModelItems.find((item) => item.id === selectedModelBackend?.model) || null;
   const hasChanges = Boolean(config && JSON.stringify(config) !== JSON.stringify(backendQuery.data));
   const discoveredModelOptions = useMemo(
-    () => modelItems.map((model) => ({ value: model.id, label: `${model.id} - ${model.label}` })),
-    [modelItems]
+    () => activeModelItems.map((model) => ({ value: model.id, label: `${model.id} - ${model.label}` })),
+    [activeModelItems]
   );
 
   return (
@@ -131,7 +141,7 @@ export function AdminSystemPage() {
             <BackendCard
               title="OpenAI backend"
               backend={openAi}
-              modelOptions={loadedModelBackendId === 'openai' ? models : []}
+              modelOptions={OPENAI_MODEL_OPTIONS}
               disabledProvider
               onChange={(patch) => updateBackend('openai', patch)}
             />
@@ -202,9 +212,11 @@ export function AdminSystemPage() {
               <Select
                 label="Apply discovered model"
                 data={discoveredModelOptions}
-                value={selectedModelBackend && models.includes(selectedModelBackend.model) ? selectedModelBackend.model : null}
-                placeholder={loadedModelBackendId === selectedModelBackend?.id ? `${models.length} models loaded` : 'Load models first'}
-                disabled={!selectedModelBackend || loadedModelBackendId !== selectedModelBackend.id || models.length === 0}
+                value={selectedModelBackend && activeModels.includes(selectedModelBackend.model) ? selectedModelBackend.model : null}
+                placeholder={selectedModelBackend?.id === 'openai'
+                  ? 'Select Codex model'
+                  : loadedModelBackendId === selectedModelBackend?.id ? `${models.length} models loaded` : 'Load models first'}
+                disabled={!selectedModelBackend || (selectedModelBackend.id !== 'openai' && (loadedModelBackendId !== selectedModelBackend.id || models.length === 0))}
                 searchable
                 onChange={(value) => selectedModelBackend && value && updateBackend(selectedModelBackend.id, { model: value })}
               />

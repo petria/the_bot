@@ -58,6 +58,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int MIN_CONTEXT_WINDOW = 65536;
   private static final List<String> OPENAI_CODEX_MODELS = List.of("gpt-5.5", "gpt-5.4", "gpt-5.4-mini");
+  private static final String DEFAULT_OPENAI_CODEX_MODEL = "gpt-5.4-mini";
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
@@ -496,7 +497,7 @@ public class HermesFallbackService implements ApplicationRunner {
         "OpenAI backend",
         OPENAI,
         null,
-        firstNonBlank(openAiModel(legacyChat), openAiModel(legacyAiCommand), upstreamModel(OPENAI, "gpt-5.5")),
+        firstNonBlank(openAiModel(legacyChat), openAiModel(legacyAiCommand), upstreamModel(OPENAI, DEFAULT_OPENAI_CODEX_MODEL)),
         firstNonBlank(text(legacyChat, "apiMode"), RESPONSES),
         intValue(legacyChat, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
         null,
@@ -624,7 +625,7 @@ public class HermesFallbackService implements ApplicationRunner {
           "OpenAI backend",
           OPENAI,
           null,
-          upstreamModel(OPENAI, "gpt-5.5"),
+          upstreamModel(OPENAI, DEFAULT_OPENAI_CODEX_MODEL),
           RESPONSES,
           DEFAULT_TIMEOUT_SECONDS,
           null,

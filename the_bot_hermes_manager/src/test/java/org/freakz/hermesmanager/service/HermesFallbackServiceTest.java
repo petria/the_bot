@@ -47,6 +47,11 @@ class HermesFallbackServiceTest {
     HermesBackendConfigResponse response = service.getBackendConfig();
     assertThat(response.systemMode()).isEqualTo("enabled");
     assertThat(response.backends()).extracting("id").containsExactly("openai", "local");
+    assertThat(response.backends().stream()
+        .filter(backend -> "openai".equals(backend.id()))
+        .findFirst()
+        .orElseThrow()
+        .model()).isEqualTo("gpt-5.4-mini");
     assertThat(response.routes()).extracting("id").containsExactly("chat", "ai-command");
     assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
   }
@@ -143,7 +148,7 @@ class HermesFallbackServiceTest {
             .contains("backend=local", "model=bad-model", "Read timed out"));
 
     assertThat(service.getBackendConfig().routes()).allMatch(route -> "openai".equals(route.backendId()));
-    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-5.5");
+    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-5.4-mini");
   }
 
   @Test

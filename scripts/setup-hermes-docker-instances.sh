@@ -273,7 +273,7 @@ if mode == "chat":
 else:
     platform_toolsets.setdefault("api_server", ["hermes-api-server"])
     model = data.setdefault("model", {})
-    model["default"] = "gpt-5.5"
+    model["default"] = "gpt-5.4-mini"
     model["provider"] = "openai-codex"
     model["base_url"] = "https://chatgpt.com/backend-api/codex"
     model["context_length"] = 262144
