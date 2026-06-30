@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 import org.freakz.common.model.engine.system.HermesBackend;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
@@ -691,14 +692,15 @@ public class HermesFallbackService implements ApplicationRunner {
     }
     Path path = optionalPath.get();
     backups.putIfAbsent(path, Files.readAllBytes(path));
-    byte[] updated = updatedProfileYaml(path, backend);
+    byte[] updated = updatedProfileYaml(profile, path, backend);
     if (!java.util.Arrays.equals(backups.get(path), updated)) {
       writeAtomically(path, updated);
+      clearProfileSessions(profile);
       changedProfiles.add(profile);
     }
   }
 
-  private byte[] updatedProfileYaml(Path path, StoredBackend backend) throws IOException {
+  private byte[] updatedProfileYaml(String profile, Path path, StoredBackend backend) throws IOException {
     Map<String, Object> yaml = yamlMapper.readValue(Files.readAllBytes(path), new TypeReference<>() {});
     if (yaml == null) {
       yaml = new LinkedHashMap<>();
@@ -721,7 +723,82 @@ public class HermesFallbackService implements ApplicationRunner {
     }
     yaml.put("model", model);
     yaml.put("fallback_providers", List.of());
+    if (AI_COMMAND.equals(profile)) {
+      configureNoNativeToolsProfile(yaml);
+    }
     return yamlMapper.writeValueAsBytes(yaml);
+  }
+
+  private void configureNoNativeToolsProfile(Map<String, Object> yaml) {
+    Map<String, Object> platformToolsets = mutableMap(yaml.get("platform_toolsets"));
+    platformToolsets.put("api_server", List.of("no_mcp"));
+    yaml.put("platform_toolsets", platformToolsets);
+
+    Map<String, Object> agent = mutableMap(yaml.get("agent"));
+    List<String> disabled = new ArrayList<>();
+    Object existingDisabled = agent.get("disabled_toolsets");
+    if (existingDisabled instanceof List<?> values) {
+      values.stream().map(String::valueOf).forEach(disabled::add);
+    }
+    for (String toolset : noNativeToolsets()) {
+      if (!disabled.contains(toolset)) {
+        disabled.add(toolset);
+      }
+    }
+    disabled.sort(String.CASE_INSENSITIVE_ORDER);
+    agent.put("disabled_toolsets", disabled);
+    yaml.put("agent", agent);
+  }
+
+  private List<String> noNativeToolsets() {
+    return List.of(
+        "browser",
+        "clarify",
+        "code_execution",
+        "computer_use",
+        "cronjob",
+        "debugging",
+        "delegation",
+        "discord",
+        "discord_admin",
+        "feishu_doc",
+        "feishu_drive",
+        "file",
+        "homeassistant",
+        "image_gen",
+        "kanban",
+        "memory",
+        "messaging",
+        "moa",
+        "rl",
+        "search",
+        "session_search",
+        "skills",
+        "spotify",
+        "terminal",
+        "todo",
+        "tts",
+        "vision",
+        "web",
+        "x_search",
+        "yuanbao");
+  }
+
+  private void clearProfileSessions(String profile) throws IOException {
+    Path sessions = properties.dataDir().resolve("profiles").resolve(profile).resolve("sessions");
+    if (!Files.isDirectory(sessions)) {
+      return;
+    }
+    try (Stream<Path> paths = Files.walk(sessions)) {
+      List<Path> deleteOrder = paths
+          .sorted(Comparator.reverseOrder())
+          .toList();
+      for (Path path : deleteOrder) {
+        if (!path.equals(sessions)) {
+          Files.deleteIfExists(path);
+        }
+      }
+    }
   }
 
   private Map<String, Object> mutableMap(Object value) {

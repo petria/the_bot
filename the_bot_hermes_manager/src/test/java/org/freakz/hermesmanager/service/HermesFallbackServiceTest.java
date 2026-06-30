@@ -181,6 +181,9 @@ class HermesFallbackServiceTest {
   @Test
   void routesSyncDedicatedGatewayProfilesWhenConfigured() throws Exception {
     createProfiles("chat", "ai-command");
+    Path sessionFile = tempDir.resolve("profiles/ai-command/sessions/stale-session.json");
+    Files.createDirectories(sessionFile.getParent());
+    Files.writeString(sessionFile, "{}");
     HermesGatewayService gatewayService = mock(HermesGatewayService.class);
     HermesFallbackService service = service(
         healthyRestTemplate(),
@@ -201,7 +204,11 @@ class HermesFallbackServiceTest {
         .contains("default: \"qwen3.5:27b\"")
         .contains("provider: \"custom\"")
         .contains("base_url: \"http://ollama.local:11434/v1\"")
-        .contains("api_key: \"secret-key\"");
+        .contains("api_key: \"secret-key\"")
+        .contains("api_server:")
+        .contains("- \"no_mcp\"")
+        .contains("disabled_toolsets:");
+    assertThat(sessionFile).doesNotExist();
     verify(gatewayService, atLeastOnce()).restart("ai-command");
   }
 
