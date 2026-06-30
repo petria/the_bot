@@ -22,6 +22,7 @@ import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.HermesBackendUpdate;
 import org.freakz.common.model.engine.system.HermesFallbackModel;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
+import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesRouteUpdate;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,28 @@ class HermesFallbackServiceTest {
     assertThat(response.backends()).extracting("id").containsExactly("openai", "local");
     assertThat(response.routes()).extracting("id").containsExactly("chat", "ai-command");
     assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
+  }
+
+  @Test
+  void openAiModelDiscoveryReturnsSupportedCodexModels() throws Exception {
+    createProfiles("chat", "ai-command");
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
+    service.run(new DefaultApplicationArguments());
+
+    HermesFallbackModelsResponse response = service.getModels(new HermesModelDiscoveryRequest(
+        "openai",
+        null,
+        null,
+        null));
+
+    assertThat(response.models()).containsExactly("gpt-5.5", "gpt-5.4", "gpt-5.4-mini");
+    assertThat(response.items()).extracting(HermesFallbackModel::id)
+        .containsExactly("gpt-5.5", "gpt-5.4", "gpt-5.4-mini");
+    assertThat(response.items()).allSatisfy(model -> {
+      assertThat(model.suitability()).isEqualTo("tool-capable");
+      assertThat(model.toolCapable()).isTrue();
+      assertThat(model.detail()).isEqualTo("Supported Codex model");
+    });
   }
 
   @Test

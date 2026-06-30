@@ -57,6 +57,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String RESPONSES = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int MIN_CONTEXT_WINDOW = 65536;
+  private static final List<String> OPENAI_CODEX_MODELS = List.of("gpt-5.5", "gpt-5.4", "gpt-5.4-mini");
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
@@ -162,19 +163,13 @@ public class HermesFallbackService implements ApplicationRunner {
   public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
     String provider = normalizeProvider(request == null ? null : request.provider());
     if (OPENAI.equals(provider)) {
-      StoredBackend openAi = backendById(readConfig(), OPENAI);
-      List<String> models = List.of(openAi.model(), "gpt-5.5").stream()
-          .filter(value -> value != null && !value.isBlank())
-          .distinct()
-          .sorted(String.CASE_INSENSITIVE_ORDER)
-          .toList();
-      return new HermesFallbackModelsResponse(models, models.stream()
+      return new HermesFallbackModelsResponse(OPENAI_CODEX_MODELS, OPENAI_CODEX_MODELS.stream()
           .map(model -> new HermesFallbackModel(
               model,
               "tool-capable",
               "OpenAI/Codex model",
               true,
-              "Configured OpenAI backend model"))
+              "Supported Codex model"))
           .toList());
     }
     URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
