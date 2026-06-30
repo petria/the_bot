@@ -345,6 +345,37 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void deterministicWeatherShortcutUsesCurrentForSingleKnownLocation() {
+    AiCommandToolRegistry toolRegistry = mock(AiCommandToolRegistry.class);
+    HermesAiCommandService service = newService(toolRegistry);
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of("!saa"),
+        null,
+        "Use weather tools.",
+        List.of("weather.current", "weather.compare"),
+        3);
+    when(toolRegistry.execute(eq("weather.current"), any(), any()))
+        .thenAnswer(invocation -> {
+          tools.jackson.databind.JsonNode args = invocation.getArgument(1);
+          assertThat(args.path("location").asString()).isEqualTo("Oulu");
+          return """
+              {"tool":"weather.current","formattedText":"Oulu: 23:05, 10.0°C"}
+              """;
+        });
+
+    String reply = service.tryExecuteDeterministicWeatherCommand(
+        command,
+        "oulu",
+        new EngineRequest());
+
+    assertThat(reply).isEqualTo("Oulu: 23:05, 10.0°C");
+  }
+
+  @Test
   void buildsToolResultInputForModelFinalResponse() {
     HermesAiCommandService service = newService();
     AiCommandDefinition command = new AiCommandDefinition(
