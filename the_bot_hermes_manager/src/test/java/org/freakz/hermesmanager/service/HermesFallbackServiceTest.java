@@ -37,7 +37,7 @@ class HermesFallbackServiceTest {
 
   @Test
   void defaultConfigUsesFixedOpenAiAndLocalBackends() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     RestTemplate restTemplate = healthyRestTemplate();
     HermesFallbackService service = service(restTemplate, mock(HermesGatewayService.class), localClient(), properties());
 
@@ -52,7 +52,7 @@ class HermesFallbackServiceTest {
 
   @Test
   void saveUpdatesRoutesWithoutChangingBackendDefinitions() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     RestTemplate restTemplate = healthyRestTemplate();
     HermesGatewayService gatewayService = mock(HermesGatewayService.class);
     HermesFallbackService service = service(restTemplate, gatewayService, localClient(), properties());
@@ -75,13 +75,13 @@ class HermesFallbackServiceTest {
         .findFirst()
         .orElseThrow()
         .model()).isEqualTo("gpt-5.5");
-    verify(gatewayService, atLeastOnce()).restart("openai");
-    verify(gatewayService, atLeastOnce()).restart("local");
+    verify(gatewayService, atLeastOnce()).restart("chat");
+    verify(gatewayService, atLeastOnce()).restart("ai-command");
   }
 
   @Test
   void systemModeOffIsPersisted() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
     service.run(new DefaultApplicationArguments());
 
@@ -98,7 +98,7 @@ class HermesFallbackServiceTest {
 
   @Test
   void invalidLocalBackendDoesNotOverwriteSavedConfig() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     LocalLlmClient localLlmClient = localClient();
     org.mockito.Mockito.doThrow(new HermesValidationException(
         "Local LLM tool-call validation failed",
@@ -120,12 +120,12 @@ class HermesFallbackServiceTest {
             .contains("backend=local", "model=bad-model", "Read timed out"));
 
     assertThat(service.getBackendConfig().routes()).allMatch(route -> "openai".equals(route.backendId()));
-    assertThat(Files.readString(tempDir.resolve("profiles/local/config.yaml"))).contains("qwen3.5:27b");
+    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-5.5");
   }
 
   @Test
   void localApiKeyIsEncryptedAndExposedOnlyAsConfiguredState() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     HermesManagerProperties properties = propertiesWithKey();
     LocalLlmClient localLlmClient = localClient();
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties);
@@ -139,7 +139,7 @@ class HermesFallbackServiceTest {
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local"))));
 
     String stored = Files.readString(tempDir.resolve("the_bot_hermes_backends.json"));
-    String yaml = Files.readString(tempDir.resolve("profiles/local/config.yaml"));
+    String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
     assertThat(stored).contains("aesgcm:").doesNotContain("secret-key");
     assertThat(yaml).contains("api_key: \"secret-key\"");
     assertThat(response.backends().stream()
@@ -154,8 +154,35 @@ class HermesFallbackServiceTest {
   }
 
   @Test
+  void routesSyncDedicatedGatewayProfilesWhenConfigured() throws Exception {
+    createProfiles("chat", "ai-command");
+    HermesGatewayService gatewayService = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(
+        healthyRestTemplate(),
+        gatewayService,
+        localClient(),
+        propertiesWithAiCommandPort());
+    service.run(new DefaultApplicationArguments());
+
+    service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(openAiBackend("gpt-5.5"), localBackend("qwen3.5:27b", "secret-key")),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "openai"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "local"))));
+
+    String yaml = Files.readString(tempDir.resolve("profiles/ai-command/config.yaml"));
+    assertThat(yaml)
+        .contains("default: \"qwen3.5:27b\"")
+        .contains("provider: \"custom\"")
+        .contains("base_url: \"http://ollama.local:11434/v1\"")
+        .contains("api_key: \"secret-key\"");
+    verify(gatewayService, atLeastOnce()).restart("ai-command");
+  }
+
+  @Test
   void legacyProfileConfigMigratesToFixedBackends() throws Exception {
-    createProfiles("openai", "local");
+    createProfiles("chat", "ai-command");
     Files.writeString(tempDir.resolve("the_bot_hermes_backends.json"), """
         {"profiles":[
           {"id":"chat","label":"Hermes chat","provider":"ollama","baseUrl":"http://ollama.local:11434/v1","model":"qwen3.5:27b","apiMode":"responses","timeoutSeconds":120,"contextWindow":65536},
@@ -253,8 +280,8 @@ class HermesFallbackServiceTest {
     return new HermesManagerProperties(
         tempDir,
         "bot-hermes-test",
-        List.of("openai", "local"),
-        "openai:8643,local:8644",
+        List.of("chat", "ai-command"),
+        "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
@@ -266,8 +293,21 @@ class HermesFallbackServiceTest {
     return new HermesManagerProperties(
         tempDir,
         "bot-hermes-test",
-        List.of("openai", "local"),
-        "openai:8643,local:8644",
+        List.of("chat", "ai-command"),
+        "chat:8643,ai-command:8645",
+        "http://ollama.local:11434/v1",
+        "qwen3.5:27b",
+        "token",
+        Base64.getEncoder().encodeToString(new byte[32]),
+        null);
+  }
+
+  private HermesManagerProperties propertiesWithAiCommandPort() {
+    return new HermesManagerProperties(
+        tempDir,
+        "bot-hermes-test",
+        List.of("chat", "ai-command"),
+        "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",

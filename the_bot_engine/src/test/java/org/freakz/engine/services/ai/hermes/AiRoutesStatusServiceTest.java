@@ -27,8 +27,8 @@ class AiRoutesStatusServiceTest {
             new HermesBackend("local", "Local LLM", "ollama", "http://ollama.local:11434/v1", "llama3.1", "chat-completions", 120, 32768, true, true, null, null, "ok", false)
         ),
         List.of(
-            new HermesRoute("chat", "Hermes chat", "openai", "openai", "http://gateway.local:8643", "hermes-openai", "responses", 120, null, true, true, null),
-            new HermesRoute("ai-command", "Hermes AI command", "local", "ollama", "http://gateway.local:8644", "hermes-local", "chat-completions", 120, 32768, true, true, null)
+            new HermesRoute("chat", "Hermes chat", "openai", "openai", "http://gateway.local:8643", "hermes-chat", "responses", 120, null, true, true, null),
+            new HermesRoute("ai-command", "Hermes AI command", "local", "ollama", "http://gateway.local:8645", "hermes-ai-command", "chat-completions", 120, 32768, true, true, null)
         ))));
 
     AiRoutesStatusService service = newService(managerClient);
@@ -39,8 +39,8 @@ class AiRoutesStatusServiceTest {
     assertThat(lines.get(0)).isEqualTo("ai: mode=enabled");
     assertThat(lines.get(1)).contains("backend openai: UP", "provider=openai", "model=gpt-5.5", "tools=yes");
     assertThat(lines.get(2)).contains("backend local: UP", "provider=ollama", "model=llama3.1", "tools=yes");
-    assertThat(lines.get(3)).contains("route chat: backend=openai", "provider=openai", "model=hermes-openai", "status=UP");
-    assertThat(lines.get(4)).contains("route ai-command: backend=local", "provider=ollama", "model=hermes-local", "status=UP");
+    assertThat(lines.get(3)).contains("route chat: backend=openai", "provider=openai", "model=hermes-chat", "status=UP");
+    assertThat(lines.get(4)).contains("route ai-command: backend=local", "provider=ollama", "model=hermes-ai-command", "status=UP");
   }
 
   @Test

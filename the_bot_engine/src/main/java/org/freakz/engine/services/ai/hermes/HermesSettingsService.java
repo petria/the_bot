@@ -33,7 +33,7 @@ public class HermesSettingsService {
   private static final String TIMEOUT_SECONDS_KEY = "hermes.chat.timeout-seconds";
   private static final String CHAT_PROFILE_BASE_URL_KEY = "hermes.chat.profile-base-url";
   private static final String AI_COMMAND_PROFILE_ID = "ai-command";
-  private static final String AI_COMMAND_DEFAULT_BASE_URL = "http://ubuntu-server.local:8644";
+  private static final String AI_COMMAND_DEFAULT_BASE_URL = "http://ubuntu-server.local:8645";
   private static final String AI_COMMAND_DEFAULT_MODEL = "hermes-ai-command";
   private static final String AI_COMMAND_PROFILE_ID_KEY = "hermes.ai-command.profile-id";
   private static final String AI_COMMAND_BASE_URL_KEY = "hermes.ai-command.base-url";
@@ -287,12 +287,6 @@ public class HermesSettingsService {
           configService.getConfigValue("hermes.profiles.chat.api-key", "HERMES_CHAT_API_KEY", ""),
           configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", ""));
       case AI_COMMAND_PROFILE_ID -> configService.getConfigValue("hermes.profiles.ai-command.api-key", "HERMES_AI_COMMAND_API_KEY", "");
-      case "openai" -> firstNonBlank(
-          configService.getConfigValue("hermes.profiles.openai.api-key", "HERMES_CHAT_API_KEY", ""),
-          configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", ""));
-      case "local" -> firstNonBlank(
-          configService.getConfigValue("hermes.profiles.local.api-key", "HERMES_LOCAL_API_KEY", ""),
-          configService.getConfigValue("hermes.profiles.local.api-key", "HERMES_AI_COMMAND_API_KEY", ""));
       default -> "";
     };
   }
@@ -358,15 +352,15 @@ public class HermesSettingsService {
         return null;
       }
       int timeoutSeconds = backend.timeoutSeconds() == null ? local.timeoutSeconds() : backend.timeoutSeconds();
-      String baseUrl = normalizeApiRoot(profileGatewayBaseUrl(backend.id(), profileId, local.baseUrl()));
+      String baseUrl = normalizeApiRoot(firstNonBlank(local.baseUrl(), route.baseUrl()));
       if (baseUrl == null || baseUrl.isBlank()) {
         return null;
       }
-      String apiKey = apiKeyForProfile(backend.id());
+      String apiKey = apiKeyForProfile(profileId);
       return new HermesSettings(
           baseUrl,
           apiKey == null ? "" : apiKey.trim(),
-          gatewayModelAlias(backend.id()),
+          routeGatewayModelAlias(profileId),
           timeoutSeconds,
           firstNonBlank(backend.apiMode(), local.apiMode()));
     } catch (Exception e) {
@@ -387,39 +381,11 @@ public class HermesSettingsService {
     }
   }
 
-  private String profileGatewayBaseUrl(String backendId, String routeId, String localBaseUrl) {
-    return switch (backendId) {
-      case "openai" -> firstNonBlank(openAiBaseUrl(), localBaseUrl, DEFAULT_BASE_URL);
-      case "local" -> firstNonBlank(localBackendBaseUrl(routeId), localBaseUrl, "http://ubuntu-server.local:8644");
-      default -> localBaseUrl;
-    };
-  }
-
-  private String openAiBaseUrl() {
-    String configured = configService.getConfigValueWithoutOverride("hermes.openai.base-url", "HERMES_OPENAI_BASE_URL", "");
-    String fallback = chatProfileBaseUrl();
-    if (fallback != null && fallback.endsWith(":8663")) {
-      return fallback;
-    }
-    return firstNonBlank(configured, fallback);
-  }
-
-  private String localBackendBaseUrl(String routeId) {
-    String routeSpecific = AI_COMMAND_PROFILE_ID.equals(routeId)
-        ? configService.getConfigValueWithoutOverride(AI_COMMAND_BASE_URL_KEY, "HERMES_AI_COMMAND_BASE_URL", "")
-        : "";
-    String configured = configService.getConfigValueWithoutOverride("hermes.local.base-url", "HERMES_LOCAL_BASE_URL", "");
-    String legacy = AI_COMMAND_PROFILE_ID.equals(routeId)
-        ? configService.getConfigValueWithoutOverride("hermes.ai-command.base-url", "HERMES_AI_COMMAND_BASE_URL", "")
-        : "";
-    return normalizeApiRoot(firstNonBlank(routeSpecific, configured, legacy, "http://ubuntu-server.local:8644"));
-  }
-
-  private String gatewayModelAlias(String backendId) {
-    return switch (backendId) {
-      case "openai" -> "hermes-openai";
-      case "local" -> "hermes-local";
-      default -> "hermes-" + backendId;
+  private String routeGatewayModelAlias(String routeId) {
+    return switch (routeId) {
+      case "chat" -> DEFAULT_MODEL;
+      case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_MODEL;
+      default -> "hermes-" + routeId;
     };
   }
 

@@ -13,6 +13,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.freakz.common.model.engine.system.HermesBackend;
@@ -49,6 +50,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String LEGACY_FALLBACK_FILE = "the_bot_fallback.json";
   private static final String OPENAI = "openai";
   private static final String LOCAL = "local";
+  private static final String AI_COMMAND = "ai-command";
   private static final String MODE_ENABLED = "enabled";
   private static final String MODE_OFF = "off";
   private static final String RESPONSES = "responses";
@@ -250,8 +252,8 @@ public class HermesFallbackService implements ApplicationRunner {
         route.label(),
         route.backendId(),
         backend.provider(),
-        backend.baseUrl(),
-        backend.model(),
+        routeGatewayBaseUrl(route.id()),
+        routeGatewayModelAlias(route.id()),
         backend.apiMode(),
         backend.timeoutSeconds(),
         backend.contextWindow(),
@@ -382,8 +384,8 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private BackendHealth backendHealth(StoredBackend backend) {
     if (OPENAI.equals(backend.id())) {
-      CredentialStatus credential = credentialStatus(OPENAI);
-      boolean healthy = openAiProfileHealthy() && credential.openAiAvailable();
+      CredentialStatus credential = openAiCredentialStatus();
+      boolean healthy = credential.openAiAvailable();
       return new BackendHealth(
           healthy,
           true,
@@ -406,21 +408,21 @@ public class HermesFallbackService implements ApplicationRunner {
     }
   }
 
-  private boolean openAiProfileHealthy() {
-    Integer port = properties.ports().get(OPENAI);
-    if (port == null) {
-      return false;
-    }
-    try {
-      restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
-      return true;
-    } catch (Exception e) {
-      return false;
-    }
+  private boolean openAiCredentialAvailable() {
+    return openAiCredentialStatus().openAiAvailable();
   }
 
-  private boolean openAiCredentialAvailable() {
-    return credentialStatus(OPENAI).openAiAvailable();
+  private CredentialStatus openAiCredentialStatus() {
+    List<String> profiles = List.of("chat", AI_COMMAND);
+    String detail = null;
+    for (String profile : profiles) {
+      CredentialStatus status = credentialStatus(profile);
+      if (status.openAiAvailable()) {
+        return status;
+      }
+      detail = firstNonBlank(detail, status.detail());
+    }
+    return new CredentialStatus(false, firstNonBlank(detail, "OpenAI credentials are missing"));
   }
 
   private CredentialStatus credentialStatus(String profile) {
@@ -652,14 +654,8 @@ public class HermesFallbackService implements ApplicationRunner {
     Map<Path, byte[]> backups = new LinkedHashMap<>();
     List<String> changedProfiles = new ArrayList<>();
     try {
-      for (StoredBackend backend : config.backends()) {
-        Path path = findProfileConfig(backend.id());
-        backups.put(path, Files.readAllBytes(path));
-        byte[] updated = updatedProfileYaml(path, backend);
-        if (!java.util.Arrays.equals(backups.get(path), updated)) {
-          writeAtomically(path, updated);
-          changedProfiles.add(backend.id());
-        }
+      for (StoredRoute route : config.routes()) {
+        updateProfileConfig(route.id(), backendById(config, route.backendId()), backups, changedProfiles, true);
       }
       for (String profile : changedProfiles) {
         gatewayService.restart(profile);
@@ -668,6 +664,29 @@ public class HermesFallbackService implements ApplicationRunner {
     } catch (Exception e) {
       rollbackProfiles(backups);
       throw e;
+    }
+  }
+
+  private void updateProfileConfig(
+      String profile,
+      StoredBackend backend,
+      Map<Path, byte[]> backups,
+      List<String> changedProfiles,
+      boolean required) throws IOException {
+    Optional<Path> optionalPath = findProfileConfigIfPresent(profile);
+    if (optionalPath.isEmpty()) {
+      if (required) {
+        throw new IllegalStateException("Could not find config YAML for Hermes profile " + profile);
+      }
+      log.debug("Skipping optional Hermes profile {} because config YAML was not found", profile);
+      return;
+    }
+    Path path = optionalPath.get();
+    backups.putIfAbsent(path, Files.readAllBytes(path));
+    byte[] updated = updatedProfileYaml(path, backend);
+    if (!java.util.Arrays.equals(backups.get(path), updated)) {
+      writeAtomically(path, updated);
+      changedProfiles.add(profile);
     }
   }
 
@@ -706,12 +725,16 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private Path findProfileConfig(String profile) throws IOException {
+    return findProfileConfigIfPresent(profile)
+        .orElseThrow(() -> new IllegalStateException("Could not find config YAML for Hermes profile " + profile));
+  }
+
+  private Optional<Path> findProfileConfigIfPresent(String profile) throws IOException {
     try (var paths = Files.walk(properties.dataDir())) {
       return paths.filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().matches("config\\.ya?ml"))
           .filter(path -> path.toString().contains("/" + profile + "/"))
-          .min(Comparator.comparingInt(Path::getNameCount))
-          .orElseThrow(() -> new IllegalStateException("Could not find config YAML for Hermes profile " + profile));
+          .min(Comparator.comparingInt(Path::getNameCount));
     }
   }
 
@@ -907,6 +930,19 @@ public class HermesFallbackService implements ApplicationRunner {
       case "ai-command" -> "Hermes AI command";
       default -> "Hermes chat";
     };
+  }
+
+  private String routeGatewayModelAlias(String routeId) {
+    return switch (routeId) {
+      case "chat" -> "hermes-chat";
+      case AI_COMMAND -> "hermes-ai-command";
+      default -> "hermes-" + routeId;
+    };
+  }
+
+  private String routeGatewayBaseUrl(String routeId) {
+    Integer port = properties.ports().get(routeId);
+    return port == null ? null : "http://127.0.0.1:" + port;
   }
 
   private String requireValue(String value, String name) {

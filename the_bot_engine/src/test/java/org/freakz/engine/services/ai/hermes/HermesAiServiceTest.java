@@ -268,7 +268,7 @@ class HermesAiServiceTest {
 
     HermesSettings settings = service.resolveAiCommandSettings();
 
-    assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8644");
+    assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8645");
     assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(settings.model()).isEqualTo("hermes-ai-command");
     assertThat(settings.apiMode()).isEqualTo("chat-completions");
@@ -338,7 +338,7 @@ class HermesAiServiceTest {
     assertThat(chatSettings.apiMode()).isEqualTo("responses");
     assertThat(chatSettings.timeoutSeconds()).isEqualTo(45);
 
-    assertThat(aiCommandSettings.baseUrl()).isEqualTo("http://ubuntu-server.local:8644");
+    assertThat(aiCommandSettings.baseUrl()).isEqualTo("http://ubuntu-server.local:8645");
     assertThat(aiCommandSettings.apiKey()).isEqualTo("ai-command-secret");
     assertThat(aiCommandSettings.model()).isEqualTo("hermes-ai-command");
     assertThat(aiCommandSettings.apiMode()).isEqualTo("chat-completions");
@@ -371,7 +371,7 @@ class HermesAiServiceTest {
             "local",
             "vllm",
             "http://ubuntu-server.local:8665",
-            "hermes-local",
+            "hermes-ai-command",
             "responses",
             120,
             65536,
@@ -381,9 +381,8 @@ class HermesAiServiceTest {
 
     HermesSettingsService service = new HermesSettingsService(
         new TestConfigService(Map.of(
-            "hermes.local.base-url", "http://ubuntu-server.local:8664",
             "hermes.ai-command.base-url", "http://ubuntu-server.local:8665",
-            "hermes.profiles.local.api-key", "local-secret",
+            "hermes.profiles.ai-command.api-key", "ai-command-secret",
             "hermes.ai-command.timeout-seconds", "31"
         )),
         mock(EnvValuesService.class),
@@ -392,8 +391,8 @@ class HermesAiServiceTest {
     HermesSettings settings = service.resolveAiCommandSettings();
 
     assertThat(settings.baseUrl()).isEqualTo("http://ubuntu-server.local:8665");
-    assertThat(settings.apiKey()).isEqualTo("local-secret");
-    assertThat(settings.model()).isEqualTo("hermes-local");
+    assertThat(settings.apiKey()).isEqualTo("ai-command-secret");
+    assertThat(settings.model()).isEqualTo("hermes-ai-command");
     assertThat(settings.apiMode()).isEqualTo("responses");
     assertThat(settings.timeoutSeconds()).isEqualTo(120);
   }
