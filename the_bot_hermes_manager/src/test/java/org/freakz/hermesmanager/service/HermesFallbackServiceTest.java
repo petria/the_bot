@@ -124,6 +124,31 @@ class HermesFallbackServiceTest {
   }
 
   @Test
+  void invalidUnusedLocalBackendDoesNotBlockOpenAiRoutes() throws Exception {
+    createProfiles("chat", "ai-command");
+    LocalLlmClient localLlmClient = localClient();
+    org.mockito.Mockito.doThrow(new IllegalArgumentException("Selected local model did not produce a tool call"))
+        .when(localLlmClient)
+        .validateToolCall(any(), eq("bad-model"), any());
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
+    service.run(new DefaultApplicationArguments());
+
+    HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(openAiBackend("gpt-5.5"), localBackend("bad-model")),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "openai"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
+
+    assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
+    assertThat(response.backends().stream()
+        .filter(backend -> "local".equals(backend.id()))
+        .findFirst()
+        .orElseThrow()
+        .model()).isEqualTo("bad-model");
+  }
+
+  @Test
   void localApiKeyIsEncryptedAndExposedOnlyAsConfiguredState() throws Exception {
     createProfiles("chat", "ai-command");
     HermesManagerProperties properties = propertiesWithKey();

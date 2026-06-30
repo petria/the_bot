@@ -348,8 +348,13 @@ public class HermesFallbackService implements ApplicationRunner {
     if (!MODE_ENABLED.equals(config.systemMode()) && !MODE_OFF.equals(config.systemMode())) {
       throw new IllegalArgumentException("systemMode must be enabled or off");
     }
-    validateBackend(backendById(config, OPENAI));
-    validateBackend(backendById(config, LOCAL));
+    List<String> activeBackendIds = config.routes().stream()
+        .map(StoredRoute::backendId)
+        .distinct()
+        .toList();
+    for (String backendId : activeBackendIds) {
+      validateBackend(backendById(config, backendId));
+    }
     for (StoredRoute route : config.routes()) {
       backendById(config, route.backendId());
     }
@@ -371,13 +376,16 @@ public class HermesFallbackService implements ApplicationRunner {
       localLlmClient.discover(backend.provider(), baseUrl, apiKey);
       localLlmClient.validateToolCall(baseUrl, backend.model(), apiKey);
       localLlmClient.validateChat(baseUrl, backend.model(), apiKey);
-    } catch (HermesValidationException e) {
+    } catch (HermesValidationException | IllegalArgumentException e) {
+      String detail = e instanceof HermesValidationException validationException
+          ? validationException.getDetail()
+          : e.getMessage();
       throw new HermesValidationException(
           "Hermes local backend validation failed",
           "backend=local, provider=" + backend.provider()
               + ", baseUrl=" + trimTrailingSlash(backend.baseUrl())
               + ", model=" + backend.model()
-              + ", detail=" + e.getDetail(),
+              + ", detail=" + detail,
           e);
     }
   }
