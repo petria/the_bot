@@ -364,6 +364,7 @@ class HermesAiServiceTest {
             null,
             null,
             "ok",
+            false,
             false)),
         List.of(new HermesRoute(
             "ai-command",

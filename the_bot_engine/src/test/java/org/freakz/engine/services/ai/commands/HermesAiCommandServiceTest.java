@@ -16,10 +16,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class HermesAiCommandServiceTest {
 
@@ -310,69 +307,48 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
-  void extractsFinnishWeatherCompareLocations() {
+  void parsesWeatherIntentForArbitrarySingleLocation() throws Exception {
     HermesAiCommandService service = newService();
 
-    assertThat(service.extractWeatherLocations("vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin"))
-        .containsExactly("Turku", "Tampere", "Vaasa", "Oulu");
+    HermesAiCommandService.WeatherIntent intent = service.parseWeatherIntentResponse("""
+        {"locations":["Pietarsaari"],"compare":false,"feelsLike":false,"astronomy":false,"verbose":false,"sort":null}
+        """);
+
+    assertThat(intent.invalid()).isFalse();
+    assertThat(intent.locations()).containsExactly("Pietarsaari");
+    assertThat(intent.compare()).isFalse();
   }
 
   @Test
-  void deterministicWeatherShortcutUsesCompareWithColdestFirstSort() {
-    AiCommandToolRegistry toolRegistry = mock(AiCommandToolRegistry.class);
-    HermesAiCommandService service = newService(toolRegistry);
-    AiCommandDefinition command = new AiCommandDefinition(
-        "weather",
-        true,
-        "Weather command",
-        "!weather <location>",
-        List.of("!saa"),
-        null,
-        "Use weather tools.",
-        List.of("weather.current", "weather.compare"),
-        3);
-    when(toolRegistry.execute(eq("weather.compare"), any(), any()))
-        .thenReturn("""
-            {"tool":"weather.compare","formattedText":"Oulu first"}
-            """);
+  void parsesWeatherIntentForCompareAndBuildsCompareToolArguments() throws Exception {
+    HermesAiCommandService service = newService();
 
-    String reply = service.tryExecuteDeterministicWeatherCommand(
-        command,
-        "vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin",
-        new EngineRequest());
+    HermesAiCommandService.WeatherIntent intent = service.parseWeatherIntentResponse("""
+        {"locations":["Pietarsaari","Oulu"],"compare":true,"feelsLike":true,"astronomy":false,"verbose":true,"sort":"asc"}
+        """);
 
-    assertThat(reply).isEqualTo("Oulu first");
+    tools.jackson.databind.JsonNode args = service.weatherToolArguments(intent, "weather.compare");
+
+    assertThat(intent.invalid()).isFalse();
+    assertThat(args.path("locations")).hasSize(2);
+    assertThat(args.path("locations").get(0).asString()).isEqualTo("Pietarsaari");
+    assertThat(args.path("locations").get(1).asString()).isEqualTo("Oulu");
+    assertThat(args.path("feelsLike").asBoolean()).isTrue();
+    assertThat(args.path("verbose").asBoolean()).isTrue();
+    assertThat(args.path("sort").asString()).isEqualTo("asc");
   }
 
   @Test
-  void deterministicWeatherShortcutUsesCurrentForSingleKnownLocation() {
-    AiCommandToolRegistry toolRegistry = mock(AiCommandToolRegistry.class);
-    HermesAiCommandService service = newService(toolRegistry);
-    AiCommandDefinition command = new AiCommandDefinition(
-        "weather",
-        true,
-        "Weather command",
-        "!weather <location>",
-        List.of("!saa"),
-        null,
-        "Use weather tools.",
-        List.of("weather.current", "weather.compare"),
-        3);
-    when(toolRegistry.execute(eq("weather.current"), any(), any()))
-        .thenAnswer(invocation -> {
-          tools.jackson.databind.JsonNode args = invocation.getArgument(1);
-          assertThat(args.path("location").asString()).isEqualTo("Oulu");
-          return """
-              {"tool":"weather.current","formattedText":"Oulu: 23:05, 10.0°C"}
-              """;
-        });
+  void parsesWeatherIntentFromToolEnvelopeForCompatibility() throws Exception {
+    HermesAiCommandService service = newService();
 
-    String reply = service.tryExecuteDeterministicWeatherCommand(
-        command,
-        "oulu",
-        new EngineRequest());
+    HermesAiCommandService.WeatherIntent intent = service.parseWeatherIntentResponse("""
+        {"type":"tool","tool":"weather.current","arguments":{"location":"New York","astronomy":true}}
+        """);
 
-    assertThat(reply).isEqualTo("Oulu: 23:05, 10.0°C");
+    assertThat(intent.invalid()).isFalse();
+    assertThat(intent.locations()).containsExactly("New York");
+    assertThat(intent.astronomy()).isTrue();
   }
 
   @Test

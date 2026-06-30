@@ -58,31 +58,39 @@ public class LocalLlmClient {
     return new HermesFallbackModelsResponse(items.stream().map(HermesFallbackModel::id).toList(), items);
   }
 
-  public void validateChat(URI baseUrl, String model, String apiKey) {
-    Map<String, Object> request = Map.of(
-        "model", model,
-        "messages", List.of(Map.of("role", "user", "content", "Reply with OK.")),
-        "max_tokens", 8,
-        "stream", false);
+  public void validateChat(String provider, URI baseUrl, String model, String apiKey, Boolean reasoningDisabled) {
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("model", model);
+    request.put("messages", List.of(Map.of("role", "user", "content", "Reply with OK.")));
+    request.put("max_tokens", 8);
+    request.put("stream", false);
+    addReasoningControl(request, provider, reasoningDisabled);
     Map<?, ?> response = postChat(baseUrl, request, apiKey, "chat completion validation", model);
     if (response == null || !response.containsKey("choices")) {
       throw new IllegalArgumentException("Selected local model did not return a chat completion");
     }
   }
 
-  public void validateToolCall(URI baseUrl, String model, String apiKey) {
-    Map<String, Object> request = Map.of(
-        "model", model,
-        "messages", List.of(Map.of("role", "user", "content", "Call the ping tool now.")),
-        "tools", List.of(Map.of("type", "function", "function", Map.of(
-            "name", "ping",
-            "description", "Connectivity test",
-            "parameters", Map.of("type", "object", "properties", Map.of())))),
-        "tool_choice", "required",
-        "stream", false);
+  public void validateToolCall(String provider, URI baseUrl, String model, String apiKey, Boolean reasoningDisabled) {
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("model", model);
+    request.put("messages", List.of(Map.of("role", "user", "content", "Call the ping tool now.")));
+    request.put("tools", List.of(Map.of("type", "function", "function", Map.of(
+        "name", "ping",
+        "description", "Connectivity test",
+        "parameters", Map.of("type", "object", "properties", Map.of())))));
+    request.put("tool_choice", "required");
+    request.put("stream", false);
+    addReasoningControl(request, provider, reasoningDisabled);
     Map<?, ?> response = postChat(baseUrl, request, apiKey, "tool-call validation", model);
     if (response == null || !response.toString().contains("tool_calls")) {
       throw new IllegalArgumentException("Selected local model did not produce a tool call");
+    }
+  }
+
+  private void addReasoningControl(Map<String, Object> request, String provider, Boolean reasoningDisabled) {
+    if (OLLAMA.equals(provider) && Boolean.TRUE.equals(reasoningDisabled)) {
+      request.put("reasoning_effort", "none");
     }
   }
 

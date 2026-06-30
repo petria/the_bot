@@ -148,7 +148,11 @@ public class HermesFallbackService implements ApplicationRunner {
         updatedCredential(
             current.encryptedApiKey(),
             request == null ? null : request.apiKey(),
-            request != null && Boolean.TRUE.equals(request.clearApiKey())));
+            request != null && Boolean.TRUE.equals(request.clearApiKey())),
+        reasoningDisabled(
+            normalizeLocalProvider(firstNonBlank(request == null ? null : request.provider(), current.provider())),
+            null,
+            current.reasoningDisabled()));
     StoredConfig saved = new StoredConfig(config.systemMode(), replaceBackend(config.backends(), updated), config.routes());
     updateLock.lock();
     try {
@@ -218,7 +222,8 @@ public class HermesFallbackService implements ApplicationRunner {
               firstNonBlank(health.detail(), backend.detail()),
               backend.lastValidatedAt(),
               backend.validationStatus(),
-              hasCredential(backend.encryptedApiKey()));
+              hasCredential(backend.encryptedApiKey()),
+              backend.reasoningDisabled());
         })
         .toList();
     List<HermesRoute> routes = config.routes().stream()
@@ -347,7 +352,8 @@ public class HermesFallbackService implements ApplicationRunner {
         updatedCredential(
             defaults.encryptedApiKey(),
             update.apiKey(),
-            Boolean.TRUE.equals(update.clearApiKey())));
+            Boolean.TRUE.equals(update.clearApiKey())),
+        reasoningDisabled(provider, update.reasoningDisabled(), defaults.reasoningDisabled()));
   }
 
   private void validateConfig(StoredConfig config) {
@@ -383,8 +389,8 @@ public class HermesFallbackService implements ApplicationRunner {
     String apiKey = decryptCredential(backend.encryptedApiKey());
     try {
       localLlmClient.discover(backend.provider(), baseUrl, apiKey);
-      localLlmClient.validateToolCall(baseUrl, backend.model(), apiKey);
-      localLlmClient.validateChat(baseUrl, backend.model(), apiKey);
+      localLlmClient.validateToolCall(backend.provider(), baseUrl, backend.model(), apiKey, backend.reasoningDisabled());
+      localLlmClient.validateChat(backend.provider(), baseUrl, backend.model(), apiKey, backend.reasoningDisabled());
     } catch (HermesValidationException | IllegalArgumentException e) {
       String detail = e instanceof HermesValidationException validationException
           ? validationException.getDetail()
@@ -517,7 +523,8 @@ public class HermesFallbackService implements ApplicationRunner {
         null,
         true,
         null,
-        null);
+        null,
+        false);
     StoredBackend local = localFromLegacy(localSource);
     return normalizeConfig(new StoredConfig(
         MODE_ENABLED,
@@ -542,7 +549,11 @@ public class HermesFallbackService implements ApplicationRunner {
         legacyFallback.validationStatus(),
         legacyFallback.toolCapable(),
         legacyFallback.validationDetail(),
-        legacyFallback.encryptedApiKey());
+        legacyFallback.encryptedApiKey(),
+        reasoningDisabled(
+            normalizeLocalProvider(firstNonBlank(text(source, "provider"), legacyFallback.provider(), "ollama")),
+            booleanValueOrNull(source, "reasoningDisabled"),
+            null));
   }
 
   private LegacyFallback readLegacyFallback() {
@@ -598,7 +609,8 @@ public class HermesFallbackService implements ApplicationRunner {
             backend.validationStatus(),
             backend.toolCapable(),
             backend.detail(),
-            backend.encryptedApiKey()));
+            backend.encryptedApiKey(),
+            reasoningDisabled(provider, backend.reasoningDisabled(), defaults.reasoningDisabled())));
       }
     }
     if (backends.values().stream().noneMatch(backend -> isLocalBackendId(backend.id()))) {
@@ -647,7 +659,8 @@ public class HermesFallbackService implements ApplicationRunner {
           null,
           true,
           null,
-          null);
+          null,
+          false);
     }
     return new StoredBackend(
         normalizeBackendId(id),
@@ -662,7 +675,8 @@ public class HermesFallbackService implements ApplicationRunner {
         "NOT_VALIDATED",
         null,
         "Local backend has not been validated",
-        null);
+        null,
+        true);
   }
 
   private void writeConfig(StoredConfig config) throws IOException {
@@ -722,14 +736,20 @@ public class HermesFallbackService implements ApplicationRunner {
       model.put("base_url", "https://chatgpt.com/backend-api/codex");
       model.remove("context_length");
       model.remove("api_key");
+      model.remove("api_mode");
+      yaml.remove("custom_providers");
+      removeAgentReasoningEffort(yaml);
     } else {
       model.put("provider", "custom");
       model.put("base_url", trimTrailingSlash(backend.baseUrl()));
       model.put("default", backend.model());
+      model.put("api_mode", "chat_completions");
       putOptionalApiKey(model, backend.encryptedApiKey());
       if (backend.contextWindow() != null) {
         model.put("context_length", backend.contextWindow());
       }
+      yaml.put("custom_providers", customProviders(backend));
+      configureReasoning(yaml, backend);
     }
     yaml.put("model", model);
     yaml.put("fallback_providers", List.of());
@@ -758,6 +778,45 @@ public class HermesFallbackService implements ApplicationRunner {
     disabled.sort(String.CASE_INSENSITIVE_ORDER);
     agent.put("disabled_toolsets", disabled);
     yaml.put("agent", agent);
+  }
+
+  private List<Map<String, Object>> customProviders(StoredBackend backend) {
+    Map<String, Object> provider = new LinkedHashMap<>();
+    provider.put("name", "hermes-" + backend.id());
+    provider.put("base_url", trimTrailingSlash(backend.baseUrl()));
+    provider.put("model", backend.model());
+    provider.put("api_mode", "chat_completions");
+    if (backend.contextWindow() != null) {
+      provider.put("context_length", backend.contextWindow());
+    }
+    putOptionalApiKey(provider, backend.encryptedApiKey());
+    if (shouldDisableReasoning(backend)) {
+      provider.put("extra_body", Map.of("reasoning_effort", "none"));
+    }
+    return List.of(provider);
+  }
+
+  private void configureReasoning(Map<String, Object> yaml, StoredBackend backend) {
+    if (shouldDisableReasoning(backend)) {
+      Map<String, Object> agent = mutableMap(yaml.get("agent"));
+      agent.put("reasoning_effort", "none");
+      yaml.put("agent", agent);
+    } else {
+      removeAgentReasoningEffort(yaml);
+    }
+  }
+
+  private void removeAgentReasoningEffort(Map<String, Object> yaml) {
+    Object existing = yaml.get("agent");
+    if (existing instanceof Map<?, ?>) {
+      Map<String, Object> agent = mutableMap(existing);
+      agent.remove("reasoning_effort");
+      yaml.put("agent", agent);
+    }
+  }
+
+  private boolean shouldDisableReasoning(StoredBackend backend) {
+    return LocalLlmClient.OLLAMA.equals(backend.provider()) && Boolean.TRUE.equals(backend.reasoningDisabled());
   }
 
   private List<String> noNativeToolsets() {
@@ -1185,6 +1244,26 @@ public class HermesFallbackService implements ApplicationRunner {
     return node.get(field).asInt();
   }
 
+  private Boolean booleanValueOrNull(JsonNode node, String field) {
+    if (node == null || !node.has(field) || node.get(field).isNull()) {
+      return null;
+    }
+    return node.get(field).asBoolean();
+  }
+
+  private Boolean reasoningDisabled(String provider, Boolean supplied, Boolean existing) {
+    if (!LocalLlmClient.OLLAMA.equals(provider)) {
+      return false;
+    }
+    if (supplied != null) {
+      return supplied;
+    }
+    if (existing != null) {
+      return existing;
+    }
+    return true;
+  }
+
   private Path configPath() {
     return properties.dataDir().resolve(CONFIG_FILE);
   }
@@ -1219,7 +1298,8 @@ public class HermesFallbackService implements ApplicationRunner {
       String validationStatus,
       Boolean toolCapable,
       String detail,
-      String encryptedApiKey) {
+      String encryptedApiKey,
+      Boolean reasoningDisabled) {
   }
 
   private record StoredRoute(

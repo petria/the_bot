@@ -23,8 +23,8 @@ class AiRoutesStatusServiceTest {
     when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(
         "enabled",
         List.of(
-            new HermesBackend("openai", "OpenAI", "openai", "https://api.openai.com/v1", "gpt-5.5", "responses", 120, null, true, true, null, null, "ok", true),
-            new HermesBackend("local", "Local LLM", "ollama", "http://ollama.local:11434/v1", "llama3.1", "chat-completions", 120, 32768, true, true, null, null, "ok", false)
+            new HermesBackend("openai", "OpenAI", "openai", "https://api.openai.com/v1", "gpt-5.5", "responses", 120, null, true, true, null, null, "ok", true, false),
+            new HermesBackend("local", "Local LLM", "ollama", "http://ollama.local:11434/v1", "llama3.1", "chat-completions", 120, 32768, true, true, null, null, "ok", false, true)
         ),
         List.of(
             new HermesRoute("chat", "Hermes chat", "openai", "openai", "http://gateway.local:8643", "hermes-chat", "responses", 120, null, true, true, null),

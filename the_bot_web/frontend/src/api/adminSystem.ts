@@ -92,6 +92,7 @@ export type HermesBackend = {
   lastValidatedAt: string | null;
   validationStatus: string | null;
   apiKeyConfigured: boolean | null;
+  reasoningDisabled: boolean | null;
   apiKey?: string;
   clearApiKey?: boolean;
 };
@@ -193,6 +194,7 @@ export function updateHermesBackendConfig(config: HermesBackendConfigResponse): 
       contextWindow: backend.contextWindow,
       apiKey: backend.apiKey || null,
       clearApiKey: Boolean(backend.clearApiKey),
+      reasoningDisabled: Boolean(backend.reasoningDisabled),
     })),
     routes: config.routes.map((route) => ({
       id: route.id,

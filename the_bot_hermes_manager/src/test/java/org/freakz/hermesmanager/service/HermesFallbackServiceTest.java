@@ -153,7 +153,7 @@ class HermesFallbackServiceTest {
         "provider endpoint=http://ollama.local:11434/v1/chat/completions, model=bad-model, error=Read timed out",
         null))
         .when(localLlmClient)
-        .validateToolCall(any(), eq("bad-model"), any());
+        .validateToolCall(anyString(), any(), eq("bad-model"), any(), any());
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
     service.run(new DefaultApplicationArguments());
 
@@ -177,7 +177,7 @@ class HermesFallbackServiceTest {
     LocalLlmClient localLlmClient = localClient();
     org.mockito.Mockito.doThrow(new IllegalArgumentException("Selected local model did not produce a tool call"))
         .when(localLlmClient)
-        .validateToolCall(any(), eq("bad-model"), any());
+        .validateToolCall(anyString(), any(), eq("bad-model"), any(), any());
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
     service.run(new DefaultApplicationArguments());
 
@@ -222,6 +222,9 @@ class HermesFallbackServiceTest {
     String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
     assertThat(yaml)
         .contains("default: \"qwen3.5:27b\"")
+        .contains("custom_providers:")
+        .contains("extra_body:")
+        .contains("reasoning_effort: \"none\"")
         .contains("api_key: \"secret-key\"");
     verify(gatewayService, atLeastOnce()).restart("chat");
   }
@@ -232,7 +235,7 @@ class HermesFallbackServiceTest {
     LocalLlmClient localLlmClient = localClient();
     org.mockito.Mockito.doThrow(new IllegalArgumentException("Selected local model did not produce a tool call"))
         .when(localLlmClient)
-        .validateToolCall(any(), eq("bad-model"), any());
+        .validateToolCall(anyString(), any(), eq("bad-model"), any(), any());
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localLlmClient, properties());
     service.run(new DefaultApplicationArguments());
 
@@ -326,6 +329,10 @@ class HermesFallbackServiceTest {
         .contains("default: \"qwen3.5:27b\"")
         .contains("provider: \"custom\"")
         .contains("base_url: \"http://ollama.local:11434/v1\"")
+        .contains("api_mode: \"chat_completions\"")
+        .contains("custom_providers:")
+        .contains("extra_body:")
+        .contains("reasoning_effort: \"none\"")
         .contains("api_key: \"secret-key\"")
         .contains("api_server:")
         .contains("- \"no_mcp\"")
@@ -411,6 +418,7 @@ class HermesFallbackServiceTest {
         120,
         null,
         null,
+        false,
         false);
   }
 
@@ -433,7 +441,8 @@ class HermesFallbackServiceTest {
         120,
         65536,
         apiKey,
-        false);
+        false,
+        true);
   }
 
   private HermesManagerProperties properties() {

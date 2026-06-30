@@ -10,5 +10,6 @@ public record HermesBackendUpdate(
     Integer timeoutSeconds,
     Integer contextWindow,
     String apiKey,
-    Boolean clearApiKey) {
+    Boolean clearApiKey,
+    Boolean reasoningDisabled) {
 }
