@@ -2,9 +2,10 @@ package org.freakz.engine.services.ai.hermes;
 
 import java.util.List;
 
+import org.freakz.common.model.engine.system.HermesBackend;
 import org.freakz.common.model.engine.system.HermesProfileOption;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
-import org.freakz.common.model.engine.system.HermesProfile;
+import org.freakz.common.model.engine.system.HermesRoute;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.users.User;
@@ -31,8 +32,6 @@ public class HermesSettingsService {
   private static final String API_MODE_KEY = "hermes.chat.api-mode";
   private static final String TIMEOUT_SECONDS_KEY = "hermes.chat.timeout-seconds";
   private static final String CHAT_PROFILE_BASE_URL_KEY = "hermes.chat.profile-base-url";
-  private static final String CODER_BASE_URL_KEY = "hermes.coder.base-url";
-  private static final String CODER_PROFILE_BASE_URL_KEY = "hermes.coder.profile-base-url";
   private static final String AI_COMMAND_PROFILE_ID = "ai-command";
   private static final String AI_COMMAND_DEFAULT_BASE_URL = "http://ubuntu-server.local:8645";
   private static final String AI_COMMAND_DEFAULT_MODEL = "hermes-ai-command";
@@ -71,6 +70,11 @@ public class HermesSettingsService {
     HermesSettings local = resolveLocalAiCommandSettings();
     HermesSettings managed = resolveManagedProfile(AI_COMMAND_PROFILE_ID, local);
     return managed == null ? local : managed;
+  }
+
+  public boolean aiEnabled() {
+    HermesBackendConfigResponse config = managerConfig();
+    return config == null || !"off".equalsIgnoreCase(config.systemMode());
   }
 
   public HermesSettingsResponse getSettings() {
@@ -227,17 +231,15 @@ public class HermesSettingsService {
 
   private List<HermesProfileConfig> profileConfigs(String selectedProfileId, boolean includeInternalProfiles) {
     List<HermesProfileConfig> publicProfiles = List.of(
-        profile("chat", "Chat profile", chatProfileBaseUrl(), "hermes-chat", selectedProfileId),
-        profile("coder", "Coder profile", coderProfileBaseUrl(), "hermes-coder", selectedProfileId));
+        profile("chat", "Chat route", chatProfileBaseUrl(), "hermes-chat", selectedProfileId));
     if (!includeInternalProfiles) {
       return publicProfiles;
     }
     return List.of(
         publicProfiles.get(0),
-        publicProfiles.get(1),
         profile(
             AI_COMMAND_PROFILE_ID,
-            "AI command profile",
+            "AI command route",
             AI_COMMAND_DEFAULT_BASE_URL,
             AI_COMMAND_DEFAULT_MODEL,
             AI_COMMAND_DEFAULT_API_MODE,
@@ -284,7 +286,6 @@ public class HermesSettingsService {
       case "chat" -> firstNonBlank(
           configService.getConfigValue("hermes.profiles.chat.api-key", "HERMES_CHAT_API_KEY", ""),
           configService.getConfigValue("hermes.api-key", "HERMES_API_KEY", ""));
-      case "coder" -> configService.getConfigValue("hermes.profiles.coder.api-key", "HERMES_CODER_API_KEY", "");
       case AI_COMMAND_PROFILE_ID -> configService.getConfigValue("hermes.profiles.ai-command.api-key", "HERMES_AI_COMMAND_API_KEY", "");
       default -> "";
     };
@@ -296,14 +297,6 @@ public class HermesSettingsService {
         configService.getConfigValueWithoutOverride(BASE_URL_KEY, "HERMES_CHAT_BASE_URL", ""),
         configService.getConfigValueWithoutOverride("hermes.base-url", "HERMES_BASE_URL", ""),
         DEFAULT_BASE_URL
-    ));
-  }
-
-  private String coderProfileBaseUrl() {
-    return normalizeApiRoot(firstNonBlank(
-        configService.getConfigValueWithoutOverride(CODER_PROFILE_BASE_URL_KEY, "HERMES_CODER_PROFILE_BASE_URL", ""),
-        configService.getConfigValueWithoutOverride(CODER_BASE_URL_KEY, "HERMES_CODER_BASE_URL", ""),
-        "http://ubuntu-server.local:8644"
     ));
   }
 
@@ -339,54 +332,60 @@ public class HermesSettingsService {
   }
 
   private HermesSettings resolveManagedProfile(String profileId, HermesSettings local) {
-    if (hermesManagerClient == null) {
-      return null;
-    }
     try {
-      HermesBackendConfigResponse config = hermesManagerClient.getBackendConfig().getBody();
-      if (config == null || config.profiles() == null) {
+      HermesBackendConfigResponse config = managerConfig();
+      if (config == null || "off".equalsIgnoreCase(config.systemMode()) || config.routes() == null || config.backends() == null) {
         return null;
       }
-      HermesProfile profile = config.profiles().stream()
+      HermesRoute route = config.routes().stream()
           .filter(candidate -> profileId.equals(candidate.id()))
           .findFirst()
           .orElse(null);
-      if (profile == null || profile.model() == null || profile.model().isBlank()) {
+      if (route == null || route.backendId() == null) {
         return null;
       }
-      int timeoutSeconds = profile.timeoutSeconds() == null ? local.timeoutSeconds() : profile.timeoutSeconds();
-      String baseUrl = normalizeApiRoot(profileGatewayBaseUrl(profile.id(), local.baseUrl()));
+      HermesBackend backend = config.backends().stream()
+          .filter(candidate -> route.backendId().equals(candidate.id()))
+          .findFirst()
+          .orElse(null);
+      if (backend == null || backend.model() == null || backend.model().isBlank()) {
+        return null;
+      }
+      int timeoutSeconds = backend.timeoutSeconds() == null ? local.timeoutSeconds() : backend.timeoutSeconds();
+      String baseUrl = normalizeApiRoot(firstNonBlank(local.baseUrl(), route.baseUrl()));
       if (baseUrl == null || baseUrl.isBlank()) {
         return null;
       }
-      String apiKey = apiKeyForProfile(profile.id());
+      String apiKey = apiKeyForProfile(profileId);
       return new HermesSettings(
           baseUrl,
           apiKey == null ? "" : apiKey.trim(),
-          gatewayModelAlias(profile.id()),
+          routeGatewayModelAlias(profileId),
           timeoutSeconds,
-          local.apiMode());
+          firstNonBlank(local.apiMode(), route.apiMode(), backend.apiMode()));
     } catch (Exception e) {
       log.debug("Could not load Hermes profile {} from manager: {}", profileId, e.getMessage());
       return null;
     }
   }
 
-  private String profileGatewayBaseUrl(String profileId, String localBaseUrl) {
-    return switch (profileId) {
-      case "chat" -> firstNonBlank(localBaseUrl, DEFAULT_BASE_URL);
-      case "coder" -> firstNonBlank(localBaseUrl, "http://ubuntu-server.local:8644");
-      case AI_COMMAND_PROFILE_ID -> firstNonBlank(localBaseUrl, AI_COMMAND_DEFAULT_BASE_URL);
-      default -> localBaseUrl;
-    };
+  private HermesBackendConfigResponse managerConfig() {
+    if (hermesManagerClient == null) {
+      return null;
+    }
+    try {
+      return hermesManagerClient.getBackendConfig().getBody();
+    } catch (Exception e) {
+      log.debug("Could not load Hermes manager config: {}", e.getMessage());
+      return null;
+    }
   }
 
-  private String gatewayModelAlias(String profileId) {
-    return switch (profileId) {
-      case "chat" -> "hermes-chat";
-      case "coder" -> "hermes-coder";
+  private String routeGatewayModelAlias(String routeId) {
+    return switch (routeId) {
+      case "chat" -> DEFAULT_MODEL;
       case AI_COMMAND_PROFILE_ID -> AI_COMMAND_DEFAULT_MODEL;
-      default -> "hermes-" + profileId;
+      default -> "hermes-" + routeId;
     };
   }
 

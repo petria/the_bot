@@ -2,9 +2,10 @@ package org.freakz.engine.services.ai.hermes;
 
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
+import org.freakz.common.model.engine.system.HermesBackend;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
-import org.freakz.common.model.engine.system.HermesProfile;
+import org.freakz.common.model.engine.system.HermesRoute;
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
 import org.freakz.common.model.users.User;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
@@ -236,15 +237,14 @@ class HermesAiServiceTest {
   @Test
   void detectsCurrentHermesProfileFromBaseUrl() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
-        "hermes.chat.base-url", "http://coder.example:8644",
+        "hermes.chat.base-url", "http://chat.example:8643",
         "hermes.chat.profile-base-url", "http://chat.example:8643",
-        "hermes.coder.profile-base-url", "http://coder.example:8644",
-        "hermes.chat.model", "hermes-coder"
+        "hermes.chat.model", "hermes-chat"
     )), mock(EnvValuesService.class));
 
-    assertThat(service.getSettings().currentProfileId()).isEqualTo("coder");
+    assertThat(service.getSettings().currentProfileId()).isEqualTo("chat");
     assertThat(service.getSettings().options())
-        .filteredOn(option -> option.id().equals("coder"))
+        .filteredOn(option -> option.id().equals("chat"))
         .singleElement()
         .satisfies(option -> assertThat(option.selected()).isTrue());
   }
@@ -252,14 +252,12 @@ class HermesAiServiceTest {
   @Test
   void resolvesProfileApiKeyFromSelectedBaseUrl() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
-        "hermes.chat.base-url", "http://coder.example:8644",
+        "hermes.chat.base-url", "http://chat.example:8643",
         "hermes.chat.profile-base-url", "http://chat.example:8643",
-        "hermes.coder.profile-base-url", "http://coder.example:8644",
-        "hermes.profiles.coder.api-key", "coder-secret",
         "hermes.chat.api-key", "chat-secret"
     )), mock(EnvValuesService.class));
 
-    assertThat(service.resolveSettings().apiKey()).isEqualTo("coder-secret");
+    assertThat(service.resolveSettings().apiKey()).isEqualTo("chat-secret");
   }
 
   @Test
@@ -350,20 +348,36 @@ class HermesAiServiceTest {
   @Test
   void managedAiCommandProfileKeepsConfiguredGatewayBaseUrl() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
-    when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(List.of(
-        new HermesProfile(
-            "ai-command",
-            "AI command profile",
+    when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(
+        "enabled",
+        List.of(new HermesBackend(
+            "local",
+            "Local LLM",
             "vllm",
             "http://192.168.0.143:8000/v1",
             "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
             "responses",
             120,
+            65536,
             true,
             true,
             null,
-            65536)
-    ))));
+            null,
+            "ok",
+            false)),
+        List.of(new HermesRoute(
+            "ai-command",
+            "Hermes AI command",
+            "local",
+            "vllm",
+            "http://ubuntu-server.local:8665",
+            "hermes-ai-command",
+            "responses",
+            120,
+            65536,
+            true,
+            true,
+            null)))));
 
     HermesSettingsService service = new HermesSettingsService(
         new TestConfigService(Map.of(
@@ -387,15 +401,15 @@ class HermesAiServiceTest {
   void selectingHermesProfileWritesRuntimeOverrides() {
     EnvValuesService envValuesService = mock(EnvValuesService.class);
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(Map.of(
-        "hermes.coder.profile-base-url", "http://coder.example:9000",
-        "hermes.profiles.coder.api-key", "coder-secret"
+        "hermes.chat.profile-base-url", "http://chat.example:9000",
+        "hermes.profiles.chat.api-key", "chat-secret"
     )), envValuesService);
 
-    assertThat(service.selectProfile(new HermesSettingsRequest("coder")).currentProfileId()).isEqualTo("coder");
+    assertThat(service.selectProfile(new HermesSettingsRequest("chat")).currentProfileId()).isEqualTo("chat");
 
-    verify(envValuesService).setEnvValue(eq("hermes.chat.base-url"), eq("http://coder.example:9000"), any(User.class));
-    verify(envValuesService).setEnvValue(eq("hermes.chat.api-key"), eq("coder-secret"), any(User.class));
-    verify(envValuesService).setEnvValue(eq("hermes.chat.model"), eq("hermes-coder"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.base-url"), eq("http://chat.example:9000"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.api-key"), eq("chat-secret"), any(User.class));
+    verify(envValuesService).setEnvValue(eq("hermes.chat.model"), eq("hermes-chat"), any(User.class));
     verify(envValuesService).setEnvValue(eq("hermes.chat.api-mode"), eq("responses"), any(User.class));
     verify(envValuesService).setEnvValue(eq("hermes.chat.timeout-seconds"), eq("120"), any(User.class));
   }
@@ -404,7 +418,7 @@ class HermesAiServiceTest {
   void selectingProfileWithoutApiKeyIsRejected() {
     HermesSettingsService service = new HermesSettingsService(new TestConfigService(), mock(EnvValuesService.class));
 
-    assertThatThrownBy(() -> service.selectProfile(new HermesSettingsRequest("coder")))
+    assertThatThrownBy(() -> service.selectProfile(new HermesSettingsRequest("chat")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("API key is not configured");
   }

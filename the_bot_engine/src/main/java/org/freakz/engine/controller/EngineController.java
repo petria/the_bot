@@ -36,8 +36,8 @@ import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.howto.HowtoIndexService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.livechannel.LiveChannelEventService;
+import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
-import org.freakz.engine.services.notifications.HermesGlobalOverrideAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
 import org.freakz.engine.services.topcounter.TopCountService;
 import org.slf4j.Logger;
@@ -48,6 +48,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
 import java.util.List;
@@ -68,6 +69,17 @@ public class EngineController {
         return thread;
       });
 
+  @ExceptionHandler(RestClientResponseException.class)
+  public ResponseEntity<String> upstreamRestError(RestClientResponseException e) {
+    String body = e.getResponseBodyAsString();
+    if (body == null || body.isBlank()) {
+      body = "{\"message\":\"Upstream service request failed\"}";
+    }
+    return ResponseEntity.status(e.getStatusCode())
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(body);
+  }
+
   private final BotEngine botEngine;
   private final TopCountService countService;
 
@@ -81,13 +93,13 @@ public class EngineController {
   private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
   private final HermesSettingsService hermesSettingsService;
   private final HermesFallbackManagerService hermesFallbackManagerService;
-  private final HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService;
   private final AiCommandRegistryService aiCommandRegistryService;
   private final AiCommandToolRegistry aiCommandToolRegistry;
   private final UserNotifyRuleService userNotifyRuleService;
   private final HowtoIndexService howtoIndexService;
   private final ConsoleOutputService consoleOutputService;
   private final LiveChannelEventService liveChannelEventService;
+  private final PrivateChatAlertService privateChatAlertService;
 
   public EngineController(
       BotEngine botEngine,
@@ -101,13 +113,13 @@ public class EngineController {
       OpenClawInstanceSettingsService openClawInstanceSettingsService,
       HermesSettingsService hermesSettingsService,
       HermesFallbackManagerService hermesFallbackManagerService,
-      HermesGlobalOverrideAlertService hermesGlobalOverrideAlertService,
       AiCommandRegistryService aiCommandRegistryService,
       AiCommandToolRegistry aiCommandToolRegistry,
       UserNotifyRuleService userNotifyRuleService,
       HowtoIndexService howtoIndexService,
       ConsoleOutputService consoleOutputService,
-      LiveChannelEventService liveChannelEventService) {
+      LiveChannelEventService liveChannelEventService,
+      PrivateChatAlertService privateChatAlertService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -119,13 +131,13 @@ public class EngineController {
     this.openClawInstanceSettingsService = openClawInstanceSettingsService;
     this.hermesSettingsService = hermesSettingsService;
     this.hermesFallbackManagerService = hermesFallbackManagerService;
-    this.hermesGlobalOverrideAlertService = hermesGlobalOverrideAlertService;
     this.aiCommandRegistryService = aiCommandRegistryService;
     this.aiCommandToolRegistry = aiCommandToolRegistry;
     this.userNotifyRuleService = userNotifyRuleService;
     this.howtoIndexService = howtoIndexService;
     this.consoleOutputService = consoleOutputService;
     this.liveChannelEventService = liveChannelEventService;
+    this.privateChatAlertService = privateChatAlertService;
   }
 
   @PostMapping("/handle_request")
@@ -431,8 +443,33 @@ public class EngineController {
       @RequestBody HermesBackendConfigUpdateRequest request) {
     HermesBackendConfigResponse before = hermesFallbackManagerService.getBackendConfig();
     HermesBackendConfigResponse after = hermesFallbackManagerService.updateBackendConfig(request);
-    hermesGlobalOverrideAlertService.notifyStateChange(before.globalOverride(), after.globalOverride());
+    notifyAiSystemModeChanged(before, after, request);
     return ResponseEntity.ok(after);
+  }
+
+  private void notifyAiSystemModeChanged(
+      HermesBackendConfigResponse before,
+      HermesBackendConfigResponse after,
+      HermesBackendConfigUpdateRequest request) {
+    String beforeMode = normalizeAiSystemMode(before == null ? null : before.systemMode());
+    String afterMode = normalizeAiSystemMode(after == null ? null : after.systemMode());
+    if (beforeMode.equals(afterMode)) {
+      return;
+    }
+    String actor = request == null || request.requestedBy() == null || request.requestedBy().isBlank()
+        ? "unknown"
+        : request.requestedBy().trim();
+    if ("off".equals(afterMode)) {
+      privateChatAlertService.sendAlertToConfiguredTargets(
+          "ALERT: AI system disabled by %s. AI commands and AI chat are unavailable.".formatted(actor));
+    } else {
+      privateChatAlertService.sendAlertToConfiguredTargets(
+          "ALERT: AI system enabled by %s. AI routes are active again.".formatted(actor));
+    }
+  }
+
+  private String normalizeAiSystemMode(String value) {
+    return value == null || value.isBlank() ? "enabled" : value.trim().toLowerCase();
   }
 
   @PostMapping("/internal/security/web-login-failed")

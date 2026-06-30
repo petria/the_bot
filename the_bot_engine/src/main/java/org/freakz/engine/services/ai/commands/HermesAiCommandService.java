@@ -25,8 +25,13 @@ import tools.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 @Service
 public class HermesAiCommandService {
@@ -61,14 +66,26 @@ public class HermesAiCommandService {
 
   @Async
   public void ask(EngineRequest request, AiCommandDefinition command, String argumentsText) {
+    int timeoutSeconds = 120;
     try {
+      if (!settingsService.aiEnabled()) {
+        processReply(request, "AI not available");
+        return;
+      }
       HermesSettings settings = settingsService.resolveAiCommandSettings();
+      timeoutSeconds = settings.timeoutSeconds();
       if (!settings.configured()) {
         processReply(request, "Hermes is not configured.");
         return;
       }
       if (!settings.useResponsesApi() && !settings.useChatCompletionsApi()) {
         processReply(request, "AI commands require Hermes responses or chat-completions API mode.");
+        return;
+      }
+
+      String deterministicReply = tryExecuteDeterministicWeatherCommand(command, argumentsText, request);
+      if (deterministicReply != null) {
+        processReply(request, deterministicReply);
         return;
       }
 
@@ -117,8 +134,40 @@ public class HermesAiCommandService {
       processReply(request, "AI command stopped before producing a final answer.");
     } catch (Exception e) {
       log.warn("Hermes AI command failed: {}", e.getMessage(), e);
-      processReply(request, AiReplyGuard.safeFailure("AI command failed:", e.getMessage()));
+      if (isTimeout(e)) {
+        processReply(request, timeoutFailure(request, command, timeoutSeconds));
+      } else {
+        processReply(request, AiReplyGuard.safeFailure("AI command failed:", e.getMessage()));
+      }
     }
+  }
+
+  boolean isTimeout(Throwable error) {
+    for (Throwable current = error; current != null; current = current.getCause()) {
+      if (current instanceof TimeoutException) {
+        return true;
+      }
+      String message = current.getMessage();
+      if (message != null && message.toLowerCase().contains("timeout on blocking read")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String timeoutFailure(EngineRequest request, AiCommandDefinition command, int timeoutSeconds) {
+    String commandName = invokedCommandName(request, command);
+    return "AI command " + commandName + " timed out after " + timeoutSeconds + " seconds.";
+  }
+
+  private String invokedCommandName(EngineRequest request, AiCommandDefinition command) {
+    if (request != null && request.getCommand() != null && !request.getCommand().isBlank()) {
+      return request.getCommand().trim().split("\\s+", 2)[0];
+    }
+    if (command != null && command.getName() != null && !command.getName().isBlank()) {
+      return "!ai::" + command.getName();
+    }
+    return "unknown";
   }
 
   private WebClient buildClient(HermesSettings settings) {
@@ -129,6 +178,126 @@ public class HermesAiCommandService {
       clientBuilder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + settings.apiKey());
     }
     return clientBuilder.build();
+  }
+
+  String tryExecuteDeterministicWeatherCommand(
+      AiCommandDefinition command,
+      String argumentsText,
+      EngineRequest request) {
+    if (command == null
+        || command.getName() == null
+        || !"weather".equalsIgnoreCase(command.getName())
+        || command.getAllowedTools() == null
+        || !command.getAllowedTools().contains("weather.current")) {
+      return null;
+    }
+    List<String> locations = extractWeatherLocations(argumentsText);
+    if (locations.size() < 2) {
+      return null;
+    }
+
+    boolean compare = asksForWeatherCompare(argumentsText) && command.getAllowedTools().contains("weather.compare");
+    ObjectNode args = jsonMapper.createObjectNode();
+    ArrayNode locationNodes = args.putArray("locations");
+    for (String location : locations) {
+      locationNodes.add(location);
+    }
+    if (asksForColdestFirst(argumentsText)) {
+      args.put("sort", "asc");
+    }
+
+    String toolName = compare ? "weather.compare" : "weather.current";
+    String toolResult = toolRegistry.execute(toolName, args, request);
+    String formattedText = extractFormattedText(toolResult);
+    return formattedText.isBlank() ? null : formattedText;
+  }
+
+  private boolean asksForWeatherCompare(String text) {
+    String normalized = normalizeWeatherText(text);
+    return normalized.contains("vertaa")
+        || normalized.contains("compare")
+        || normalized.contains("jarjesta")
+        || normalized.contains("järjestä")
+        || normalized.contains("kylmin")
+        || normalized.contains("lampimin")
+        || normalized.contains("lämpimin")
+        || normalized.contains("kuumin");
+  }
+
+  private boolean asksForColdestFirst(String text) {
+    String normalized = normalizeWeatherText(text);
+    return normalized.contains("kylmin")
+        || normalized.contains("kylmimm")
+        || normalized.contains("coldest")
+        || normalized.contains("coolest");
+  }
+
+  List<String> extractWeatherLocations(String text) {
+    if (text == null || text.isBlank()) {
+      return List.of();
+    }
+
+    Set<String> locations = new LinkedHashSet<>();
+    String normalized = normalizeWeatherText(text)
+        .replace(',', ' ')
+        .replace(';', ' ');
+    String[] words = normalized.split("\\s+");
+    for (String word : words) {
+      String location = finnishWeatherLocation(word);
+      if (location != null) {
+        locations.add(location);
+      }
+    }
+    if (!locations.isEmpty()) {
+      return List.copyOf(locations);
+    }
+
+    List<String> fallback = new ArrayList<>();
+    for (String part : text.split("[,;]")) {
+      String cleaned = cleanupWeatherLocationCandidate(part);
+      if (!cleaned.isBlank()) {
+        fallback.add(cleaned);
+      }
+    }
+    return fallback.size() > 1 ? fallback : List.of();
+  }
+
+  private String normalizeWeatherText(String text) {
+    return text == null ? "" : text.toLowerCase(Locale.ROOT).trim();
+  }
+
+  private String finnishWeatherLocation(String word) {
+    return switch (word == null ? "" : word.trim().toLowerCase(Locale.ROOT)) {
+      case "helsinki", "helsingin" -> "Helsinki";
+      case "espoo", "espoon" -> "Espoo";
+      case "vantaa", "vantaan" -> "Vantaa";
+      case "turku", "turun" -> "Turku";
+      case "tampere", "tampereen" -> "Tampere";
+      case "vaasa", "vaasan" -> "Vaasa";
+      case "oulu", "oulun" -> "Oulu";
+      case "jyväskylä", "jyvaskyla", "jyväskylän", "jyvaskylan" -> "Jyväskylä";
+      case "kuopio", "kuopion" -> "Kuopio";
+      case "lahti", "lahden" -> "Lahti";
+      case "pori", "porin" -> "Pori";
+      case "rovaniemi", "rovaniemen" -> "Rovaniemi";
+      default -> null;
+    };
+  }
+
+  private String cleanupWeatherLocationCandidate(String value) {
+    String cleaned = value == null ? "" : value.toLowerCase(Locale.ROOT)
+        .replaceAll("\\b(vertaa|compare|säätiloja|saatiloja|säätila|saatila|sää|saa|järjestä|jarjesta|kylmin|ensin|lämpimin|lampimin|kuumin|ja)\\b", " ")
+        .replaceAll("[^\\p{L}\\p{N} -]", " ")
+        .trim()
+        .replaceAll("\\s+", " ");
+    if (cleaned.isBlank()) {
+      return "";
+    }
+    String known = finnishWeatherLocation(cleaned);
+    if (known != null) {
+      return known;
+    }
+    return Character.toUpperCase(cleaned.charAt(0)) + cleaned.substring(1);
   }
 
   private String createResponse(
@@ -362,6 +531,10 @@ public class HermesAiCommandService {
       }
       return AiCommandModelResponse.tool(firstText(node, "tool", "name"), arguments);
     }
+    String toolName = firstText(node, "tool", "name");
+    if (!toolName.isBlank() && looksLikeToolArguments(node.path("arguments"))) {
+      return AiCommandModelResponse.tool(toolName, node.path("arguments"));
+    }
     String answer = firstText(node, "answer", "text", "message", "response");
     if (!answer.isBlank()) {
       return parseModelResponse(answer);
@@ -399,6 +572,10 @@ public class HermesAiCommandService {
           arguments = jsonMapper.createObjectNode();
         }
         return AiCommandModelResponse.tool(firstText(candidate, "tool", "name"), arguments);
+      }
+      String toolName = firstText(candidate, "tool", "name");
+      if (!toolName.isBlank() && looksLikeToolArguments(candidate.path("arguments"))) {
+        return AiCommandModelResponse.tool(toolName, candidate.path("arguments"));
       }
       if ("final".equalsIgnoreCase(type)) {
         String answer = firstText(candidate, "answer", "text", "message", "response");
@@ -439,6 +616,10 @@ public class HermesAiCommandService {
       }
     }
     return -1;
+  }
+
+  private boolean looksLikeToolArguments(JsonNode arguments) {
+    return arguments != null && arguments.isObject();
   }
 
   private AiCommandModelResponse parseWrappedModelResponse(JsonNode node) throws Exception {

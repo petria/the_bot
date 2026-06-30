@@ -83,6 +83,10 @@ public class HermesAiService {
   @Async
   public void ask(EngineRequest engineRequest, String queryMessage) {
     try {
+      if (!settingsService.aiEnabled()) {
+        processReply(engineRequest, "AI not available");
+        return;
+      }
       HermesSettings settings = settingsService.resolveSettings();
       if (!settings.configured()) {
         processReply(engineRequest, "Hermes is not configured.");

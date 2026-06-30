@@ -1,94 +1,96 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, Modal, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, RefreshCw, Save } from 'lucide-react';
+import { AlertCircle, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import {
   getHermesBackendConfig,
   getHermesFallbackModels,
   updateHermesBackendConfig,
+  type HermesBackend,
   type HermesBackendConfigResponse,
   type HermesFallbackModel,
-  type HermesProfile,
 } from '../api/adminSystem';
 
-const PROFILE_ORDER = ['chat', 'coder', 'ai-command'] as const;
-const HIDDEN_PROFILE_IDS = new Set(['coder']);
 const LOCAL_RUNNER_OPTIONS = [
   { value: 'ollama', label: 'Ollama' },
   { value: 'lmstudio', label: 'LM Studio' },
   { value: 'vllm', label: 'vLLM' },
 ];
 
+const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
+  { id: 'gpt-5.5', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+  { id: 'gpt-5.4', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+  { id: 'gpt-5.4-mini', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+];
+
+const OPENAI_MODEL_OPTIONS = OPENAI_MODEL_ITEMS.map((model) => model.id);
+
 export function AdminSystemPage() {
   const queryClient = useQueryClient();
-  const hermesBackendQuery = useQuery({
+  const backendQuery = useQuery({
     queryKey: ['admin-system-hermes-backends'],
     queryFn: getHermesBackendConfig,
   });
-  const [backendConfig, setBackendConfig] = useState<HermesBackendConfigResponse | null>(null);
-  const [modelProfileId, setModelProfileId] = useState<string>('');
-  const [fallbackModels, setFallbackModels] = useState<string[]>([]);
-  const [fallbackModelItems, setFallbackModelItems] = useState<HermesFallbackModel[]>([]);
-  const [loadedModelProfileId, setLoadedModelProfileId] = useState<string>('');
-  const [overrideConfirmation, setOverrideConfirmation] = useState<'enable' | 'disable' | null>(null);
-  const fallback = backendConfig?.fallback || null;
-  const globalOverride = backendConfig?.globalOverride || null;
-  const overrideEnabled = Boolean(globalOverride?.enabled);
+  const [config, setConfig] = useState<HermesBackendConfigResponse | null>(null);
+  const [modelBackendId, setModelBackendId] = useState<string>('local-0');
+  const [loadedModelBackendId, setLoadedModelBackendId] = useState<string>('');
+  const [models, setModels] = useState<string[]>([]);
+  const [modelItems, setModelItems] = useState<HermesFallbackModel[]>([]);
+  const [applyFailed, setApplyFailed] = useState(false);
 
   useEffect(() => {
-    if (!hermesBackendQuery.data) {
-      return;
+    if (backendQuery.data) {
+      setConfig(backendQuery.data);
+      setModelBackendId(firstLocalBackend(backendQuery.data)?.id || 'local-0');
     }
-    setBackendConfig(hermesBackendQuery.data);
-    const visibleProfiles = hermesBackendQuery.data.profiles.filter(isProfileVisible);
-    const firstLocal = visibleProfiles.find((profile) => isLocalRunner(profile.provider));
-    setModelProfileId(firstLocal?.id || visibleProfiles[0]?.id || '');
-  }, [hermesBackendQuery.data]);
+  }, [backendQuery.data]);
 
-  const updateBackendsMutation = useMutation({
-    mutationFn: (config: HermesBackendConfigResponse) => updateHermesBackendConfig(config),
+  const saveMutation = useMutation({
+    mutationFn: (next: HermesBackendConfigResponse) => updateHermesBackendConfig(next),
     onSuccess: (response) => {
+      setApplyFailed(false);
+      setConfig(response);
       queryClient.setQueryData(['admin-system-hermes-backends'], response);
-      setBackendConfig(response);
+      queryClient.invalidateQueries({ queryKey: ['system-status'] });
+    },
+    onError: () => {
+      setApplyFailed(true);
+      queryClient.invalidateQueries({ queryKey: ['admin-system-hermes-backends'] });
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
     },
   });
-  const fallbackModelsMutation = useMutation({
-    mutationFn: (profile: HermesProfile) =>
-      getHermesFallbackModels(profile.provider, profile.baseUrl || '', profile.apiKey, profile.id),
-    onSuccess: (response, profile) => {
-      setFallbackModels(response.models || []);
-      setFallbackModelItems(response.items?.length ? response.items : (response.models || []).map((model) => ({
+
+  const modelMutation = useMutation({
+    mutationFn: (backend: HermesBackend) =>
+      getHermesFallbackModels(backend.provider, backend.baseUrl || '', backend.apiKey, backend.id),
+    onSuccess: (response, backend) => {
+      setModels(response.models || []);
+      setModelItems(response.items?.length ? response.items : (response.models || []).map((model) => ({
         id: model,
         suitability: 'unknown',
         label: 'tool support unknown',
         toolCapable: null,
         detail: null,
       })));
-      setLoadedModelProfileId(profile.id);
+      setLoadedModelBackendId(backend.id);
     },
   });
 
-  const selectedModelProfile = backendConfig?.profiles.find((profile) => profile.id === modelProfileId && isProfileVisible(profile)) || null;
-  const selectedDiscoveredModel = fallbackModelItems.find((model) => model.id === selectedModelProfile?.model) || null;
+  const openAi = backendById(config, 'openai');
+  const localBackends = config?.backends.filter((backend) => isLocalBackend(backend)) || [];
+  const selectedModelBackend = backendById(config, modelBackendId);
+  const activeModelItems = selectedModelBackend?.id === 'openai' ? OPENAI_MODEL_ITEMS : modelItems;
+  const activeModels = activeModelItems.map((model) => model.id);
+  const selectedModel = activeModelItems.find((item) => item.id === selectedModelBackend?.model) || null;
+  const hasChanges = Boolean(config && JSON.stringify(config) !== JSON.stringify(backendQuery.data));
   const discoveredModelOptions = useMemo(
-    () => fallbackModelItems.map((model) => ({
-      value: model.id,
-      label: `${model.id} - ${model.label}`,
-    })),
-    [fallbackModelItems]
+    () => activeModelItems.map((model) => ({ value: model.id, label: `${model.id} - ${model.label}` })),
+    [activeModelItems]
   );
-  const orderedProfiles = useMemo(
-    () => (backendConfig?.profiles || []).slice().sort((left, right) => PROFILE_ORDER.indexOf(left.id as never) - PROFILE_ORDER.indexOf(right.id as never)),
-    [backendConfig?.profiles]
-  );
-  const visibleProfiles = useMemo(
-    () => orderedProfiles.filter(isProfileVisible),
-    [orderedProfiles]
-  );
-  const hasBackendChanges = Boolean(
-    backendConfig && JSON.stringify(backendConfig) !== JSON.stringify(hermesBackendQuery.data)
+  const routeOptions = useMemo(
+    () => config?.backends.map((backend) => ({ value: backend.id, label: backend.label })) || [],
+    [config]
   );
 
   return (
@@ -96,500 +98,416 @@ export function AdminSystemPage() {
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
           <Title order={2}>Manage AI Routes</Title>
-          <Text c="dimmed">Hermes profiles, models, local runners, and fallback routing.</Text>
+          <Text c="dimmed">Global AI mode, fixed Hermes backends, and route selection.</Text>
         </div>
+        <Button
+          leftSection={<Save size={18} />}
+          loading={saveMutation.isPending}
+          disabled={!config || !hasChanges}
+          onClick={() => config && saveMutation.mutate(config)}
+        >
+          Save and apply
+        </Button>
       </Group>
 
-      {hermesBackendQuery.isLoading ? <Loader /> : null}
-      {hermesBackendQuery.isError ? <SettingsError error={hermesBackendQuery.error} /> : null}
-      {updateBackendsMutation.isError ? <SettingsError error={updateBackendsMutation.error} /> : null}
-      {fallbackModelsMutation.isError ? <SettingsError error={fallbackModelsMutation.error} /> : null}
+      {backendQuery.isLoading ? <Loader /> : null}
+      {backendQuery.isError ? <SettingsError error={backendQuery.error} /> : null}
+      {saveMutation.isError ? <SettingsError error={saveMutation.error} /> : null}
+      {modelMutation.isError ? <SettingsError error={modelMutation.error} /> : null}
+      {applyFailed ? (
+        <Alert color="yellow" variant="light" icon={<AlertCircle size={18} />}>
+          Route changes were not applied. The values shown here are refreshed from saved Hermes manager state.
+        </Alert>
+      ) : null}
 
-      {backendConfig ? (
+      {config ? (
         <Stack gap="md">
           <Card withBorder radius="sm">
+            <Group justify="space-between" align="center">
+              <Stack gap={2}>
+                <Text fw={700}>AI system mode</Text>
+                <Text size="sm" c="dimmed">When off, AI commands return "AI not available".</Text>
+              </Stack>
+              <Switch
+                label={config.systemMode === 'off' ? 'Off' : 'Enabled'}
+                checked={config.systemMode !== 'off'}
+                onChange={(event) => updateConfig({ systemMode: event.currentTarget.checked ? 'enabled' : 'off' })}
+              />
+            </Group>
+          </Card>
+
+          {openAi ? (
+            <BackendCard
+              title="OpenAI backend"
+              backend={openAi}
+              modelOptions={OPENAI_MODEL_OPTIONS}
+              disabledProvider
+              onChange={(patch) => updateBackend('openai', patch)}
+            />
+          ) : null}
+
+          {localBackends.map((backend) => (
+            <BackendCard
+              key={backend.id}
+              title={backend.label}
+              backend={backend}
+              modelOptions={loadedModelBackendId === backend.id ? models : []}
+              canDelete={localBackends.length > 1 && !routeUsesBackend(backend.id)}
+              onDelete={() => deleteLocalBackend(backend.id)}
+              onChange={(patch) => updateBackend(backend.id, patch)}
+            />
+          ))}
+
+          <Button
+            variant="light"
+            leftSection={<Plus size={18} />}
+            onClick={addLocalBackend}
+          >
+            Add local backend
+          </Button>
+
+          <Card withBorder radius="sm">
             <Stack gap="md">
-              <Group justify="space-between" align="flex-start" gap="sm">
+              <Group justify="space-between" align="flex-start">
                 <div>
-                  <Text fw={700}>Emergency local override</Text>
-                  <Text size="sm" c="dimmed">
-                    Forces all configured Hermes routes through the configured local fallback backend.
-                  </Text>
+                  <Text fw={700}>Route selection</Text>
+                  <Text size="sm" c="dimmed">Select which fixed backend each AI route uses.</Text>
                 </div>
-                <Badge color={overrideEnabled ? 'red' : 'gray'}>
-                  {overrideEnabled ? 'Forced local route' : 'Inactive'}
+                <Badge color={config.systemMode === 'off' ? 'red' : 'green'}>
+                  {config.systemMode === 'off' ? 'AI off' : 'AI enabled'}
                 </Badge>
               </Group>
-
-              {overrideEnabled ? (
-                <Alert color="red" variant="filled" icon={<AlertCircle size={18} />}>
-                  <Text fw={700}>All AI routes are forced to the local backend.</Text>
-                  <Text size="sm">Requests fail closed if this backend is unavailable. Normal route editing is locked.</Text>
-                </Alert>
-              ) : null}
-
               <Group grow align="flex-start">
-                <InfoLine label="Runner" value={displayRunner(fallback?.provider)} />
-                <InfoLine label="Model" value={fallback?.model || '-'} />
-                <InfoLine label="Endpoint" value={fallback?.baseUrl || '-'} />
-                <InfoLine label="Context window" value={String(fallback?.contextWindow || '-')} />
+                {config.routes.map((route) => (
+                  <Select
+                    key={route.id}
+                    label={route.label}
+                    data={routeOptions}
+                    value={route.backendId}
+                    onChange={(value) => updateRoute(route.id, value || 'openai')}
+                  />
+                ))}
               </Group>
-              <Group justify="space-between" align="flex-end">
-                <Stack gap={2}>
-                  <InfoLine label="Status" value={globalOverride?.detail || 'Global override disabled'} />
-                  <InfoLine label="Activated" value={formatDate(globalOverride?.activatedAt)} />
-                  <InfoLine label="Changed by" value={globalOverride?.updatedBy || '-'} />
-                </Stack>
-                <Button
-                  color={overrideEnabled ? 'red' : 'orange'}
-                  loading={updateBackendsMutation.isPending}
-                  disabled={!overrideEnabled && (!fallback?.baseUrl || !fallback?.model)}
-                  onClick={() => setOverrideConfirmation(overrideEnabled ? 'disable' : 'enable')}
-                >
-                  {overrideEnabled ? 'Disable emergency override' : 'Validate and force all routes'}
-                </Button>
-              </Group>
+              <Stack gap={4}>
+                {config.routes.map((route) => (
+                  <InfoLine
+                    key={route.id}
+                    label={route.id}
+                    value={`${route.backendId} / ${route.provider} / ${route.model} / ${statusText(route.healthy)}`}
+                  />
+                ))}
+              </Stack>
             </Stack>
           </Card>
 
           <Card withBorder radius="sm">
             <Stack gap="md">
-              <Group justify="space-between" align="flex-start" gap="sm">
-                <div>
-                  <Text fw={700}>Local LLM fallback</Text>
-                  <Text size="sm" c="dimmed">Used only when an OpenAI profile is unavailable and that profile permits fallback.</Text>
-                </div>
-                <Badge color={fallback?.enabled ? (fallback.healthy === false ? 'red' : 'green') : 'gray'}>
-                  {fallback?.enabled ? 'Enabled' : 'Disabled'}
-                </Badge>
-              </Group>
-
-              <Switch
-                label="Enable local LLM fallback"
-                checked={Boolean(fallback?.enabled)}
-                disabled={overrideEnabled}
-                onChange={(event) => updateFallback({ enabled: event.currentTarget.checked })}
-              />
-
-              <Group grow align="flex-start">
-                <Select
-                  label="Local runner"
-                  data={LOCAL_RUNNER_OPTIONS}
-                  value={fallback?.provider || 'ollama'}
-                  disabled={overrideEnabled}
-                  onChange={(value) => updateFallback({
-                    provider: value || 'ollama',
-                    baseUrl: defaultRunnerUrl(value || 'ollama'),
-                  })}
-                />
-                <TextInput
-                  label="OpenAI-compatible base URL"
-                  value={fallback?.baseUrl || ''}
-                  disabled={overrideEnabled}
-                  onChange={(event) => updateFallback({ baseUrl: event.currentTarget.value })}
-                />
-                <Autocomplete
-                  label="Fallback model"
-                  data={loadedModelProfileId === '__fallback__' ? fallbackModels : []}
-                  value={fallback?.model || ''}
-                  disabled={overrideEnabled}
-                  onChange={(value) => updateFallback({ model: value })}
-                />
-                <NumberInput
-                  label="Context window"
-                  min={65536}
-                  step={1024}
-                  value={fallback?.contextWindow || 65536}
-                  disabled={overrideEnabled}
-                  onChange={(value) => updateFallback({ contextWindow: typeof value === 'number' ? value : 65536 })}
-                />
-              </Group>
-              <CredentialFields
-                configured={Boolean(fallback?.apiKeyConfigured)}
-                disabled={overrideEnabled}
-                value={fallback?.apiKey || ''}
-                clear={Boolean(fallback?.clearApiKey)}
-                onChange={(apiKey) => updateFallback({ apiKey, clearApiKey: false })}
-                onClear={(clearApiKey) => updateFallback({ clearApiKey, apiKey: '' })}
-              />
-
               <Group justify="space-between" align="flex-end">
-                <Stack gap={2}>
-                  <InfoLine label="Reachability" value={fallback?.detail || 'Not checked'} />
-                  <InfoLine label="Validation" value={fallback?.validationStatus || 'NOT_VALIDATED'} />
-                  <InfoLine label="Last validated" value={formatDate(fallback?.lastValidatedAt)} />
-                </Stack>
+                <Select
+                  label="Model list source"
+                  data={config.backends.map((backend) => ({ value: backend.id, label: backend.label }))}
+                  value={modelBackendId}
+                  onChange={(value) => setModelBackendId(value || firstLocalBackend(config)?.id || 'local-0')}
+                />
                 <Button
                   variant="light"
                   leftSection={<RefreshCw size={18} />}
-                  loading={fallbackModelsMutation.isPending && loadedModelProfileId === '__fallback__'}
-                  disabled={overrideEnabled || !fallback?.baseUrl}
-                  onClick={() => fallback && fallbackModelsMutation.mutate({
-                    id: '__fallback__',
-                    label: 'Environment fallback',
-                    provider: fallback.provider || 'ollama',
-                    baseUrl: fallback.baseUrl,
-                    model: fallback.model,
-                    apiMode: 'chat-completions',
-                    timeoutSeconds: 120,
-                    healthy: fallback.healthy,
-                    toolCapable: fallback.toolCapable,
-                    detail: fallback.detail,
-                    contextWindow: fallback.contextWindow,
-                    fallbackAllowed: false,
-                    activeProvider: fallback.provider || 'ollama',
-                    gatewayHealthy: null,
-                    primaryProviderHealthy: fallback.healthy,
-                    fallbackHealthy: fallback.healthy,
-                    cooldownUntil: null,
-                    fallbackReason: null,
-                    fallbackActivatedAt: null,
-                    lastProviderError: null,
-                    lastProviderErrorAt: null,
-                    lastValidatedAt: fallback.lastValidatedAt,
-                    validationStatus: fallback.validationStatus,
-                    apiKeyConfigured: fallback.apiKeyConfigured,
-                    apiKey: fallback.apiKey,
-                  })}
+                  loading={modelMutation.isPending}
+                  disabled={!selectedModelBackend || selectedModelBackend.provider === 'openai' || !selectedModelBackend.baseUrl}
+                  onClick={() => selectedModelBackend && modelMutation.mutate(selectedModelBackend)}
                 >
-                  Load fallback models
+                  Load local models
                 </Button>
               </Group>
-            </Stack>
-          </Card>
-
-          <Card withBorder radius="sm">
-            <Stack gap="md">
-              <Group justify="space-between" align="flex-start" gap="sm">
-                <div>
-                  <Text fw={700}>Hermes Profiles</Text>
-                  <Text size="sm" c="dimmed">Each logical Hermes profile chooses its provider directly.</Text>
-                </div>
-                <Badge color={visibleProfiles.every((profile) => profile.healthy !== false) ? 'green' : 'yellow'}>
-                  {visibleProfiles.length} profiles
-                </Badge>
-              </Group>
-
-            <Stack gap="sm">
-              {visibleProfiles.map((profile) => (
-                <Card key={profile.id} withBorder radius="sm">
-                  <Stack gap="sm">
-                    <Group justify="space-between" align="flex-start" gap="sm">
-                      <div>
-                        <Text fw={600}>{profile.label}</Text>
-                        <Text size="xs" c="dimmed">{profile.id}</Text>
-                      </div>
-                      <Badge
-                        color={profile.gatewayHealthy === false || profile.primaryProviderHealthy === false ? 'red' : 'green'}
-                        leftSection={profile.healthy === false ? <AlertCircle size={12} /> : <CheckCircle2 size={12} />}
-                      >
-                        {profile.activeProvider || profile.provider}
-                      </Badge>
-                    </Group>
-
-                    <Group grow align="flex-start">
-                      <Select
-                        label="Provider"
-                        data={[
-                          { value: 'openai', label: 'OpenAI' },
-                          ...LOCAL_RUNNER_OPTIONS,
-                        ]}
-                        value={profile.provider}
-                        disabled={overrideEnabled}
-                        onChange={(value) => updateProfile(profile.id, {
-                          provider: value || profile.provider,
-                          baseUrl: value === 'openai'
-                            ? null
-                            : defaultRunnerUrl(value || 'ollama'),
-                        })}
-                      />
-                      <Select
-                        label="API mode"
-                        data={[
-                          { value: 'responses', label: 'Responses' },
-                          { value: 'chat-completions', label: 'Chat completions' },
-                        ]}
-                        value={profile.apiMode}
-                        disabled={overrideEnabled}
-                        onChange={(value) => updateProfile(profile.id, { apiMode: value || profile.apiMode })}
-                      />
-                      <NumberInput
-                        label="Timeout seconds"
-                        min={1}
-                        value={profile.timeoutSeconds || 120}
-                        disabled={overrideEnabled}
-                        onChange={(value) => updateProfile(profile.id, { timeoutSeconds: typeof value === 'number' ? value : 120 })}
-                      />
-                    </Group>
-
-                    <Group grow align="flex-start">
-                      <TextInput
-                        label="Label"
-                        value={profile.label}
-                        disabled={overrideEnabled}
-                        onChange={(event) => updateProfile(profile.id, { label: event.currentTarget.value })}
-                      />
-                      <Autocomplete
-                        label="Model"
-                        data={modelProfileId === profile.id ? fallbackModels : []}
-                        value={profile.model}
-                        disabled={overrideEnabled}
-                        onChange={(value) => updateProfile(profile.id, { model: value })}
-                      />
-                    </Group>
-
-                    {isLocalRunner(profile.provider) ? (
-                      <Stack gap="sm">
-                        <Group grow align="flex-start">
-                        <TextInput
-                          label="OpenAI-compatible base URL"
-                          value={profile.baseUrl || ''}
-                          disabled={overrideEnabled}
-                          onChange={(event) => updateProfile(profile.id, { baseUrl: event.currentTarget.value })}
-                        />
-                        <NumberInput
-                          label="Context window"
-                          min={65536}
-                          step={1024}
-                          value={profile.contextWindow || 65536}
-                          disabled={overrideEnabled}
-                          onChange={(value) => updateProfile(profile.id, {
-                            contextWindow: typeof value === 'number' ? value : 65536,
-                          })}
-                        />
-                        </Group>
-                        <CredentialFields
-                          configured={Boolean(profile.apiKeyConfigured)}
-                          disabled={overrideEnabled}
-                          value={profile.apiKey || ''}
-                          clear={Boolean(profile.clearApiKey)}
-                          onChange={(apiKey) => updateProfile(profile.id, { apiKey, clearApiKey: false })}
-                          onClear={(clearApiKey) => updateProfile(profile.id, { clearApiKey, apiKey: '' })}
-                        />
-                      </Stack>
-                    ) : (
-                      <Stack gap="xs">
-                        <Switch
-                          label="Allow local LLM fallback"
-                          checked={Boolean(profile.fallbackAllowed)}
-                          disabled={overrideEnabled || !fallback?.enabled}
-                          onChange={(event) => updateProfile(profile.id, { fallbackAllowed: event.currentTarget.checked })}
-                        />
-                        <Alert color="blue" variant="light" icon={<CheckCircle2 size={18} />}>
-                          <Text size="sm">OpenAI credentials stay in the Hermes profile. The model field is the upstream OpenAI model.</Text>
-                        </Alert>
-                      </Stack>
-                    )}
-
-                    <Stack gap={4}>
-                      <InfoLine label="Configured provider" value={profile.provider} />
-                      <InfoLine label="Active provider" value={profile.activeProvider || profile.provider} />
-                      <InfoLine label="Gateway" value={statusText(profile.gatewayHealthy)} />
-                      <InfoLine label="Primary provider" value={statusText(profile.primaryProviderHealthy)} />
-                      <InfoLine label="Provider status" value={profile.fallbackReason || profile.lastProviderError || profile.detail || '-'} />
-                      <InfoLine label="Fallback active since" value={formatDate(profile.fallbackActivatedAt)} />
-                      {isLocalRunner(profile.provider) ? (
-                        <InfoLine label="Tool support" value={profile.toolCapable === false ? 'Not verified' : 'Available'} />
-                      ) : (
-                        <InfoLine label="Gateway mode" value="Shared Hermes profile" />
-                      )}
-                    </Stack>
-                  </Stack>
-                </Card>
-              ))}
-            </Stack>
-
-            <Group justify="flex-end" align="flex-end">
               <Select
-                w={260}
-                label="Model discovery profile"
-                value={modelProfileId}
-                disabled={overrideEnabled}
-                data={visibleProfiles
-                  .filter((profile) => isLocalRunner(profile.provider))
-                  .map((profile) => ({ value: profile.id, label: profile.label }))}
-                onChange={(value) => {
-                  setModelProfileId(value || '');
-                  setFallbackModels([]);
-                  setFallbackModelItems([]);
-                  setLoadedModelProfileId('');
-                }}
-              />
-              <Button
-                variant="light"
-                leftSection={<RefreshCw size={18} />}
-                loading={fallbackModelsMutation.isPending}
-                disabled={overrideEnabled || !isLocalRunner(selectedModelProfile?.provider) || !selectedModelProfile?.baseUrl}
-                onClick={() => selectedModelProfile && fallbackModelsMutation.mutate(selectedModelProfile)}
-              >
-                Load models
-              </Button>
-              <Select
-                w={300}
-                label="Discovered model"
-                searchable
-                disabled={overrideEnabled || !selectedModelProfile || loadedModelProfileId !== selectedModelProfile.id || fallbackModels.length === 0}
+                label="Apply discovered model"
                 data={discoveredModelOptions}
-                value={selectedModelProfile && fallbackModels.includes(selectedModelProfile.model) ? selectedModelProfile.model : null}
-                placeholder={loadedModelProfileId === selectedModelProfile?.id ? `${fallbackModels.length} models loaded` : 'Load models first'}
-                onChange={(value) => {
-                  if (selectedModelProfile && value) {
-                    updateProfile(selectedModelProfile.id, { model: value });
-                  }
-                }}
+                value={selectedModelBackend && activeModels.includes(selectedModelBackend.model) ? selectedModelBackend.model : null}
+                placeholder={selectedModelBackend?.id === 'openai'
+                  ? 'Select Codex model'
+                  : loadedModelBackendId === selectedModelBackend?.id ? `${models.length} models loaded` : 'Load models first'}
+                disabled={!selectedModelBackend || (selectedModelBackend.id !== 'openai' && (loadedModelBackendId !== selectedModelBackend.id || models.length === 0))}
+                searchable
+                onChange={(value) => selectedModelBackend && value && updateBackend(selectedModelBackend.id, { model: value })}
               />
-              <Button
-                leftSection={<Save size={18} />}
-                loading={updateBackendsMutation.isPending}
-                disabled={overrideEnabled || !hasBackendChanges}
-                onClick={() => updateBackendsMutation.mutate(requireBackendConfig(backendConfig))}
-              >
-                Validate and apply
-              </Button>
-            </Group>
-            {selectedModelProfile && loadedModelProfileId === selectedModelProfile.id ? (
-              <Stack gap={2} align="flex-end">
-                <Text size="sm" c="dimmed" ta="right">
-                  Loaded {fallbackModels.length} models for {selectedModelProfile.label}. Tool-capable models are listed first.
-                </Text>
-                {selectedDiscoveredModel ? (
-                  <Text size="sm" c={selectedDiscoveredModel.toolCapable === false ? 'yellow' : 'dimmed'} ta="right">
-                    Selected discovery result: {selectedDiscoveredModel.label}
-                    {selectedDiscoveredModel.detail ? ` - ${selectedDiscoveredModel.detail}` : ''}
-                  </Text>
-                ) : null}
-              </Stack>
-            ) : null}
+              {selectedModel ? (
+                <InfoLine label="Selected model" value={`${selectedModel.label}; tools=${statusText(selectedModel.toolCapable)}`} />
+              ) : null}
             </Stack>
           </Card>
         </Stack>
       ) : null}
-
-      <Modal
-        opened={overrideConfirmation != null}
-        onClose={() => setOverrideConfirmation(null)}
-        title={overrideConfirmation === 'enable' ? 'Force all AI routes locally?' : 'Restore normal AI routing?'}
-        centered
-      >
-        <Stack gap="md">
-          <Text size="sm">
-            {overrideConfirmation === 'enable'
-              ? `All AI traffic will use ${displayRunner(fallback?.provider)} model ${fallback?.model || 'unknown'} at ${fallback?.baseUrl || 'unknown'}. Requests will fail closed if it is unavailable.`
-              : 'The saved provider and fallback settings for each Hermes profile will be restored.'}
-          </Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setOverrideConfirmation(null)}>Cancel</Button>
-            <Button
-              color={overrideConfirmation === 'enable' ? 'orange' : 'red'}
-              loading={updateBackendsMutation.isPending}
-              onClick={() => {
-                if (!backendConfig || overrideConfirmation == null) {
-                  return;
-                }
-                const next = {
-                  ...backendConfig,
-                  globalOverride: {
-                    enabled: overrideConfirmation === 'enable',
-                    provider: fallback?.provider || 'ollama',
-                    baseUrl: fallback?.baseUrl || '',
-                    model: fallback?.model || '',
-                    contextWindow: fallback?.contextWindow || 65536,
-                    healthy: globalOverride?.healthy || null,
-                    detail: globalOverride?.detail || null,
-                    activatedAt: globalOverride?.activatedAt || null,
-                    updatedBy: globalOverride?.updatedBy || null,
-                    validationStatus: globalOverride?.validationStatus || null,
-                    lastValidatedAt: globalOverride?.lastValidatedAt || null,
-                  },
-                };
-                setOverrideConfirmation(null);
-                updateBackendsMutation.mutate(next);
-              }}
-            >
-              {overrideConfirmation === 'enable' ? 'Validate and force' : 'Disable override'}
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Stack>
   );
 
-  function updateProfile(profileId: string, patch: Partial<HermesProfile>) {
-    setBackendConfig((current) => current == null ? current : {
-      ...current,
-      profiles: current.profiles.map((profile) => profile.id === profileId ? { ...profile, ...patch } : profile),
-    });
+  function updateConfig(patch: Partial<HermesBackendConfigResponse>) {
+    setApplyFailed(false);
+    setConfig((current) => current ? { ...current, ...patch } : current);
   }
 
-  function updateFallback(patch: Partial<NonNullable<HermesBackendConfigResponse['fallback']>>) {
-    setBackendConfig((current) => current == null ? current : {
+  function updateBackend(backendId: string, patch: Partial<HermesBackend>) {
+    setApplyFailed(false);
+    setConfig((current) => current ? {
       ...current,
-      fallback: {
-        enabled: false,
-        provider: 'ollama',
-        baseUrl: '',
-        model: '',
-        profiles: [],
-        contextWindow: 65536,
+      backends: current.backends.map((backend) => backend.id === backendId ? { ...backend, ...patch } : backend),
+    } : current);
+  }
+
+  function updateRoute(routeId: string, backendId: string) {
+    setApplyFailed(false);
+    setConfig((current) => current ? {
+      ...current,
+      routes: current.routes.map((route) => route.id === routeId ? { ...route, backendId } : route),
+    } : current);
+  }
+
+  function addLocalBackend() {
+    setApplyFailed(false);
+    setConfig((current) => {
+      if (!current) {
+        return current;
+      }
+      const locals = current.backends.filter((backend) => isLocalBackend(backend));
+      const source = locals[0];
+      const nextId = nextLocalBackendId(locals);
+      const nextBackend: HermesBackend = {
+        id: nextId,
+        label: localLabel(nextId),
+        provider: source?.provider || 'ollama',
+        baseUrl: source?.baseUrl || defaultRunnerUrl(source?.provider || 'ollama'),
+        model: source?.model || '',
+        apiMode: source?.apiMode || 'responses',
+        timeoutSeconds: source?.timeoutSeconds || 120,
+        contextWindow: source?.contextWindow || 65536,
         healthy: null,
         toolCapable: null,
-        detail: null,
+        detail: 'Local backend has not been validated',
         lastValidatedAt: null,
         validationStatus: 'NOT_VALIDATED',
         apiKeyConfigured: false,
         apiKey: '',
         clearApiKey: false,
-        ...current.fallback,
-        ...patch,
-      },
+      };
+      return {
+        ...current,
+        backends: [...current.backends, nextBackend],
+      };
     });
   }
+
+  function deleteLocalBackend(backendId: string) {
+    setApplyFailed(false);
+    setConfig((current) => {
+      if (!current) {
+        return current;
+      }
+      const locals = current.backends.filter((backend) => isLocalBackend(backend));
+      if (locals.length <= 1 || current.routes.some((route) => route.backendId === backendId)) {
+        return current;
+      }
+      if (modelBackendId === backendId) {
+        setModelBackendId(locals.find((backend) => backend.id !== backendId)?.id || 'local-0');
+      }
+      return {
+        ...current,
+        backends: current.backends.filter((backend) => backend.id !== backendId),
+      };
+    });
+  }
+
+  function routeUsesBackend(backendId: string) {
+    return Boolean(config?.routes.some((route) => route.backendId === backendId));
+  }
+}
+
+function BackendCard({
+  title,
+  backend,
+  modelOptions,
+  disabledProvider,
+  canDelete,
+  onDelete,
+  onChange,
+}: {
+  title: string;
+  backend: HermesBackend;
+  modelOptions: string[];
+  disabledProvider?: boolean;
+  canDelete?: boolean;
+  onDelete?: () => void;
+  onChange: (patch: Partial<HermesBackend>) => void;
+}) {
+  const local = isLocalBackend(backend);
+  return (
+    <Card withBorder radius="sm">
+      <Stack gap="md">
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Text fw={700}>{title}</Text>
+            <Text size="sm" c="dimmed">{backend.detail || 'Not checked'}</Text>
+          </div>
+          <Badge color={backend.healthy === false ? 'red' : backend.healthy ? 'green' : 'gray'}>
+            {statusText(backend.healthy)}
+          </Badge>
+        </Group>
+        {onDelete ? (
+          <Group justify="flex-end">
+            <Button
+              color="red"
+              variant="subtle"
+              leftSection={<Trash2 size={16} />}
+              disabled={!canDelete}
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+          </Group>
+        ) : null}
+        <Group grow align="flex-start">
+          <Select
+            label="Provider"
+            data={local ? LOCAL_RUNNER_OPTIONS : [{ value: 'openai', label: 'OpenAI' }]}
+            value={backend.provider}
+            disabled={disabledProvider}
+            onChange={(value) => onChange({
+              provider: value || backend.provider,
+              baseUrl: local ? defaultRunnerUrl(value || backend.provider) : null,
+            })}
+          />
+          <TextInput
+            label="OpenAI-compatible base URL"
+            value={backend.baseUrl || ''}
+            disabled={!local}
+            onChange={(event) => onChange({ baseUrl: event.currentTarget.value })}
+          />
+          {modelOptions.length > 0 ? (
+            <Select
+              label="Model"
+              data={modelOptions}
+              value={modelOptions.includes(backend.model) ? backend.model : null}
+              placeholder={backend.model || 'Select model'}
+              searchable
+              onChange={(value) => value && onChange({ model: value })}
+            />
+          ) : (
+            <TextInput
+              label="Model"
+              value={backend.model || ''}
+              onChange={(event) => onChange({ model: event.currentTarget.value })}
+            />
+          )}
+          <NumberInput
+            label="Timeout seconds"
+            min={1}
+            value={backend.timeoutSeconds || 120}
+            onChange={(value) => onChange({ timeoutSeconds: typeof value === 'number' ? value : 120 })}
+          />
+        </Group>
+        {local ? (
+          <Group grow align="flex-start">
+            <NumberInput
+              label="Context window"
+              min={65536}
+              step={1024}
+              value={backend.contextWindow || 65536}
+              onChange={(value) => onChange({ contextWindow: typeof value === 'number' ? value : 65536 })}
+            />
+            <CredentialFields
+              configured={Boolean(backend.apiKeyConfigured)}
+              value={backend.apiKey || ''}
+              clear={Boolean(backend.clearApiKey)}
+              onChange={(apiKey) => onChange({ apiKey, clearApiKey: false })}
+              onClear={(clearApiKey) => onChange({ clearApiKey, apiKey: '' })}
+            />
+          </Group>
+        ) : null}
+        <Group grow>
+          <InfoLine label="API mode" value={backend.apiMode || '-'} />
+          <InfoLine label="Tools" value={statusText(backend.toolCapable)} />
+          <InfoLine label="Validation" value={backend.validationStatus || '-'} />
+          <InfoLine label="Last validated" value={formatDate(backend.lastValidatedAt)} />
+        </Group>
+      </Stack>
+    </Card>
+  );
 }
 
 function CredentialFields({
   configured,
   value,
   clear,
-  disabled = false,
   onChange,
   onClear,
 }: {
   configured: boolean;
   value: string;
   clear: boolean;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-  onClear: (value: boolean) => void;
+  onChange: (apiKey: string) => void;
+  onClear: (clear: boolean) => void;
 }) {
   return (
     <Group grow align="flex-end">
       <TextInput
+        label={configured ? 'API key (configured)' : 'API key'}
         type="password"
-        label="Optional API key"
-        description={configured
-          ? 'A key is configured. Leave blank to preserve it.'
-          : 'Leave blank for an unauthenticated LAN endpoint.'}
-        placeholder={configured ? 'Configured' : 'Not configured'}
         value={value}
-        disabled={disabled || clear}
+        placeholder={configured ? 'Leave blank to keep current key' : ''}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
       <Switch
-        label="Clear configured API key"
+        label="Clear saved API key"
         checked={clear}
-        disabled={disabled || (!configured && !value)}
         onChange={(event) => onClear(event.currentTarget.checked)}
       />
     </Group>
   );
 }
 
-function isLocalRunner(provider: string | null | undefined) {
-  return provider === 'ollama' || provider === 'lmstudio' || provider === 'vllm';
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <Text size="sm">
+      <Text span fw={700}>{label}: </Text>
+      {value}
+    </Text>
+  );
 }
 
-function isProfileVisible(profile: HermesProfile) {
-  return !HIDDEN_PROFILE_IDS.has(profile.id);
+function SettingsError({ error }: { error: Error }) {
+  const apiError = error as ApiError;
+  return (
+    <Alert color="red" variant="light" icon={<AlertCircle size={18} />}>
+      <Text fw={700}>{apiError.message || 'Could not load settings'}</Text>
+      {apiError.detail ? <Text size="sm">{apiError.detail}</Text> : null}
+    </Alert>
+  );
+}
+
+function backendById(config: HermesBackendConfigResponse | null, id: string) {
+  return config?.backends.find((backend) => backend.id === id) || null;
+}
+
+function firstLocalBackend(config: HermesBackendConfigResponse | null) {
+  return config?.backends.find((backend) => isLocalBackend(backend)) || null;
+}
+
+function isLocalBackend(backend: HermesBackend | null | undefined) {
+  return Boolean(backend?.id.match(/^local-\d+$/));
+}
+
+function nextLocalBackendId(backends: HermesBackend[]) {
+  const maxIndex = backends
+    .map((backend) => localIndex(backend.id))
+    .reduce((max, index) => Math.max(max, index), -1);
+  return `local-${maxIndex + 1}`;
+}
+
+function localIndex(id: string) {
+  const match = id.match(/^local-(\d+)$/);
+  return match ? Number(match[1]) : -1;
+}
+
+function localLabel(id: string) {
+  return `#${localIndex(id)} local`;
 }
 
 function defaultRunnerUrl(provider: string) {
@@ -603,47 +521,16 @@ function defaultRunnerUrl(provider: string) {
   }
 }
 
-function displayRunner(provider: string | null | undefined) {
-  return LOCAL_RUNNER_OPTIONS.find((option) => option.value === provider)?.label || provider || '-';
-}
-
-function requireBackendConfig(config: HermesBackendConfigResponse | null) {
-  if (config == null) {
-    throw new Error('Hermes backend configuration is not loaded.');
-  }
-  return config;
-}
-
-function InfoLine({ label, value }: { label: string; value: string }) {
-  return (
-    <Group justify="space-between" gap="sm" wrap="nowrap" className="system-info-line">
-      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
-      <Text size="sm" ta="right" className="system-info-value">{value}</Text>
-    </Group>
-  );
-}
-
 function statusText(value: boolean | null | undefined) {
   if (value == null) {
-    return 'Unknown';
+    return 'unknown';
   }
-  return value ? 'Available' : 'Unavailable';
+  return value ? 'available' : 'unavailable';
 }
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return '-';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
-function SettingsError({ error }: { error: Error }) {
-  const apiError = error instanceof ApiError ? error : null;
-  return (
-    <Alert color="red" icon={<AlertCircle size={18} />}>
-      <Text fw={700}>{apiError?.message || 'Could not load system settings.'}</Text>
-      {apiError?.detail ? <Text size="sm" mt={4}>{apiError.detail}</Text> : null}
-    </Alert>
-  );
+  return new Date(value).toLocaleString();
 }

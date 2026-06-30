@@ -77,7 +77,44 @@ export type HermesProfile = {
   clearApiKey?: boolean;
 };
 
+export type HermesBackend = {
+  id: string;
+  label: string;
+  provider: string;
+  baseUrl: string | null;
+  model: string;
+  apiMode: string;
+  timeoutSeconds: number | null;
+  contextWindow: number | null;
+  healthy: boolean | null;
+  toolCapable: boolean | null;
+  detail: string | null;
+  lastValidatedAt: string | null;
+  validationStatus: string | null;
+  apiKeyConfigured: boolean | null;
+  apiKey?: string;
+  clearApiKey?: boolean;
+};
+
+export type HermesRoute = {
+  id: string;
+  label: string;
+  backendId: string;
+  provider: string;
+  baseUrl: string | null;
+  model: string;
+  apiMode: string;
+  timeoutSeconds: number | null;
+  contextWindow: number | null;
+  healthy: boolean | null;
+  toolCapable: boolean | null;
+  detail: string | null;
+};
+
 export type HermesBackendConfigResponse = {
+  systemMode: string;
+  backends: HermesBackend[];
+  routes: HermesRoute[];
   profiles: HermesProfile[];
   fallback: HermesFallbackSettingsResponse | null;
   globalOverride: HermesGlobalOverrideSettings | null;
@@ -144,30 +181,23 @@ export function getHermesBackendConfig(): Promise<HermesBackendConfigResponse> {
 
 export function updateHermesBackendConfig(config: HermesBackendConfigResponse): Promise<HermesBackendConfigResponse> {
   return putJson<HermesBackendConfigResponse>('/api/web/admin/system/hermes/backends', {
-    profiles: config.profiles.map((profile) => ({
-      id: profile.id,
-      label: profile.label,
-      provider: profile.provider,
-      baseUrl: profile.baseUrl,
-      model: profile.model,
-      apiMode: profile.apiMode,
-      timeoutSeconds: profile.timeoutSeconds,
-      contextWindow: profile.contextWindow,
-      fallbackAllowed: profile.fallbackAllowed,
-      apiKey: profile.apiKey || null,
-      clearApiKey: Boolean(profile.clearApiKey),
+    systemMode: config.systemMode || 'enabled',
+    backends: config.backends.map((backend) => ({
+      id: backend.id,
+      label: backend.label,
+      provider: backend.provider,
+      baseUrl: backend.baseUrl,
+      model: backend.model,
+      apiMode: backend.apiMode,
+      timeoutSeconds: backend.timeoutSeconds,
+      contextWindow: backend.contextWindow,
+      apiKey: backend.apiKey || null,
+      clearApiKey: Boolean(backend.clearApiKey),
     })),
-    fallback: config.fallback ? {
-      provider: config.fallback.provider,
-      baseUrl: config.fallback.baseUrl,
-      model: config.fallback.model,
-      enabled: config.fallback.enabled,
-      contextWindow: config.fallback.contextWindow,
-      apiKey: config.fallback.apiKey || null,
-      clearApiKey: Boolean(config.fallback.clearApiKey),
-    } : null,
-    globalOverride: {
-      enabled: Boolean(config.globalOverride?.enabled),
-    },
+    routes: config.routes.map((route) => ({
+      id: route.id,
+      label: route.label,
+      backendId: route.backendId,
+    })),
   });
 }

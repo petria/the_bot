@@ -16,10 +16,10 @@ import java.time.Duration;
 public class HermesManagerConfig {
 
   @Bean
-  public RestTemplate restTemplate() {
+  public RestTemplate restTemplate(HermesManagerProperties properties) {
     SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
     requestFactory.setConnectTimeout(Duration.ofSeconds(3));
-    requestFactory.setReadTimeout(Duration.ofSeconds(30));
+    requestFactory.setReadTimeout(Duration.ofSeconds(properties.resolvedLocalValidationTimeoutSeconds()));
     return new RestTemplate(requestFactory);
   }
 

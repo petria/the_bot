@@ -19,7 +19,7 @@ Examples:
   scripts/setup-hermes-docker-instances.sh \
     --target hokan@ubuntu-server.local \
     --directory ~/bot-hermes \
-    --profiles chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command \
+    --profiles chat:8643:chat:hermes-chat,ai-command:8645:agent:hermes-ai-command \
     --public-host ubuntu-server.local \
     --build \
     --start \
@@ -40,7 +40,7 @@ Options:
   --no-build            Do not build image. Default.
   --start               Start compose service and profile gateways.
   --no-start            Configure only; do not start services. Default.
-  --verify              Verify /health and /v1/toolsets for each profile.
+  --verify              Verify /health for each profile and warn on /v1/toolsets access.
   --force-api-keys      Regenerate profile API keys even if present.
   -h, --help            Show this help
 USAGE
@@ -49,7 +49,7 @@ USAGE
 TARGET="local"
 DEPLOY_DIR='~/bot-hermes'
 SERVICE_NAME='bot-hermes'
-PROFILES="chat:8643:chat,coder:8644:agent,ai-command:8645:agent:hermes-ai-command"
+PROFILES="chat:8643:chat:hermes-chat,ai-command:8645:agent:hermes-ai-command"
 REPO_URL="https://github.com/NousResearch/hermes-agent.git"
 REPO_REF="main"
 PUBLIC_HOST="localhost"
@@ -273,7 +273,7 @@ if mode == "chat":
 else:
     platform_toolsets.setdefault("api_server", ["hermes-api-server"])
     model = data.setdefault("model", {})
-    model["default"] = "gpt-5.5"
+    model["default"] = "gpt-5.4-mini"
     model["provider"] = "openai-codex"
     model["base_url"] = "https://chatgpt.com/backend-api/codex"
     model["context_length"] = 262144
@@ -526,7 +526,9 @@ for spec in "${SPECS[@]}"; do
     curl -fsS "http://127.0.0.1:${port}/health"
     echo
     echo "Verifying $profile toolsets"
-    curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"
+    if ! curl -fsS -H "Authorization: Bearer ${api_key}" "http://127.0.0.1:${port}/v1/toolsets"; then
+      echo "WARN: /v1/toolsets verification failed for $profile; leaving deployment in place because health passed."
+    fi
     echo
   fi
 done

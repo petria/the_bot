@@ -40,7 +40,8 @@ class LocalCredentialCipherTest {
         "http://localhost:11434/v1",
         "model",
         "token",
-        encryptionKey);
+        encryptionKey,
+        null);
   }
 
   private String key() {

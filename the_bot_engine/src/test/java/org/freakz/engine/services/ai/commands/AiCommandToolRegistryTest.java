@@ -92,6 +92,27 @@ class AiCommandToolRegistryTest {
   }
 
   @Test
+  void weatherCompareCanSortColdestFirst() throws Exception {
+    WeatherAPIService weatherAPIService = mock(WeatherAPIService.class);
+    when(weatherAPIService.handleCmpWeatherServiceRequest(any(ServiceRequest.class)))
+        .thenReturn(compareResponse(List.of(
+            forecast("Turku", "12.4"),
+            forecast("Oulu", "8.1"))));
+
+    AiCommandToolRegistry registry = newRegistry(weatherAPIService);
+    JsonNode args = jsonMapper.readTree("""
+        {"locations":["Turku","Oulu"],"sort":"asc"}
+        """);
+
+    JsonNode result = jsonMapper.readTree(registry.execute("weather.compare", args));
+
+    assertThat(result.path("formattedText").asString())
+        .isEqualTo("""
+            Oulu  2026-06-03 21:40   8.1°C - difference
+            Turku 2026-06-03 21:40  12.4°C - 4.30°C""");
+  }
+
+  @Test
   void logsReadUsesCurrentRequestContextToken() throws Exception {
     ObjectProvider<WeatherAPIService> weatherProvider = mock(ObjectProvider.class);
     ChatLogAccessService chatLogAccessService = mock(ChatLogAccessService.class);

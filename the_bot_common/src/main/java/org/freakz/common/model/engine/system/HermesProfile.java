@@ -4,10 +4,10 @@ package org.freakz.common.model.engine.system;
  * A logical Hermes profile that owns its provider configuration directly.
  * Supported providers: {@code openai}, {@code ollama}, {@code lmstudio}, {@code vllm}.
  * <p>
- * Each profile id (chat, coder, ai-command) is the logical route target.
+ * Each profile id (chat, ai-command) is the logical route target.
  */
 public record HermesProfile(
-        /** Unique logical profile id; must match a known route id (chat, coder, ai-command). */
+        /** Unique logical profile id; must match a known route id (chat, ai-command). */
         String id,
         /** Human-readable label shown in the UI. */
         String label,

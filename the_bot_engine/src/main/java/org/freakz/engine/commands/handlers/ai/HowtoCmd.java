@@ -8,6 +8,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.users.BotPermission;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
+import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.howto.HowtoIndexService;
 
 import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
@@ -33,6 +34,11 @@ public class HowtoCmd extends AbstractCmd {
 
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
+    HermesSettingsService hermesSettingsService =
+        getBotEngine().getHokanServices().getApplicationContext().getBean(HermesSettingsService.class);
+    if (!hermesSettingsService.aiEnabled()) {
+      return "AI not available";
+    }
     HowtoIndexService howtoIndexService =
         getBotEngine().getHokanServices().getApplicationContext().getBean(HowtoIndexService.class);
     return howtoIndexService.formatChatAnswer(String.join(" ", results.getStringArray(ARG_PROMPT)), 4);

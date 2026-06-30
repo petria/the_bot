@@ -1,9 +1,8 @@
 package org.freakz.engine.services.ai.hermes;
 
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
-import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
-import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
-import org.freakz.common.model.engine.system.HermesProfile;
+import org.freakz.common.model.engine.system.HermesBackend;
+import org.freakz.common.model.engine.system.HermesRoute;
 import org.freakz.common.spring.rest.RestHermesManagerClient;
 import org.freakz.engine.data.service.EnvValuesService;
 import org.junit.jupiter.api.Test;
@@ -21,50 +20,45 @@ class AiRoutesStatusServiceTest {
   @Test
   void formatsManagerBackedChatAndAiCommandRoutes() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
-    when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(List.of(
-        new HermesProfile("chat", "Chat profile", "ollama", "http://ollama.local:11434", "llama3.1", "responses", 120, true, false, null, null),
-        new HermesProfile("ai-command", "AI command profile", "ollama", "http://ollama.local:11435", "qwen2.5-tools", "responses", 120, true, true, null, null),
-        new HermesProfile("coder", "Coder profile", "openai", null, "gpt-4.1", "responses", 120, false, true, null, null)
-    ))));
-    when(managerClient.getFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(false, null, null, List.of())));
+    when(managerClient.getBackendConfig()).thenReturn(ResponseEntity.ok(new HermesBackendConfigResponse(
+        "enabled",
+        List.of(
+            new HermesBackend("openai", "OpenAI", "openai", "https://api.openai.com/v1", "gpt-5.5", "responses", 120, null, true, true, null, null, "ok", true),
+            new HermesBackend("local", "Local LLM", "ollama", "http://ollama.local:11434/v1", "llama3.1", "chat-completions", 120, 32768, true, true, null, null, "ok", false)
+        ),
+        List.of(
+            new HermesRoute("chat", "Hermes chat", "openai", "openai", "http://gateway.local:8643", "hermes-chat", "responses", 120, null, true, true, null),
+            new HermesRoute("ai-command", "Hermes AI command", "local", "ollama", "http://gateway.local:8645", "hermes-ai-command", "chat-completions", 120, 32768, true, true, null)
+        ))));
 
     AiRoutesStatusService service = newService(managerClient);
 
     List<String> lines = service.formatRoutes();
 
-    assertThat(lines).hasSize(4);
-    assertThat(lines.get(0)).contains("chat: UP", "source=manager", "provider=ollama", "model=llama3.1", "tools=no");
-    assertThat(lines.get(1)).contains("ai-command: UP", "source=manager", "provider=ollama", "model=qwen2.5-tools", "tools=yes");
-    assertThat(lines.get(2)).isEqualTo("fallback: off");
-    assertThat(lines.get(3)).contains("profile coder: DOWN", "provider=openai", "model=gpt-4.1", "tools=yes");
+    assertThat(lines).hasSize(5);
+    assertThat(lines.get(0)).isEqualTo("ai: mode=enabled");
+    assertThat(lines.get(1)).contains("backend openai: UP", "provider=openai", "model=gpt-5.5", "tools=yes");
+    assertThat(lines.get(2)).contains("backend local: UP", "provider=ollama", "model=llama3.1", "tools=yes");
+    assertThat(lines.get(3)).contains("route chat: backend=openai", "provider=openai", "model=hermes-chat", "status=UP");
+    assertThat(lines.get(4)).contains("route ai-command: backend=local", "provider=ollama", "model=hermes-ai-command", "status=UP");
   }
 
   @Test
-  void legacyFallbackDoesNotReplaceGatewayRoutes() {
+  void reportsManagerUnavailableWhenLegacyFallbackEndpointExists() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
     when(managerClient.getBackendConfig()).thenThrow(new IllegalStateException("manager unavailable"));
-    when(managerClient.getFallback()).thenReturn(ResponseEntity.ok(new HermesFallbackSettingsResponse(
-        true,
-        "http://ollama.local:11434/v1/",
-        "qwen3.6:35b-a3b",
-        List.of(new HermesFallbackProfileStatus("chat", "chat", true, false, null, null))
-    )));
 
     AiRoutesStatusService service = newService(managerClient);
 
     List<String> lines = service.formatRoutes();
 
-    assertThat(lines.get(0)).contains("chat: UNKNOWN", "source=local", "model=hermes-chat");
-    assertThat(lines.get(1)).contains("ai-command: UNKNOWN", "source=local", "model=hermes-ai-command");
-    assertThat(lines.get(2)).contains("fallback: on", "profiles=chat:UP");
+    assertThat(lines).containsExactly("ai: UNKNOWN manager unavailable");
   }
 
   @Test
   void reportsLocalSettingsWhenManagerIsUnavailable() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
     when(managerClient.getBackendConfig()).thenThrow(new IllegalStateException("manager unavailable"));
-    when(managerClient.getFallback()).thenThrow(new IllegalStateException("manager unavailable"));
-
     AiRoutesStatusService service = newService(managerClient, Map.of(
         "hermes.chat.base-url", "http://chat.local:8643",
         "hermes.chat.model", "local-chat-model",
@@ -74,17 +68,13 @@ class AiRoutesStatusServiceTest {
 
     List<String> lines = service.formatRoutes();
 
-    assertThat(lines).hasSize(3);
-    assertThat(lines.get(0)).contains("chat: UNKNOWN", "source=local", "provider=unknown", "model=local-chat-model");
-    assertThat(lines.get(1)).contains("ai-command: UNKNOWN", "source=local", "provider=unknown", "model=local-ai-command-model");
-    assertThat(lines.get(2)).isEqualTo("fallback: UNKNOWN");
+    assertThat(lines).containsExactly("ai: UNKNOWN manager unavailable");
   }
 
   @Test
   void doesNotExposeApiKeys() {
     RestHermesManagerClient managerClient = mock(RestHermesManagerClient.class);
     when(managerClient.getBackendConfig()).thenThrow(new IllegalStateException("manager unavailable"));
-    when(managerClient.getFallback()).thenThrow(new IllegalStateException("manager unavailable"));
 
     AiRoutesStatusService service = newService(managerClient, Map.of(
         "hermes.chat.api-key", "secret-chat-key",

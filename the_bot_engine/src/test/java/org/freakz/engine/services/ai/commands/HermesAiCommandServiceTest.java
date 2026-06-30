@@ -1,6 +1,7 @@
 package org.freakz.engine.services.ai.commands;
 
 import org.freakz.engine.commands.BotEngine;
+import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.aicommand.AiCommandDefinition;
 import org.freakz.engine.services.ai.hermes.HermesPromptContextService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
@@ -12,9 +13,13 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class HermesAiCommandServiceTest {
 
@@ -97,6 +102,20 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void parsesDirectToolShorthandResponse() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        {"tool":"weather.compare","arguments":{"locations":["Turku","Tampere","Vaasa","Oulu"]}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.finalAnswer()).isNull();
+    assertThat(response.toolName()).isEqualTo("weather.compare");
+    assertThat(response.arguments().path("locations")).hasSize(4);
+  }
+
+  @Test
   void recoversFinalResponseAppendedToConversationalText() throws Exception {
     HermesAiCommandService service = newService();
 
@@ -123,6 +142,20 @@ class HermesAiCommandServiceTest {
     assertThat(response.finalAnswer()).isNull();
     assertThat(response.toolName()).isEqualTo("weather.current");
     assertThat(response.arguments().path("location").asString()).isEqualTo("Turku");
+  }
+
+  @Test
+  void recoversDirectToolShorthandAppendedToConversationalText() throws Exception {
+    HermesAiCommandService service = newService();
+
+    HermesAiCommandService.AiCommandModelResponse response = service.parseModelResponse("""
+        Checking those cities now.
+        {"tool":"weather.compare","arguments":{"locations":["Turku","Tampere","Vaasa","Oulu"]}}
+        """);
+
+    assertThat(response.invalidResponse()).isFalse();
+    assertThat(response.toolName()).isEqualTo("weather.compare");
+    assertThat(response.arguments().path("locations")).hasSize(4);
   }
 
   @Test
@@ -242,6 +275,76 @@ class HermesAiCommandServiceTest {
   }
 
   @Test
+  void detectsBlockingReadTimeouts() {
+    HermesAiCommandService service = newService();
+
+    assertThat(service.isTimeout(
+        new IllegalStateException("Timeout on blocking read for 120000000000 NANOSECONDS")))
+        .isTrue();
+    assertThat(service.isTimeout(new IllegalStateException("wrapped", new TimeoutException("timed out"))))
+        .isTrue();
+    assertThat(service.isTimeout(new IllegalStateException("connection refused")))
+        .isFalse();
+  }
+
+  @Test
+  void formatsTimeoutWithInvokedCommandAndSeconds() {
+    HermesAiCommandService service = newService();
+    EngineRequest request = new EngineRequest();
+    request.setCommand("!ai::weather onko Oulussa kuuma?");
+    AiCommandDefinition command = new AiCommandDefinition();
+    command.setName("weather");
+
+    assertThat(service.timeoutFailure(request, command, 120))
+        .isEqualTo("AI command !ai::weather timed out after 120 seconds.");
+  }
+
+  @Test
+  void formatsTimeoutWithAiCommandFallbackWhenRequestIsMissing() {
+    HermesAiCommandService service = newService();
+    AiCommandDefinition command = new AiCommandDefinition();
+    command.setName("weather");
+
+    assertThat(service.timeoutFailure(null, command, 45))
+        .isEqualTo("AI command !ai::weather timed out after 45 seconds.");
+  }
+
+  @Test
+  void extractsFinnishWeatherCompareLocations() {
+    HermesAiCommandService service = newService();
+
+    assertThat(service.extractWeatherLocations("vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin"))
+        .containsExactly("Turku", "Tampere", "Vaasa", "Oulu");
+  }
+
+  @Test
+  void deterministicWeatherShortcutUsesCompareWithColdestFirstSort() {
+    AiCommandToolRegistry toolRegistry = mock(AiCommandToolRegistry.class);
+    HermesAiCommandService service = newService(toolRegistry);
+    AiCommandDefinition command = new AiCommandDefinition(
+        "weather",
+        true,
+        "Weather command",
+        "!weather <location>",
+        List.of("!saa"),
+        null,
+        "Use weather tools.",
+        List.of("weather.current", "weather.compare"),
+        3);
+    when(toolRegistry.execute(eq("weather.compare"), any(), any()))
+        .thenReturn("""
+            {"tool":"weather.compare","formattedText":"Oulu first"}
+            """);
+
+    String reply = service.tryExecuteDeterministicWeatherCommand(
+        command,
+        "vertaa, turun, tampereen, vaasan ja oulun säätiloja järjestä kylmin ensin",
+        new EngineRequest());
+
+    assertThat(reply).isEqualTo("Oulu first");
+  }
+
+  @Test
   void buildsToolResultInputForModelFinalResponse() {
     HermesAiCommandService service = newService();
     AiCommandDefinition command = new AiCommandDefinition(
@@ -322,9 +425,14 @@ class HermesAiCommandServiceTest {
 
   @SuppressWarnings("unchecked")
   private HermesAiCommandService newService() {
+    return newService(mock(AiCommandToolRegistry.class));
+  }
+
+  @SuppressWarnings("unchecked")
+  private HermesAiCommandService newService(AiCommandToolRegistry toolRegistry) {
     return new HermesAiCommandService(
         mock(HermesSettingsService.class),
-        mock(AiCommandToolRegistry.class),
+        toolRegistry,
         new JsonMapper(),
         mock(ObjectProvider.class),
         mock(HermesPromptContextService.class),
