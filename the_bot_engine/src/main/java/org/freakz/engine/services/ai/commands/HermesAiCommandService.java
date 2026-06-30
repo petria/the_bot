@@ -103,6 +103,11 @@ public class HermesAiCommandService {
         String responseText = createModelResponse(client, settings, sessionKey, instructions, input);
         AiCommandModelResponse modelResponse = parseModelResponse(responseText);
         if (modelResponse.invalidResponse()) {
+          String repairInput = buildInvalidResponseRepairInput(command, argumentsText, responseText, allowedTools);
+          responseText = createModelResponse(client, settings, sessionKey, instructions, repairInput);
+          modelResponse = parseModelResponse(responseText);
+        }
+        if (modelResponse.invalidResponse()) {
           notifyStructuredResponseRejected(request, command, settings);
           processReply(request, INVALID_STRUCTURED_RESPONSE);
           return;
@@ -490,6 +495,33 @@ public class HermesAiCommandService {
         argumentsText == null ? "" : argumentsText,
         toolName == null ? "" : toolName,
         toolResult == null ? "" : toolResult);
+  }
+
+  String buildInvalidResponseRepairInput(
+      AiCommandDefinition command,
+      String argumentsText,
+      String invalidResponse,
+      List<String> allowedTools) {
+    return """
+        The previous AI command response was invalid and cannot be sent to chat.
+
+        Original command: !%s
+        Original user arguments:
+        %s
+
+        Allowed tools: %s
+        Previous invalid response:
+        %s
+
+        Return exactly one valid JSON object and no other text.
+        If no tool is needed, return {"type":"final","answer":"text to send back to chat"}.
+        If a tool is needed, return {"type":"tool","tool":"allowed.tool.name","arguments":{}}.
+        The tool value must be one of the allowed tools.
+        """.formatted(
+        command == null ? "" : command.getName(),
+        argumentsText == null ? "" : argumentsText,
+        allowedTools == null ? List.of() : allowedTools,
+        invalidResponse == null ? "" : invalidResponse);
   }
 
   AiCommandModelResponse parseModelResponse(String text) throws Exception {
