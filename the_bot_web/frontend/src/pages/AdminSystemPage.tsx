@@ -1,4 +1,4 @@
-import { Alert, Autocomplete, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Card, Group, Loader, NumberInput, Select, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -199,13 +199,14 @@ export function AdminSystemPage() {
                   Load local models
                 </Button>
               </Group>
-              <Autocomplete
+              <Select
                 label="Apply discovered model"
                 data={discoveredModelOptions}
-                value={selectedModelBackend && models.includes(selectedModelBackend.model) ? selectedModelBackend.model : ''}
+                value={selectedModelBackend && models.includes(selectedModelBackend.model) ? selectedModelBackend.model : null}
                 placeholder={loadedModelBackendId === selectedModelBackend?.id ? `${models.length} models loaded` : 'Load models first'}
                 disabled={!selectedModelBackend || loadedModelBackendId !== selectedModelBackend.id || models.length === 0}
-                onChange={(value) => selectedModelBackend && updateBackend(selectedModelBackend.id, { model: value })}
+                searchable
+                onChange={(value) => selectedModelBackend && value && updateBackend(selectedModelBackend.id, { model: value })}
               />
               {selectedModel ? (
                 <InfoLine label="Selected model" value={`${selectedModel.label}; tools=${statusText(selectedModel.toolCapable)}`} />
@@ -282,12 +283,22 @@ function BackendCard({
             disabled={!local}
             onChange={(event) => onChange({ baseUrl: event.currentTarget.value })}
           />
-          <Autocomplete
-            label="Model"
-            data={modelOptions}
-            value={backend.model || ''}
-            onChange={(value) => onChange({ model: value })}
-          />
+          {modelOptions.length > 0 ? (
+            <Select
+              label="Model"
+              data={modelOptions}
+              value={modelOptions.includes(backend.model) ? backend.model : null}
+              placeholder={backend.model || 'Select model'}
+              searchable
+              onChange={(value) => value && onChange({ model: value })}
+            />
+          ) : (
+            <TextInput
+              label="Model"
+              value={backend.model || ''}
+              onChange={(event) => onChange({ model: event.currentTarget.value })}
+            />
+          )}
           <NumberInput
             label="Timeout seconds"
             min={1}
