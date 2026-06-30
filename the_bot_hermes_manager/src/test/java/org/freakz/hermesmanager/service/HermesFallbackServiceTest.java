@@ -184,6 +184,10 @@ class HermesFallbackServiceTest {
     Path sessionFile = tempDir.resolve("profiles/ai-command/sessions/stale-session.json");
     Files.createDirectories(sessionFile.getParent());
     Files.writeString(sessionFile, "{}");
+    Path stateDb = tempDir.resolve("profiles/ai-command/state.db");
+    Path responseStore = tempDir.resolve("profiles/ai-command/response_store.db");
+    Files.writeString(stateDb, "state");
+    Files.writeString(responseStore, "responses");
     HermesGatewayService gatewayService = mock(HermesGatewayService.class);
     HermesFallbackService service = service(
         healthyRestTemplate(),
@@ -209,6 +213,8 @@ class HermesFallbackServiceTest {
         .contains("- \"no_mcp\"")
         .contains("disabled_toolsets:");
     assertThat(sessionFile).doesNotExist();
+    assertThat(stateDb).doesNotExist();
+    assertThat(responseStore).doesNotExist();
     verify(gatewayService, atLeastOnce()).restart("ai-command");
   }
 

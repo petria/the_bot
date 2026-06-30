@@ -695,7 +695,7 @@ public class HermesFallbackService implements ApplicationRunner {
     byte[] updated = updatedProfileYaml(profile, path, backend);
     if (!java.util.Arrays.equals(backups.get(path), updated)) {
       writeAtomically(path, updated);
-      clearProfileSessions(profile);
+      clearProfileRuntimeState(profile);
       changedProfiles.add(profile);
     }
   }
@@ -784,8 +784,19 @@ public class HermesFallbackService implements ApplicationRunner {
         "yuanbao");
   }
 
-  private void clearProfileSessions(String profile) throws IOException {
-    Path sessions = properties.dataDir().resolve("profiles").resolve(profile).resolve("sessions");
+  private void clearProfileRuntimeState(String profile) throws IOException {
+    Path profileDir = properties.dataDir().resolve("profiles").resolve(profile);
+    for (String file : List.of(
+        "state.db",
+        "state.db-shm",
+        "state.db-wal",
+        "response_store.db",
+        "response_store.db-shm",
+        "response_store.db-wal")) {
+      Files.deleteIfExists(profileDir.resolve(file));
+    }
+
+    Path sessions = profileDir.resolve("sessions");
     if (!Files.isDirectory(sessions)) {
       return;
     }
