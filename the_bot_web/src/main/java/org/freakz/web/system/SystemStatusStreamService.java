@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.web.controller.SystemController;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -21,7 +22,7 @@ public class SystemStatusStreamService {
   private static final long SAMPLE_INTERVAL_SECONDS = 5L;
 
   private final SystemController systemController;
-  private final AtomicReference<SystemController.SystemStatusResponse> latest = new AtomicReference<>();
+  private final AtomicReference<SystemStatusResponse> latest = new AtomicReference<>();
   private final AtomicLong eventId = new AtomicLong();
   private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
   private final ScheduledExecutorService sampler = Executors.newSingleThreadScheduledExecutor(runnable -> {
@@ -48,16 +49,16 @@ public class SystemStatusStreamService {
     subscribers.clear();
   }
 
-  public SystemController.SystemStatusResponse latestOrSample() {
-    SystemController.SystemStatusResponse current = latest.get();
+  public SystemStatusResponse latestOrSample() {
+    SystemStatusResponse current = latest.get();
     if (current != null) {
       return current;
     }
     return sample();
   }
 
-  public SystemController.SystemStatusResponse refreshNow() {
-    SystemController.SystemStatusResponse status = sample();
+  public SystemStatusResponse refreshNow() {
+    SystemStatusResponse status = sample();
     broadcast(status);
     return status;
   }
@@ -86,13 +87,13 @@ public class SystemStatusStreamService {
     }
   }
 
-  private SystemController.SystemStatusResponse sample() {
-    SystemController.SystemStatusResponse status = systemController.getStatus();
+  private SystemStatusResponse sample() {
+    SystemStatusResponse status = systemController.getStatus();
     latest.set(status);
     return status;
   }
 
-  private void broadcast(SystemController.SystemStatusResponse status) {
+  private void broadcast(SystemStatusResponse status) {
     for (SseEmitter subscriber : subscribers) {
       try {
         sendStatus(subscriber, status);
@@ -103,7 +104,7 @@ public class SystemStatusStreamService {
     }
   }
 
-  private void sendStatus(SseEmitter emitter, SystemController.SystemStatusResponse status) throws IOException {
+  private void sendStatus(SseEmitter emitter, SystemStatusResponse status) throws IOException {
     emitter.send(SseEmitter.event()
         .id(Long.toString(eventId.incrementAndGet()))
         .name("status")

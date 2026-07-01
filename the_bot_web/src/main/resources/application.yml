@@ -25,6 +25,7 @@ the-bot-web:
   openclaw-deployment-mode: ${OPENCLAW_DEPLOYMENT_MODE:external}
   openclaw-gateway-ws-url: ${OPENCLAW_GATEWAY_WS_URL:ws://ubuntu-server.local:18889}
   openclaw-health-url: ${THE_BOT_WEB_OPENCLAW_HEALTH_URL:${OPENCLAW_HEALTH_URL:}}
+  internal-api-token: ${THE_BOT_INTERNAL_API_TOKEN:}
 
 the:
   bot:
@@ -35,6 +36,8 @@ the:
     rest:
       bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
       bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}
+      bot-web-base-url: ${THE_BOT_REST_BOT_WEB_BASE_URL:http://localhost:8091}
+    internal-api-token: ${THE_BOT_INTERNAL_API_TOKEN:}
 
 management:
   endpoints:

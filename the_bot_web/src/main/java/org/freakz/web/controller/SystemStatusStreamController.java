@@ -1,5 +1,6 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.web.system.SystemStatusStreamService;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +28,7 @@ public class SystemStatusStreamController {
   }
 
   @PostMapping("/refresh")
-  public SystemController.SystemStatusResponse refresh() {
+  public SystemStatusResponse refresh() {
     return streamService.refreshNow();
   }
 

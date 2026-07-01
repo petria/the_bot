@@ -17,6 +17,7 @@ import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.freakz.web.system.ContainerStatus;
@@ -40,7 +41,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(restTemplate).getStatus();
+    SystemStatusResponse response = controller(restTemplate).getStatus();
 
     assertThat(response.components()).hasSize(6);
     assertThat(response.components())
@@ -87,7 +88,7 @@ class SystemControllerTest {
         .andRespond(withException(new IOException("connection refused")));
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(restTemplate).getStatus();
+    SystemStatusResponse response = controller(restTemplate).getStatus();
 
     assertThat(response.components())
         .filteredOn(component -> component.name().equals("bot-io"))
@@ -106,7 +107,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         containerName -> {
           if ("bot-openclaw".equals(containerName)) {
@@ -132,7 +133,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         containerName -> {
           if ("bot-whatsapp".equals(containerName)) {
@@ -160,7 +161,7 @@ class SystemControllerTest {
     server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
         .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         properties -> {
           properties.setOpenclawDeploymentMode("external");
@@ -206,7 +207,7 @@ class SystemControllerTest {
         "http://docker.local:18889/health",
         List.of())));
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         properties -> properties.setOpenclawDeploymentMode("external"),
         containerName -> ContainerStatus.missing(containerName),
@@ -232,7 +233,7 @@ class SystemControllerTest {
     server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
         .andRespond(withException(new IOException("connection refused")));
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         properties -> {
           properties.setOpenclawDeploymentMode("external");
@@ -276,7 +277,7 @@ class SystemControllerTest {
         "http://ubuntu-server.local:8643/health",
         List.of())));
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         properties -> properties.setOpenclawDeploymentMode("local"),
         containerName -> containerStatus(containerName, "running"),
@@ -325,7 +326,7 @@ class SystemControllerTest {
         "http://ubuntu-server.local:8643/health",
         List.of())));
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         properties -> properties.setOpenclawDeploymentMode("local"),
         containerName -> containerStatus(containerName, "running"),
@@ -349,7 +350,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         containerName -> {
           if ("bot-whatsapp".equals(containerName)) {
@@ -376,7 +377,7 @@ class SystemControllerTest {
     expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
     expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
 
-    SystemController.SystemStatusResponse response = controller(
+    SystemStatusResponse response = controller(
         restTemplate,
         containerName -> ContainerStatus.error(containerName, "Permission denied")).getStatus();
 
