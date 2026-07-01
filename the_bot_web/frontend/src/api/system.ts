@@ -1,4 +1,4 @@
-import { getJson } from './client';
+import { getJson, postJson } from './client';
 
 export type SystemComponentStatus = {
   name: string;
@@ -34,4 +34,12 @@ export type SystemStatusResponse = {
 
 export async function getSystemStatus(): Promise<SystemStatusResponse> {
   return getJson<SystemStatusResponse>('/api/web/system/status');
+}
+
+export async function refreshSystemStatus(): Promise<SystemStatusResponse> {
+  return postJson<SystemStatusResponse>('/api/web/system/status/refresh', {});
+}
+
+export function getSystemStatusStreamUrl(): string {
+  return '/api/web/system/status/stream';
 }

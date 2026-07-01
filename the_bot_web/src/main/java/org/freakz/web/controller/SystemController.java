@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import org.freakz.common.model.system.SystemComponentStatus;
+import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesProfile;
@@ -703,65 +705,6 @@ public class SystemController {
       return first;
     }
     return second != null && !second.isBlank() ? second : null;
-  }
-
-  public record SystemStatusResponse(
-      Instant checkedAt,
-      List<SystemComponentStatus> components) {
-  }
-
-  public record SystemComponentStatus(
-      String name,
-      String status,
-      String componentType,
-      String runtimeMode,
-      String healthUrl,
-      String healthStatus,
-      String baseUrl,
-      String profiles,
-      String version,
-      String artifact,
-      Long uptimeSeconds,
-      Instant startedAt,
-      Long receivedCalls,
-      Long requestedCalls,
-      Long responseTimeMs,
-      Instant checkedAt,
-      String containerName,
-      String containerState,
-      String containerStatusText,
-      String image,
-      Instant containerStartedAt,
-      Long restartCount,
-      String containerError,
-      String error) {
-    private SystemComponentStatus withOpenClawDetails(String runtimeMode, String baseUrl, String healthStatus) {
-      return new SystemComponentStatus(
-          name,
-          status,
-          componentType,
-          runtimeMode,
-          healthUrl,
-          healthStatus,
-          baseUrl,
-          profiles,
-          version,
-          artifact,
-          uptimeSeconds,
-          startedAt,
-          receivedCalls,
-          requestedCalls,
-          responseTimeMs,
-          checkedAt,
-          containerName,
-          containerState,
-          containerStatusText,
-          image,
-          containerStartedAt,
-          restartCount,
-          containerError,
-          error);
-    }
   }
 
   private record GatewayHealthResult(

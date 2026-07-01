@@ -19,6 +19,7 @@ public class TheBotWebProperties {
   private String openclawDeploymentMode = "external";
   private String openclawGatewayWsUrl = "ws://ubuntu-server.local:18889";
   private String openclawHealthUrl = "";
+  private String internalApiToken = "";
 
   public String getUsersFile() {
     return usersFile;
@@ -130,5 +131,13 @@ public class TheBotWebProperties {
 
   public void setOpenclawHealthUrl(String openclawHealthUrl) {
     this.openclawHealthUrl = openclawHealthUrl;
+  }
+
+  public String getInternalApiToken() {
+    return internalApiToken;
+  }
+
+  public void setInternalApiToken(String internalApiToken) {
+    this.internalApiToken = internalApiToken;
   }
 }

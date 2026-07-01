@@ -44,13 +44,14 @@ class BotEngineCommandInvocationStatsTest {
   }
 
   @Test
-  void countsPermissionDeniedCommands() throws Exception {
+  void countsPermissionDeniedBotInfoAliasAsBotInfo() throws Exception {
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     BotEngine botEngine = botEngine(statsService);
 
     botEngine.handleEngineRequest(request("!buildinfo"), true);
 
-    assertThat(statsService.getCommandInvocationCount("main::buildinfo")).isEqualTo(1);
+    assertThat(statsService.getCommandInvocationCount("main::botinfo")).isEqualTo(1);
+    assertThat(statsService.getCommandInvocationCount("main::buildinfo")).isZero();
     assertThat(statsService.getProviderInvocationCount("main")).isEqualTo(1);
   }
 

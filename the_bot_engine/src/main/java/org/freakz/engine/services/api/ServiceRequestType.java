@@ -6,6 +6,7 @@ public enum ServiceRequestType {
   AiRoutesStatus,
 
 
+  BotInfoQuery,
   BuildInfoQuery,
   ConnectionActivityService,
   ConnectionControlService,

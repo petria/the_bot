@@ -1,18 +1,59 @@
 import { Alert, Badge, Button, Card, Group, Loader, SimpleGrid, Stack, Text, Title } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, RefreshCw, Server } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client';
-import { getSystemStatus, type SystemComponentStatus } from '../api/system';
+import {
+  getSystemStatusStreamUrl,
+  refreshSystemStatus,
+  type SystemComponentStatus,
+  type SystemStatusResponse,
+} from '../api/system';
 
 export function SystemPage() {
-  const systemQuery = useQuery({
-    queryKey: ['system-status'],
-    queryFn: getSystemStatus,
-    refetchInterval: 5000,
-  });
+  const [status, setStatus] = useState<SystemStatusResponse | null>(null);
+  const [streamConnected, setStreamConnected] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
 
-  const components = (systemQuery.data?.components ?? [])
+  useEffect(() => {
+    let closed = false;
+    const source = new EventSource(getSystemStatusStreamUrl());
+    source.onopen = () => {
+      if (closed) {
+        return;
+      }
+      setStreamConnected(true);
+      setStreamError(null);
+    };
+    source.addEventListener('status', (messageEvent) => {
+      if (closed || !messageEvent.data) {
+        return;
+      }
+      try {
+        setStatus(JSON.parse(messageEvent.data) as SystemStatusResponse);
+        setStreamError(null);
+      } catch {
+        setStreamError('System status stream returned an unreadable event.');
+      }
+    });
+    source.onerror = () => {
+      if (closed) {
+        return;
+      }
+      setStreamConnected(false);
+      setStreamError('System status stream disconnected; reconnecting...');
+    };
+    return () => {
+      closed = true;
+      source.close();
+      setStreamConnected(false);
+    };
+  }, []);
+
+  const components = (status?.components ?? [])
     .filter((component) => component.componentType !== 'OPENCLAW_GATEWAY');
+  const loading = !status && !streamError;
 
   return (
     <Stack gap="md">
@@ -24,21 +65,26 @@ export function SystemPage() {
         <Button
           variant="light"
           leftSection={<RefreshCw size={18} />}
-          onClick={() => systemQuery.refetch()}
-          loading={systemQuery.isFetching}
+          onClick={refresh}
+          loading={refreshing}
         >
           Refresh
         </Button>
       </Group>
 
-      {systemQuery.isLoading ? <Loader /> : null}
-      {systemQuery.isError ? <SystemError error={systemQuery.error} /> : null}
+      {loading ? <Loader /> : null}
+      {streamError ? (
+        <Alert color="yellow" icon={<AlertCircle size={18} />}>
+          <Text fw={700}>{streamError}</Text>
+        </Alert>
+      ) : null}
+      {refreshError ? <SystemError error={refreshError} /> : null}
 
-      {!systemQuery.isLoading && !systemQuery.isError ? (
+      {status ? (
         <>
           <Text size="sm" c="dimmed">
-            Last checked {formatDateTime(systemQuery.data?.checkedAt)}
-            {systemQuery.isFetching ? ' - refreshing' : ''}
+            Last checked {formatDateTime(status.checkedAt)}
+            {refreshing ? ' - refreshing' : streamConnected ? ' - live' : ' - reconnecting'}
           </Text>
           <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
             {components.map((component) => (
@@ -49,6 +95,18 @@ export function SystemPage() {
       ) : null}
     </Stack>
   );
+
+  async function refresh() {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      setStatus(await refreshSystemStatus());
+    } catch (error) {
+      setRefreshError(error instanceof Error ? error : new Error('Could not refresh system status.'));
+    } finally {
+      setRefreshing(false);
+    }
+  }
 }
 
 function SystemComponentCard({ component }: { component: SystemComponentStatus }) {
