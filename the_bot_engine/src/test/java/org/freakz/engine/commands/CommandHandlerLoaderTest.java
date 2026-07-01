@@ -67,6 +67,18 @@ class CommandHandlerLoaderTest {
   }
 
   @Test
+  void resolvesHermesAliasToHokanCommand() throws Exception {
+    CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
+
+    CommandHandlerLoader.AliasResolution resolution = loader.resolveAlias("!hermes hello");
+
+    assertThat(resolution.isAliased()).isTrue();
+    assertThat(resolution.resolvedMessage()).isEqualTo("!hokan hello");
+    assertThat(loader.getHandlersMap()).containsKey("main::hokan");
+    assertThat(loader.getHandlersMap()).doesNotContainKey("main::hermes");
+  }
+
+  @Test
   void groupsAliasesByTargetCommand() throws Exception {
     CommandHandlerLoader loader = new CommandHandlerLoader("DEV", "HokanDEV");
 

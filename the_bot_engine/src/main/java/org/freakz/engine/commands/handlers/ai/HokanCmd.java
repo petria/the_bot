@@ -11,8 +11,6 @@ import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
 import org.freakz.engine.dto.ai.AiResponse;
 import org.freakz.engine.services.api.ServiceRequestType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +20,6 @@ import static org.freakz.engine.commands.util.StaticArgumentStrings.ARG_PROMPT;
 //@HokanDEVCommand
 @HokanCommandHandler
 public class HokanCmd extends AbstractCmd {
-
-  private static final Logger log = LoggerFactory.getLogger(HokanCmd.class);
 
   public HokanCmd() {
     setRequiredPermission(BotPermission.HERMES_USE);
@@ -47,6 +43,7 @@ public class HokanCmd extends AbstractCmd {
   public List<HandlerAlias> getAliases(String botName) {
     List<HandlerAlias> list = new ArrayList<>();
     list.add(createToBotAliasWithArgs(botName, "!hokan"));
+    list.add(createWithArgsAlias("!hermes", "!hokan"));
     return list;
   }
 
