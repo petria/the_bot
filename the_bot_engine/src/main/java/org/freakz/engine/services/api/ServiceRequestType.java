@@ -29,8 +29,6 @@ public enum ServiceRequestType {
 
   ChannelOpRequest,
 
-  ReloadConfig,
-
   SendMessageByEchoToAlias,
 
   TranslateService,
