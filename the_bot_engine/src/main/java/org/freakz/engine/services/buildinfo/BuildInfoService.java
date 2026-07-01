@@ -56,6 +56,7 @@ public class BuildInfoService extends AbstractSpringService {
         throw new IllegalStateException("Invalid bot-web system status response");
       }
       String moduleLines = status.components().stream()
+          .filter(component -> !"bot-openclaw".equals(component.name()))
           .map(this::formatComponent)
           .collect(Collectors.joining("\n"));
       return "== BOT INFO ==\n"
