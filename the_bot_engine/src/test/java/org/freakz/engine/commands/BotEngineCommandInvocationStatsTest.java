@@ -83,6 +83,63 @@ class BotEngineCommandInvocationStatsTest {
   }
 
   @Test
+  void publicAiQuestionAddressedToMentionedUserDoesNotTriggerImplicitAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    String reply = botEngine.handleEngineRequest(publicRequest(
+        "@42550241054949 did u try thinking per request?"), true).getReplyMessage();
+
+    assertThat(reply).isNull();
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isZero();
+    verify(urlResolutionService).handleEngineRequest(any(), any());
+  }
+
+  @Test
+  void publicAiQuestionAddressedToDiscordMentionDoesNotTriggerImplicitAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    String reply = botEngine.handleEngineRequest(publicRequest(
+        "<@265828694445129728> did u try thinking per request?"), true).getReplyMessage();
+
+    assertThat(reply).isNull();
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isZero();
+    verify(urlResolutionService).handleEngineRequest(any(), any());
+  }
+
+  @Test
+  void publicAiQuestionAddressedToNamedUserDoesNotTriggerImplicitAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    String reply = botEngine.handleEngineRequest(publicRequest("Oscar: did u try thinking per request?"), true)
+        .getReplyMessage();
+
+    assertThat(reply).isNull();
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isZero();
+    verify(urlResolutionService).handleEngineRequest(any(), any());
+  }
+
+  @Test
   void dynamicAiQuestionReturnsUsageWithoutCallingHermes() throws Exception {
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
