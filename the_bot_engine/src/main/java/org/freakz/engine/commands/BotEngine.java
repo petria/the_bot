@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class BotEngine {
@@ -190,7 +191,10 @@ public class BotEngine {
     }
 
     String messageWithoutUrls = UrlExtractor.removeUrls(message);
-    return messageWithoutUrls.contains("?") || containsBotMention(messageWithoutUrls);
+    if (containsBotMention(messageWithoutUrls)) {
+      return true;
+    }
+    return messageWithoutUrls.contains("?") && !isAddressedToAnotherUser(messageWithoutUrls);
   }
 
   private boolean containsBotMention(String message) {
@@ -204,6 +208,35 @@ public class BotEngine {
     return messageLower.contains(botNameLower)
         || messageLower.contains(botNameLower + ":")
         || messageLower.contains("@" + botNameLower);
+  }
+
+  private boolean isAddressedToAnotherUser(String message) {
+    if (message == null || message.isBlank()) {
+      return false;
+    }
+    String trimmed = message.trim();
+    String lower = trimmed.toLowerCase(Locale.ROOT);
+    String botNameLower = botName == null ? "" : botName.toLowerCase(Locale.ROOT);
+
+    if (trimmed.startsWith("@") || trimmed.startsWith("<@")) {
+      return botNameLower.isBlank() || !lower.startsWith("@" + botNameLower);
+    }
+
+    int separator = Math.min(nonNegativeIndexOf(trimmed, ':'), nonNegativeIndexOf(trimmed, ','));
+    if (separator <= 0 || separator > 32) {
+      return false;
+    }
+
+    String addressedName = trimmed.substring(0, separator).trim();
+    if (addressedName.isBlank() || addressedName.contains(" ")) {
+      return false;
+    }
+    return !addressedName.equalsIgnoreCase(botName);
+  }
+
+  private int nonNegativeIndexOf(String value, char ch) {
+    int idx = value.indexOf(ch);
+    return idx < 0 ? Integer.MAX_VALUE : idx;
   }
 
   private String parseAndExecute(EngineRequest request, User user, boolean sendProcessingIndicator) throws Exception {
