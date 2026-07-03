@@ -112,11 +112,11 @@ function ProviderCard({ provider }: { provider: CommandProviderInfo }) {
 
 function CommandsTable({ commands }: { commands: CommandInfo[] }) {
   return (
-    <Table.ScrollContainer minWidth={860} className="connections-table">
+    <Table.ScrollContainer minWidth={980} className="commands-table">
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Command</Table.Th>
+            <Table.Th className="commands-command-column">Command</Table.Th>
             <Table.Th>Invocations</Table.Th>
             <Table.Th>Aliases</Table.Th>
             <Table.Th>Permission</Table.Th>
@@ -127,7 +127,7 @@ function CommandsTable({ commands }: { commands: CommandInfo[] }) {
         <Table.Tbody>
           {commands.map((command) => (
             <Table.Tr key={command.trigger || command.className}>
-              <Table.Td><CommandTrigger command={command} /></Table.Td>
+              <Table.Td className="commands-command-column"><CommandTrigger command={command} /></Table.Td>
               <Table.Td><Text fw={700}>{command.invocationCount ?? 0}</Text></Table.Td>
               <Table.Td><Aliases command={command} /></Table.Td>
               <Table.Td><PermissionBadge permission={command.requiredPermission} /></Table.Td>
@@ -147,7 +147,7 @@ function CommandsTable({ commands }: { commands: CommandInfo[] }) {
 
 function CommandsCards({ commands }: { commands: CommandInfo[] }) {
   return (
-    <Stack gap="sm" hiddenFrom="sm">
+    <Stack gap="sm" className="commands-cards" hiddenFrom="sm">
       {commands.map((command) => (
         <Card key={command.trigger || command.className} withBorder radius="sm" p="sm">
           <Stack gap="xs">
@@ -171,7 +171,9 @@ function CommandsCards({ commands }: { commands: CommandInfo[] }) {
 function CommandTrigger({ command }: { command: CommandInfo }) {
   return (
     <Stack gap={2}>
-      <Text fw={700} ff="monospace">{command.trigger || command.displayName || command.commandName}</Text>
+      <Text className="commands-command-trigger" fw={700} ff="monospace">
+        {command.trigger || command.displayName || command.commandName}
+      </Text>
       {command.displayName && command.displayName !== command.trigger && (
         <Text size="xs" c="dimmed">{command.displayName}</Text>
       )}
