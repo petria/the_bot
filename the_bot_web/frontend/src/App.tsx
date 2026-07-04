@@ -1,6 +1,6 @@
 import { Alert, AppShell, Avatar, Badge, Box, Burger, Group, Menu, NavLink, Stack, Text, Title, UnstyledButton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Bot, BrainCircuit, ChevronDown, ListTree, LogOut, MessageSquare, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, Terminal, User, Users } from 'lucide-react';
+import { Bot, BrainCircuit, ChevronDown, Images, ListTree, LogOut, MessageSquare, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, Terminal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { consumeAuthReturnTarget, handleAuthenticationRequired } from './auth/se
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminAiCommandsPage } from './pages/AdminAiCommandsPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
+import { AdminMediaStoragePage } from './pages/AdminMediaStoragePage';
 import { AdminSystemPage } from './pages/AdminSystemPage';
 import { CommandsPage } from './pages/CommandsPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
@@ -42,6 +43,7 @@ const adminNavItems = [
   { label: 'Send', path: '/send', icon: Send },
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
+  { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
   { label: 'Manage AI Commands', path: '/admin/ai-commands', icon: BrainCircuit },
   { label: 'Manage AI Routes', path: '/admin/system', icon: Settings },
 ];
@@ -174,6 +176,7 @@ function AuthenticatedApp() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />
             <Route path="/admin/config" element={<RequireWebAdmin allowed={webAdmin}><AdminConnectionConfigPage /></RequireWebAdmin>} />
+            <Route path="/admin/media-storage" element={<RequireWebAdmin allowed={webAdmin}><AdminMediaStoragePage /></RequireWebAdmin>} />
             <Route path="/admin/ai-commands" element={<RequireWebAdmin allowed={webAdmin}><AdminAiCommandsPage /></RequireWebAdmin>} />
             <Route path="/admin/system" element={<RequireWebAdmin allowed={webAdmin}><AdminSystemPage /></RequireWebAdmin>} />
           </Routes>

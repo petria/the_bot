@@ -46,7 +46,31 @@ public class WhatsAppWebhookController {
     try {
       verifySignature(body, signature);
       JsonNode payload = objectMapper.readTree(body);
-      connectionManager.handleWhatsAppWebhook(WacliWebhookMessageEvent.from(payload));
+      WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(payload);
+      if (log.isDebugEnabled()) {
+        log.debug("WhatsApp webhook parsed messageId={} chatJid={} senderJid={} text={} media={} directMediaUrl={} mediaContentType={} fields={}",
+            event.getMessageId(),
+            event.getChatJid(),
+            event.effectiveSenderJid(),
+            event.getText() != null && !event.getText().isBlank(),
+            event.hasMedia(),
+            event.hasDownloadableMediaUrl(),
+            event.getMediaContentType(),
+            WacliWebhookMessageEvent.fieldSummary(payload));
+      }
+      if (event.hasMedia() && !event.hasDownloadableMediaUrl()) {
+        log.debug("WhatsApp webhook media will be downloaded through sidecar messageId={} chatJid={} directPath={} contentType={}",
+            event.getMessageId(),
+            event.getChatJid(),
+            event.getMediaDirectPath(),
+            event.getMediaContentType());
+      } else if (!event.hasMedia() && looksLikeMediaPayload(payload)) {
+        log.info("WhatsApp webhook contains media-like fields but no downloadable media URL was parsed messageId={} chatJid={} fields={}",
+            event.getMessageId(),
+            event.getChatJid(),
+            WacliWebhookMessageEvent.fieldSummary(payload));
+      }
+      connectionManager.handleWhatsAppWebhook(event);
       return ResponseEntity.accepted().build();
     } catch (ResponseStatusException e) {
       throw e;
@@ -79,5 +103,19 @@ public class WhatsAppWebhookController {
     Mac mac = Mac.getInstance("HmacSHA256");
     mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
     return HexFormat.of().formatHex(mac.doFinal(body.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  private boolean looksLikeMediaPayload(JsonNode node) {
+    if (node == null || node.isNull()) {
+      return false;
+    }
+    String summary = WacliWebhookMessageEvent.fieldSummary(node).toLowerCase();
+    return summary.contains("image")
+        || summary.contains("video")
+        || summary.contains("document")
+        || summary.contains("sticker")
+        || summary.contains("media")
+        || summary.contains("mimetype")
+        || summary.contains("mime");
   }
 }

@@ -128,6 +128,7 @@ public class ConfigService {
     return propertyKey != null
         && (propertyKey.startsWith("channel.")
         || propertyKey.startsWith("hermes.")
+        || propertyKey.startsWith("media.storage.")
         || "openclawGatewayWsUrl".equals(propertyKey)
         || "openclawGatewayWsOrigin".equals(propertyKey));
   }

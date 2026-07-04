@@ -11,6 +11,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,14 +23,20 @@ public class WhatsAppConnection extends BotConnection {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final EventPublisher publisher;
+  private final MediaCaptureService mediaCaptureService;
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private ConnectionManager connectionManager;
   private WhatsAppConfig config;
   private String botName;
 
   public WhatsAppConnection(EventPublisher publisher) {
+    this(publisher, null);
+  }
+
+  public WhatsAppConnection(EventPublisher publisher, MediaCaptureService mediaCaptureService) {
     super(BotConnectionType.WHATSAPP_CONNECTION);
     this.publisher = publisher;
+    this.mediaCaptureService = mediaCaptureService;
   }
 
   public void init(ConnectionManager connectionManager, String botName, WhatsAppConfig config) {
@@ -126,7 +134,8 @@ public class WhatsAppConnection extends BotConnection {
   }
 
   public void handleWebhook(WacliWebhookMessageEvent event) {
-    if (event == null || event.getChatJid() == null || event.getText() == null || event.getText().isBlank()) {
+    if (event == null || event.getChatJid() == null || ((event.getText() == null || event.getText().isBlank()) && !event.hasMedia())) {
+      log.debug("Ignoring WhatsApp webhook without chat/text/media");
       return;
     }
     if (event.isFromMe()) {
@@ -156,8 +165,57 @@ public class WhatsAppConnection extends BotConnection {
         event.getChatJid(),
         channelName);
 
-    publisher.publishEvent(this, event, echoToAlias);
-    checkEchoTo(event, actorName);
+    Channel configuredChannel = resolveConfiguredChannel(event.getChatJid());
+    if (event.hasMedia()) {
+      log.debug("WhatsApp media message received messageId={} chatJid={} configuredChannel={} captureImages={} captureTargets={}",
+          event.getMessageId(),
+          event.getChatJid(),
+          configuredChannel == null ? null : configuredChannel.getEchoToAlias(),
+          configuredChannel == null ? null : configuredChannel.getCaptureImages(),
+          configuredChannel == null ? null : configuredChannel.getCaptureImageToAliases());
+    }
+    if (event.getText() != null && !event.getText().isBlank()) {
+      publisher.publishEvent(this, event, echoToAlias);
+      checkEchoTo(event, actorName);
+    }
+    if (event.hasMedia() && mediaCaptureService != null) {
+      mediaCaptureService.captureAndSend(
+          connectionManager,
+          configuredChannel,
+          this,
+          "WhatsApp",
+          actorName,
+          event.getText(),
+          resolveMediaDownloadUrl(event),
+          event.getMediaContentType(),
+          event.getMediaFileName(),
+          mediaDownloadHeaders());
+    }
+  }
+
+  private String resolveMediaDownloadUrl(WacliWebhookMessageEvent event) {
+    if (event.hasDownloadableMediaUrl()) {
+      return event.getMediaUrl();
+    }
+    if (event.getChatJid() == null || event.getMessageId() == null) {
+      return null;
+    }
+    String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
+    return sendBaseUrl.replaceFirst("/+$", "")
+        + "/media?chat=" + urlEncode(event.getChatJid())
+        + "&id=" + urlEncode(event.getMessageId());
+  }
+
+  private Map<String, String> mediaDownloadHeaders() {
+    String token = config == null ? null : config.getSendToken();
+    if (token == null || token.isBlank()) {
+      return Map.of();
+    }
+    return Map.of("X-Bot-Whatsapp-Token", token);
+  }
+
+  private String urlEncode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private void registerConfiguredChannels() {

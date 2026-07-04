@@ -27,13 +27,19 @@ public class TelegramConnection extends BotConnection {
   private static final Logger log = LoggerFactory.getLogger(TelegramConnection.class);
 
   private final EventPublisher publisher;
+  private final MediaCaptureService mediaCaptureService;
   private ConnectionManager connectionManager;
   private HokanTelegram bot;
   private BotSession botSession;
 
   public TelegramConnection(EventPublisher eventPublisher) {
+    this(eventPublisher, null);
+  }
+
+  public TelegramConnection(EventPublisher eventPublisher, MediaCaptureService mediaCaptureService) {
     super();
     this.publisher = eventPublisher;
+    this.mediaCaptureService = mediaCaptureService;
   }
 
   @Override
@@ -89,7 +95,7 @@ public class TelegramConnection extends BotConnection {
 
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
     this.connectionManager = connectionManager;
-    this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, botName, telegramConfig);
+    this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, this.mediaCaptureService, botName, telegramConfig);
     TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
     botSession = botsApi.registerBot(bot);
 
@@ -111,17 +117,19 @@ public class TelegramConnection extends BotConnection {
 
     private final String botName;
     private final EventPublisher publisher;
+    private final MediaCaptureService mediaCaptureService;
     private final BotConnection connection;
     private final TelegramConfig config;
     private final String commandBotName;
 
     private final ConnectionManager connectionManager;
 
-    public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, String botName, TelegramConfig config) {
+    public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, MediaCaptureService mediaCaptureService, String botName, TelegramConfig config) {
       super(botToken);
       this.botName = config.getTelegramName();
       this.commandBotName = botName;
       this.publisher = eventPublisher;
+      this.mediaCaptureService = mediaCaptureService;
       this.connection = connection;
       this.config = config;
       this.connectionManager = connectionManager;
@@ -148,14 +156,25 @@ public class TelegramConnection extends BotConnection {
 //            log.debug("Telegram update: {}", update);
       if (update.hasMessage() && update.getMessage().hasPhoto()) {
         org.telegram.telegrambots.meta.api.objects.Message message = update.getMessage();
+        Channel configuredChannel = resolveConfiguredChannel(update);
         // Get the photo size with the highest resolution
         PhotoSize photoSize = message.getPhoto().stream()
             .max((ps1, ps2) -> Integer.compare(ps1.getWidth(), ps2.getWidth()))
             .orElse(null);
         if (photoSize != null) {
-          // Download the photo file
           String photoFile = downloadPhoto(photoSize);
-          // ...
+          if (mediaCaptureService != null) {
+            mediaCaptureService.captureAndSend(
+                connectionManager,
+                configuredChannel,
+                connection,
+                "Telegram",
+                resolveActorName(update),
+                message.getCaption(),
+                photoFile,
+                "image/jpeg",
+                "telegram-photo.jpg");
+          }
         }
       }
 

@@ -16,6 +16,8 @@ import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
+import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
@@ -36,6 +38,7 @@ import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.howto.HowtoIndexService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.livechannel.LiveChannelEventService;
+import org.freakz.engine.services.media.MediaStorageSettingsService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -80,6 +83,12 @@ public class EngineController {
         .body(body);
   }
 
+  @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+  public ResponseEntity<ErrorResponse> badRequest(RuntimeException e) {
+    Throwable cause = e.getCause();
+    return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage(), cause == null ? null : cause.getMessage()));
+  }
+
   private final BotEngine botEngine;
   private final TopCountService countService;
 
@@ -100,6 +109,7 @@ public class EngineController {
   private final ConsoleOutputService consoleOutputService;
   private final LiveChannelEventService liveChannelEventService;
   private final PrivateChatAlertService privateChatAlertService;
+  private final MediaStorageSettingsService mediaStorageSettingsService;
 
   public EngineController(
       BotEngine botEngine,
@@ -119,7 +129,8 @@ public class EngineController {
       HowtoIndexService howtoIndexService,
       ConsoleOutputService consoleOutputService,
       LiveChannelEventService liveChannelEventService,
-      PrivateChatAlertService privateChatAlertService) {
+      PrivateChatAlertService privateChatAlertService,
+      MediaStorageSettingsService mediaStorageSettingsService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -138,6 +149,7 @@ public class EngineController {
     this.consoleOutputService = consoleOutputService;
     this.liveChannelEventService = liveChannelEventService;
     this.privateChatAlertService = privateChatAlertService;
+    this.mediaStorageSettingsService = mediaStorageSettingsService;
   }
 
   @PostMapping("/handle_request")
@@ -447,6 +459,17 @@ public class EngineController {
     return ResponseEntity.ok(after);
   }
 
+  @GetMapping("/internal/system/media-storage")
+  public ResponseEntity<MediaStorageSettingsResponse> getMediaStorageSettings() {
+    return ResponseEntity.ok(mediaStorageSettingsService.getSettings());
+  }
+
+  @PutMapping("/internal/system/media-storage")
+  public ResponseEntity<MediaStorageSettingsResponse> updateMediaStorageSettings(
+      @RequestBody MediaStorageUpdateRequest request) {
+    return ResponseEntity.ok(mediaStorageSettingsService.update(request));
+  }
+
   private void notifyAiSystemModeChanged(
       HermesBackendConfigResponse before,
       HermesBackendConfigResponse after,
@@ -470,6 +493,9 @@ public class EngineController {
 
   private String normalizeAiSystemMode(String value) {
     return value == null || value.isBlank() ? "enabled" : value.trim().toLowerCase();
+  }
+
+  public record ErrorResponse(String message, String detail) {
   }
 
   @PostMapping("/internal/security/web-login-failed")

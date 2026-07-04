@@ -42,6 +42,7 @@ public class SecurityConfig {
             .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
             .requestMatchers("/assets/**", "/index.html", "/favicon.ico", "/default-ui.css", "/error").permitAll()
             .requestMatchers("/generated/**").permitAll()
+            .requestMatchers("/media/**").permitAll()
             .requestMatchers("/internal/system/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/cli/login").permitAll()
