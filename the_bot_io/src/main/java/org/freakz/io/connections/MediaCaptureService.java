@@ -51,7 +51,16 @@ public class MediaCaptureService {
       String imageUrl,
       String contentType,
       String fileName) {
-    if (connectionManager == null || sourceChannel == null || !Boolean.TRUE.equals(sourceChannel.getCaptureImages())) {
+    if (connectionManager == null) {
+      log.debug("Media capture skipped because connection manager is unavailable sourceProtocol={} sender={}", sourceProtocol, sender);
+      return;
+    }
+    if (sourceChannel == null) {
+      log.debug("Media capture skipped because source channel is not configured sourceProtocol={} sender={} imageUrl={}", sourceProtocol, sender, imageUrl);
+      return;
+    }
+    if (!Boolean.TRUE.equals(sourceChannel.getCaptureImages())) {
+      log.debug("Media capture skipped because capture is disabled sourceAlias={} sourceProtocol={}", sourceChannel.getEchoToAlias(), sourceProtocol);
       return;
     }
     List<String> targetAliases = sourceChannel.getCaptureImageToAliases();

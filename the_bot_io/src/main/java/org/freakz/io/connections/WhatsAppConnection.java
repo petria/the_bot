@@ -133,6 +133,7 @@ public class WhatsAppConnection extends BotConnection {
 
   public void handleWebhook(WacliWebhookMessageEvent event) {
     if (event == null || event.getChatJid() == null || ((event.getText() == null || event.getText().isBlank()) && !event.hasMedia())) {
+      log.debug("Ignoring WhatsApp webhook without chat/text/media");
       return;
     }
     if (event.isFromMe()) {
@@ -163,6 +164,14 @@ public class WhatsAppConnection extends BotConnection {
         channelName);
 
     Channel configuredChannel = resolveConfiguredChannel(event.getChatJid());
+    if (event.hasMedia()) {
+      log.debug("WhatsApp media message received messageId={} chatJid={} configuredChannel={} captureImages={} captureTargets={}",
+          event.getMessageId(),
+          event.getChatJid(),
+          configuredChannel == null ? null : configuredChannel.getEchoToAlias(),
+          configuredChannel == null ? null : configuredChannel.getCaptureImages(),
+          configuredChannel == null ? null : configuredChannel.getCaptureImageToAliases());
+    }
     if (event.getText() != null && !event.getText().isBlank()) {
       publisher.publishEvent(this, event, echoToAlias);
       checkEchoTo(event, actorName);

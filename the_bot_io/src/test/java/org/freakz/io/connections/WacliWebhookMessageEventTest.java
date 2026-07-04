@@ -47,4 +47,42 @@ class WacliWebhookMessageEventTest {
     assertThat(event.getChatJid()).isEqualTo("1203630@g.us");
     assertThat(event.isGroupChat()).isTrue();
   }
+
+  @Test
+  void parsesNestedImageMessagePayload() throws Exception {
+    WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(objectMapper.readTree("""
+        {
+          "Info": {
+            "Chat": {
+              "User": "120363408176012025",
+              "Server": "g.us"
+            },
+            "ID": "3EB01CA7A4E708CD3F3305",
+            "Sender": {
+              "User": "162251029934316",
+              "Server": "lid"
+            },
+            "PushName": "Petri Airio",
+            "Timestamp": "2026-07-04T20:46:22Z",
+            "IsFromMe": false
+          },
+          "Message": {
+            "imageMessage": {
+              "URL": "https://mmg.whatsapp.net/o1/v/t62.7118-24/image.jpg",
+              "Mimetype": "image/jpeg",
+              "Caption": "test"
+            }
+          }
+        }
+        """));
+
+    assertThat(event.getChatJid()).isEqualTo("120363408176012025@g.us");
+    assertThat(event.getMessageId()).isEqualTo("3EB01CA7A4E708CD3F3305");
+    assertThat(event.effectiveSenderJid()).isEqualTo("162251029934316@lid");
+    assertThat(event.senderDisplayName()).isEqualTo("Petri Airio");
+    assertThat(event.getText()).isEqualTo("test");
+    assertThat(event.hasMedia()).isTrue();
+    assertThat(event.getMediaUrl()).isEqualTo("https://mmg.whatsapp.net/o1/v/t62.7118-24/image.jpg");
+    assertThat(event.getMediaContentType()).isEqualTo("image/jpeg");
+  }
 }
