@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import org.freakz.common.media.MediaStore;
 import org.freakz.common.media.MediaStoreCreated;
@@ -51,6 +52,20 @@ public class MediaCaptureService {
       String imageUrl,
       String contentType,
       String fileName) {
+    captureAndSend(connectionManager, sourceChannel, connection, sourceProtocol, sender, caption, imageUrl, contentType, fileName, Map.of());
+  }
+
+  public void captureAndSend(
+      ConnectionManager connectionManager,
+      Channel sourceChannel,
+      BotConnection connection,
+      String sourceProtocol,
+      String sender,
+      String caption,
+      String imageUrl,
+      String contentType,
+      String fileName,
+      Map<String, String> requestHeaders) {
     if (connectionManager == null) {
       log.debug("Media capture skipped because connection manager is unavailable sourceProtocol={} sender={}", sourceProtocol, sender);
       return;
@@ -74,7 +89,7 @@ public class MediaCaptureService {
         log.debug("Media capture skipped because media storage is disabled");
         return;
       }
-      DownloadedMedia downloaded = download(imageUrl, settings.maxFileSizeMb() == null ? 25 : settings.maxFileSizeMb());
+      DownloadedMedia downloaded = download(imageUrl, settings.maxFileSizeMb() == null ? 25 : settings.maxFileSizeMb(), requestHeaders);
       String effectiveContentType = MediaStore.normalizeContentType(contentType, fileName);
       if (effectiveContentType == null) {
         effectiveContentType = MediaStore.normalizeContentType(downloaded.contentType(), fileName);
@@ -125,15 +140,22 @@ public class MediaCaptureService {
     return settings;
   }
 
-  private DownloadedMedia download(String imageUrl, int maxFileSizeMb) throws Exception {
+  private DownloadedMedia download(String imageUrl, int maxFileSizeMb, Map<String, String> requestHeaders) throws Exception {
     if (imageUrl == null || imageUrl.isBlank()) {
       throw new IllegalArgumentException("Missing image URL");
     }
     long maxBytes = Math.max(1, maxFileSizeMb) * 1024L * 1024L;
-    HttpRequest request = HttpRequest.newBuilder(URI.create(imageUrl))
+    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(imageUrl))
         .timeout(Duration.ofSeconds(30))
-        .GET()
-        .build();
+        .GET();
+    if (requestHeaders != null) {
+      requestHeaders.forEach((name, value) -> {
+        if (name != null && !name.isBlank() && value != null && !value.isBlank()) {
+          requestBuilder.header(name, value);
+        }
+      });
+    }
+    HttpRequest request = requestBuilder.build();
     HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
     if (response.statusCode() < 200 || response.statusCode() >= 300) {
       throw new IllegalStateException("Image download failed: HTTP " + response.statusCode());

@@ -48,16 +48,23 @@ public class WhatsAppWebhookController {
       JsonNode payload = objectMapper.readTree(body);
       WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(payload);
       if (log.isDebugEnabled()) {
-        log.debug("WhatsApp webhook parsed messageId={} chatJid={} senderJid={} text={} media={} mediaContentType={} fields={}",
+        log.debug("WhatsApp webhook parsed messageId={} chatJid={} senderJid={} text={} media={} directMediaUrl={} mediaContentType={} fields={}",
             event.getMessageId(),
             event.getChatJid(),
             event.effectiveSenderJid(),
             event.getText() != null && !event.getText().isBlank(),
             event.hasMedia(),
+            event.hasDownloadableMediaUrl(),
             event.getMediaContentType(),
             WacliWebhookMessageEvent.fieldSummary(payload));
       }
-      if (!event.hasMedia() && looksLikeMediaPayload(payload)) {
+      if (event.hasMedia() && !event.hasDownloadableMediaUrl()) {
+        log.debug("WhatsApp webhook media will be downloaded through sidecar messageId={} chatJid={} directPath={} contentType={}",
+            event.getMessageId(),
+            event.getChatJid(),
+            event.getMediaDirectPath(),
+            event.getMediaContentType());
+      } else if (!event.hasMedia() && looksLikeMediaPayload(payload)) {
         log.info("WhatsApp webhook contains media-like fields but no downloadable media URL was parsed messageId={} chatJid={} fields={}",
             event.getMessageId(),
             event.getChatJid(),

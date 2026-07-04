@@ -11,6 +11,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -184,10 +186,36 @@ public class WhatsAppConnection extends BotConnection {
           "WhatsApp",
           actorName,
           event.getText(),
-          event.getMediaUrl(),
+          resolveMediaDownloadUrl(event),
           event.getMediaContentType(),
-          event.getMediaFileName());
+          event.getMediaFileName(),
+          mediaDownloadHeaders());
     }
+  }
+
+  private String resolveMediaDownloadUrl(WacliWebhookMessageEvent event) {
+    if (event.hasDownloadableMediaUrl()) {
+      return event.getMediaUrl();
+    }
+    if (event.getChatJid() == null || event.getMessageId() == null) {
+      return null;
+    }
+    String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
+    return sendBaseUrl.replaceFirst("/+$", "")
+        + "/media?chat=" + urlEncode(event.getChatJid())
+        + "&id=" + urlEncode(event.getMessageId());
+  }
+
+  private Map<String, String> mediaDownloadHeaders() {
+    String token = config == null ? null : config.getSendToken();
+    if (token == null || token.isBlank()) {
+      return Map.of();
+    }
+    return Map.of("X-Bot-Whatsapp-Token", token);
+  }
+
+  private String urlEncode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private void registerConfiguredChannels() {

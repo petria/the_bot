@@ -11,6 +11,9 @@ if [ -z "${WACLI_WEBHOOK_URL:-}" ]; then
 fi
 
 set -- wacli sync --follow --max-reconnect "${WACLI_SYNC_MAX_RECONNECT:-0}" --max-db-size "${WACLI_SYNC_MAX_DB_SIZE:-2GB}" --webhook "$WACLI_WEBHOOK_URL"
+if [ "${WACLI_SYNC_DOWNLOAD_MEDIA:-true}" = "true" ]; then
+  set -- "$@" --download-media
+fi
 if [ -n "${WACLI_WEBHOOK_SECRET:-}" ]; then
   set -- "$@" --webhook-secret "$WACLI_WEBHOOK_SECRET"
 fi

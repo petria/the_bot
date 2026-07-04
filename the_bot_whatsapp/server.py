@@ -1,6 +1,9 @@
 import json
+import mimetypes
 import os
 import subprocess
+import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -8,6 +11,7 @@ PORT = int(os.environ.get("BOT_WHATSAPP_PORT", "8095"))
 STORE_DIR = os.environ.get("WACLI_STORE_DIR", "/wacli")
 SEND_TOKEN = os.environ.get("BOT_WHATSAPP_SEND_TOKEN", "")
 WACLI_BIN = os.environ.get("WACLI_BIN", "wacli")
+MEDIA_WAIT_SECONDS = int(os.environ.get("BOT_WHATSAPP_MEDIA_WAIT_SECONDS", "20"))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -17,6 +21,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/status":
             self.handle_status()
+            return
+        if self.path.startswith("/media"):
+            self.handle_media()
             return
         self.respond(404, {"status": "NOK", "message": "Not found"})
 
@@ -140,6 +147,63 @@ class Handler(BaseHTTPRequestHandler):
             "timedOut": result["timedOut"],
         })
 
+    def handle_media(self):
+        if not self.authorized():
+            self.respond(401, {"status": "NOK", "message": "Unauthorized"})
+            return
+
+        parsed = urllib.parse.urlparse(self.path)
+        query = urllib.parse.parse_qs(parsed.query)
+        chat = first_query_value(query, "chat")
+        message_id = first_query_value(query, "id")
+        if not chat or not message_id:
+            self.respond(400, {"status": "NOK", "message": "Both 'chat' and 'id' are required"})
+            return
+
+        deadline = time.time() + max(0, MEDIA_WAIT_SECONDS)
+        last_body = None
+        while True:
+            result = self.run_wacli_capture([
+                WACLI_BIN,
+                "--json",
+                "--store",
+                STORE_DIR,
+                "messages",
+                "show",
+                "--chat",
+                chat,
+                "--id",
+                message_id,
+            ], timeout=10)
+            if result["timedOut"]:
+                self.respond(504, {"status": "NOK", "message": "wacli messages show timed out"})
+                return
+            if result["exitCode"] != 0:
+                self.respond(502, {
+                    "status": "NOK",
+                    "message": "wacli messages show failed",
+                    "stderr": result["stderr"],
+                    "exitCode": result["exitCode"],
+                })
+                return
+            body = parse_json_or_text(result["stdout"])
+            last_body = body
+            data = body.get("data") if isinstance(body, dict) else None
+            local_path = str(data.get("LocalPath", "")).strip() if isinstance(data, dict) else ""
+            if local_path:
+                self.respond_file(local_path, data)
+                return
+            if time.time() >= deadline:
+                self.respond(409, {
+                    "status": "NOK",
+                    "message": "media is not downloaded yet",
+                    "messageId": message_id,
+                    "chat": chat,
+                    "wacli": last_body,
+                })
+                return
+            time.sleep(0.5)
+
     def authorized(self):
         return not SEND_TOKEN or self.headers.get("X-Bot-Whatsapp-Token") == SEND_TOKEN
 
@@ -190,6 +254,33 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def respond_file(self, local_path, message_data):
+        path = local_path
+        if not os.path.isabs(path):
+            path = os.path.join(STORE_DIR, path)
+        path = os.path.abspath(path)
+        if not os.path.isfile(path):
+            self.respond(404, {"status": "NOK", "message": "downloaded media file does not exist", "path": local_path})
+            return
+        content_type = ""
+        if isinstance(message_data, dict):
+            content_type = str(message_data.get("MimeType", "")).strip()
+        if not content_type:
+            content_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        filename = os.path.basename(path)
+        size = os.path.getsize(path)
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(size))
+        self.send_header("Content-Disposition", f'inline; filename="{filename}"')
+        self.end_headers()
+        with open(path, "rb") as handle:
+            while True:
+                chunk = handle.read(1024 * 64)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+
     def log_message(self, fmt, *args):
         print("%s - %s" % (self.address_string(), fmt % args), flush=True)
 
@@ -202,6 +293,13 @@ def parse_json_or_text(value):
         return json.loads(text)
     except Exception:
         return text
+
+
+def first_query_value(query, name):
+    values = query.get(name)
+    if not values:
+        return ""
+    return str(values[0]).strip()
 
 
 if __name__ == "__main__":

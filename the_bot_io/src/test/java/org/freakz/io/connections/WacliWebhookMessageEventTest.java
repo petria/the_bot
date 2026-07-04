@@ -85,4 +85,32 @@ class WacliWebhookMessageEventTest {
     assertThat(event.getMediaUrl()).isEqualTo("https://mmg.whatsapp.net/o1/v/t62.7118-24/image.jpg");
     assertThat(event.getMediaContentType()).isEqualTo("image/jpeg");
   }
+
+  @Test
+  void parsesTopLevelMediaMetadataWithoutUrlAsMedia() throws Exception {
+    WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(objectMapper.readTree("""
+        {
+          "Chat": "120363408176012025@g.us",
+          "ID": "3EB0CF70BED7F3647D60D7",
+          "SenderJID": "162251029934316:96@lid",
+          "Timestamp": "2026-07-04T21:01:12Z",
+          "FromMe": false,
+          "Text": "test2",
+          "Media": {
+            "Type": "image",
+            "Caption": "test2",
+            "Filename": "",
+            "MimeType": "image/jpeg",
+            "DirectPath": "/o1/v/t24/f2/m234/image"
+          },
+          "PushName": "Petri Airio"
+        }
+        """));
+
+    assertThat(event.hasMedia()).isTrue();
+    assertThat(event.hasDownloadableMediaUrl()).isFalse();
+    assertThat(event.getMediaContentType()).isEqualTo("image/jpeg");
+    assertThat(event.getMediaDirectPath()).isEqualTo("/o1/v/t24/f2/m234/image");
+    assertThat(event.getText()).isEqualTo("test2");
+  }
 }

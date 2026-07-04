@@ -17,6 +17,7 @@ public class WacliWebhookMessageEvent {
   private final String mediaUrl;
   private final String mediaContentType;
   private final String mediaFileName;
+  private final String mediaDirectPath;
   private final boolean fromMe;
   private final Instant timestamp;
 
@@ -29,6 +30,7 @@ public class WacliWebhookMessageEvent {
       String mediaUrl,
       String mediaContentType,
       String mediaFileName,
+      String mediaDirectPath,
       boolean fromMe,
       Instant timestamp) {
     this.chatJid = chatJid;
@@ -39,6 +41,7 @@ public class WacliWebhookMessageEvent {
     this.mediaUrl = mediaUrl;
     this.mediaContentType = mediaContentType;
     this.mediaFileName = mediaFileName;
+    this.mediaDirectPath = mediaDirectPath;
     this.fromMe = fromMe;
     this.timestamp = timestamp;
   }
@@ -82,9 +85,10 @@ public class WacliWebhookMessageEvent {
     if (mediaFileName == null) {
       mediaFileName = textValue(first(media, "FileName", "fileName", "filename", "Name", "name", "Title", "title"));
     }
+    String mediaDirectPath = textValue(first(media, "DirectPath", "directPath"));
     boolean fromMe = booleanValue(firstNonNull(first(root, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe"), first(info, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe")));
     Instant timestamp = instantValue(firstNonNull(first(root, "Timestamp", "timestamp"), first(info, "Timestamp", "timestamp")));
-    return new WacliWebhookMessageEvent(chatJid, messageId, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, fromMe, timestamp);
+    return new WacliWebhookMessageEvent(chatJid, messageId, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, mediaDirectPath, fromMe, timestamp);
   }
 
   public static String fieldSummary(JsonNode root) {
@@ -139,6 +143,10 @@ public class WacliWebhookMessageEvent {
   }
 
   public boolean hasMedia() {
+    return hasDownloadableMediaUrl() || mediaContentType != null || mediaDirectPath != null;
+  }
+
+  public boolean hasDownloadableMediaUrl() {
     return mediaUrl != null && !mediaUrl.isBlank();
   }
 
@@ -152,6 +160,10 @@ public class WacliWebhookMessageEvent {
 
   public String getMediaFileName() {
     return mediaFileName;
+  }
+
+  public String getMediaDirectPath() {
+    return mediaDirectPath;
   }
 
   public boolean isFromMe() {
