@@ -214,6 +214,16 @@ body,
   display: none;
 }
 
+.commands-command-column {
+  width: 220px;
+  min-width: 220px;
+  white-space: nowrap;
+}
+
+.commands-command-trigger {
+  white-space: nowrap;
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;
@@ -295,5 +305,9 @@ body,
 
   .generated-streaks-cards {
     display: flex;
+  }
+
+  .commands-table {
+    display: none;
   }
 }

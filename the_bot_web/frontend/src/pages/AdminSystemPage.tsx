@@ -168,40 +168,6 @@ export function AdminSystemPage() {
 
           <Card withBorder radius="sm">
             <Stack gap="md">
-              <Group justify="space-between" align="flex-start">
-                <div>
-                  <Text fw={700}>Route selection</Text>
-                  <Text size="sm" c="dimmed">Select which fixed backend each AI route uses.</Text>
-                </div>
-                <Badge color={config.systemMode === 'off' ? 'red' : 'green'}>
-                  {config.systemMode === 'off' ? 'AI off' : 'AI enabled'}
-                </Badge>
-              </Group>
-              <Group grow align="flex-start">
-                {config.routes.map((route) => (
-                  <Select
-                    key={route.id}
-                    label={route.label}
-                    data={routeOptions}
-                    value={route.backendId}
-                    onChange={(value) => updateRoute(route.id, value || 'openai')}
-                  />
-                ))}
-              </Group>
-              <Stack gap={4}>
-                {config.routes.map((route) => (
-                  <InfoLine
-                    key={route.id}
-                    label={route.id}
-                    value={`${route.backendId} / ${route.provider} / ${route.model} / ${statusText(route.healthy)}`}
-                  />
-                ))}
-              </Stack>
-            </Stack>
-          </Card>
-
-          <Card withBorder radius="sm">
-            <Stack gap="md">
               <Group justify="space-between" align="flex-end">
                 <Select
                   label="Model list source"
@@ -233,6 +199,40 @@ export function AdminSystemPage() {
               {selectedModel ? (
                 <InfoLine label="Selected model" value={`${selectedModel.label}; tools=${statusText(selectedModel.toolCapable)}`} />
               ) : null}
+            </Stack>
+          </Card>
+
+          <Card withBorder radius="sm">
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start">
+                <div>
+                  <Text fw={700}>Route selection</Text>
+                  <Text size="sm" c="dimmed">Select which fixed backend each AI route uses.</Text>
+                </div>
+                <Badge color={config.systemMode === 'off' ? 'red' : 'green'}>
+                  {config.systemMode === 'off' ? 'AI off' : 'AI enabled'}
+                </Badge>
+              </Group>
+              <Group grow align="flex-start">
+                {config.routes.map((route) => (
+                  <Select
+                    key={route.id}
+                    label={route.label}
+                    data={routeOptions}
+                    value={route.backendId}
+                    onChange={(value) => updateRoute(route.id, value || 'openai')}
+                  />
+                ))}
+              </Group>
+              <Stack gap={4}>
+                {config.routes.map((route) => (
+                  <InfoLine
+                    key={route.id}
+                    label={route.id}
+                    value={`${route.backendId} / ${route.provider} / ${route.model} / ${statusText(route.healthy)}`}
+                  />
+                ))}
+              </Stack>
             </Stack>
           </Card>
         </Stack>
