@@ -54,6 +54,8 @@ public class ConnectionManager implements CommandLineRunner {
   private ConfigService configService;
   @Autowired
   private EventPublisher eventPublisher;
+  @Autowired
+  private MediaCaptureService mediaCaptureService;
   @Autowired(required = false)
   private JsonMapper objectMapper;
   private final Map<String, JoinedChannelContainer> joinedChannelsMap = new ConcurrentHashMap<>();
@@ -726,7 +728,7 @@ public class ConnectionManager implements CommandLineRunner {
 
     log.debug(">> Connecting DISCORD");
     if (theBotConfig.getDiscordConfig() != null && theBotConfig.getDiscordConfig().isConnectStartup()) {
-      DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher);
+      DiscordServerConnection dsc = new DiscordServerConnection(this.eventPublisher, this.mediaCaptureService);
       dsc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getDiscordConfig());
       addConnection(dsc);
     } else {
@@ -736,7 +738,7 @@ public class ConnectionManager implements CommandLineRunner {
 
     log.debug(">> Connecting TELEGRAM");
     if (theBotConfig.getTelegramConfig() != null && theBotConfig.getTelegramConfig().isConnectStartup()) {
-      TelegramConnection tc = new TelegramConnection(this.eventPublisher);
+      TelegramConnection tc = new TelegramConnection(this.eventPublisher, this.mediaCaptureService);
       tc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getTelegramConfig());
       addConnection(tc);
     } else {
@@ -746,7 +748,7 @@ public class ConnectionManager implements CommandLineRunner {
 
     log.debug(">> Connecting WHATSAPP");
     if (theBotConfig.getWhatsappConfig() != null && theBotConfig.getWhatsappConfig().isConnectStartup()) {
-      WhatsAppConnection wc = new WhatsAppConnection(this.eventPublisher);
+      WhatsAppConnection wc = new WhatsAppConnection(this.eventPublisher, this.mediaCaptureService);
       wc.init(this, theBotConfig.getBotConfig().getBotName(), theBotConfig.getWhatsappConfig());
       addConnection(wc);
     } else {

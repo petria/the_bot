@@ -15,6 +15,8 @@ import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
+import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
@@ -185,6 +187,18 @@ public class RestEngineClient {
         HttpMethod.PUT,
         new org.springframework.http.HttpEntity<>(request),
         HermesBackendConfigResponse.class);
+  }
+
+  public ResponseEntity<MediaStorageSettingsResponse> getMediaStorageSettings() {
+    return restTemplate.getForEntity(baseUrl + "/internal/system/media-storage", MediaStorageSettingsResponse.class);
+  }
+
+  public ResponseEntity<MediaStorageSettingsResponse> updateMediaStorageSettings(MediaStorageUpdateRequest request) {
+    return restTemplate.exchange(
+        baseUrl + "/internal/system/media-storage",
+        HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(request),
+        MediaStorageSettingsResponse.class);
   }
 
   public ResponseEntity<String> reloadConfig() {

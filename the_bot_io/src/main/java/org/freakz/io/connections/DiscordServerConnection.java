@@ -29,14 +29,20 @@ public class DiscordServerConnection extends BotConnection {
   private static final Logger log = LoggerFactory.getLogger(DiscordServerConnection.class);
 
   private final EventPublisher publisher;
+  private final MediaCaptureService mediaCaptureService;
   private DiscordApi api;
   private ConnectionManager connectionManager;
   private DiscordConfig config;
   private String botName;
 
   public DiscordServerConnection(EventPublisher publisher) {
+    this(publisher, null);
+  }
+
+  public DiscordServerConnection(EventPublisher publisher, MediaCaptureService mediaCaptureService) {
     super(BotConnectionType.DISCORD_CONNECTION);
     this.publisher = publisher;
+    this.mediaCaptureService = mediaCaptureService;
   }
 
   @Override
@@ -308,12 +314,20 @@ public class DiscordServerConnection extends BotConnection {
     log.debug("replyTo: '{}'", channelName);
 
     if (messageAuthor.asUser().isPresent()) {
-      StringBuilder messageTxt = new StringBuilder(event.getMessage().getContent());
       if (!event.getMessage().getAttachments().isEmpty()) {
         for (MessageAttachment attachment : event.getMessageAttachments()) {
-          messageTxt.append(" [");
-          messageTxt.append(attachment.getUrl().toString());
-          messageTxt.append("]");
+          if (mediaCaptureService != null) {
+            mediaCaptureService.captureAndSend(
+                connectionManager,
+                configuredChannel,
+                this,
+                "Discord",
+                event.getMessageAuthor().getName(),
+                event.getMessage().getContent(),
+                attachment.getUrl().toString(),
+                null,
+                attachment.getFileName());
+          }
         }
       }
       BridgeEchoService.echoToConfiguredTargets(
@@ -321,7 +335,7 @@ public class DiscordServerConnection extends BotConnection {
           configuredChannel,
           "Discord",
           event.getMessageAuthor().getName(),
-          messageTxt.toString(),
+          event.getMessage().getContent(),
           botName);
     }
   }

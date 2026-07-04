@@ -12,6 +12,8 @@ export type AdminConfigChannel = {
   allowAnonymousAiCommands: boolean;
   resolveUrls: boolean;
   alertMessages: boolean;
+  captureImages: boolean;
+  captureImageToAliases: string[] | null;
 };
 
 export type AdminIrcServerConfig = {

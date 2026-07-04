@@ -21,14 +21,20 @@ public class WhatsAppConnection extends BotConnection {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final EventPublisher publisher;
+  private final MediaCaptureService mediaCaptureService;
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private ConnectionManager connectionManager;
   private WhatsAppConfig config;
   private String botName;
 
   public WhatsAppConnection(EventPublisher publisher) {
+    this(publisher, null);
+  }
+
+  public WhatsAppConnection(EventPublisher publisher, MediaCaptureService mediaCaptureService) {
     super(BotConnectionType.WHATSAPP_CONNECTION);
     this.publisher = publisher;
+    this.mediaCaptureService = mediaCaptureService;
   }
 
   public void init(ConnectionManager connectionManager, String botName, WhatsAppConfig config) {
@@ -126,7 +132,7 @@ public class WhatsAppConnection extends BotConnection {
   }
 
   public void handleWebhook(WacliWebhookMessageEvent event) {
-    if (event == null || event.getChatJid() == null || event.getText() == null || event.getText().isBlank()) {
+    if (event == null || event.getChatJid() == null || ((event.getText() == null || event.getText().isBlank()) && !event.hasMedia())) {
       return;
     }
     if (event.isFromMe()) {
@@ -156,8 +162,23 @@ public class WhatsAppConnection extends BotConnection {
         event.getChatJid(),
         channelName);
 
-    publisher.publishEvent(this, event, echoToAlias);
-    checkEchoTo(event, actorName);
+    Channel configuredChannel = resolveConfiguredChannel(event.getChatJid());
+    if (event.getText() != null && !event.getText().isBlank()) {
+      publisher.publishEvent(this, event, echoToAlias);
+      checkEchoTo(event, actorName);
+    }
+    if (event.hasMedia() && mediaCaptureService != null) {
+      mediaCaptureService.captureAndSend(
+          connectionManager,
+          configuredChannel,
+          this,
+          "WhatsApp",
+          actorName,
+          event.getText(),
+          event.getMediaUrl(),
+          event.getMediaContentType(),
+          event.getMediaFileName());
+    }
   }
 
   private void registerConfiguredChannels() {

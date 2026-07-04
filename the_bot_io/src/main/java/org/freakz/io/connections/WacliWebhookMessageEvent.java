@@ -11,6 +11,9 @@ public class WacliWebhookMessageEvent {
   private final String senderJid;
   private final String pushName;
   private final String text;
+  private final String mediaUrl;
+  private final String mediaContentType;
+  private final String mediaFileName;
   private final boolean fromMe;
   private final Instant timestamp;
 
@@ -20,6 +23,9 @@ public class WacliWebhookMessageEvent {
       String senderJid,
       String pushName,
       String text,
+      String mediaUrl,
+      String mediaContentType,
+      String mediaFileName,
       boolean fromMe,
       Instant timestamp) {
     this.chatJid = chatJid;
@@ -27,6 +33,9 @@ public class WacliWebhookMessageEvent {
     this.senderJid = senderJid;
     this.pushName = pushName;
     this.text = text;
+    this.mediaUrl = mediaUrl;
+    this.mediaContentType = mediaContentType;
+    this.mediaFileName = mediaFileName;
     this.fromMe = fromMe;
     this.timestamp = timestamp;
   }
@@ -37,9 +46,22 @@ public class WacliWebhookMessageEvent {
     String senderJid = textValue(first(root, "SenderJID", "sender_jid", "senderJid"));
     String pushName = textValue(first(root, "PushName", "push_name", "pushName"));
     String text = textValue(first(root, "Text", "text", "DisplayText", "display_text", "displayText"));
+    JsonNode media = first(root, "Media", "media", "Attachment", "attachment");
+    String mediaUrl = textValue(first(root, "MediaURL", "MediaUrl", "media_url", "mediaUrl", "URL", "url"));
+    if (mediaUrl == null) {
+      mediaUrl = textValue(first(media, "URL", "url", "MediaURL", "MediaUrl", "media_url", "mediaUrl"));
+    }
+    String mediaContentType = textValue(first(root, "MediaContentType", "mediaContentType", "mimeType", "mimetype", "Mimetype"));
+    if (mediaContentType == null) {
+      mediaContentType = textValue(first(media, "ContentType", "contentType", "MimeType", "mimeType", "mimetype"));
+    }
+    String mediaFileName = textValue(first(root, "MediaFileName", "mediaFileName", "filename", "fileName", "FileName"));
+    if (mediaFileName == null) {
+      mediaFileName = textValue(first(media, "FileName", "fileName", "filename", "Name", "name"));
+    }
     boolean fromMe = booleanValue(first(root, "FromMe", "from_me", "fromMe"));
     Instant timestamp = instantValue(first(root, "Timestamp", "timestamp"));
-    return new WacliWebhookMessageEvent(chatJid, messageId, senderJid, pushName, text, fromMe, timestamp);
+    return new WacliWebhookMessageEvent(chatJid, messageId, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, fromMe, timestamp);
   }
 
   public boolean isGroupChat() {
@@ -82,6 +104,22 @@ public class WacliWebhookMessageEvent {
 
   public String getText() {
     return text;
+  }
+
+  public boolean hasMedia() {
+    return mediaUrl != null && !mediaUrl.isBlank();
+  }
+
+  public String getMediaUrl() {
+    return mediaUrl;
+  }
+
+  public String getMediaContentType() {
+    return mediaContentType;
+  }
+
+  public String getMediaFileName() {
+    return mediaFileName;
   }
 
   public boolean isFromMe() {

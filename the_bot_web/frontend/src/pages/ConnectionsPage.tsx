@@ -132,6 +132,8 @@ export function ConnectionsPage() {
                   allowAnonymousAiCommands: false,
                   resolveUrls: false,
                   alertMessages: false,
+                  captureImages: false,
+                  captureImageToAliases: [],
                 },
               })}
             />

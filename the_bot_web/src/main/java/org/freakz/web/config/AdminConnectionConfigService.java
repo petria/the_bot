@@ -232,7 +232,9 @@ public class AdminConnectionConfigService {
           item.path("publicAiEnabled").asBoolean(false),
           item.path("allowAnonymousAiCommands").asBoolean(false),
           item.path("resolveUrls").asBoolean(false),
-          item.path("alertMessages").asBoolean(false)));
+          item.path("alertMessages").asBoolean(false),
+          item.path("captureImages").asBoolean(false),
+          aliasesFrom(item.get("captureImageToAliases"))));
     }
     return channels;
   }
@@ -372,7 +374,9 @@ public class AdminConnectionConfigService {
         source.publicAiEnabled(),
         source.allowAnonymousAiCommands(),
         source.resolveUrls(),
-        source.alertMessages());
+        source.alertMessages(),
+        source.captureImages(),
+        normalizeAliases(source.captureImageToAliases()));
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -508,7 +512,9 @@ public class AdminConnectionConfigService {
             channel.publicAiEnabled(),
             channel.allowAnonymousAiCommands(),
             channel.resolveUrls(),
-            channel.alertMessages()))
+            channel.alertMessages(),
+            channel.captureImages(),
+            normalizeAliases(channel.captureImageToAliases())))
         .toList();
   }
 
@@ -529,7 +535,8 @@ public class AdminConnectionConfigService {
         && clean(channel.echoToAlias()) == null
         && clean(channel.description()) == null
         && clean(channel.type()) == null
-        && normalizeAliases(channel.echoToAliases()).isEmpty();
+        && normalizeAliases(channel.echoToAliases()).isEmpty()
+        && normalizeAliases(channel.captureImageToAliases()).isEmpty();
   }
 
   private void validateUniqueChannelAliases(
@@ -625,6 +632,10 @@ public class AdminConnectionConfigService {
       item.put("allowAnonymousAiCommands", channel.allowAnonymousAiCommands());
       item.put("resolveUrls", channel.resolveUrls());
       item.put("alertMessages", channel.alertMessages());
+      item.put("captureImages", channel.captureImages());
+      ArrayNode captureAliases = jsonMapper.createArrayNode();
+      channel.captureImageToAliases().forEach(captureAliases::add);
+      item.set("captureImageToAliases", captureAliases);
       array.add(item);
     }
     return array;
@@ -770,6 +781,36 @@ public class AdminConnectionConfigService {
       boolean publicAiEnabled,
       boolean allowAnonymousAiCommands,
       boolean resolveUrls,
-      boolean alertMessages) {
+      boolean alertMessages,
+      boolean captureImages,
+      List<String> captureImageToAliases) {
+
+    public ChannelDto(
+        String id,
+        String description,
+        String name,
+        String type,
+        String echoToAlias,
+        List<String> echoToAliases,
+        boolean joinOnStart,
+        boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands,
+        boolean resolveUrls,
+        boolean alertMessages) {
+      this(
+          id,
+          description,
+          name,
+          type,
+          echoToAlias,
+          echoToAliases,
+          joinOnStart,
+          publicAiEnabled,
+          allowAnonymousAiCommands,
+          resolveUrls,
+          alertMessages,
+          false,
+          List.of());
+    }
   }
 }

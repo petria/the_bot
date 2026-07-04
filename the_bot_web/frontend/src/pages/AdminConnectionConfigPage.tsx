@@ -47,6 +47,8 @@ const emptyChannel: AdminConfigChannel = {
   allowAnonymousAiCommands: false,
   resolveUrls: false,
   alertMessages: false,
+  captureImages: false,
+  captureImageToAliases: [],
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -321,6 +323,7 @@ function IrcConfigsEditor({
             />
             <ChannelsEditor
               channels={config.channelList ?? []}
+              allowImageCapture={false}
               onChange={(channelList) => updateIrc(configs, index, { channelList }, onChange)}
             />
           </Stack>
@@ -354,6 +357,7 @@ function DiscordEditor({
       <SecretNotice service="Discord" />
       <ChannelsEditor
         channels={config.channelList ?? []}
+        allowImageCapture
         onChange={(channelList) => onChange({ ...config, channelList })}
       />
     </Stack>
@@ -384,6 +388,7 @@ function TelegramEditor({
       <SecretNotice service="Telegram" />
       <ChannelsEditor
         channels={config.channelList ?? []}
+        allowImageCapture
         onChange={(channelList) => onChange({ ...config, channelList })}
       />
     </Stack>
@@ -419,6 +424,7 @@ function WhatsAppEditor({
       <SecretNotice service="WhatsApp" />
       <ChannelsEditor
         channels={config.channelList ?? []}
+        allowImageCapture
         onChange={(channelList) => onChange({ ...config, channelList })}
       />
     </Stack>
@@ -427,12 +433,14 @@ function WhatsAppEditor({
 
 function ChannelsEditor({
   channels,
+  allowImageCapture,
   onChange,
 }: {
   channels: AdminConfigChannel[];
+  allowImageCapture: boolean;
   onChange: (channels: AdminConfigChannel[]) => void;
 }) {
-  const addChannel = () => onChange([...channels, { ...emptyChannel, echoToAliases: [] }]);
+  const addChannel = () => onChange([...channels, { ...emptyChannel, echoToAliases: [], captureImageToAliases: [] }]);
 
   return (
     <Stack gap="sm">
@@ -522,6 +530,28 @@ function ChannelsEditor({
               checked={channel.alertMessages}
               onChange={(event) => updateChannel(channels, index, { alertMessages: event.currentTarget.checked }, onChange)}
             />
+            {allowImageCapture ? (
+              <>
+                <Switch
+                  label="Capture images"
+                  checked={channel.captureImages}
+                  onChange={(event) => updateChannel(channels, index, { captureImages: event.currentTarget.checked }, onChange)}
+                />
+                {channel.captureImages ? (
+                  <TextInput
+                    label="Capture image to aliases"
+                    description="Comma separated target channel aliases for generated image links"
+                    value={(channel.captureImageToAliases ?? []).join(', ')}
+                    onChange={(event) => updateChannel(
+                      channels,
+                      index,
+                      { captureImageToAliases: splitAliases(event.currentTarget.value) },
+                      onChange,
+                    )}
+                  />
+                ) : null}
+              </>
+            ) : null}
           </Stack>
         </Card>
       ))}
@@ -594,6 +624,7 @@ function addPromotedChannel(
     ...emptyChannel,
     ...promote.channel,
     echoToAliases: promote.channel.echoToAliases ?? [],
+    captureImageToAliases: promote.channel.captureImageToAliases ?? [],
   };
   const type = promote.connectionType || '';
 

@@ -10,6 +10,8 @@ import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
+import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
+import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
@@ -120,6 +122,25 @@ public class AdminSystemController {
         engineClient.updateHermesBackendConfig(request.withRequestedBy(username));
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update Hermes backend configuration");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/media-storage")
+  public MediaStorageSettingsResponse getMediaStorageSettings() {
+    ResponseEntity<MediaStorageSettingsResponse> response = engineClient.getMediaStorageSettings();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load media storage settings");
+    }
+    return response.getBody();
+  }
+
+  @PutMapping("/media-storage")
+  public MediaStorageSettingsResponse updateMediaStorageSettings(
+      @RequestBody MediaStorageUpdateRequest request) {
+    ResponseEntity<MediaStorageSettingsResponse> response = engineClient.updateMediaStorageSettings(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not update media storage settings");
     }
     return response.getBody();
   }
