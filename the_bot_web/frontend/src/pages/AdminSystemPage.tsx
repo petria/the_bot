@@ -95,20 +95,10 @@ export function AdminSystemPage() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="flex-start" gap="sm">
-        <div>
-          <Title order={2}>Manage AI Routes</Title>
-          <Text c="dimmed">Global AI mode, fixed Hermes backends, and route selection.</Text>
-        </div>
-        <Button
-          leftSection={<Save size={18} />}
-          loading={saveMutation.isPending}
-          disabled={!config || !hasChanges}
-          onClick={() => config && saveMutation.mutate(config)}
-        >
-          Save and apply
-        </Button>
-      </Group>
+      <div>
+        <Title order={2}>Manage AI Routes</Title>
+        <Text c="dimmed">Global AI mode, fixed Hermes backends, and route selection.</Text>
+      </div>
 
       {backendQuery.isLoading ? <Loader /> : null}
       {backendQuery.isError ? <SettingsError error={backendQuery.error} /> : null}
@@ -223,6 +213,16 @@ export function AdminSystemPage() {
                     onChange={(value) => updateRoute(route.id, value || 'openai')}
                   />
                 ))}
+              </Group>
+              <Group justify="flex-end">
+                <Button
+                  leftSection={<Save size={18} />}
+                  loading={saveMutation.isPending}
+                  disabled={!config || !hasChanges}
+                  onClick={() => config && saveMutation.mutate(config)}
+                >
+                  Save and apply
+                </Button>
               </Group>
               <Stack gap={4}>
                 {config.routes.map((route) => (
