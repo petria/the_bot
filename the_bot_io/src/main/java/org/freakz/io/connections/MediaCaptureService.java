@@ -110,7 +110,7 @@ public class MediaCaptureService {
               sourceChannel.getEchoToAlias(),
               sourceChannel.getName(),
               sender));
-      String publicUrl = trimTrailingSlash(settings.publicUrlPrefix()) + "/" + created.id() + "?token=" + created.token();
+      String publicUrl = publicMediaUrl(settings, created);
       String message = formatMessage(sender, caption, publicUrl);
       for (String alias : targetAliases) {
         if (alias == null || alias.isBlank()) {
@@ -195,6 +195,21 @@ public class MediaCaptureService {
     }
     message.append("[image: ").append(publicUrl).append("]");
     return message.toString();
+  }
+
+  private String publicMediaUrl(MediaStorageSettingsResponse settings, MediaStoreCreated created) {
+    if (created.shortCode() != null && !created.shortCode().isBlank()) {
+      return publicBaseUrl(settings.publicUrlPrefix()) + "/m/" + created.shortCode();
+    }
+    return trimTrailingSlash(settings.publicUrlPrefix()) + "/" + created.id() + "?token=" + created.token();
+  }
+
+  private String publicBaseUrl(String publicUrlPrefix) {
+    String prefix = trimTrailingSlash(publicUrlPrefix);
+    if (prefix.endsWith("/media")) {
+      return prefix.substring(0, prefix.length() - "/media".length());
+    }
+    return prefix;
   }
 
   private String trimTrailingSlash(String value) {

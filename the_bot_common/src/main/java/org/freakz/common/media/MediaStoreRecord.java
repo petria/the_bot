@@ -6,6 +6,7 @@ public class MediaStoreRecord {
 
   private String id;
   private String tokenHash;
+  private String shortCode;
   private String contentType;
   private String originalFileName;
   private String fileName;
@@ -24,6 +25,7 @@ public class MediaStoreRecord {
   public MediaStoreRecord(
       String id,
       String tokenHash,
+      String shortCode,
       String contentType,
       String originalFileName,
       String fileName,
@@ -37,6 +39,7 @@ public class MediaStoreRecord {
       String sourceSender) {
     this.id = id;
     this.tokenHash = tokenHash;
+    this.shortCode = shortCode;
     this.contentType = contentType;
     this.originalFileName = originalFileName;
     this.fileName = fileName;
@@ -64,6 +67,14 @@ public class MediaStoreRecord {
 
   public void setTokenHash(String tokenHash) {
     this.tokenHash = tokenHash;
+  }
+
+  public String getShortCode() {
+    return shortCode;
+  }
+
+  public void setShortCode(String shortCode) {
+    this.shortCode = shortCode;
   }
 
   public String getContentType() {
