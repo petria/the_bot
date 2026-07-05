@@ -5,6 +5,7 @@ services:
     user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
       - ${HOKAN_DATA_DIR:-.}/openclaw/state:/openclaw-state
     ports:
@@ -60,6 +61,7 @@ services:
       - bot-whatsapp
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
       - "127.0.0.1:8090:8090"
@@ -109,6 +111,7 @@ services:
       - bot-io
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
+      - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
