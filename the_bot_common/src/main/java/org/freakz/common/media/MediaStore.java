@@ -75,7 +75,7 @@ public class MediaStore {
         tokenHash(token),
         shortCode,
         normalizedContentType,
-        safeOriginalFileName(originalFileName),
+        safeOriginalFileName(originalFileName, normalizedContentType),
         fileName,
         bytes.length,
         createdAt,
@@ -177,6 +177,12 @@ public class MediaStore {
     if (value.equals("image/jpeg") || value.equals("image/png") || value.equals("image/gif") || value.equals("image/webp")) {
       return value;
     }
+    if (value.equals("video/mp4") || value.equals("video/webm") || value.equals("video/quicktime")) {
+      return value;
+    }
+    if (value.equals("audio/mpeg") || value.equals("audio/mp4") || value.equals("audio/ogg") || value.equals("audio/opus") || value.equals("audio/wav") || value.equals("audio/webm")) {
+      return value;
+    }
     String fileName = originalFileName == null ? "" : originalFileName.toLowerCase();
     if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
       return "image/jpeg";
@@ -190,7 +196,48 @@ public class MediaStore {
     if (fileName.endsWith(".webp")) {
       return "image/webp";
     }
+    if (fileName.endsWith(".mp4") || fileName.endsWith(".m4v")) {
+      return "video/mp4";
+    }
+    if (fileName.endsWith(".webm")) {
+      return "video/webm";
+    }
+    if (fileName.endsWith(".mov")) {
+      return "video/quicktime";
+    }
+    if (fileName.endsWith(".mp3")) {
+      return "audio/mpeg";
+    }
+    if (fileName.endsWith(".m4a")) {
+      return "audio/mp4";
+    }
+    if (fileName.endsWith(".ogg")) {
+      return "audio/ogg";
+    }
+    if (fileName.endsWith(".opus")) {
+      return "audio/opus";
+    }
+    if (fileName.endsWith(".wav")) {
+      return "audio/wav";
+    }
     return null;
+  }
+
+  public static String mediaTypeLabel(String contentType) {
+    String normalized = normalizeContentType(contentType, null);
+    if (normalized == null) {
+      return "media";
+    }
+    if (normalized.startsWith("image/")) {
+      return "image";
+    }
+    if (normalized.startsWith("video/")) {
+      return "video";
+    }
+    if (normalized.startsWith("audio/")) {
+      return "audio";
+    }
+    return "media";
   }
 
   private Optional<MediaStoreRecord> readRecord(String id) throws IOException {
@@ -270,9 +317,9 @@ public class MediaStore {
     }
   }
 
-  private String safeOriginalFileName(String value) {
+  private String safeOriginalFileName(String value, String contentType) {
     if (value == null || value.isBlank()) {
-      return "image" + extensionFor("image/jpeg");
+      return "media" + extensionFor(contentType);
     }
     return value.trim().replaceAll("[\\r\\n\\\\/]", "_");
   }
@@ -282,6 +329,15 @@ public class MediaStore {
       case "image/png" -> ".png";
       case "image/gif" -> ".gif";
       case "image/webp" -> ".webp";
+      case "video/mp4" -> ".mp4";
+      case "video/webm" -> ".webm";
+      case "video/quicktime" -> ".mov";
+      case "audio/mpeg" -> ".mp3";
+      case "audio/mp4" -> ".m4a";
+      case "audio/ogg" -> ".ogg";
+      case "audio/opus" -> ".opus";
+      case "audio/wav" -> ".wav";
+      case "audio/webm" -> ".webm";
       default -> ".jpg";
     };
   }

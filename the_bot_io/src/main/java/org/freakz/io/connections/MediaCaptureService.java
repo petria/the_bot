@@ -80,7 +80,7 @@ public class MediaCaptureService {
     }
     List<String> targetAliases = sourceChannel.getCaptureImageToAliases();
     if (targetAliases == null || targetAliases.isEmpty()) {
-      log.debug("Capture images enabled for {} but no capture targets configured", sourceChannel.getEchoToAlias());
+      log.debug("Capture media enabled for {} but no capture targets configured", sourceChannel.getEchoToAlias());
       return;
     }
     try {
@@ -95,7 +95,7 @@ public class MediaCaptureService {
         effectiveContentType = MediaStore.normalizeContentType(downloaded.contentType(), fileName);
       }
       if (effectiveContentType == null) {
-        log.debug("Media capture skipped unsupported image type url={} contentType={} fileName={}", imageUrl, contentType, fileName);
+        log.debug("Media capture skipped unsupported media type url={} contentType={} fileName={}", imageUrl, contentType, fileName);
         return;
       }
       MediaStore store = new MediaStore(java.nio.file.Path.of(settings.storageDir()), jsonMapper);
@@ -111,7 +111,7 @@ public class MediaCaptureService {
               sourceChannel.getName(),
               sender));
       String publicUrl = publicMediaUrl(settings, created);
-      String message = formatMessage(sender, caption, publicUrl);
+      String message = formatMessage(sender, caption, publicUrl, MediaStore.mediaTypeLabel(effectiveContentType));
       for (String alias : targetAliases) {
         if (alias == null || alias.isBlank()) {
           continue;
@@ -165,7 +165,7 @@ public class MediaCaptureService {
     if (lengthHeader != null) {
       try {
         if (Long.parseLong(lengthHeader) > maxBytes) {
-          throw new IllegalArgumentException("Image is larger than configured media limit");
+          throw new IllegalArgumentException("Media is larger than configured media limit");
         }
       } catch (NumberFormatException ignored) {
       }
@@ -177,7 +177,7 @@ public class MediaCaptureService {
       while ((read = input.read(buffer)) != -1) {
         total += read;
         if (total > maxBytes) {
-          throw new IllegalArgumentException("Image is larger than configured media limit");
+          throw new IllegalArgumentException("Media is larger than configured media limit");
         }
         output.write(buffer, 0, read);
       }
@@ -185,7 +185,7 @@ public class MediaCaptureService {
     }
   }
 
-  private String formatMessage(String sender, String caption, String publicUrl) {
+  private String formatMessage(String sender, String caption, String publicUrl, String mediaType) {
     StringBuilder message = new StringBuilder();
     if (sender != null && !sender.isBlank()) {
       message.append(sender.trim()).append(": ");
@@ -193,7 +193,8 @@ public class MediaCaptureService {
     if (caption != null && !caption.isBlank()) {
       message.append(caption.trim()).append(" ");
     }
-    message.append("[image: ").append(publicUrl).append("]");
+    String label = mediaType == null || mediaType.isBlank() ? "media" : mediaType.trim();
+    message.append("[").append(label).append(": ").append(publicUrl).append("]");
     return message.toString();
   }
 

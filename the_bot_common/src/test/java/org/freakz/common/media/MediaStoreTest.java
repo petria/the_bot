@@ -56,6 +56,44 @@ class MediaStoreTest {
   }
 
   @Test
+  void storesAndReadsVideoMedia() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "video/mp4",
+        "test.mp4",
+        Duration.ofDays(1),
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getContentType()).isEqualTo("video/mp4");
+          assertThat(result.file().getFileName().toString()).endsWith(".mp4");
+        });
+  }
+
+  @Test
+  void storesAndReadsAudioMedia() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "audio/ogg; codecs=opus",
+        "test.ogg",
+        Duration.ofDays(1),
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getContentType()).isEqualTo("audio/ogg");
+          assertThat(result.file().getFileName().toString()).endsWith(".ogg");
+        });
+  }
+
+  @Test
   void rejectsWrongToken() throws Exception {
     MediaStore store = new MediaStore(tempDir, new JsonMapper());
     MediaStoreCreated created = store.create(

@@ -533,14 +533,14 @@ function ChannelsEditor({
             {allowImageCapture ? (
               <>
                 <Switch
-                  label="Capture images"
+                  label="Capture media"
                   checked={channel.captureImages}
                   onChange={(event) => updateChannel(channels, index, { captureImages: event.currentTarget.checked }, onChange)}
                 />
                 {channel.captureImages ? (
                   <TextInput
-                    label="Capture image to aliases"
-                    description="Comma separated target channel aliases for generated image links"
+                    label="Capture media to aliases"
+                    description="Comma separated target channel aliases for generated media links"
                     value={(channel.captureImageToAliases ?? []).join(', ')}
                     onChange={(event) => updateChannel(
                       channels,
