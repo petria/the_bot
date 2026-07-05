@@ -29,8 +29,67 @@ class MediaStoreTest {
         .get()
         .satisfies(result -> {
           assertThat(result.record().getContentType()).isEqualTo("image/png");
+          assertThat(result.record().getShortCode()).isEqualTo(created.shortCode());
           assertThat(result.record().getSourceProtocol()).isEqualTo("discord");
           assertThat(result.file()).exists();
+        });
+    assertThat(created.shortCode()).matches("[a-zA-Z0-9]{5}");
+  }
+
+  @Test
+  void readsMediaWithShortCode() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "image/png",
+        "test.png",
+        Duration.ofDays(1),
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getId()).isEqualTo(created.id());
+          assertThat(result.file()).exists();
+        });
+  }
+
+  @Test
+  void storesAndReadsVideoMedia() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "video/mp4",
+        "test.mp4",
+        Duration.ofDays(1),
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getContentType()).isEqualTo("video/mp4");
+          assertThat(result.file().getFileName().toString()).endsWith(".mp4");
+        });
+  }
+
+  @Test
+  void storesAndReadsAudioMedia() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "audio/ogg; codecs=opus",
+        "test.ogg",
+        Duration.ofDays(1),
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getContentType()).isEqualTo("audio/ogg");
+          assertThat(result.file().getFileName().toString()).endsWith(".ogg");
         });
   }
 

@@ -13,8 +13,13 @@ import org.telegram.telegrambots.meta.api.methods.ActionType;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Audio;
+import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Video;
+import org.telegram.telegrambots.meta.api.objects.VideoNote;
+import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.BotSession;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
@@ -135,11 +140,11 @@ public class TelegramConnection extends BotConnection {
       this.connectionManager = connectionManager;
     }
 
-    private String downloadPhoto(PhotoSize photoSize) {
+    private String resolveFileUrl(String fileId) {
 
       try {
         GetFile getFile = new GetFile();
-        getFile.setFileId(photoSize.getFileId());
+        getFile.setFileId(fileId);
         org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
         String fileUrl = file.getFileUrl(config.getToken());
         log.debug("fileUrl: {}", fileUrl);
@@ -154,28 +159,8 @@ public class TelegramConnection extends BotConnection {
     @Override
     public void onUpdateReceived(Update update) {
 //            log.debug("Telegram update: {}", update);
-      if (update.hasMessage() && update.getMessage().hasPhoto()) {
-        org.telegram.telegrambots.meta.api.objects.Message message = update.getMessage();
-        Channel configuredChannel = resolveConfiguredChannel(update);
-        // Get the photo size with the highest resolution
-        PhotoSize photoSize = message.getPhoto().stream()
-            .max((ps1, ps2) -> Integer.compare(ps1.getWidth(), ps2.getWidth()))
-            .orElse(null);
-        if (photoSize != null) {
-          String photoFile = downloadPhoto(photoSize);
-          if (mediaCaptureService != null) {
-            mediaCaptureService.captureAndSend(
-                connectionManager,
-                configuredChannel,
-                connection,
-                "Telegram",
-                resolveActorName(update),
-                message.getCaption(),
-                photoFile,
-                "image/jpeg",
-                "telegram-photo.jpg");
-          }
-        }
+      if (update.hasMessage()) {
+        captureTelegramMedia(update, update.getMessage());
       }
 
       if (update.hasMessage() && update.getMessage().hasText()) {
@@ -210,6 +195,60 @@ public class TelegramConnection extends BotConnection {
         checkEchoTo(configuredChannel, from, update.getMessage().getText(), user);
       }
 
+    }
+
+    private void captureTelegramMedia(Update update, org.telegram.telegrambots.meta.api.objects.Message message) {
+      if (mediaCaptureService == null) {
+        return;
+      }
+      TelegramMedia media = resolveTelegramMedia(message);
+      if (media == null) {
+        return;
+      }
+      mediaCaptureService.captureAndSend(
+          connectionManager,
+          resolveConfiguredChannel(update),
+          connection,
+          "Telegram",
+          resolveActorName(update),
+          message.getCaption(),
+          resolveFileUrl(media.fileId()),
+          media.contentType(),
+          media.fileName());
+    }
+
+    private TelegramMedia resolveTelegramMedia(org.telegram.telegrambots.meta.api.objects.Message message) {
+      if (message.hasPhoto()) {
+        PhotoSize photoSize = message.getPhoto().stream()
+            .max((ps1, ps2) -> Integer.compare(ps1.getWidth(), ps2.getWidth()))
+            .orElse(null);
+        return photoSize == null ? null : new TelegramMedia(photoSize.getFileId(), "image/jpeg", "telegram-photo.jpg");
+      }
+      if (message.hasVideo()) {
+        Video video = message.getVideo();
+        return new TelegramMedia(video.getFileId(), firstNonBlank(video.getMimeType(), "video/mp4"), firstNonBlank(video.getFileName(), "telegram-video.mp4"));
+      }
+      if (message.hasAudio()) {
+        Audio audio = message.getAudio();
+        return new TelegramMedia(audio.getFileId(), firstNonBlank(audio.getMimeType(), "audio/mpeg"), firstNonBlank(audio.getFileName(), "telegram-audio.mp3"));
+      }
+      if (message.hasVoice()) {
+        Voice voice = message.getVoice();
+        return new TelegramMedia(voice.getFileId(), firstNonBlank(voice.getMimeType(), "audio/ogg"), "telegram-voice.ogg");
+      }
+      if (message.hasVideoNote()) {
+        VideoNote videoNote = message.getVideoNote();
+        return new TelegramMedia(videoNote.getFileId(), "video/mp4", "telegram-video-note.mp4");
+      }
+      if (message.hasDocument()) {
+        Document document = message.getDocument();
+        return new TelegramMedia(document.getFileId(), document.getMimeType(), document.getFileName());
+      }
+      return null;
+    }
+
+    private String firstNonBlank(String first, String second) {
+      return first == null || first.isBlank() ? second : first;
     }
 
     private void markTelegramUserSeen(String echoToAlias, Update update) {
@@ -292,6 +331,9 @@ public class TelegramConnection extends BotConnection {
         channel.setConfigured(true);
         this.connectionManager.updateJoinedChannelsMap(BotConnectionType.TELEGRAM_CONNECTION, this.connection, channel);
       });
+    }
+
+    private record TelegramMedia(String fileId, String contentType, String fileName) {
     }
   }
 

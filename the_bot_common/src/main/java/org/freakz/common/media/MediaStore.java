@@ -19,6 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 public class MediaStore {
 
+  private static final char[] SHORT_CODE_ALPHABET = "23456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray();
+  private static final int SHORT_CODE_LENGTH = 5;
+  private static final int MAX_SHORT_CODE_ATTEMPTS = 32;
   private static final SecureRandomHolder RANDOM = new SecureRandomHolder();
 
   private final Path mediaDir;
@@ -58,6 +61,7 @@ public class MediaStore {
 
     String id = UUID.randomUUID().toString();
     String token = createToken();
+    String shortCode = createUniqueShortCode();
     String fileName = id + extensionFor(normalizedContentType);
     Instant createdAt = Instant.now(clock);
     Instant expiresAt = createdAt.plus(ttl);
@@ -69,8 +73,9 @@ public class MediaStore {
     MediaStoreRecord record = new MediaStoreRecord(
         id,
         tokenHash(token),
+        shortCode,
         normalizedContentType,
-        safeOriginalFileName(originalFileName),
+        safeOriginalFileName(originalFileName, normalizedContentType),
         fileName,
         bytes.length,
         createdAt,
@@ -81,7 +86,7 @@ public class MediaStore {
         source == null ? null : source.channelName(),
         source == null ? null : source.sender());
     writeRecord(record);
-    return new MediaStoreCreated(id, token, normalizedContentType, record.getOriginalFileName(), bytes.length, expiresAt);
+    return new MediaStoreCreated(id, token, shortCode, normalizedContentType, record.getOriginalFileName(), bytes.length, expiresAt);
   }
 
   public Optional<MediaStoreReadResult> readPublic(String id, String token) throws IOException {
@@ -106,6 +111,36 @@ public class MediaStore {
       return Optional.empty();
     }
     return Optional.of(new MediaStoreReadResult(media, file));
+  }
+
+  public Optional<MediaStoreReadResult> readPublicByShortCode(String shortCode) throws IOException {
+    String normalizedCode = normalizeShortCode(shortCode);
+    if (normalizedCode == null || !Files.isDirectory(metadataDir)) {
+      return Optional.empty();
+    }
+    try (var paths = Files.list(metadataDir)) {
+      for (Path path : paths.filter(path -> path.getFileName().toString().endsWith(".json")).toList()) {
+        try {
+          MediaStoreRecord media = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
+          if (!normalizedCode.equals(media.getShortCode())) {
+            continue;
+          }
+          if (isExpired(media)) {
+            deleteQuietly(path);
+            deleteQuietly(fileDir.resolve(media.getFileName()));
+            return Optional.empty();
+          }
+          Path file = fileDir.resolve(media.getFileName());
+          if (!Files.isRegularFile(file)) {
+            return Optional.empty();
+          }
+          return Optional.of(new MediaStoreReadResult(media, file));
+        } catch (Exception ignored) {
+          // Keep unreadable metadata for manual inspection.
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   public void cleanupExpired() throws IOException {
@@ -142,6 +177,12 @@ public class MediaStore {
     if (value.equals("image/jpeg") || value.equals("image/png") || value.equals("image/gif") || value.equals("image/webp")) {
       return value;
     }
+    if (value.equals("video/mp4") || value.equals("video/webm") || value.equals("video/quicktime")) {
+      return value;
+    }
+    if (value.equals("audio/mpeg") || value.equals("audio/mp4") || value.equals("audio/ogg") || value.equals("audio/opus") || value.equals("audio/wav") || value.equals("audio/webm")) {
+      return value;
+    }
     String fileName = originalFileName == null ? "" : originalFileName.toLowerCase();
     if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
       return "image/jpeg";
@@ -155,7 +196,48 @@ public class MediaStore {
     if (fileName.endsWith(".webp")) {
       return "image/webp";
     }
+    if (fileName.endsWith(".mp4") || fileName.endsWith(".m4v")) {
+      return "video/mp4";
+    }
+    if (fileName.endsWith(".webm")) {
+      return "video/webm";
+    }
+    if (fileName.endsWith(".mov")) {
+      return "video/quicktime";
+    }
+    if (fileName.endsWith(".mp3")) {
+      return "audio/mpeg";
+    }
+    if (fileName.endsWith(".m4a")) {
+      return "audio/mp4";
+    }
+    if (fileName.endsWith(".ogg")) {
+      return "audio/ogg";
+    }
+    if (fileName.endsWith(".opus")) {
+      return "audio/opus";
+    }
+    if (fileName.endsWith(".wav")) {
+      return "audio/wav";
+    }
     return null;
+  }
+
+  public static String mediaTypeLabel(String contentType) {
+    String normalized = normalizeContentType(contentType, null);
+    if (normalized == null) {
+      return "media";
+    }
+    if (normalized.startsWith("image/")) {
+      return "image";
+    }
+    if (normalized.startsWith("video/")) {
+      return "video";
+    }
+    if (normalized.startsWith("audio/")) {
+      return "audio";
+    }
+    return "media";
   }
 
   private Optional<MediaStoreRecord> readRecord(String id) throws IOException {
@@ -174,6 +256,51 @@ public class MediaStore {
     Files.move(tempFile, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
+  private String createUniqueShortCode() throws IOException {
+    for (int attempt = 0; attempt < MAX_SHORT_CODE_ATTEMPTS; attempt++) {
+      String code = createShortCode();
+      if (!shortCodeExists(code)) {
+        return code;
+      }
+    }
+    throw new IOException("Unable to allocate unique media short code");
+  }
+
+  private String createShortCode() {
+    StringBuilder code = new StringBuilder(SHORT_CODE_LENGTH);
+    for (int i = 0; i < SHORT_CODE_LENGTH; i++) {
+      code.append(SHORT_CODE_ALPHABET[RANDOM.nextInt(SHORT_CODE_ALPHABET.length)]);
+    }
+    return code.toString();
+  }
+
+  private boolean shortCodeExists(String shortCode) throws IOException {
+    if (!Files.isDirectory(metadataDir)) {
+      return false;
+    }
+    try (var paths = Files.list(metadataDir)) {
+      for (Path path : paths.filter(path -> path.getFileName().toString().endsWith(".json")).toList()) {
+        try {
+          MediaStoreRecord media = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
+          if (shortCode.equals(media.getShortCode())) {
+            return true;
+          }
+        } catch (Exception ignored) {
+          // Keep unreadable metadata for manual inspection.
+        }
+      }
+    }
+    return false;
+  }
+
+  private String normalizeShortCode(String shortCode) {
+    if (shortCode == null || shortCode.isBlank()) {
+      return null;
+    }
+    String normalized = shortCode.trim();
+    return normalized.matches("[a-zA-Z0-9]+") ? normalized : null;
+  }
+
   private Path recordPath(String id) {
     String safeId = id.replaceAll("[^a-zA-Z0-9-]", "");
     return metadataDir.resolve(safeId + ".json");
@@ -190,9 +317,9 @@ public class MediaStore {
     }
   }
 
-  private String safeOriginalFileName(String value) {
+  private String safeOriginalFileName(String value, String contentType) {
     if (value == null || value.isBlank()) {
-      return "image" + extensionFor("image/jpeg");
+      return "media" + extensionFor(contentType);
     }
     return value.trim().replaceAll("[\\r\\n\\\\/]", "_");
   }
@@ -202,6 +329,15 @@ public class MediaStore {
       case "image/png" -> ".png";
       case "image/gif" -> ".gif";
       case "image/webp" -> ".webp";
+      case "video/mp4" -> ".mp4";
+      case "video/webm" -> ".webm";
+      case "video/quicktime" -> ".mov";
+      case "audio/mpeg" -> ".mp3";
+      case "audio/mp4" -> ".m4a";
+      case "audio/ogg" -> ".ogg";
+      case "audio/opus" -> ".opus";
+      case "audio/wav" -> ".wav";
+      case "audio/webm" -> ".webm";
       default -> ".jpg";
     };
   }
@@ -233,6 +369,10 @@ public class MediaStore {
 
     void nextBytes(byte[] bytes) {
       secureRandom.nextBytes(bytes);
+    }
+
+    int nextInt(int bound) {
+      return secureRandom.nextInt(bound);
     }
   }
 }

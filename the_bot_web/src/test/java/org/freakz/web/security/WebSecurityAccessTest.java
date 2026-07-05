@@ -35,6 +35,7 @@ class WebSecurityAccessTest {
   void publicGeneratedPagesDoNotRequireLogin() throws Exception {
     mockMvc.perform(get("/generated/test")).andExpect(status().isOk());
     mockMvc.perform(get("/api/web/generated-pages/test")).andExpect(status().isOk());
+    mockMvc.perform(get("/m/test")).andExpect(status().isOk());
   }
 
   @Test
@@ -73,6 +74,11 @@ class WebSecurityAccessTest {
 
     @GetMapping("/api/web/generated-pages/test")
     String generatedApi() {
+      return "ok";
+    }
+
+    @GetMapping("/m/test")
+    String shortMedia() {
       return "ok";
     }
 

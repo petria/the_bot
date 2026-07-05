@@ -34,14 +34,23 @@ public class MediaController {
   public ResponseEntity<FileSystemResource> getMedia(
       @PathVariable String id,
       @RequestParam String token) {
+    return mediaResponse(settings -> new MediaStore(Path.of(settings.storageDir()), jsonMapper).readPublic(id, token)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+  }
+
+  @GetMapping("/m/{code}")
+  public ResponseEntity<FileSystemResource> getShortMedia(@PathVariable String code) {
+    return mediaResponse(settings -> new MediaStore(Path.of(settings.storageDir()), jsonMapper).readPublicByShortCode(code)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+  }
+
+  private ResponseEntity<FileSystemResource> mediaResponse(MediaReader reader) {
     try {
       MediaStorageSettingsResponse settings = engineClient.getMediaStorageSettings().getBody();
       if (settings == null || !Boolean.TRUE.equals(settings.enabled())) {
         throw new ResponseStatusException(HttpStatus.NOT_FOUND);
       }
-      MediaStore store = new MediaStore(Path.of(settings.storageDir()), jsonMapper);
-      MediaStoreReadResult result = store.readPublic(id, token)
-          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+      MediaStoreReadResult result = reader.read(settings);
       return ResponseEntity.ok()
           .contentType(MediaType.parseMediaType(result.record().getContentType()))
           .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + result.record().getOriginalFileName() + "\"")
@@ -52,5 +61,10 @@ public class MediaController {
     } catch (Exception e) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     }
+  }
+
+  @FunctionalInterface
+  private interface MediaReader {
+    MediaStoreReadResult read(MediaStorageSettingsResponse settings) throws Exception;
   }
 }
