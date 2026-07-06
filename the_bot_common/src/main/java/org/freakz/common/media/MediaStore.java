@@ -10,6 +10,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
@@ -159,6 +161,41 @@ public class MediaStore {
           // Keep unreadable metadata for manual inspection.
         }
       }
+    }
+  }
+
+  public List<MediaStoreListItem> listActive() throws IOException {
+    cleanupExpired();
+    if (!Files.isDirectory(metadataDir)) {
+      return List.of();
+    }
+    try (var paths = Files.list(metadataDir)) {
+      return paths
+          .filter(path -> path.getFileName().toString().endsWith(".json"))
+          .map(this::readListItem)
+          .flatMap(Optional::stream)
+          .sorted(Comparator
+              .comparing(MediaStoreListItem::createdAt, Comparator.nullsLast(Comparator.reverseOrder()))
+              .thenComparing(MediaStoreListItem::id, Comparator.nullsLast(Comparator.naturalOrder())))
+          .toList();
+    }
+  }
+
+  private Optional<MediaStoreListItem> readListItem(Path path) {
+    try {
+      MediaStoreRecord record = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
+      if (isExpired(record)) {
+        deleteQuietly(path);
+        deleteQuietly(fileDir.resolve(record.getFileName()));
+        return Optional.empty();
+      }
+      if (!Files.isRegularFile(fileDir.resolve(record.getFileName()))) {
+        return Optional.empty();
+      }
+      return Optional.of(MediaStoreListItem.fromRecord(record));
+    } catch (Exception ignored) {
+      // Keep unreadable metadata for manual inspection.
+      return Optional.empty();
     }
   }
 
