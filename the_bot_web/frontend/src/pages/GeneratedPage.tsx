@@ -539,10 +539,16 @@ function InfoValue({ label, value }: { label: string; value: string }) {
 
 function GeneratedPageError({ error, message }: { error?: Error; message?: string }) {
   const apiError = error instanceof ApiError ? error : null;
+  const displayMessage = apiError?.status === 404
+      ? 'Link not found or expired'
+      : message || apiError?.message || 'Could not load generated page.';
   return (
     <Alert color="red" icon={<AlertCircle size={18} />}>
-      <Text fw={700}>{message || apiError?.message || 'Could not load generated page.'}</Text>
-      {apiError?.detail ? <Text size="sm" mt={4}>{apiError.detail}</Text> : null}
+      <Text fw={700}>{displayMessage}</Text>
+      {apiError?.status === 404 ? (
+        <Text size="sm" mt={4}>The shared bot page does not exist, has expired, or is no longer available.</Text>
+      ) : null}
+      {apiError?.status !== 404 && apiError?.detail ? <Text size="sm" mt={4}>{apiError.detail}</Text> : null}
     </Alert>
   );
 }
