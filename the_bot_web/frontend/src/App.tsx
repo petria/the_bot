@@ -19,6 +19,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { GeneratedPage } from './pages/GeneratedPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { LiveChannelsPage } from './pages/LiveChannelsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
 import { SystemPage } from './pages/SystemPage';
@@ -179,6 +180,7 @@ function AuthenticatedApp() {
             <Route path="/admin/media-storage" element={<RequireWebAdmin allowed={webAdmin}><AdminMediaStoragePage /></RequireWebAdmin>} />
             <Route path="/admin/ai-commands" element={<RequireWebAdmin allowed={webAdmin}><AdminAiCommandsPage /></RequireWebAdmin>} />
             <Route path="/admin/system" element={<RequireWebAdmin allowed={webAdmin}><AdminSystemPage /></RequireWebAdmin>} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Box>
       </AppShell.Main>

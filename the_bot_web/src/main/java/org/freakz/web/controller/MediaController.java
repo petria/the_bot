@@ -9,14 +9,12 @@ import org.freakz.common.spring.rest.RestEngineClient;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
 @RestController
@@ -31,35 +29,36 @@ public class MediaController {
   }
 
   @GetMapping("/media/{id}")
-  public ResponseEntity<FileSystemResource> getMedia(
+  public ResponseEntity<?> getMedia(
       @PathVariable String id,
       @RequestParam String token) {
     return mediaResponse(settings -> new MediaStore(Path.of(settings.storageDir()), jsonMapper).readPublic(id, token)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        .orElse(null));
   }
 
   @GetMapping("/m/{code}")
-  public ResponseEntity<FileSystemResource> getShortMedia(@PathVariable String code) {
+  public ResponseEntity<?> getShortMedia(@PathVariable String code) {
     return mediaResponse(settings -> new MediaStore(Path.of(settings.storageDir()), jsonMapper).readPublicByShortCode(code)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        .orElse(null));
   }
 
-  private ResponseEntity<FileSystemResource> mediaResponse(MediaReader reader) {
+  private ResponseEntity<?> mediaResponse(MediaReader reader) {
     try {
       MediaStorageSettingsResponse settings = engineClient.getMediaStorageSettings().getBody();
       if (settings == null || !Boolean.TRUE.equals(settings.enabled())) {
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return PublicLinkErrorResponse.notFound();
       }
       MediaStoreReadResult result = reader.read(settings);
+      if (result == null) {
+        return PublicLinkErrorResponse.notFound();
+      }
       return ResponseEntity.ok()
           .contentType(MediaType.parseMediaType(result.record().getContentType()))
           .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + result.record().getOriginalFileName() + "\"")
           .cacheControl(CacheControl.noStore())
           .body(new FileSystemResource(result.file()));
-    } catch (ResponseStatusException e) {
-      throw e;
     } catch (Exception e) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+      return PublicLinkErrorResponse.notFound();
     }
   }
 
