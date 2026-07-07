@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -82,8 +83,11 @@ public class AdminConnectionConfigService {
   }
 
   public synchronized AdminConnectionConfigApplyResponse saveAndApplyConfig(AdminConnectionConfigPayload payload) {
+    AdminConnectionConfigPayload current = readConfig().config();
     AdminConnectionConfigResponse saved = saveConfig(payload);
-    ApplyTargetResult botIoResult = applyBotIo();
+    ApplyTargetResult botIoResult = canApplyBotIoChannelsOnly(current, saved.config())
+        ? applyBotIoChannels()
+        : applyBotIo();
     ApplyTargetResult botEngineResult = reloadBotEngine();
     String status = botIoResult.ok() && botEngineResult.ok() ? "OK" : "PARTIAL";
     return new AdminConnectionConfigApplyResponse(
@@ -120,12 +124,75 @@ public class AdminConnectionConfigService {
         response.getBody());
   }
 
+  private ApplyTargetResult applyBotIoChannels() {
+    ResponseEntity<String> response = serverConfigClient.applyChannelConfig();
+    return new ApplyTargetResult(
+        "bot-io",
+        response.getStatusCode().is2xxSuccessful() ? "OK" : "NOK",
+        response.getBody());
+  }
+
   private ApplyTargetResult reloadBotEngine() {
     ResponseEntity<String> response = engineClient.reloadConfig();
     return new ApplyTargetResult(
         "bot-engine",
         response.getStatusCode().is2xxSuccessful() ? "OK" : "NOK",
         response.getBody());
+  }
+
+  private boolean canApplyBotIoChannelsOnly(
+      AdminConnectionConfigPayload before,
+      AdminConnectionConfigPayload after) {
+    AdminConnectionConfigPayload normalizedBefore = normalizeAndValidate(before);
+    AdminConnectionConfigPayload normalizedAfter = normalizeAndValidate(after);
+    return Objects.equals(structuralPayload(normalizedBefore), structuralPayload(normalizedAfter));
+  }
+
+  private AdminConnectionConfigPayload structuralPayload(AdminConnectionConfigPayload payload) {
+    return new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        payload.ircServerConfigs().stream()
+            .map(config -> new IrcServerConfigDto(
+                config.name(),
+                config.connectStartup(),
+                config.networkName(),
+                config.host(),
+                config.port(),
+                structuralChannels(config.channelList())))
+            .toList(),
+        new DiscordConfigDto(
+            payload.discordConfig().connectStartup(),
+            payload.discordConfig().theBotUserId(),
+            structuralChannels(payload.discordConfig().channelList())),
+        new TelegramConfigDto(
+            payload.telegramConfig().telegramName(),
+            payload.telegramConfig().connectStartup(),
+            structuralChannels(payload.telegramConfig().channelList())),
+        new WhatsAppConfigDto(
+            payload.whatsappConfig().network(),
+            payload.whatsappConfig().sendBaseUrl(),
+            payload.whatsappConfig().connectStartup(),
+            structuralChannels(payload.whatsappConfig().channelList())));
+  }
+
+  private List<ChannelDto> structuralChannels(List<ChannelDto> channels) {
+    return channels.stream()
+        .map(channel -> new ChannelDto(
+            channel.id(),
+            channel.description(),
+            channel.name(),
+            channel.type(),
+            channel.echoToAlias(),
+            channel.echoToAliases(),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            List.of()))
+        .toList();
   }
 
   private ConfigFile resolveConfigFile() throws IOException {

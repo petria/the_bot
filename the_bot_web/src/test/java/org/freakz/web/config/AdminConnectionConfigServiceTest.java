@@ -13,6 +13,7 @@ import org.freakz.web.config.AdminConnectionConfigService.TelegramConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.WhatsAppConfigDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
@@ -197,6 +198,82 @@ class AdminConnectionConfigServiceTest {
   }
 
   @Test
+  void saveAndApplyUsesChannelApplyForChannelToggleChanges() throws Exception {
+    TestFiles files = writeConfig();
+    RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();
+    RecordingEngineClient engineClient = new RecordingEngineClient();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile(), serverConfigClient, engineClient);
+
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    IrcServerConfigDto irc = payload.ircServerConfigs().getFirst();
+    ChannelDto channel = irc.channelList().getFirst();
+    ChannelDto editedChannel = new ChannelDto(
+        channel.id(),
+        channel.description(),
+        channel.name(),
+        channel.type(),
+        channel.echoToAlias(),
+        channel.echoToAliases(),
+        false,
+        !channel.publicAiEnabled(),
+        !channel.allowAnonymousAiCommands(),
+        !channel.resolveUrls(),
+        !channel.alertMessages(),
+        !channel.captureResolvedUrls(),
+        !channel.captureImages(),
+        List.of("IRC-HOKANDEV2"));
+    AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        List.of(new IrcServerConfigDto(
+            irc.name(),
+            irc.connectStartup(),
+            irc.networkName(),
+            irc.host(),
+            irc.port(),
+            List.of(editedChannel))),
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig());
+
+    AdminConnectionConfigService.AdminConnectionConfigApplyResponse response = service.saveAndApplyConfig(edited);
+
+    assertThat(response.status()).isEqualTo("OK");
+    assertThat(serverConfigClient.channelApplyCount).isEqualTo(1);
+    assertThat(serverConfigClient.fullApplyCount).isZero();
+    assertThat(engineClient.reloadCount).isEqualTo(1);
+  }
+
+  @Test
+  void saveAndApplyUsesFullApplyForStructuralConnectionChanges() throws Exception {
+    TestFiles files = writeConfig();
+    RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();
+    RecordingEngineClient engineClient = new RecordingEngineClient();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile(), serverConfigClient, engineClient);
+
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    IrcServerConfigDto irc = payload.ircServerConfigs().getFirst();
+    AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        List.of(new IrcServerConfigDto(
+            irc.name(),
+            irc.connectStartup(),
+            irc.networkName(),
+            "irc.example.invalid",
+            irc.port(),
+            irc.channelList())),
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig());
+
+    AdminConnectionConfigService.AdminConnectionConfigApplyResponse response = service.saveAndApplyConfig(edited);
+
+    assertThat(response.status()).isEqualTo("OK");
+    assertThat(serverConfigClient.fullApplyCount).isEqualTo(1);
+    assertThat(serverConfigClient.channelApplyCount).isZero();
+    assertThat(engineClient.reloadCount).isEqualTo(1);
+  }
+
+  @Test
   void preservesDiscordBotUserIdAsExactString() throws Exception {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
@@ -231,6 +308,16 @@ class AdminConnectionConfigServiceTest {
   }
 
   private AdminConnectionConfigService serviceFor(Path bootstrapFile) {
+    return serviceFor(
+        bootstrapFile,
+        new RestServerConfigClient(new RestTemplate(), "http://bot-io"),
+        new RestEngineClient(new RestTemplate(), "http://bot-engine"));
+  }
+
+  private AdminConnectionConfigService serviceFor(
+      Path bootstrapFile,
+      RestServerConfigClient serverConfigClient,
+      RestEngineClient engineClient) {
     TheBotProperties properties = new TheBotProperties();
     properties.setConfigFile(bootstrapFile.toString());
     properties.setRuntimeDir(tempDir.toString());
@@ -240,8 +327,8 @@ class AdminConnectionConfigServiceTest {
         new MockEnvironment(),
         properties,
         JsonMapper.builder().build(),
-        new RestServerConfigClient(new RestTemplate(), "http://bot-io"),
-        new RestEngineClient(new RestTemplate(), "http://bot-engine"));
+        serverConfigClient,
+        engineClient);
   }
 
   private TestFiles writeConfig() throws Exception {
@@ -323,5 +410,40 @@ class AdminConnectionConfigServiceTest {
   }
 
   private record TestFiles(Path bootstrapFile, Path runtimeConfigFile) {
+  }
+
+  private static class RecordingServerConfigClient extends RestServerConfigClient {
+    private int fullApplyCount;
+    private int channelApplyCount;
+
+    RecordingServerConfigClient() {
+      super(new RestTemplate(), "http://bot-io");
+    }
+
+    @Override
+    public ResponseEntity<String> applyConfig() {
+      fullApplyCount++;
+      return ResponseEntity.ok("full");
+    }
+
+    @Override
+    public ResponseEntity<String> applyChannelConfig() {
+      channelApplyCount++;
+      return ResponseEntity.ok("channels");
+    }
+  }
+
+  private static class RecordingEngineClient extends RestEngineClient {
+    private int reloadCount;
+
+    RecordingEngineClient() {
+      super(new RestTemplate(), "http://bot-engine");
+    }
+
+    @Override
+    public ResponseEntity<String> reloadConfig() {
+      reloadCount++;
+      return ResponseEntity.ok("engine");
+    }
   }
 }

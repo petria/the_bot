@@ -43,6 +43,16 @@ public class RestServerConfigClient {
     }
   }
 
+  public ResponseEntity<String> applyChannelConfig() {
+    String url = baseUrl + "/apply-channels";
+    try {
+      return restTemplate.postForEntity(url, null, String.class);
+    } catch (Exception e) {
+      log.error("Error applying bot-io channel config: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+  }
+
   private String trimTrailingSlash(String value) {
     return value == null ? "" : value.replaceFirst("/+$", "");
   }
