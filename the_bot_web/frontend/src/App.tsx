@@ -21,6 +21,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { GeneratedPage } from './pages/GeneratedPage';
 import { KnownUsersPage } from './pages/KnownUsersPage';
 import { LiveChannelsPage } from './pages/LiveChannelsPage';
+import { LiveMediaPage } from './pages/LiveMediaPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SendPage } from './pages/SendPage';
@@ -40,6 +41,7 @@ const navItems = [
   { label: 'Commands', path: '/commands', icon: ListTree },
   { label: 'Console', path: '/console', icon: Terminal },
   { label: 'Live Channels', path: '/live-channels', icon: MessageSquare },
+  { label: 'Live Media', path: '/live-media', icon: Images },
 ];
 
 const adminNavItems = [
@@ -114,7 +116,8 @@ function AuthenticatedApp() {
   const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
   const webUser = hasPermission(meQuery.data?.permissions, WEB_USER_PERMISSION);
   const liveChannelsAllowed = hasAnyChannelViewPermission(meQuery.data?.permissions);
-  const userNavItems = navItems.filter((item) => item.path !== '/live-channels' || liveChannelsAllowed);
+  const userNavItems = navItems.filter((item) =>
+    (item.path !== '/live-channels' && item.path !== '/live-media') || liveChannelsAllowed);
 
   return (
     <AppShell
@@ -176,6 +179,7 @@ function AuthenticatedApp() {
             <Route path="/commands" element={<RequireWebUser allowed={webUser}><CommandsPage /></RequireWebUser>} />
             <Route path="/console" element={<RequireWebUser allowed={webUser}><ConsolePage /></RequireWebUser>} />
             <Route path="/live-channels" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveChannelsPage /></RequireWebUser>} />
+            <Route path="/live-media" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveMediaPage /></RequireWebUser>} />
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
