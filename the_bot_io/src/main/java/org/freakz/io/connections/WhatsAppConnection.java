@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.botconfig.WhatsAppConfig;
 import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
@@ -50,6 +51,14 @@ public class WhatsAppConnection extends BotConnection {
     this.config = config;
     clearChannels();
     registerConfiguredChannels();
+  }
+
+  @Override
+  public void applyChannelConfig(TheBotConfig theBotConfig) {
+    if (theBotConfig == null || theBotConfig.getWhatsappConfig() == null) {
+      return;
+    }
+    applyConfig(theBotConfig.getWhatsappConfig());
   }
 
   @Override

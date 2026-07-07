@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.TelegramConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.users.User;
@@ -114,6 +115,14 @@ public class TelegramConnection extends BotConnection {
   }
 
   @Override
+  public void applyChannelConfig(TheBotConfig theBotConfig) {
+    if (theBotConfig == null || theBotConfig.getTelegramConfig() == null || bot == null) {
+      return;
+    }
+    bot.applyConfig(theBotConfig.getTelegramConfig());
+  }
+
+  @Override
   public String getNetwork() {
     return "TelegramNetwork";
   }
@@ -124,7 +133,7 @@ public class TelegramConnection extends BotConnection {
     private final EventPublisher publisher;
     private final MediaCaptureService mediaCaptureService;
     private final BotConnection connection;
-    private final TelegramConfig config;
+    private TelegramConfig config;
     private final String commandBotName;
 
     private final ConnectionManager connectionManager;
@@ -138,6 +147,12 @@ public class TelegramConnection extends BotConnection {
       this.connection = connection;
       this.config = config;
       this.connectionManager = connectionManager;
+    }
+
+    void applyConfig(TelegramConfig config) {
+      this.config = config;
+      this.connection.clearChannels();
+      registerConfiguredChannels();
     }
 
     private String resolveFileUrl(String fileId) {
@@ -321,6 +336,13 @@ public class TelegramConnection extends BotConnection {
     @Override
     public void onRegister() {
       log.debug("Telegram onRegister() !!");
+      registerConfiguredChannels();
+    }
+
+    private void registerConfiguredChannels() {
+      if (config == null || config.getChannelList() == null) {
+        return;
+      }
       config.getChannelList().forEach(ch -> {
         BotConnectionChannel channel = new BotConnectionChannel();
         channel.setId(ch.getId());

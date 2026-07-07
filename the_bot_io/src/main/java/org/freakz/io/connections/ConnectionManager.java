@@ -99,6 +99,25 @@ public class ConnectionManager implements CommandLineRunner {
     connection.clearChannels();
   }
 
+  public void removeJoinedChannelForConnection(String echoToAlias, BotConnection connection) {
+    String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
+    if (normalizedEchoToAlias == null || connection == null) {
+      return;
+    }
+    JoinedChannelContainer container = joinedChannelsMap.get(normalizedEchoToAlias);
+    if (container != null && container.connection == connection) {
+      joinedChannelsMap.remove(normalizedEchoToAlias);
+      knownChannelsByAlias.remove(normalizedEchoToAlias);
+      knownUsersByUserAndChannel.entrySet().removeIf(entry -> {
+        KnownUserPresence presence = entry.getValue();
+        return presence != null
+            && presence.connectionId == connection.getId()
+            && normalizedEchoToAlias.equals(normalizeEchoToAlias(presence.echoToAlias));
+      });
+      connection.removeChannel(echoToAlias);
+    }
+  }
+
   public void removeConfiguredIrcJoinedChannels(IrcServerConnection connection) {
     IrcServerConfig config = connection.getConfig();
     if (config == null || config.getChannelList() == null) {
@@ -798,6 +817,33 @@ public class ConnectionManager implements CommandLineRunner {
     }
   }
 
+  public synchronized ApplyConfigResponse applyRuntimeChannelConfig() {
+    AtomicInteger updated = new AtomicInteger();
+    try {
+      configService.reloadConfig();
+      TheBotConfig theBotConfig = configService.readBotConfig();
+      for (BotConnection connection : new ArrayList<>(connectionMap.values())) {
+        try {
+          connection.applyChannelConfig(theBotConfig);
+          updated.incrementAndGet();
+        } catch (RuntimeException e) {
+          log.warn("Applying channel config to connection {} failed", connection.getId(), e);
+        }
+      }
+      return new ApplyConfigResponse(
+          "OK",
+          "Applied runtime channel config without rebuilding bot-io connections",
+          0,
+          connectionMap.size());
+    } catch (Exception e) {
+      log.error("Applying runtime channel config failed", e);
+      return new ApplyConfigResponse(
+          "NOK",
+          e.getMessage(),
+          updated.get(),
+          connectionMap.size());
+    }
+  }
 
   public void reconnectIrcServer(IrcServerConfig config) {
     log.debug("Reconnecting IRC: {}", config);

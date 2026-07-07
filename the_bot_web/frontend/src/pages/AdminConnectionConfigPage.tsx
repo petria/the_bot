@@ -47,6 +47,7 @@ const emptyChannel: AdminConfigChannel = {
   allowAnonymousAiCommands: false,
   resolveUrls: false,
   alertMessages: false,
+  captureResolvedUrls: false,
   captureImages: false,
   captureImageToAliases: [],
 };
@@ -529,6 +530,11 @@ function ChannelsEditor({
               label="Alert messages"
               checked={channel.alertMessages}
               onChange={(event) => updateChannel(channels, index, { alertMessages: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Capture resolved URLs"
+              checked={channel.captureResolvedUrls}
+              onChange={(event) => updateChannel(channels, index, { captureResolvedUrls: event.currentTarget.checked }, onChange)}
             />
             {allowImageCapture ? (
               <>

@@ -16,6 +16,7 @@ public class Channel {
   private Boolean allowAnonymousAiCommands;
   private Boolean resolveUrls;
   private Boolean alertMessages;
+  private Boolean captureResolvedUrls;
   private Boolean captureImages;
   private List<String> captureImageToAliases;
 
@@ -39,6 +40,10 @@ public class Channel {
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls, Boolean alertMessages, Boolean captureImages, List<String> captureImageToAliases) {
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, null, captureImages, captureImageToAliases);
+  }
+
+  public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls, Boolean alertMessages, Boolean captureResolvedUrls, Boolean captureImages, List<String> captureImageToAliases) {
     this.id = id;
     this.description = description;
     this.name = name;
@@ -50,6 +55,7 @@ public class Channel {
     this.allowAnonymousAiCommands = allowAnonymousAiCommands;
     this.resolveUrls = resolveUrls;
     this.alertMessages = alertMessages;
+    this.captureResolvedUrls = captureResolvedUrls;
     this.captureImages = captureImages;
     this.captureImageToAliases = captureImageToAliases;
   }
@@ -146,6 +152,14 @@ public class Channel {
     this.alertMessages = alertMessages;
   }
 
+  public Boolean getCaptureResolvedUrls() {
+    return captureResolvedUrls;
+  }
+
+  public void setCaptureResolvedUrls(Boolean captureResolvedUrls) {
+    this.captureResolvedUrls = captureResolvedUrls;
+  }
+
   public Boolean getCaptureImages() {
     return captureImages;
   }
@@ -167,12 +181,12 @@ public class Channel {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Channel channel = (Channel) o;
-    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(alertMessages, channel.alertMessages) && Objects.equals(captureImages, channel.captureImages) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases) && Objects.equals(captureImageToAliases, channel.captureImageToAliases);
+    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(alertMessages, channel.alertMessages) && Objects.equals(captureResolvedUrls, channel.captureResolvedUrls) && Objects.equals(captureImages, channel.captureImages) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases) && Objects.equals(captureImageToAliases, channel.captureImageToAliases);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureImages, captureImageToAliases);
+    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases);
   }
 
   @Override
@@ -189,6 +203,7 @@ public class Channel {
         ", allowAnonymousAiCommands=" + allowAnonymousAiCommands +
         ", resolveUrls=" + resolveUrls +
         ", alertMessages=" + alertMessages +
+        ", captureResolvedUrls=" + captureResolvedUrls +
         ", captureImages=" + captureImages +
         ", captureImageToAliases=" + captureImageToAliases +
         '}';
@@ -206,6 +221,7 @@ public class Channel {
     private Boolean allowAnonymousAiCommands;
     private Boolean resolveUrls;
     private Boolean alertMessages;
+    private Boolean captureResolvedUrls;
     private Boolean captureImages;
     private List<String> captureImageToAliases;
 
@@ -264,6 +280,11 @@ public class Channel {
       return this;
     }
 
+    public Builder captureResolvedUrls(Boolean captureResolvedUrls) {
+      this.captureResolvedUrls = captureResolvedUrls;
+      return this;
+    }
+
     public Builder captureImages(Boolean captureImages) {
       this.captureImages = captureImages;
       return this;
@@ -275,7 +296,7 @@ public class Channel {
     }
 
     public Channel build() {
-      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureImages, captureImageToAliases);
+      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases);
     }
   }
 }

@@ -52,4 +52,13 @@ public class ServerConfig {
     return ResponseEntity.internalServerError().body(response);
   }
 
+  @PostMapping("/apply-channels")
+  ResponseEntity<?> applyChannelConfig() {
+    ConnectionManager.ApplyConfigResponse response = connectionManager.applyRuntimeChannelConfig();
+    if ("OK".equals(response.status())) {
+      return ResponseEntity.ok(response);
+    }
+    return ResponseEntity.internalServerError().body(response);
+  }
+
 }

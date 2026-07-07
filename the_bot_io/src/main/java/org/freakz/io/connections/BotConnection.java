@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 
 import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.feed.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,10 @@ public class BotConnection {
 
   public void stop() {
     log.debug("stop() not implemented: {}", this.getClass());
+  }
+
+  public void applyChannelConfig(TheBotConfig config) {
+    log.debug("applyChannelConfig() not implemented: {}", this.getClass());
   }
 
   public String getNetwork() {

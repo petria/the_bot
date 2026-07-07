@@ -132,6 +132,7 @@ export function ConnectionsPage() {
                   allowAnonymousAiCommands: false,
                   resolveUrls: false,
                   alertMessages: false,
+                  captureResolvedUrls: false,
                   captureImages: false,
                   captureImageToAliases: [],
                 },

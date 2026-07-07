@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.model.botconfig.DiscordConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.javacord.api.DiscordApi;
@@ -80,6 +81,21 @@ public class DiscordServerConnection extends BotConnection {
   public void stop() {
     if (api != null) {
       api.disconnect();
+    }
+  }
+
+  @Override
+  public void applyChannelConfig(TheBotConfig theBotConfig) {
+    if (theBotConfig == null || theBotConfig.getDiscordConfig() == null) {
+      return;
+    }
+    this.config = theBotConfig.getDiscordConfig();
+    if (api != null) {
+      try {
+        updateChannelMap(api);
+      } catch (BotIOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 

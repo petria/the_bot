@@ -4,6 +4,7 @@ import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
@@ -26,7 +27,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.SortedSet;
@@ -283,6 +286,28 @@ public class IrcServerConnection extends BotConnection {
     }
   }
 
+  @Override
+  public synchronized void applyChannelConfig(TheBotConfig theBotConfig) {
+    if (theBotConfig == null || theBotConfig.getIrcServerConfigs() == null || config == null) {
+      return;
+    }
+    for (IrcServerConfig candidate : theBotConfig.getIrcServerConfigs()) {
+      if (same(candidate.getName(), config.getName())) {
+        applyConfig(candidate);
+        return;
+      }
+    }
+  }
+
+  public synchronized void applyConfig(IrcServerConfig newConfig) {
+    if (newConfig == null) {
+      return;
+    }
+    IrcServerConfig oldConfig = this.config;
+    this.config = newConfig;
+    applyJoinOnStartChanges(oldConfig, newConfig);
+  }
+
   public void init(ConnectionManager connectionManager, String botNick, String ircRealName, IrcServerConfig config) {
     this.connectionManager = connectionManager;
     this.config = config;
@@ -327,6 +352,72 @@ public class IrcServerConnection extends BotConnection {
           }
         }
     );
+  }
+
+  private void applyJoinOnStartChanges(IrcServerConfig oldConfig, IrcServerConfig newConfig) {
+    Map<String, org.freakz.common.model.botconfig.Channel> oldByName = channelsByName(oldConfig);
+    Map<String, org.freakz.common.model.botconfig.Channel> newByName = channelsByName(newConfig);
+
+    for (org.freakz.common.model.botconfig.Channel oldChannel : oldByName.values()) {
+      org.freakz.common.model.botconfig.Channel newChannel = newByName.get(normalizeChannelName(oldChannel.getName()));
+      if (oldChannel.isJoinOnStart() && (newChannel == null || !newChannel.isJoinOnStart())) {
+        partChannel(oldChannel);
+      }
+    }
+
+    for (org.freakz.common.model.botconfig.Channel newChannel : newByName.values()) {
+      org.freakz.common.model.botconfig.Channel oldChannel = oldByName.get(normalizeChannelName(newChannel.getName()));
+      if (newChannel.isJoinOnStart() && (oldChannel == null || !oldChannel.isJoinOnStart())) {
+        joinChannel(newChannel);
+      }
+    }
+  }
+
+  private Map<String, org.freakz.common.model.botconfig.Channel> channelsByName(IrcServerConfig config) {
+    Map<String, org.freakz.common.model.botconfig.Channel> channels = new HashMap<>();
+    if (config == null || config.getChannelList() == null) {
+      return channels;
+    }
+    for (org.freakz.common.model.botconfig.Channel channel : config.getChannelList()) {
+      String key = normalizeChannelName(channel.getName());
+      if (key != null) {
+        channels.put(key, channel);
+      }
+    }
+    return channels;
+  }
+
+  private void joinChannel(org.freakz.common.model.botconfig.Channel channel) {
+    if (client == null || channel == null || channel.getName() == null || channel.getName().isBlank()) {
+      return;
+    }
+    log.debug("Hot-joining IRC channel after config apply: {}", channel.getName());
+    client.addChannel(channel.getName());
+  }
+
+  private void partChannel(org.freakz.common.model.botconfig.Channel channel) {
+    if (client == null || channel == null || channel.getName() == null || channel.getName().isBlank()) {
+      return;
+    }
+    log.debug("Hot-parting IRC channel after config apply: {}", channel.getName());
+    client.removeChannel(channel.getName(), "configuration updated");
+    if (connectionManager != null) {
+      connectionManager.removeJoinedChannelForConnection(channel.getEchoToAlias(), this);
+    }
+  }
+
+  private String normalizeChannelName(String channelName) {
+    if (channelName == null || channelName.isBlank()) {
+      return null;
+    }
+    return channelName.trim().toLowerCase();
+  }
+
+  private boolean same(String left, String right) {
+    if (left == null || right == null) {
+      return left == right;
+    }
+    return left.equalsIgnoreCase(right);
   }
 
   @Override

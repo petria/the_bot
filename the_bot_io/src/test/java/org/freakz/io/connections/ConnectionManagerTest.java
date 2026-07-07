@@ -1,5 +1,6 @@
 package org.freakz.io.connections;
 
+import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.KnownChatChannelResponse;
 import org.freakz.common.model.connectionmanager.KnownChatUserResponse;
@@ -9,9 +10,11 @@ import org.freakz.common.model.connectionmanager.SendMessageToKnownUserResponse;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.io.config.ConfigService;
 import org.junit.jupiter.api.Test;
 
 import org.freakz.common.model.feed.Message;
+import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -695,6 +698,22 @@ class ConnectionManagerTest {
     assertThat(whatsappConnection.text).isEqualTo("pOnG");
   }
 
+  @Test
+  void runtimeChannelApplyDispatchesConfigWithoutStoppingConnections() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    RecordingConfigService configService = new RecordingConfigService(TheBotConfig.builder().build());
+    RecordingApplyConnection connection = new RecordingApplyConnection();
+    setField(connectionManager, "configService", configService);
+    connectionManager.addConnection(connection);
+
+    ConnectionManager.ApplyConfigResponse response = connectionManager.applyRuntimeChannelConfig();
+
+    assertThat(response.status()).isEqualTo("OK");
+    assertThat(configService.reloadCount).isEqualTo(1);
+    assertThat(connection.applyCount).isEqualTo(1);
+    assertThat(connection.stopCount).isZero();
+  }
+
   private static class CapturingBotConnection extends BotConnection {
     private Message lastMessage;
     private final String network;
@@ -716,6 +735,50 @@ class ConnectionManagerTest {
     @Override
     public void sendMessageTo(Message message) {
       this.lastMessage = message;
+    }
+  }
+
+  private static void setField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
+
+  private static class RecordingConfigService extends ConfigService {
+    private final TheBotConfig config;
+    private int reloadCount;
+
+    RecordingConfigService(TheBotConfig config) {
+      this.config = config;
+    }
+
+    @Override
+    public void reloadConfig() {
+      reloadCount++;
+    }
+
+    @Override
+    public TheBotConfig readBotConfig() {
+      return config;
+    }
+  }
+
+  private static class RecordingApplyConnection extends BotConnection {
+    private int applyCount;
+    private int stopCount;
+
+    RecordingApplyConnection() {
+      super(BotConnectionType.IRC_CONNECTION);
+    }
+
+    @Override
+    public void applyChannelConfig(TheBotConfig config) {
+      applyCount++;
+    }
+
+    @Override
+    public void stop() {
+      stopCount++;
     }
   }
 
