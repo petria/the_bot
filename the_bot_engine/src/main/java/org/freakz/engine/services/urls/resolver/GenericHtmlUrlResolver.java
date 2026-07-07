@@ -80,6 +80,7 @@ public class GenericHtmlUrlResolver implements UrlResolver {
           .timeout(properties.getConnectTimeoutMillis() + properties.getReadTimeoutMillis())
           .maxBodySize(properties.getMaxResponseBytes())
           .followRedirects(false)
+          .ignoreContentType(true)
           .ignoreHttpErrors(true)
           .execute();
 
