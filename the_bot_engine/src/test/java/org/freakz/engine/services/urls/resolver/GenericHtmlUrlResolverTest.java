@@ -65,4 +65,42 @@ class GenericHtmlUrlResolverTest {
       assertThat(resolution.author()).isEqualTo("Author");
     });
   }
+
+  @Test
+  void followsRedirectWithNonHtmlContentType() throws IOException {
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/redirect", exchange -> {
+      exchange.getResponseHeaders().set("Content-Type", "application/binary");
+      exchange.getResponseHeaders().set("Location", "/target");
+      exchange.sendResponseHeaders(302, -1);
+      exchange.close();
+    });
+    server.createContext("/target", exchange -> {
+      byte[] body = """
+          <html>
+            <head>
+              <title>Redirect target</title>
+              <meta property="og:site_name" content="Redirect Provider">
+            </head>
+          </html>
+          """.getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+      exchange.sendResponseHeaders(200, body.length);
+      exchange.getResponseBody().write(body);
+      exchange.close();
+    });
+    server.start();
+    URI uri = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/redirect");
+    UrlSecurityValidator securityValidator = mock(UrlSecurityValidator.class);
+    when(securityValidator.isAllowed(any())).thenReturn(true);
+    GenericHtmlUrlResolver resolver = new GenericHtmlUrlResolver(
+        new UrlResolverProperties(), securityValidator);
+
+    Optional<UrlResolution> result = resolver.resolve(uri);
+
+    assertThat(result).hasValueSatisfying(resolution -> {
+      assertThat(resolution.provider()).isEqualTo("Redirect Provider");
+      assertThat(resolution.title()).isEqualTo("Redirect target");
+    });
+  }
 }
