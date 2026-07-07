@@ -22,6 +22,8 @@ import { getLiveMedia, type LiveMediaItem } from '../api/liveMedia';
 
 type TypeFilter = 'all' | 'media' | 'url' | 'image' | 'video' | 'audio';
 
+const typeColumnStyle = { width: 132, minWidth: 132 };
+
 export function LiveMediaPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [channelFilter, setChannelFilter] = useState<string | null>('all');
@@ -147,7 +149,7 @@ export function LiveMediaPage() {
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Type</Table.Th>
+                  <Table.Th style={typeColumnStyle}>Type</Table.Th>
                   <Table.Th>Content</Table.Th>
                   <Table.Th>Source</Table.Th>
                   <Table.Th>Sender</Table.Th>
@@ -165,7 +167,7 @@ export function LiveMediaPage() {
                   </Table.Tr>
                 ) : visibleItems.map((item) => (
                   <Table.Tr key={`${item.type}:${item.id}`}>
-                    <Table.Td><TypeCell item={item} /></Table.Td>
+                    <Table.Td style={typeColumnStyle}><TypeCell item={item} /></Table.Td>
                     <Table.Td><ContentCell item={item} /></Table.Td>
                     <Table.Td><SourceCell item={item} /></Table.Td>
                     <Table.Td>{item.sourceSender || '-'}</Table.Td>
@@ -224,7 +226,7 @@ export function LiveMediaPage() {
 function TypeCell({ item }: { item: LiveMediaItem }) {
   if (item.type === 'url') {
     return (
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
         <Link2 size={18} />
         <Badge variant="light">{item.provider || 'Web'}</Badge>
       </Group>
@@ -232,7 +234,7 @@ function TypeCell({ item }: { item: LiveMediaItem }) {
   }
   const Icon = item.mediaType === 'image' ? ImageIcon : item.mediaType === 'video' ? FileVideo : FileAudio;
   return (
-    <Group gap="xs" wrap="nowrap">
+    <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
       <Icon size={18} />
       <Badge variant="light">{item.mediaType || 'media'}</Badge>
     </Group>
