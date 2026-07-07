@@ -12,6 +12,7 @@ export type AdminConfigChannel = {
   allowAnonymousAiCommands: boolean;
   resolveUrls: boolean;
   alertMessages: boolean;
+  captureResolvedUrls: boolean;
   captureImages: boolean;
   captureImageToAliases: string[] | null;
 };

@@ -24,6 +24,7 @@ public class UrlResolutionService {
   private final UrlExtractor urlExtractor;
   private final UrlSecurityValidator securityValidator;
   private final UrlResolutionFormatter formatter;
+  private final UrlArchiveService archiveService;
   private final UrlResolverProperties properties;
   private final List<UrlResolver> resolvers;
   private final Cache<URI, UrlResolution> successCache;
@@ -34,12 +35,14 @@ public class UrlResolutionService {
       UrlExtractor urlExtractor,
       UrlSecurityValidator securityValidator,
       UrlResolutionFormatter formatter,
+      UrlArchiveService archiveService,
       UrlResolverProperties properties,
       List<UrlResolver> resolvers) {
     this.configuredChannelResolver = configuredChannelResolver;
     this.urlExtractor = urlExtractor;
     this.securityValidator = securityValidator;
     this.formatter = formatter;
+    this.archiveService = archiveService;
     this.properties = properties;
     this.resolvers = resolvers;
     this.successCache = Caffeine.newBuilder()
@@ -56,16 +59,24 @@ public class UrlResolutionService {
   public void handleEngineRequest(EngineRequest request, BotEngine engine) {
     var channel = configuredChannelResolver.findByEchoToAlias(
         request.getBotConfig(), request.getEchoToAlias());
-    if (channel == null || !Boolean.TRUE.equals(channel.getResolveUrls())) {
+    boolean resolveUrls = channel != null && Boolean.TRUE.equals(channel.getResolveUrls());
+    boolean captureResolvedUrls = channel != null && Boolean.TRUE.equals(channel.getCaptureResolvedUrls());
+    if (!resolveUrls && !captureResolvedUrls) {
       return;
     }
 
     List<URI> urls = urlExtractor.extract(request.getCommand(), properties.getMaxUrlsPerMessage());
     for (URI url : urls) {
-      resolve(url)
-          .map(formatter::format)
-          .filter(reply -> !reply.isBlank())
-          .ifPresent(reply -> engine.sendReplyMessage(request, reply));
+      Optional<UrlResolution> resolution = resolve(url);
+      if (captureResolvedUrls) {
+        resolution.ifPresent(value -> archiveService.archive(value, request, channel));
+      }
+      if (resolveUrls) {
+        resolution
+            .map(formatter::format)
+            .filter(reply -> !reply.isBlank())
+            .ifPresent(reply -> engine.sendReplyMessage(request, reply));
+      }
     }
   }
 

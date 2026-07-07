@@ -233,6 +233,7 @@ public class AdminConnectionConfigService {
           item.path("allowAnonymousAiCommands").asBoolean(false),
           item.path("resolveUrls").asBoolean(false),
           item.path("alertMessages").asBoolean(false),
+          item.path("captureResolvedUrls").asBoolean(false),
           item.path("captureImages").asBoolean(false),
           aliasesFrom(item.get("captureImageToAliases"))));
     }
@@ -375,6 +376,7 @@ public class AdminConnectionConfigService {
         source.allowAnonymousAiCommands(),
         source.resolveUrls(),
         source.alertMessages(),
+        source.captureResolvedUrls(),
         source.captureImages(),
         normalizeAliases(source.captureImageToAliases()));
   }
@@ -513,6 +515,7 @@ public class AdminConnectionConfigService {
             channel.allowAnonymousAiCommands(),
             channel.resolveUrls(),
             channel.alertMessages(),
+            channel.captureResolvedUrls(),
             channel.captureImages(),
             normalizeAliases(channel.captureImageToAliases())))
         .toList();
@@ -632,6 +635,7 @@ public class AdminConnectionConfigService {
       item.put("allowAnonymousAiCommands", channel.allowAnonymousAiCommands());
       item.put("resolveUrls", channel.resolveUrls());
       item.put("alertMessages", channel.alertMessages());
+      item.put("captureResolvedUrls", channel.captureResolvedUrls());
       item.put("captureImages", channel.captureImages());
       ArrayNode captureAliases = jsonMapper.createArrayNode();
       channel.captureImageToAliases().forEach(captureAliases::add);
@@ -782,6 +786,7 @@ public class AdminConnectionConfigService {
       boolean allowAnonymousAiCommands,
       boolean resolveUrls,
       boolean alertMessages,
+      boolean captureResolvedUrls,
       boolean captureImages,
       List<String> captureImageToAliases) {
 
@@ -809,6 +814,7 @@ public class AdminConnectionConfigService {
           allowAnonymousAiCommands,
           resolveUrls,
           alertMessages,
+          false,
           false,
           List.of());
     }
