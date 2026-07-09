@@ -478,7 +478,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                         )}
                       />
                       <Switch
-                        label="Capture resolved URLs"
+                        label="Capture URLs"
                         checked={settingsDraft.captureResolvedUrls}
                         disabled={saveSettingsMutation.isPending}
                         onChange={(event) => updateSettingsDraft(

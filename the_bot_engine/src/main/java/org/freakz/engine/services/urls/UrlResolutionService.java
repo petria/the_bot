@@ -60,16 +60,20 @@ public class UrlResolutionService {
     var channel = configuredChannelResolver.findByEchoToAlias(
         request.getBotConfig(), request.getEchoToAlias());
     boolean resolveUrls = channel != null && Boolean.TRUE.equals(channel.getResolveUrls());
-    boolean captureResolvedUrls = channel != null && Boolean.TRUE.equals(channel.getCaptureResolvedUrls());
-    if (!resolveUrls && !captureResolvedUrls) {
+    boolean captureUrls = channel != null && Boolean.TRUE.equals(channel.getCaptureResolvedUrls());
+    if (!resolveUrls && !captureUrls) {
       return;
     }
 
     List<URI> urls = urlExtractor.extract(request.getCommand(), properties.getMaxUrlsPerMessage());
     for (URI url : urls) {
+      if (!securityValidator.isAllowed(url)) {
+        log.debug("Rejected unsafe URL: {}", url);
+        continue;
+      }
       Optional<UrlResolution> resolution = resolve(url);
-      if (captureResolvedUrls) {
-        resolution.ifPresent(value -> archiveService.archive(value, request, channel));
+      if (captureUrls) {
+        archiveService.archive(url, resolution.orElse(null), request, channel);
       }
       if (resolveUrls) {
         resolution

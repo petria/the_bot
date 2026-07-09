@@ -50,9 +50,6 @@ public class UrlArchiveStore {
     if (url == null || url.isBlank()) {
       throw new IllegalArgumentException("URL is required");
     }
-    if (title == null || title.isBlank()) {
-      throw new IllegalArgumentException("URL title is required");
-    }
     cleanupExpired();
     Files.createDirectories(metadataDir);
 
@@ -62,7 +59,7 @@ public class UrlArchiveStore {
         createUniqueShortCode(),
         url.trim(),
         clean(provider),
-        title.trim(),
+        clean(title),
         clean(author),
         clean(description),
         duration,

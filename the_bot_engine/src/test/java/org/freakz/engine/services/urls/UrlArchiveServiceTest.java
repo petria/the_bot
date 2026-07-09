@@ -65,6 +65,42 @@ class UrlArchiveServiceTest {
   }
 
   @Test
+  void archivesRawUrlWithoutResolvedMetadata() throws Exception {
+    JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
+    MediaStorageSettingsService settingsService = mock(MediaStorageSettingsService.class);
+    when(settingsService.getSettings()).thenReturn(new MediaStorageSettingsResponse(
+        true,
+        tempDir.toString(),
+        "https://example.test/media",
+        25,
+        7,
+        true,
+        true,
+        null));
+    UrlArchiveService service = new UrlArchiveService(settingsService, mapper);
+    EngineRequest request = EngineRequest.builder()
+        .chatProtocol("irc")
+        .network("IRCNet")
+        .echoToAlias("IRC-TEST")
+        .fromSender("petria")
+        .build();
+    Channel channel = Channel.builder().name("#test").echoToAlias("IRC-TEST").build();
+
+    service.archive(URI.create("https://example.com/picture.jpg"), null, request, channel);
+
+    assertThat(new UrlArchiveStore(tempDir, mapper).listActive())
+        .hasSize(1)
+        .singleElement()
+        .satisfies(item -> {
+          assertThat(item.url()).isEqualTo("https://example.com/picture.jpg");
+          assertThat(item.title()).isNull();
+          assertThat(item.provider()).isNull();
+          assertThat(item.sourceProtocol()).isEqualTo("irc");
+          assertThat(item.sourceChannelAlias()).isEqualTo("IRC-TEST");
+        });
+  }
+
+  @Test
   void skipsArchiveWhenMediaStorageIsDisabled() throws Exception {
     JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
     MediaStorageSettingsService settingsService = mock(MediaStorageSettingsService.class);

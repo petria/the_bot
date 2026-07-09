@@ -64,7 +64,7 @@ class UrlArchiveStoreTest {
   }
 
   @Test
-  void rejectsMissingUrlOrTitle() {
+  void rejectsMissingUrl() {
     UrlArchiveStore store = new UrlArchiveStore(tempDir, new JsonMapper());
 
     assertThatThrownBy(() -> store.create(
@@ -80,20 +80,34 @@ class UrlArchiveStoreTest {
         null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("URL");
+  }
 
-    assertThatThrownBy(() -> store.create(
+  @Test
+  void storesAndListsUrlWithoutMetadataTitle() throws Exception {
+    JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
+    UrlArchiveStore store = new UrlArchiveStore(tempDir, mapper);
+
+    UrlArchiveRecord record = store.create(
         "https://example.com",
-        "Web",
-        "",
+        null,
+        null,
         null,
         null,
         null,
         null,
         null,
         Duration.ofDays(1),
-        null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("title");
+        new UrlArchiveSource("irc", "IRCNet", "IRC-TEST", "#test", "petria"));
+
+    assertThat(store.listActive())
+        .singleElement()
+        .satisfies(item -> {
+          assertThat(item.id()).isEqualTo(record.getId());
+          assertThat(item.url()).isEqualTo("https://example.com");
+          assertThat(item.title()).isNull();
+          assertThat(item.provider()).isNull();
+          assertThat(item.sourceChannelAlias()).isEqualTo("IRC-TEST");
+        });
   }
 
   @Test
