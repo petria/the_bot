@@ -38,6 +38,10 @@ public class ChannelAccessService {
             || hasLegacySend(principal, channelKey));
   }
 
+  public boolean canAdmin(BotUserPrincipal principal, String connectionType, String echoToAlias) {
+    return has(principal, adminPermission(connectionType, echoToAlias));
+  }
+
   public boolean hasAnyChannelView(BotUserPrincipal principal) {
     if (principal == null) {
       return false;
@@ -62,12 +66,22 @@ public class ChannelAccessService {
     }
   }
 
+  public void requireAdmin(BotUserPrincipal principal, String connectionType, String echoToAlias) {
+    if (!canAdmin(principal, connectionType, echoToAlias)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to manage this channel");
+    }
+  }
+
   public String viewPermission(String connectionType, String echoToAlias) {
     return ChannelPermissionUtil.viewPermission(connectionType, echoToAlias);
   }
 
   public String sendPermission(String connectionType, String echoToAlias) {
     return ChannelPermissionUtil.sendPermission(connectionType, echoToAlias);
+  }
+
+  public String adminPermission(String connectionType, String echoToAlias) {
+    return ChannelPermissionUtil.adminPermission(connectionType, echoToAlias);
   }
 
   public String connectionKey(String connectionType) {

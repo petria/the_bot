@@ -3,7 +3,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { Bot, BrainCircuit, ChevronDown, FolderOpen, Images, Link2, ListTree, LogOut, MessageSquare, RadioTower, Send, Server, Settings, ShieldUser, SlidersHorizontal, Terminal, User, Users } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, postForm } from './api/client';
 import { getMe } from './api/me';
 import { consumeAuthReturnTarget, handleAuthenticationRequired } from './auth/session';
@@ -34,25 +34,25 @@ import {
 } from './permissions';
 
 const navItems = [
-  { label: 'System', path: '/', icon: Server },
-  { label: 'Overview', path: '/overview', icon: Bot },
-  { label: 'Known Users', path: '/users', icon: Users },
-  { label: 'Connections', path: '/connections', icon: RadioTower },
   { label: 'Commands', path: '/commands', icon: ListTree },
+  { label: 'Connections', path: '/connections', icon: RadioTower },
   { label: 'Console', path: '/console', icon: Terminal },
+  { label: 'Known Users', path: '/users', icon: Users },
   { label: 'Live Channels', path: '/live-channels', icon: MessageSquare },
   { label: 'Live Media', path: '/live-media', icon: Images },
+  { label: 'My Account', path: '/overview', icon: Bot },
+  { label: 'System', path: '/system', icon: Server },
 ];
 
 const adminNavItems = [
-  { label: 'Send', path: '/send', icon: Send },
-  { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
-  { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
-  { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
-  { label: 'Media Content', path: '/admin/media-content', icon: FolderOpen },
   { label: 'Collected URLs', path: '/admin/collected-urls', icon: Link2 },
   { label: 'Manage AI Commands', path: '/admin/ai-commands', icon: BrainCircuit },
   { label: 'Manage AI Routes', path: '/admin/system', icon: Settings },
+  { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
+  { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
+  { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
+  { label: 'Media Content', path: '/admin/media-content', icon: FolderOpen },
+  { label: 'Send', path: '/send', icon: Send },
 ];
 
 export function App() {
@@ -116,6 +116,7 @@ function AuthenticatedApp() {
   const webAdmin = hasPermission(meQuery.data?.permissions, WEB_ADMIN_PERMISSION);
   const webUser = hasPermission(meQuery.data?.permissions, WEB_USER_PERMISSION);
   const liveChannelsAllowed = hasAnyChannelViewPermission(meQuery.data?.permissions);
+  const defaultPath = liveChannelsAllowed ? '/live-channels' : '/system';
   const userNavItems = navItems.filter((item) =>
     (item.path !== '/live-channels' && item.path !== '/live-media') || liveChannelsAllowed);
 
@@ -133,8 +134,12 @@ function AuthenticatedApp() {
         <Group h="100%" px="md" justify="space-between">
           <Group gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Bot size={22} />
-            <Title order={3}>the_bot</Title>
+            <UnstyledButton className="home-button" onClick={() => handleNavigate(defaultPath)}>
+              <Group gap="sm" wrap="nowrap">
+                <Bot size={22} />
+                <Title order={3}>the_bot</Title>
+              </Group>
+            </UnstyledButton>
           </Group>
           <Group gap="sm">
             <Badge variant="light" visibleFrom="xs">web</Badge>
@@ -173,12 +178,13 @@ function AuthenticatedApp() {
       <AppShell.Main>
         <Box className="page-frame">
           <Routes>
-            <Route path="/" element={<RequireWebUser allowed={webUser}><SystemPage /></RequireWebUser>} />
+            <Route path="/" element={<RequireWebUser allowed={webUser}><Navigate to={defaultPath} replace /></RequireWebUser>} />
+            <Route path="/system" element={<RequireWebUser allowed={webUser}><SystemPage /></RequireWebUser>} />
             <Route path="/overview" element={<RequireWebUser allowed={webUser}><DashboardPage /></RequireWebUser>} />
             <Route path="/users" element={<RequireWebUser allowed={webUser}><KnownUsersPage /></RequireWebUser>} />
             <Route path="/commands" element={<RequireWebUser allowed={webUser}><CommandsPage /></RequireWebUser>} />
             <Route path="/console" element={<RequireWebUser allowed={webUser}><ConsolePage /></RequireWebUser>} />
-            <Route path="/live-channels" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveChannelsPage /></RequireWebUser>} />
+            <Route path="/live-channels" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveChannelsPage homeChannel={meQuery.data?.homeChannel} /></RequireWebUser>} />
             <Route path="/live-media" element={<RequireWebUser allowed={webUser && liveChannelsAllowed}><LiveMediaPage /></RequireWebUser>} />
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />

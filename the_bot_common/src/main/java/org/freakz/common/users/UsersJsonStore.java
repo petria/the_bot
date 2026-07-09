@@ -262,6 +262,7 @@ public class UsersJsonStore {
         .telegramId(source.getTelegramId())
         .discordId(source.getDiscordId())
         .whatsappId(source.getWhatsappId())
+        .homeChannel(copyHomeChannel(source.getHomeChannel()))
         .chatIdentities(source.getChatIdentities() == null
             ? List.of()
             : source.getChatIdentities().stream().map(UsersJsonStore::copyIdentity).toList())
@@ -273,6 +274,18 @@ public class UsersJsonStore {
 
   public static String normalize(String value) {
     return value == null || value.isBlank() ? null : value.trim().toLowerCase();
+  }
+
+  public static org.freakz.common.model.users.UserHomeChannel copyHomeChannel(
+      org.freakz.common.model.users.UserHomeChannel source) {
+    if (source == null) {
+      return null;
+    }
+    return new org.freakz.common.model.users.UserHomeChannel(
+        source.getConnectionType(),
+        source.getNetwork(),
+        source.getEchoToAlias(),
+        source.getLabel());
   }
 
   public static UserChatIdentity copyIdentity(UserChatIdentity source) {

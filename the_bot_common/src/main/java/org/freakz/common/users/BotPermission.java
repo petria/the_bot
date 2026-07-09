@@ -16,6 +16,7 @@ public final class BotPermission {
   public static final String CHANNELS_SEND_ALL = "channels.send.all";
   public static final String CHANNELS_VIEW_PREFIX = "channels.view.";
   public static final String CHANNELS_SEND_PREFIX = "channels.send.";
+  public static final String CHANNEL_ADMIN_PREFIX = "channel.admin.";
   public static final String CHANNELS_VIEW_IRC = "channels.view.irc";
   public static final String CHANNELS_SEND_IRC = "channels.send.irc";
   public static final String CHANNELS_VIEW_DISCORD = "channels.view.discord";

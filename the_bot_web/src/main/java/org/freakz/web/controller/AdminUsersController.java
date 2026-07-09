@@ -2,6 +2,7 @@ package org.freakz.web.controller;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.model.users.UserHomeChannel;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
 import org.freakz.common.users.UserChatIdentityUtil;
@@ -47,7 +48,7 @@ public class AdminUsersController {
     return new AdminUsersResponse(usersService.findAllUsers().stream()
         .sorted(Comparator.comparing(AdminUsersController::sortUsername))
         .map(AdminUserResponse::from)
-        .toList(), availablePermissions());
+        .toList(), availablePermissions(), availableHomeChannels());
   }
 
   @PostMapping
@@ -137,6 +138,7 @@ public class AdminUsersController {
       liveChannelCatalogService.publicChannels().forEach(channel -> {
         permissions.add(channelAccessService.viewPermission(channel.connectionType(), channel.echoToAlias()));
         permissions.add(channelAccessService.sendPermission(channel.connectionType(), channel.echoToAlias()));
+        permissions.add(channelAccessService.adminPermission(channel.connectionType(), channel.echoToAlias()));
       });
     } catch (RuntimeException ignored) {
       // User management should remain available even when bot-io is temporarily down.
@@ -144,13 +146,49 @@ public class AdminUsersController {
     return permissions.stream().toList();
   }
 
+  private List<HomeChannelResponse> availableHomeChannels() {
+    try {
+      return liveChannelCatalogService.publicChannels().stream()
+          .map(channel -> new HomeChannelResponse(
+              channel.connectionType(),
+              channel.network(),
+              channel.echoToAlias(),
+              channel.label()))
+          .toList();
+    } catch (RuntimeException ignored) {
+      // User management should remain available even when bot-io is temporarily down.
+      return List.of();
+    }
+  }
+
   private interface AdminAction<T> {
     T run();
   }
 
-  public record AdminUsersResponse(List<AdminUserResponse> users, List<String> availablePermissions) {
+  public record AdminUsersResponse(
+      List<AdminUserResponse> users,
+      List<String> availablePermissions,
+      List<HomeChannelResponse> availableHomeChannels) {
     public AdminUsersResponse(List<AdminUserResponse> users) {
-      this(users, BotPermission.known());
+      this(users, BotPermission.known(), List.of());
+    }
+  }
+
+  public record HomeChannelResponse(
+      String connectionType,
+      String network,
+      String echoToAlias,
+      String label) {
+
+    static HomeChannelResponse from(UserHomeChannel homeChannel) {
+      if (homeChannel == null) {
+        return null;
+      }
+      return new HomeChannelResponse(
+          homeChannel.getConnectionType(),
+          homeChannel.getNetwork(),
+          homeChannel.getEchoToAlias(),
+          homeChannel.getLabel());
     }
   }
 
@@ -163,6 +201,7 @@ public class AdminUsersController {
       String telegramId,
       String discordId,
       String whatsappId,
+      HomeChannelResponse homeChannel,
       List<AdminChatIdentityResponse> chatIdentities,
       List<String> permissions,
       boolean reserved) {
@@ -177,6 +216,7 @@ public class AdminUsersController {
           user.getTelegramId(),
           user.getDiscordId(),
           user.getWhatsappId(),
+          HomeChannelResponse.from(user.getHomeChannel()),
           user.getChatIdentities() == null
               ? List.of()
               : user.getChatIdentities().stream()

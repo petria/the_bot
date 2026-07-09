@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserHomeChannel;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.security.BotUserPrincipal;
 import org.freakz.web.security.UsersJsonUserDetailsService;
@@ -130,6 +131,7 @@ public class MeController {
       String telegramId,
       String discordId,
       String whatsappId,
+      HomeChannelResponse homeChannel,
       List<String> permissions,
       List<String> roles) {
 
@@ -143,6 +145,7 @@ public class MeController {
           principal.getTelegramId(),
           principal.getDiscordId(),
           principal.getWhatsappId(),
+          null,
           principal.getPermissions(),
           principal.getAuthorities().stream()
               .map(authority -> authority.getAuthority())
@@ -160,6 +163,7 @@ public class MeController {
           user.getTelegramId(),
           user.getDiscordId(),
           user.getWhatsappId(),
+          HomeChannelResponse.from(user.getHomeChannel()),
           principal.getPermissions(),
           principal.getAuthorities().stream()
               .map(authority -> authority.getAuthority())
@@ -169,6 +173,24 @@ public class MeController {
   }
 
   public record AdminCheckResponse(boolean adminAccess, String username) {
+  }
+
+  public record HomeChannelResponse(
+      String connectionType,
+      String network,
+      String echoToAlias,
+      String label) {
+
+    static HomeChannelResponse from(UserHomeChannel homeChannel) {
+      if (homeChannel == null) {
+        return null;
+      }
+      return new HomeChannelResponse(
+          homeChannel.getConnectionType(),
+          homeChannel.getNetwork(),
+          homeChannel.getEchoToAlias(),
+          homeChannel.getLabel());
+    }
   }
 
   public record CsrfResponse(String parameterName, String headerName, String token) {

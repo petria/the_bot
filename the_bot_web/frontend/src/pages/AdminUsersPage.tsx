@@ -9,6 +9,7 @@ import {
   Modal,
   MultiSelect,
   PasswordInput,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -30,6 +31,7 @@ import {
   type AdminUser,
   type AdminChatIdentity,
   type AdminUserCreateRequest,
+  type AdminUserHomeChannel,
   type AdminUserUpdateRequest,
 } from '../api/adminUsers';
 import { ApiError } from '../api/client';
@@ -44,6 +46,7 @@ const emptyUserForm: AdminUserCreateRequest = {
   telegramId: '',
   discordId: '',
   whatsappId: '',
+  homeChannel: null,
   permissions: [],
 };
 
@@ -175,6 +178,7 @@ export function AdminUsersPage() {
       <UserEditorModal
         state={userModal}
         availablePermissions={usersQuery.data?.availablePermissions ?? []}
+        availableHomeChannels={usersQuery.data?.availableHomeChannels ?? []}
         onClose={() => setUserModal(null)}
         onSaved={() => {
           setUserModal(null);
@@ -220,11 +224,13 @@ function UsersTable({
   onDelete: (user: AdminUser) => void;
 }) {
   return (
-    <Table.ScrollContainer minWidth={920} className="admin-users-table">
+    <Table.ScrollContainer minWidth={1080} className="admin-users-table">
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th>ID</Table.Th>
             <Table.Th>User</Table.Th>
+            <Table.Th>Home channel</Table.Th>
             <Table.Th>Identity links</Table.Th>
             <Table.Th>Access</Table.Th>
             <Table.Th>Actions</Table.Th>
@@ -232,8 +238,10 @@ function UsersTable({
         </Table.Thead>
         <Table.Tbody>
           {users.map((user) => (
-              <Table.Tr key={user.id ?? user.username}>
-                <Table.Td><UserCell user={user} /></Table.Td>
+            <Table.Tr key={user.id ?? user.username}>
+              <Table.Td><UserIdCell user={user} /></Table.Td>
+              <Table.Td><UserCell user={user} /></Table.Td>
+              <Table.Td><HomeChannelCell user={user} /></Table.Td>
               <Table.Td><IdentityCell user={user} onUnlinkIdentity={onUnlinkIdentity} /></Table.Td>
               <Table.Td><AccessBadges user={user} /></Table.Td>
               <Table.Td>
@@ -277,6 +285,7 @@ function UsersCards({
               <UserCell user={user} />
               <AccessBadges user={user} />
             </Group>
+            <HomeChannelCell user={user} />
             <IdentityCell user={user} onUnlinkIdentity={onUnlinkIdentity} />
             <UserActions
               user={user}
@@ -295,11 +304,13 @@ function UsersCards({
 function UserEditorModal({
   state,
   availablePermissions,
+  availableHomeChannels,
   onClose,
   onSaved,
 }: {
   state: UserModalState;
   availablePermissions: string[];
+  availableHomeChannels: AdminUserHomeChannel[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -334,11 +345,23 @@ function UserEditorModal({
   const mutationError = createMutation.error || updateMutation.error;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const setField = (field: keyof AdminUserCreateRequest, value: string | string[]) => {
+  const homeChannelValue = form.homeChannel ? homeChannelKey(form.homeChannel) : null;
+  const setField = (field: keyof AdminUserCreateRequest, value: string | string[] | AdminUserHomeChannel | null) => {
     setValidationError(null);
     createMutation.reset();
     updateMutation.reset();
     setForm((current) => ({ ...current, [field]: value }));
+  };
+  const setHomeChannel = (value: string | null) => {
+    setValidationError(null);
+    createMutation.reset();
+    updateMutation.reset();
+    const homeChannel = availableHomeChannels.find((channel) => homeChannelKey(channel) === value) ?? null;
+    setForm((current) => ({
+      ...current,
+      homeChannel,
+      permissions: mergeHomeChannelPermissions(current.permissions, homeChannel),
+    }));
   };
 
   const handleSave = () => {
@@ -351,10 +374,18 @@ function UserEditorModal({
         setValidationError('Password must be at least 10 characters.');
         return;
       }
+      if (!form.homeChannel) {
+        setValidationError('Home channel is required.');
+        return;
+      }
       createMutation.mutate(trimCreateForm(form));
       return;
     }
     if (state?.mode === 'edit' && state.user.id !== null) {
+      if (!form.homeChannel) {
+        setValidationError('Home channel is required.');
+        return;
+      }
       updateMutation.mutate({ id: state.user.id, request: trimUpdateForm(form) });
     }
   };
@@ -380,6 +411,18 @@ function UserEditorModal({
           <TextInput label="Name" value={form.name} onChange={(event) => setField('name', event.currentTarget.value)} />
           <TextInput label="Email" type="email" value={form.email} onChange={(event) => setField('email', event.currentTarget.value)} />
         </SimpleGrid>
+
+        <Select
+          label="Home channel"
+          description="The selected channel grants web access, channel view/send access, and current-channel log access."
+          data={homeChannelOptions(availableHomeChannels)}
+          value={homeChannelValue}
+          searchable
+          allowDeselect={false}
+          disabled={availableHomeChannels.length === 0}
+          placeholder={availableHomeChannels.length === 0 ? 'No configured channels available' : 'Select home channel'}
+          onChange={setHomeChannel}
+        />
 
         <MultiSelect
           label="Permissions"
@@ -558,6 +601,14 @@ function UserActions({
   );
 }
 
+function UserIdCell({ user }: { user: AdminUser }) {
+  return (
+    <Text size="sm" fw={700} ff="monospace">
+      {user.id ?? '-'}
+    </Text>
+  );
+}
+
 function UserCell({ user }: { user: AdminUser }) {
   return (
     <Stack gap={2} className="admin-users-cell">
@@ -566,6 +617,21 @@ function UserCell({ user }: { user: AdminUser }) {
         {user.reserved && <Badge variant="outline">reserved</Badge>}
       </Group>
       <Text size="xs" c="dimmed" truncate>{user.name || user.email || `user #${user.id}`}</Text>
+    </Stack>
+  );
+}
+
+function HomeChannelCell({ user }: { user: AdminUser }) {
+  const homeChannel = user.homeChannel;
+  if (!homeChannel?.echoToAlias) {
+    return <Badge variant="light" color="yellow">Missing</Badge>;
+  }
+  return (
+    <Stack gap={1} className="admin-users-cell">
+      <Text size="sm" fw={600} truncate>{homeChannel.echoToAlias}</Text>
+      <Text size="xs" c="dimmed" truncate>
+        {[homeChannel.connectionType, homeChannel.network].filter(Boolean).join(' / ') || homeChannel.label || '-'}
+      </Text>
     </Stack>
   );
 }
@@ -644,6 +710,41 @@ function permissionOptions(availablePermissions: string[]) {
   ].filter((group) => group.items.length > 0);
 }
 
+function homeChannelOptions(availableHomeChannels: AdminUserHomeChannel[]) {
+  return [...availableHomeChannels]
+      .sort((left, right) => homeChannelLabel(left).localeCompare(homeChannelLabel(right)))
+      .map((channel) => ({
+        value: homeChannelKey(channel),
+        label: homeChannelLabel(channel),
+      }));
+}
+
+function homeChannelLabel(channel: AdminUserHomeChannel) {
+  return channel.label || [
+    channel.connectionType,
+    channel.network,
+    channel.echoToAlias,
+  ].filter(Boolean).join(' / ') || '-';
+}
+
+function homeChannelKey(channel: AdminUserHomeChannel) {
+  return `${connectionKey(channel.connectionType || '')}:${channelKey(channel.echoToAlias || '')}`;
+}
+
+function mergeHomeChannelPermissions(permissions: string[], homeChannel: AdminUserHomeChannel | null) {
+  if (!homeChannel?.connectionType || !homeChannel.echoToAlias) {
+    return permissions;
+  }
+  return Array.from(new Set([
+    ...permissions,
+    'web.user',
+    `channels.view.${connectionKey(homeChannel.connectionType)}.${channelKey(homeChannel.echoToAlias)}`,
+    `channels.send.${connectionKey(homeChannel.connectionType)}.${channelKey(homeChannel.echoToAlias)}`,
+    'logs.read.current-chat',
+    'logs.read.current-channel',
+  ])).sort(comparePermissions);
+}
+
 function permissionLabel(permission: string) {
   return permissionLabels[permission] ?? permission;
 }
@@ -685,6 +786,7 @@ function toForm(user: AdminUser): AdminUserCreateRequest {
     telegramId: user.telegramId ?? '',
     discordId: user.discordId ?? '',
     whatsappId: user.whatsappId ?? '',
+    homeChannel: user.homeChannel ?? null,
     permissions: user.permissions ?? [],
   };
 }
@@ -694,6 +796,7 @@ function trimCreateForm(form: AdminUserCreateRequest): AdminUserCreateRequest {
     ...trimUpdateForm(form),
     username: form.username.trim(),
     password: form.password,
+    homeChannel: form.homeChannel,
   };
 }
 
@@ -705,13 +808,28 @@ function trimUpdateForm(form: AdminUserCreateRequest): AdminUserUpdateRequest {
     telegramId: form.telegramId.trim(),
     discordId: form.discordId.trim(),
     whatsappId: form.whatsappId.trim(),
+    homeChannel: form.homeChannel,
     permissions: form.permissions,
   };
 }
 
+function connectionKey(connectionType: string) {
+  return connectionType
+      .trim()
+      .toLowerCase()
+      .replace(/_connection$/i, '')
+      .replace(/[^a-z0-9_-]/g, '_');
+}
+
+function channelKey(echoToAlias: string) {
+  return echoToAlias
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '_');
+}
+
 function compareUsers(left: AdminUser, right: AdminUser) {
-  if (left.reserved !== right.reserved) {
-    return left.reserved ? -1 : 1;
-  }
-  return (left.username || '').localeCompare(right.username || '');
+  const leftId = left.id ?? Number.MAX_SAFE_INTEGER;
+  const rightId = right.id ?? Number.MAX_SAFE_INTEGER;
+  return leftId - rightId || (left.username || '').localeCompare(right.username || '');
 }

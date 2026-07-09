@@ -8,6 +8,9 @@ import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.web.channels.ChannelAccessService;
+import org.freakz.web.config.AdminConnectionConfigService;
+import org.freakz.web.config.AdminConnectionConfigService.LiveChannelSettingsApplyResponse;
+import org.freakz.web.config.AdminConnectionConfigService.LiveChannelSettingsDto;
 import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.BotUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -16,11 +19,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -53,6 +59,7 @@ public class AdminLiveChannelsController {
   private final RestConnectionManagerClient connectionManagerClient;
   private final ChannelAccessService accessService;
   private final LiveChannelCatalogService catalogService;
+  private final AdminConnectionConfigService configService;
   private final HttpClient streamingHttpClient;
 
   @Autowired
@@ -60,12 +67,14 @@ public class AdminLiveChannelsController {
       RestEngineClient engineClient,
       RestConnectionManagerClient connectionManagerClient,
       ChannelAccessService accessService,
-      LiveChannelCatalogService catalogService) {
+      LiveChannelCatalogService catalogService,
+      AdminConnectionConfigService configService) {
     this(
         engineClient,
         connectionManagerClient,
         accessService,
         catalogService,
+        configService,
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))
             .build());
@@ -76,11 +85,13 @@ public class AdminLiveChannelsController {
       RestConnectionManagerClient connectionManagerClient,
       ChannelAccessService accessService,
       LiveChannelCatalogService catalogService,
+      AdminConnectionConfigService configService,
       HttpClient streamingHttpClient) {
     this.engineClient = engineClient;
     this.connectionManagerClient = connectionManagerClient;
     this.accessService = accessService;
     this.catalogService = catalogService;
+    this.configService = configService;
     this.streamingHttpClient = streamingHttpClient;
   }
 
@@ -94,9 +105,45 @@ public class AdminLiveChannelsController {
             channel.connectionType(),
             channel.network(),
             channel.channelType(),
-            accessService.canSend(principal, channel.connectionType(), channel.echoToAlias())))
+            accessService.canSend(principal, channel.connectionType(), channel.echoToAlias()),
+            accessService.canAdmin(principal, channel.connectionType(), channel.echoToAlias())))
         .toList();
     return new LiveChannelsResponse(channels);
+  }
+
+  @GetMapping("/settings")
+  public LiveChannelSettingsDto settings(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestParam String echoToAlias) {
+    String alias = trim(echoToAlias);
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    accessService.requireAdmin(principal, channel.connectionType(), alias);
+    return configService.readChannelSettings(channel.connectionType(), channel.network(), alias);
+  }
+
+  @PutMapping("/settings")
+  public LiveChannelSettingsApplyResponse saveSettings(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody LiveChannelSettingsUpdateRequest request) {
+    String alias = trim(request == null ? null : request.echoToAlias());
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    accessService.requireAdmin(principal, channel.connectionType(), alias);
+    return configService.saveAndApplyChannelSettings(
+        channel.connectionType(),
+        channel.network(),
+        alias,
+        new LiveChannelSettingsDto(
+            request.publicAiEnabled(),
+            request.allowAnonymousAiCommands(),
+            request.resolveUrls(),
+            request.captureResolvedUrls(),
+            request.captureImages()));
   }
 
   @GetMapping("/events")
@@ -233,7 +280,27 @@ public class AdminLiveChannelsController {
       String connectionType,
       String network,
       String channelType,
-      boolean sendAllowed) {
+      boolean sendAllowed,
+      boolean adminAllowed) {
+  }
+
+  public record LiveChannelSettingsUpdateRequest(
+      String echoToAlias,
+      boolean publicAiEnabled,
+      boolean allowAnonymousAiCommands,
+      boolean resolveUrls,
+      boolean captureResolvedUrls,
+      boolean captureImages) {
+  }
+
+  public record ErrorResponse(String message, String detail) {
+  }
+
+  @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public ErrorResponse badRequest(RuntimeException e) {
+    Throwable cause = e.getCause();
+    return new ErrorResponse(e.getMessage(), cause == null ? null : cause.getMessage());
   }
 
   private static void forwardSse(InputStream inputStream, SseEmitter emitter) throws IOException {

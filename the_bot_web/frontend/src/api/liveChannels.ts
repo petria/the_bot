@@ -1,4 +1,4 @@
-import { getJson, postJson } from './client';
+import { getJson, postJson, putJson } from './client';
 
 export type LiveChannelDirection = 'INBOUND' | 'WEB_OUTBOUND';
 
@@ -30,6 +30,20 @@ export type LiveChannel = {
   network: string | null;
   channelType: string | null;
   sendAllowed: boolean;
+  adminAllowed: boolean;
+};
+
+export type LiveChannelSettings = {
+  publicAiEnabled: boolean;
+  allowAnonymousAiCommands: boolean;
+  resolveUrls: boolean;
+  captureResolvedUrls: boolean;
+  captureImages: boolean;
+};
+
+export type LiveChannelSettingsApplyResponse = {
+  status: string;
+  settings: LiveChannelSettings;
 };
 
 export type LiveChannelUser = {
@@ -85,6 +99,21 @@ export async function getLiveChannelUsers(echoToAlias: string): Promise<LiveChan
   const params = new URLSearchParams({ echoToAlias });
   const response = await getJson<LiveChannelUsersResponse>(`/api/web/live-channels/users?${params.toString()}`);
   return response.channelUsers ?? [];
+}
+
+export async function getLiveChannelSettings(echoToAlias: string): Promise<LiveChannelSettings> {
+  const params = new URLSearchParams({ echoToAlias });
+  return getJson<LiveChannelSettings>(`/api/web/live-channels/settings?${params.toString()}`);
+}
+
+export async function saveAndApplyLiveChannelSettings(
+  echoToAlias: string,
+  settings: LiveChannelSettings,
+): Promise<LiveChannelSettingsApplyResponse> {
+  return putJson<LiveChannelSettingsApplyResponse>('/api/web/live-channels/settings', {
+    echoToAlias,
+    ...settings,
+  });
 }
 
 export async function sendLiveChannelMessage(echoToAlias: string, message: string): Promise<LiveChannelSendResponse> {

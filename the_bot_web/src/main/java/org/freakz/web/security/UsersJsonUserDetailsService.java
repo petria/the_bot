@@ -2,13 +2,16 @@ package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.model.users.UserHomeChannel;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.ChannelPermissionUtil;
 import org.freakz.common.users.IrcClaimTokenStore;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.users.UsersJsonStore;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.config.TheBotWebProperties;
+import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 @Service
 public class UsersJsonUserDetailsService implements UserDetailsService {
@@ -39,25 +44,47 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
   private final UsersJsonStore usersStore;
   private final IrcClaimTokenStore ircClaimTokenStore;
   private final RestEngineClient restEngineClient;
+  private final LiveChannelCatalogService liveChannelCatalogService;
+  private final ChannelAccessService channelAccessService;
 
   @Autowired
   public UsersJsonUserDetailsService(
       TheBotWebProperties properties,
       JsonMapper jsonMapper,
       PasswordEncoder passwordEncoder,
-      ObjectProvider<RestEngineClient> restEngineClientProvider) {
+      ObjectProvider<RestEngineClient> restEngineClientProvider,
+      ObjectProvider<LiveChannelCatalogService> liveChannelCatalogServiceProvider,
+      ObjectProvider<ChannelAccessService> channelAccessServiceProvider) {
     this.passwordEncoder = passwordEncoder;
     this.usersStore = new UsersJsonStore(Path.of(properties.getUsersFile()), jsonMapper);
     this.ircClaimTokenStore = new IrcClaimTokenStore(Path.of(properties.getIrcClaimTokensFile()), jsonMapper);
     this.restEngineClient =
         restEngineClientProvider == null ? null : restEngineClientProvider.getIfAvailable();
+    this.liveChannelCatalogService =
+        liveChannelCatalogServiceProvider == null ? null : liveChannelCatalogServiceProvider.getIfAvailable();
+    this.channelAccessService =
+        channelAccessServiceProvider == null ? null : channelAccessServiceProvider.getIfAvailable();
   }
 
   UsersJsonUserDetailsService(
       TheBotWebProperties properties,
       JsonMapper jsonMapper,
       PasswordEncoder passwordEncoder) {
-    this(properties, jsonMapper, passwordEncoder, null);
+    this(properties, jsonMapper, passwordEncoder, null, null, null);
+  }
+
+  UsersJsonUserDetailsService(
+      TheBotWebProperties properties,
+      JsonMapper jsonMapper,
+      PasswordEncoder passwordEncoder,
+      LiveChannelCatalogService liveChannelCatalogService,
+      ChannelAccessService channelAccessService) {
+    this.passwordEncoder = passwordEncoder;
+    this.usersStore = new UsersJsonStore(Path.of(properties.getUsersFile()), jsonMapper);
+    this.ircClaimTokenStore = new IrcClaimTokenStore(Path.of(properties.getIrcClaimTokensFile()), jsonMapper);
+    this.restEngineClient = null;
+    this.liveChannelCatalogService = liveChannelCatalogService;
+    this.channelAccessService = channelAccessService;
   }
 
   @Override
@@ -97,6 +124,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       throw new IllegalArgumentException("Username is required");
     }
     validateNewPassword(create.password(), create.password());
+    UserHomeChannel homeChannel = requireConfiguredHomeChannel(create.homeChannel());
 
     User user = User.builder()
         .username(username)
@@ -107,7 +135,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         .telegramId(blankToNull(create.telegramId()))
         .discordId(blankToNull(create.discordId()))
         .whatsappId(blankToNull(create.whatsappId()))
-        .permissions(create.permissions())
+        .homeChannel(homeChannel)
+        .permissions(permissionsForHomeChannel(create.permissions(), null, homeChannel))
         .build();
     User created = usersStore.addUser(user);
     notifyEngineUsersReload();
@@ -123,6 +152,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       throw new IllegalArgumentException("Username is required");
     }
     validateNewPassword(create.password(), create.password());
+    UserHomeChannel homeChannel = requireConfiguredHomeChannel(create.homeChannel());
 
     UserChatIdentity identity = UserChatIdentity.builder()
         .connectionType(blankToNull(create.connectionType()))
@@ -144,7 +174,8 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
         .telegramId(legacyId(create, "TELEGRAM_CONNECTION"))
         .discordId(legacyId(create, "DISCORD_CONNECTION"))
         .whatsappId(legacyId(create, "WHATSAPP_CONNECTION"))
-        .permissions(defaultObservedUserPermissions(create.connectionType(), create.echoToAlias()))
+        .homeChannel(homeChannel)
+        .permissions(permissionsForHomeChannel(List.of(), null, homeChannel))
         .build();
     User created = usersStore.addUserWithChatIdentity(user, identity);
     notifyEngineUsersReload();
@@ -157,13 +188,15 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
     User updated = usersStore.updateById(id, current -> {
       User copy = UsersJsonStore.copyUser(current);
+      UserHomeChannel homeChannel = requireConfiguredHomeChannel(update.homeChannel());
       copy.setName(blankToNull(update.name()));
       copy.setEmail(blankToNull(update.email()));
       copy.setIrcNick(blankToNull(update.ircNick()));
       copy.setTelegramId(blankToNull(update.telegramId()));
       copy.setDiscordId(blankToNull(update.discordId()));
       copy.setWhatsappId(blankToNull(update.whatsappId()));
-      copy.setPermissions(update.permissions());
+      copy.setHomeChannel(homeChannel);
+      copy.setPermissions(permissionsForHomeChannel(update.permissions(), current.getHomeChannel(), homeChannel));
       return copy;
     });
     notifyEngineUsersReload();
@@ -323,16 +356,6 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
     }
   }
 
-  private List<String> defaultObservedUserPermissions(String connectionType, String echoToAlias) {
-    String alias = blankToNull(echoToAlias);
-    if (blankToNull(connectionType) == null || alias == null) {
-      return List.of(BotPermission.WEB_USER);
-    }
-    return List.of(
-        BotPermission.WEB_USER,
-        ChannelPermissionUtil.viewPermission(connectionType, alias));
-  }
-
   private String legacyIrcNick(AdminObservedUserCreate create) {
     if (!"IRC_CONNECTION".equalsIgnoreCase(blankToNull(create.connectionType()))) {
       return null;
@@ -345,6 +368,86 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       return null;
     }
     return blankToNull(create.observedUserId());
+  }
+
+  private UserHomeChannel requireConfiguredHomeChannel(UserHomeChannel homeChannel) {
+    if (homeChannel == null
+        || blankToNull(homeChannel.getConnectionType()) == null
+        || blankToNull(homeChannel.getEchoToAlias()) == null) {
+      throw new IllegalArgumentException("Home channel is required");
+    }
+    if (liveChannelCatalogService == null) {
+      return cleanHomeChannel(homeChannel);
+    }
+    String requestedConnectionKey = ChannelPermissionUtil.connectionKey(homeChannel.getConnectionType());
+    String requestedChannelKey = ChannelPermissionUtil.channelKey(homeChannel.getEchoToAlias());
+    try {
+      return liveChannelCatalogService.publicChannels().stream()
+          .filter(channel -> requestedConnectionKey.equals(ChannelPermissionUtil.connectionKey(channel.connectionType()))
+              && requestedChannelKey.equals(ChannelPermissionUtil.channelKey(channel.echoToAlias())))
+          .findFirst()
+          .map(channel -> new UserHomeChannel(
+              channel.connectionType(),
+              channel.network(),
+              channel.echoToAlias(),
+              channel.label()))
+          .orElseThrow(() -> new IllegalArgumentException("Home channel is not a configured public channel"));
+    } catch (IllegalArgumentException e) {
+      throw e;
+    } catch (RuntimeException e) {
+      throw new IllegalArgumentException("Configured home channels are unavailable", e);
+    }
+  }
+
+  private UserHomeChannel cleanHomeChannel(UserHomeChannel homeChannel) {
+    return new UserHomeChannel(
+        blankToNull(homeChannel.getConnectionType()),
+        blankToNull(homeChannel.getNetwork()),
+        blankToNull(homeChannel.getEchoToAlias()),
+        blankToNull(homeChannel.getLabel()));
+  }
+
+  private List<String> permissionsForHomeChannel(
+      List<String> requestedPermissions,
+      UserHomeChannel previousHomeChannel,
+      UserHomeChannel homeChannel) {
+    Set<String> permissions = new TreeSet<>(UserPermissions.normalize(requestedPermissions));
+    if (previousHomeChannel != null && !sameHomeChannel(previousHomeChannel, homeChannel)) {
+      permissions.remove(homeChannelViewPermission(previousHomeChannel));
+      permissions.remove(homeChannelSendPermission(previousHomeChannel));
+    }
+    permissions.add(BotPermission.WEB_USER);
+    permissions.add(homeChannelViewPermission(homeChannel));
+    permissions.add(homeChannelSendPermission(homeChannel));
+    permissions.add(BotPermission.LOGS_READ_CURRENT_CHAT);
+    permissions.add(BotPermission.LOGS_READ_CURRENT_CHANNEL);
+    return permissions.stream().toList();
+  }
+
+  private boolean sameHomeChannel(UserHomeChannel left, UserHomeChannel right) {
+    if (left == null || right == null) {
+      return left == right;
+    }
+    return Objects.equals(
+        ChannelPermissionUtil.connectionKey(left.getConnectionType()),
+        ChannelPermissionUtil.connectionKey(right.getConnectionType()))
+        && Objects.equals(
+            ChannelPermissionUtil.channelKey(left.getEchoToAlias()),
+            ChannelPermissionUtil.channelKey(right.getEchoToAlias()));
+  }
+
+  private String homeChannelViewPermission(UserHomeChannel homeChannel) {
+    if (channelAccessService != null) {
+      return channelAccessService.viewPermission(homeChannel.getConnectionType(), homeChannel.getEchoToAlias());
+    }
+    return ChannelPermissionUtil.viewPermission(homeChannel.getConnectionType(), homeChannel.getEchoToAlias());
+  }
+
+  private String homeChannelSendPermission(UserHomeChannel homeChannel) {
+    if (channelAccessService != null) {
+      return channelAccessService.sendPermission(homeChannel.getConnectionType(), homeChannel.getEchoToAlias());
+    }
+    return ChannelPermissionUtil.sendPermission(homeChannel.getConnectionType(), homeChannel.getEchoToAlias());
   }
 
   public record ProfileUpdate(
@@ -374,6 +477,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String telegramId,
       String discordId,
       String whatsappId,
+      UserHomeChannel homeChannel,
       List<String> permissions) {
   }
 
@@ -384,6 +488,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String telegramId,
       String discordId,
       String whatsappId,
+      UserHomeChannel homeChannel,
       List<String> permissions) {
   }
 
@@ -408,6 +513,7 @@ public class UsersJsonUserDetailsService implements UserDetailsService {
       String connectionType,
       String network,
       String echoToAlias,
+      UserHomeChannel homeChannel,
       String observedUserId,
       String observedUsername,
       String observedDisplayName,

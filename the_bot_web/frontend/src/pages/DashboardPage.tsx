@@ -56,7 +56,7 @@ export function DashboardPage() {
     <Stack gap="md">
       <Group justify="space-between" align="flex-start" gap="sm">
         <div>
-          <Title order={2}>Overview</Title>
+          <Title order={2}>My Account</Title>
           <Text c="dimmed">Signed in as {me.username}</Text>
         </div>
         <Group gap="xs" wrap="wrap">

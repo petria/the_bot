@@ -96,6 +96,37 @@ public class AdminConnectionConfigService {
         List.of(botIoResult, botEngineResult));
   }
 
+  public LiveChannelSettingsDto readChannelSettings(String connectionType, String network, String echoToAlias) {
+    ChannelDto channel = findConfiguredChannel(readConfig().config(), connectionType, network, echoToAlias);
+    if (channel == null) {
+      throw new IllegalArgumentException("Configured channel was not found");
+    }
+    return settingsFrom(channel);
+  }
+
+  public synchronized LiveChannelSettingsApplyResponse saveAndApplyChannelSettings(
+      String connectionType,
+      String network,
+      String echoToAlias,
+      LiveChannelSettingsDto settings) {
+    if (settings == null) {
+      throw new IllegalArgumentException("Channel settings are required");
+    }
+    AdminConnectionConfigPayload current = readConfig().config();
+    ChannelSettingsUpdate update = updateChannelSettings(current, connectionType, network, echoToAlias, settings);
+    if (!update.updated()) {
+      throw new IllegalArgumentException("Configured channel was not found");
+    }
+    saveConfig(update.payload());
+    ApplyTargetResult botIoResult = applyBotIoChannels();
+    ApplyTargetResult botEngineResult = reloadBotEngine();
+    String status = botIoResult.ok() && botEngineResult.ok() ? "OK" : "PARTIAL";
+    return new LiveChannelSettingsApplyResponse(
+        status,
+        settingsFrom(update.channel()),
+        List.of(botIoResult, botEngineResult));
+  }
+
   public synchronized AdminConnectionConfigResponse promoteChannel(PromoteChannelRequest request) {
     if (request == null || request.channel() == null) {
       throw new IllegalArgumentException("Promoted channel is required");
@@ -478,9 +509,178 @@ public class AdminConnectionConfigService {
     return false;
   }
 
+  private ChannelDto findConfiguredChannel(
+      AdminConnectionConfigPayload payload,
+      String connectionType,
+      String network,
+      String echoToAlias) {
+    String type = clean(connectionType);
+    if (isConnectionType(type, "IRC_CONNECTION")) {
+      return payload.ircServerConfigs().stream()
+          .filter(config -> network == null || network.isBlank() || equalsIgnoreCase(config.networkName(), network))
+          .flatMap(config -> config.channelList().stream())
+          .filter(channel -> equalsIgnoreCase(channel.echoToAlias(), echoToAlias))
+          .findFirst()
+          .orElse(null);
+    }
+    if (isConnectionType(type, "DISCORD_CONNECTION")) {
+      return findChannelAlias(payload.discordConfig().channelList(), echoToAlias);
+    }
+    if (isConnectionType(type, "TELEGRAM_CONNECTION")) {
+      return findChannelAlias(payload.telegramConfig().channelList(), echoToAlias);
+    }
+    if (isConnectionType(type, "WHATSAPP_CONNECTION")) {
+      return findChannelAlias(payload.whatsappConfig().channelList(), echoToAlias);
+    }
+    return null;
+  }
+
   private boolean hasChannelAlias(List<ChannelDto> channels, String echoToAlias) {
     return channels != null && channels.stream()
         .anyMatch(channel -> equalsIgnoreCase(channel.echoToAlias(), echoToAlias));
+  }
+
+  private ChannelDto findChannelAlias(List<ChannelDto> channels, String echoToAlias) {
+    if (channels == null) {
+      return null;
+    }
+    return channels.stream()
+        .filter(channel -> equalsIgnoreCase(channel.echoToAlias(), echoToAlias))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private ChannelSettingsUpdate updateChannelSettings(
+      AdminConnectionConfigPayload payload,
+      String connectionType,
+      String network,
+      String echoToAlias,
+      LiveChannelSettingsDto settings) {
+    String type = clean(connectionType);
+    if (isConnectionType(type, "IRC_CONNECTION")) {
+      ChannelDto updatedChannel = null;
+      List<IrcServerConfigDto> ircConfigs = new ArrayList<>();
+      for (IrcServerConfigDto config : payload.ircServerConfigs()) {
+        if (network != null && !network.isBlank() && !equalsIgnoreCase(config.networkName(), network)) {
+          ircConfigs.add(config);
+          continue;
+        }
+        ChannelListUpdate update = updateChannelListSettings(config.channelList(), echoToAlias, settings);
+        if (update.updatedChannel() != null) {
+          updatedChannel = update.updatedChannel();
+          ircConfigs.add(new IrcServerConfigDto(
+              config.name(),
+              config.connectStartup(),
+              config.networkName(),
+              config.host(),
+              config.port(),
+              update.channels()));
+        } else {
+          ircConfigs.add(config);
+        }
+      }
+      return new ChannelSettingsUpdate(
+          new AdminConnectionConfigPayload(
+              payload.botConfig(),
+              ircConfigs,
+              payload.discordConfig(),
+              payload.telegramConfig(),
+              payload.whatsappConfig()),
+          updatedChannel != null,
+          updatedChannel);
+    }
+    if (isConnectionType(type, "DISCORD_CONNECTION")) {
+      ChannelListUpdate update = updateChannelListSettings(payload.discordConfig().channelList(), echoToAlias, settings);
+      return new ChannelSettingsUpdate(
+          new AdminConnectionConfigPayload(
+              payload.botConfig(),
+              payload.ircServerConfigs(),
+              new DiscordConfigDto(
+                  payload.discordConfig().connectStartup(),
+                  payload.discordConfig().theBotUserId(),
+                  update.channels()),
+              payload.telegramConfig(),
+              payload.whatsappConfig()),
+          update.updatedChannel() != null,
+          update.updatedChannel());
+    }
+    if (isConnectionType(type, "TELEGRAM_CONNECTION")) {
+      ChannelListUpdate update = updateChannelListSettings(payload.telegramConfig().channelList(), echoToAlias, settings);
+      return new ChannelSettingsUpdate(
+          new AdminConnectionConfigPayload(
+              payload.botConfig(),
+              payload.ircServerConfigs(),
+              payload.discordConfig(),
+              new TelegramConfigDto(
+                  payload.telegramConfig().telegramName(),
+                  payload.telegramConfig().connectStartup(),
+                  update.channels()),
+              payload.whatsappConfig()),
+          update.updatedChannel() != null,
+          update.updatedChannel());
+    }
+    if (isConnectionType(type, "WHATSAPP_CONNECTION")) {
+      ChannelListUpdate update = updateChannelListSettings(payload.whatsappConfig().channelList(), echoToAlias, settings);
+      return new ChannelSettingsUpdate(
+          new AdminConnectionConfigPayload(
+              payload.botConfig(),
+              payload.ircServerConfigs(),
+              payload.discordConfig(),
+              payload.telegramConfig(),
+              new WhatsAppConfigDto(
+                  payload.whatsappConfig().network(),
+                  payload.whatsappConfig().sendBaseUrl(),
+                  payload.whatsappConfig().connectStartup(),
+                  update.channels())),
+          update.updatedChannel() != null,
+          update.updatedChannel());
+    }
+    return new ChannelSettingsUpdate(payload, false, null);
+  }
+
+  private ChannelListUpdate updateChannelListSettings(
+      List<ChannelDto> channels,
+      String echoToAlias,
+      LiveChannelSettingsDto settings) {
+    List<ChannelDto> updated = new ArrayList<>();
+    ChannelDto updatedChannel = null;
+    for (ChannelDto channel : channels == null ? List.<ChannelDto>of() : channels) {
+      if (equalsIgnoreCase(channel.echoToAlias(), echoToAlias)) {
+        ChannelDto patched = copyWithSettings(channel, settings);
+        updated.add(patched);
+        updatedChannel = patched;
+      } else {
+        updated.add(channel);
+      }
+    }
+    return new ChannelListUpdate(updated, updatedChannel);
+  }
+
+  private ChannelDto copyWithSettings(ChannelDto channel, LiveChannelSettingsDto settings) {
+    return new ChannelDto(
+        channel.id(),
+        channel.description(),
+        channel.name(),
+        channel.type(),
+        channel.echoToAlias(),
+        channel.echoToAliases(),
+        channel.joinOnStart(),
+        settings.publicAiEnabled(),
+        settings.allowAnonymousAiCommands(),
+        settings.resolveUrls(),
+        channel.alertMessages(),
+        settings.captureResolvedUrls(),
+        settings.captureImages(),
+        channel.captureImageToAliases());
+  }
+
+  private LiveChannelSettingsDto settingsFrom(ChannelDto channel) {
+    return new LiveChannelSettingsDto(
+        channel.publicAiEnabled(),
+        channel.allowAnonymousAiCommands(),
+        channel.resolveUrls(),
+        channel.captureResolvedUrls(),
+        channel.captureImages());
   }
 
   private boolean isConnectionType(String actual, String expected) {
@@ -771,6 +971,12 @@ public class AdminConnectionConfigService {
   private record ConfigFile(Path path, String profile) {
   }
 
+  private record ChannelListUpdate(List<ChannelDto> channels, ChannelDto updatedChannel) {
+  }
+
+  private record ChannelSettingsUpdate(AdminConnectionConfigPayload payload, boolean updated, ChannelDto channel) {
+  }
+
   public record AdminConnectionConfigResponse(
       String profile,
       String configFile,
@@ -806,6 +1012,20 @@ public class AdminConnectionConfigService {
       String connectionType,
       String network,
       ChannelDto channel) {
+  }
+
+  public record LiveChannelSettingsDto(
+      boolean publicAiEnabled,
+      boolean allowAnonymousAiCommands,
+      boolean resolveUrls,
+      boolean captureResolvedUrls,
+      boolean captureImages) {
+  }
+
+  public record LiveChannelSettingsApplyResponse(
+      String status,
+      LiveChannelSettingsDto settings,
+      List<ApplyTargetResult> targets) {
   }
 
   public record BotConfigDto(

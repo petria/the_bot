@@ -29,6 +29,7 @@ class ChannelAccessServiceTest {
 
     assertThat(service.canView(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isTrue();
     assertThat(service.canSend(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isTrue();
+    assertThat(service.canAdmin(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isTrue();
   }
 
   @Test
@@ -37,6 +38,16 @@ class ChannelAccessServiceTest {
 
     assertThat(service.canView(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isTrue();
     assertThat(service.canSend(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isFalse();
+    assertThat(service.canAdmin(principal, "IRC_CONNECTION", "IRC-AMIGAFIN")).isFalse();
+  }
+
+  @Test
+  void channelAdminRequiresExactPermission() {
+    BotUserPrincipal admin = principal(BotPermission.WEB_USER, "channel.admin.irc.irc-amigafin");
+    BotUserPrincipal otherChannelAdmin = principal(BotPermission.WEB_USER, "channel.admin.irc.irc-other");
+
+    assertThat(service.canAdmin(admin, "IRC_CONNECTION", "IRC-AMIGAFIN")).isTrue();
+    assertThat(service.canAdmin(otherChannelAdmin, "IRC_CONNECTION", "IRC-AMIGAFIN")).isFalse();
   }
 
   @Test

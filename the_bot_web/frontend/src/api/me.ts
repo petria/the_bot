@@ -1,5 +1,12 @@
 import { deleteJson, getJson, postJson, putJson } from './client';
 
+export interface UserHomeChannel {
+  connectionType: string | null;
+  network: string | null;
+  echoToAlias: string | null;
+  label: string | null;
+}
+
 export interface MeResponse {
   id: number | null;
   username: string;
@@ -9,6 +16,7 @@ export interface MeResponse {
   telegramId: string | null;
   discordId: string | null;
   whatsappId: string | null;
+  homeChannel: UserHomeChannel | null;
   permissions: string[];
   roles: string[];
 }
