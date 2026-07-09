@@ -135,6 +135,13 @@ body,
   min-width: 0;
 }
 
+.live-channel-settings-panel {
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: var(--mantine-radius-sm);
+  background: color-mix(in srgb, var(--mantine-color-dark-7), var(--mantine-color-dark-6) 18%);
+}
+
 .live-channel-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);

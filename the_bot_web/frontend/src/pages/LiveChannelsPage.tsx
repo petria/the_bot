@@ -1,29 +1,38 @@
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
   Card,
+  Collapse,
   Group,
   Loader,
   Select,
+  SimpleGrid,
   Stack,
+  Switch,
   Tabs,
   Text,
   Textarea,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CornerDownLeft, MessageSquare, Plus, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, CornerDownLeft, MessageSquare, Plus, Save, Settings, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { ApiError } from '../api/client';
 import {
   getLiveChannelEventStreamUrl,
   getLiveChannels,
+  getLiveChannelSettings,
   getLiveChannelUsers,
+  saveAndApplyLiveChannelSettings,
   sendLiveChannelMessage,
   type LiveChannel,
   type LiveChannelEvent,
+  type LiveChannelSettings,
   type LiveChannelUser,
 } from '../api/liveChannels';
 import { getMe, type UserHomeChannel } from '../api/me';
@@ -32,6 +41,7 @@ type OpenChannel = {
   echoToAlias: string;
   label: string;
   sendAllowed: boolean;
+  adminAllowed: boolean;
 };
 
 type ChannelLine = {
@@ -72,6 +82,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
       echoToAlias: selectedAlias,
       label: option?.label ?? selectedAlias,
       sendAllowed: option?.channel.sendAllowed ?? false,
+      adminAllowed: option?.channel.adminAllowed ?? false,
     };
     setOpenChannels((current) => [...current, channel]);
     setActiveAlias(selectedAlias);
@@ -103,6 +114,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
           echoToAlias: homeOption.echoToAlias,
           label: homeOption.label,
           sendAllowed: homeOption.sendAllowed,
+          adminAllowed: homeOption.adminAllowed,
         }]);
         setActiveAlias(homeOption.echoToAlias);
         return;
@@ -117,6 +129,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
             ...channel,
             label: allowedChannel.label,
             sendAllowed: allowedChannel.sendAllowed,
+            adminAllowed: allowedChannel.adminAllowed,
           };
         }));
   }, [homeChannel?.echoToAlias, liveChannelsQuery.data]);
@@ -227,6 +240,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
 }
 
 function LiveChannelTab({ channel }: { channel: OpenChannel }) {
+  const queryClient = useQueryClient();
   const [lines, setLines] = useState<ChannelLine[]>([
     {
       id: 1,
@@ -234,6 +248,8 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     },
   ]);
   const [message, setMessage] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState<LiveChannelSettings | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [streamConnected, setStreamConnected] = useState(false);
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -255,6 +271,18 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
         compareChannelUsers(left, right));
   }, [usersQuery.data]);
 
+  const settingsQuery = useQuery({
+    queryKey: ['live-channel-settings', channel.echoToAlias],
+    queryFn: () => getLiveChannelSettings(channel.echoToAlias),
+    enabled: channel.adminAllowed && settingsOpen,
+  });
+
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setSettingsDraft(settingsQuery.data);
+    }
+  }, [settingsQuery.data]);
+
   const sendMutation = useMutation({
     mutationFn: () => sendLiveChannelMessage(channel.echoToAlias, trimmedMessage),
     onError: (error) => {
@@ -263,6 +291,19 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     },
     onSettled: () => {
       focusInput();
+    },
+  });
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: () => {
+      if (!settingsDraft) {
+        throw new Error('Channel settings are not loaded.');
+      }
+      return saveAndApplyLiveChannelSettings(channel.echoToAlias, settingsDraft);
+    },
+    onSuccess: (response) => {
+      setSettingsDraft(response.settings);
+      queryClient.setQueryData(['live-channel-settings', channel.echoToAlias], response.settings);
     },
   });
 
@@ -359,10 +400,120 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
   return (
     <Card withBorder radius="sm" className="live-channel-card">
       <Stack gap="md">
-        <Group gap="xs" wrap="wrap">
-          <Badge variant="light">{channel.echoToAlias}</Badge>
-          <Text size="sm" c="dimmed">{channel.label}</Text>
+        <Group justify="space-between" gap="sm" wrap="nowrap">
+          <Group gap="xs" wrap="wrap">
+            <Badge variant="light">{channel.echoToAlias}</Badge>
+            <Text size="sm" c="dimmed">{channel.label}</Text>
+          </Group>
+          {channel.adminAllowed ? (
+            <Tooltip label="Channel settings">
+              <ActionIcon
+                variant={settingsOpen ? 'filled' : 'light'}
+                aria-label={`Channel settings for ${channel.echoToAlias}`}
+                onClick={() => setSettingsOpen((current) => !current)}
+              >
+                <Settings size={18} />
+              </ActionIcon>
+            </Tooltip>
+          ) : null}
         </Group>
+
+        {channel.adminAllowed ? (
+          <Collapse in={settingsOpen}>
+            <div className="live-channel-settings-panel">
+              <Stack gap="sm">
+                <Group justify="space-between" gap="sm">
+                  <Text fw={600}>Channel settings</Text>
+                  {saveSettingsMutation.data ? (
+                    <Badge color={saveSettingsMutation.data.status === 'OK' ? 'green' : 'yellow'}>
+                      {saveSettingsMutation.data.status}
+                    </Badge>
+                  ) : null}
+                </Group>
+
+                {settingsQuery.isLoading ? <Loader size="sm" /> : null}
+                {settingsQuery.isError ? (
+                  <Alert color="red" icon={<AlertTriangle size={18} />}>
+                    {settingsQuery.error instanceof ApiError ? settingsQuery.error.message : settingsQuery.error.message}
+                  </Alert>
+                ) : null}
+                {saveSettingsMutation.isError ? (
+                  <Alert color="red" icon={<AlertTriangle size={18} />}>
+                    {saveSettingsMutation.error instanceof ApiError
+                        ? saveSettingsMutation.error.message
+                        : saveSettingsMutation.error.message}
+                  </Alert>
+                ) : null}
+                {settingsDraft ? (
+                  <>
+                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
+                      <Switch
+                        label="Public AI"
+                        checked={settingsDraft.publicAiEnabled}
+                        disabled={saveSettingsMutation.isPending}
+                        onChange={(event) => updateSettingsDraft(
+                          setSettingsDraft,
+                          { publicAiEnabled: event.currentTarget.checked },
+                          saveSettingsMutation.reset,
+                        )}
+                      />
+                      <Switch
+                        label="Allow unknown users to use AI"
+                        checked={settingsDraft.allowAnonymousAiCommands}
+                        disabled={saveSettingsMutation.isPending}
+                        onChange={(event) => updateSettingsDraft(
+                          setSettingsDraft,
+                          { allowAnonymousAiCommands: event.currentTarget.checked },
+                          saveSettingsMutation.reset,
+                        )}
+                      />
+                      <Switch
+                        label="Resolve URLs"
+                        checked={settingsDraft.resolveUrls}
+                        disabled={saveSettingsMutation.isPending}
+                        onChange={(event) => updateSettingsDraft(
+                          setSettingsDraft,
+                          { resolveUrls: event.currentTarget.checked },
+                          saveSettingsMutation.reset,
+                        )}
+                      />
+                      <Switch
+                        label="Capture resolved URLs"
+                        checked={settingsDraft.captureResolvedUrls}
+                        disabled={saveSettingsMutation.isPending}
+                        onChange={(event) => updateSettingsDraft(
+                          setSettingsDraft,
+                          { captureResolvedUrls: event.currentTarget.checked },
+                          saveSettingsMutation.reset,
+                        )}
+                      />
+                      <Switch
+                        label="Capture media"
+                        checked={settingsDraft.captureImages}
+                        disabled={saveSettingsMutation.isPending}
+                        onChange={(event) => updateSettingsDraft(
+                          setSettingsDraft,
+                          { captureImages: event.currentTarget.checked },
+                          saveSettingsMutation.reset,
+                        )}
+                      />
+                    </SimpleGrid>
+                    <Group justify="flex-end">
+                      <Button
+                        leftSection={<Save size={18} />}
+                        loading={saveSettingsMutation.isPending}
+                        disabled={!settingsDraft}
+                        onClick={() => saveSettingsMutation.mutate()}
+                      >
+                        Save and apply
+                      </Button>
+                    </Group>
+                  </>
+                ) : null}
+              </Stack>
+            </div>
+          </Collapse>
+        ) : null}
 
         <div className="live-channel-panel">
           <Stack gap="md" className="live-channel-transcript">
@@ -468,6 +619,15 @@ function userDisplayName(user: LiveChannelUser) {
   return `${prefix}${baseName}`;
 }
 
+function updateSettingsDraft(
+  setSettingsDraft: Dispatch<SetStateAction<LiveChannelSettings | null>>,
+  patch: Partial<LiveChannelSettings>,
+  resetMutation: () => void,
+) {
+  resetMutation();
+  setSettingsDraft((current) => (current ? { ...current, ...patch } : current));
+}
+
 function compareChannelUsers(left: LiveChannelUser, right: LiveChannelUser) {
   const leftOperator = isChannelOperator(left);
   const rightOperator = isChannelOperator(right);
@@ -551,6 +711,7 @@ function readOpenChannels() {
           echoToAlias: channel.echoToAlias,
           label: channel.label,
           sendAllowed: channel.sendAllowed === true,
+          adminAllowed: channel.adminAllowed === true,
         }));
   } catch {
     return [];

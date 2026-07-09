@@ -12,6 +12,7 @@ import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.users.BotPermission;
 import org.freakz.web.channels.ChannelAccessService;
+import org.freakz.web.config.AdminConnectionConfigService;
 import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.freakz.web.security.BotUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -141,7 +142,8 @@ class AdminLiveChannelsControllerTest {
         mock(RestEngineClient.class),
         connectionManagerClient,
         new ChannelAccessService(),
-        mock(LiveChannelCatalogService.class));
+        mock(LiveChannelCatalogService.class),
+        mock(AdminConnectionConfigService.class));
 
     ChannelUsersByEchoToAliasResponse response = controller.users(principal("petria"), "IRC-HOKANDEV");
 
@@ -154,7 +156,8 @@ class AdminLiveChannelsControllerTest {
         engineClient,
         mock(RestConnectionManagerClient.class),
         new ChannelAccessService(),
-        mock(LiveChannelCatalogService.class));
+        mock(LiveChannelCatalogService.class),
+        mock(AdminConnectionConfigService.class));
   }
 
   private BotUserPrincipal principal(String username) {

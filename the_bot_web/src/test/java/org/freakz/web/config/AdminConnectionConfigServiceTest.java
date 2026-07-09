@@ -8,6 +8,7 @@ import org.freakz.web.config.AdminConnectionConfigService.BotConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.ChannelDto;
 import org.freakz.web.config.AdminConnectionConfigService.DiscordConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.IrcServerConfigDto;
+import org.freakz.web.config.AdminConnectionConfigService.LiveChannelSettingsDto;
 import org.freakz.web.config.AdminConnectionConfigService.PromoteChannelRequest;
 import org.freakz.web.config.AdminConnectionConfigService.TelegramConfigDto;
 import org.freakz.web.config.AdminConnectionConfigService.WhatsAppConfigDto;
@@ -241,6 +242,35 @@ class AdminConnectionConfigServiceTest {
     assertThat(serverConfigClient.channelApplyCount).isEqualTo(1);
     assertThat(serverConfigClient.fullApplyCount).isZero();
     assertThat(engineClient.reloadCount).isEqualTo(1);
+  }
+
+  @Test
+  void liveChannelSettingsUpdateOnlyExposesAllowedToggles() throws Exception {
+    TestFiles files = writeConfig();
+    RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();
+    RecordingEngineClient engineClient = new RecordingEngineClient();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile(), serverConfigClient, engineClient);
+
+    AdminConnectionConfigService.LiveChannelSettingsApplyResponse response = service.saveAndApplyChannelSettings(
+        "IRC_CONNECTION",
+        "IRCDEV",
+        "IRC-HOKANDEV2",
+        new LiveChannelSettingsDto(true, true, true, true, true));
+
+    assertThat(response.status()).isEqualTo("OK");
+    assertThat(serverConfigClient.channelApplyCount).isEqualTo(1);
+    assertThat(serverConfigClient.fullApplyCount).isZero();
+    assertThat(engineClient.reloadCount).isEqualTo(1);
+    assertThat(service.readChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2"))
+        .isEqualTo(new LiveChannelSettingsDto(true, true, true, true, true));
+    assertThat(Files.readString(files.runtimeConfigFile()))
+        .contains("\"joinOnStart\" : true")
+        .contains("\"alertMessages\" : false")
+        .contains("\"publicAiEnabled\" : true")
+        .contains("\"allowAnonymousAiCommands\" : true")
+        .contains("\"resolveUrls\" : true")
+        .contains("\"captureResolvedUrls\" : true")
+        .contains("\"captureImages\" : true");
   }
 
   @Test

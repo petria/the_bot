@@ -15,6 +15,10 @@ public final class ChannelPermissionUtil {
     return BotPermission.CHANNELS_SEND_PREFIX + connectionKey(connectionType) + "." + channelKey(echoToAlias);
   }
 
+  public static String adminPermission(String connectionType, String echoToAlias) {
+    return BotPermission.CHANNEL_ADMIN_PREFIX + connectionKey(connectionType) + "." + channelKey(echoToAlias);
+  }
+
   public static String viewTypePermission(String connectionType) {
     return BotPermission.CHANNELS_VIEW_PREFIX + connectionKey(connectionType);
   }

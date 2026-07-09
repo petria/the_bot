@@ -138,6 +138,7 @@ public class AdminUsersController {
       liveChannelCatalogService.publicChannels().forEach(channel -> {
         permissions.add(channelAccessService.viewPermission(channel.connectionType(), channel.echoToAlias()));
         permissions.add(channelAccessService.sendPermission(channel.connectionType(), channel.echoToAlias()));
+        permissions.add(channelAccessService.adminPermission(channel.connectionType(), channel.echoToAlias()));
       });
     } catch (RuntimeException ignored) {
       // User management should remain available even when bot-io is temporarily down.
