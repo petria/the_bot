@@ -532,7 +532,7 @@ function ChannelsEditor({
               onChange={(event) => updateChannel(channels, index, { alertMessages: event.currentTarget.checked }, onChange)}
             />
             <Switch
-              label="Capture resolved URLs"
+              label="Capture URLs"
               checked={channel.captureResolvedUrls}
               onChange={(event) => updateChannel(channels, index, { captureResolvedUrls: event.currentTarget.checked }, onChange)}
             />

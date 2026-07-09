@@ -66,7 +66,7 @@ export function AdminCollectedUrlsPage() {
       <Group justify="space-between" align="flex-start">
         <div>
           <Title order={2}>Collected URLs</Title>
-          <Text c="dimmed">Browse resolved URLs captured from connected chat channels.</Text>
+          <Text c="dimmed">Browse URLs captured from connected chat channels.</Text>
         </div>
         <Button variant="light" onClick={() => urlsQuery.refetch()} loading={urlsQuery.isFetching}>
           Refresh

@@ -1,5 +1,6 @@
 package org.freakz.engine.services.urls;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 
@@ -30,7 +31,14 @@ public class UrlArchiveService {
   }
 
   public void archive(UrlResolution resolution, EngineRequest request, Channel channel) {
-    if (resolution == null || resolution.url() == null || resolution.title() == null || resolution.title().isBlank()) {
+    if (resolution == null) {
+      return;
+    }
+    archive(resolution.url(), resolution, request, channel);
+  }
+
+  public void archive(URI url, UrlResolution resolution, EngineRequest request, Channel channel) {
+    if (url == null) {
       return;
     }
     try {
@@ -40,14 +48,14 @@ public class UrlArchiveService {
       }
       int retentionDays = settings.retentionDays() == null ? 30 : settings.retentionDays();
       new UrlArchiveStore(Path.of(settings.storageDir()), jsonMapper).create(
-          resolution.url().toString(),
-          resolution.provider(),
-          resolution.title(),
-          resolution.author(),
-          resolution.description(),
-          resolution.duration(),
-          resolution.publishedAt(),
-          resolution.viewCount(),
+          url.toString(),
+          resolution == null ? null : resolution.provider(),
+          resolution == null ? null : resolution.title(),
+          resolution == null ? null : resolution.author(),
+          resolution == null ? null : resolution.description(),
+          resolution == null ? null : resolution.duration(),
+          resolution == null ? null : resolution.publishedAt(),
+          resolution == null ? null : resolution.viewCount(),
           Duration.ofDays(retentionDays),
           new UrlArchiveSource(
               ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork())),
@@ -56,7 +64,7 @@ public class UrlArchiveService {
               channel == null ? null : channel.getName(),
               request.getFromSender()));
     } catch (Exception e) {
-      log.warn("Unable to archive resolved URL {}: {}", resolution.url(), e.getMessage());
+      log.warn("Unable to archive URL {}: {}", url, e.getMessage());
       log.debug("URL archive failure", e);
     }
   }
