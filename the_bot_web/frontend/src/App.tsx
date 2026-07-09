@@ -34,25 +34,25 @@ import {
 } from './permissions';
 
 const navItems = [
-  { label: 'System', path: '/system', icon: Server },
-  { label: 'Overview', path: '/overview', icon: Bot },
-  { label: 'Known Users', path: '/users', icon: Users },
-  { label: 'Connections', path: '/connections', icon: RadioTower },
   { label: 'Commands', path: '/commands', icon: ListTree },
+  { label: 'Connections', path: '/connections', icon: RadioTower },
   { label: 'Console', path: '/console', icon: Terminal },
+  { label: 'Known Users', path: '/users', icon: Users },
   { label: 'Live Channels', path: '/live-channels', icon: MessageSquare },
   { label: 'Live Media', path: '/live-media', icon: Images },
+  { label: 'My Account', path: '/overview', icon: Bot },
+  { label: 'System', path: '/system', icon: Server },
 ];
 
 const adminNavItems = [
-  { label: 'Send', path: '/send', icon: Send },
-  { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
-  { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
-  { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
-  { label: 'Media Content', path: '/admin/media-content', icon: FolderOpen },
   { label: 'Collected URLs', path: '/admin/collected-urls', icon: Link2 },
   { label: 'Manage AI Commands', path: '/admin/ai-commands', icon: BrainCircuit },
   { label: 'Manage AI Routes', path: '/admin/system', icon: Settings },
+  { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
+  { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
+  { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
+  { label: 'Media Content', path: '/admin/media-content', icon: FolderOpen },
+  { label: 'Send', path: '/send', icon: Send },
 ];
 
 export function App() {
