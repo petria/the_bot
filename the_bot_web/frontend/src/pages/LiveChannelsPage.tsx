@@ -26,7 +26,7 @@ import {
   type LiveChannelEvent,
   type LiveChannelUser,
 } from '../api/liveChannels';
-import { getMe } from '../api/me';
+import { getMe, type UserHomeChannel } from '../api/me';
 
 type OpenChannel = {
   echoToAlias: string;
@@ -43,10 +43,11 @@ const maxMessageLength = 900;
 const openChannelsStorageKey = 'the-bot-live-channels-open';
 const activeAliasStorageKey = 'the-bot-live-channels-active';
 
-export function LiveChannelsPage() {
+export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChannel | null }) {
   const [selectedAlias, setSelectedAlias] = useState<string | null>(null);
   const [openChannels, setOpenChannels] = useState<OpenChannel[]>(readOpenChannels);
   const [activeAlias, setActiveAlias] = useState<string | null>(readActiveAlias);
+  const homeChannelDefaultAppliedRef = useRef(hasSavedOpenChannels());
   const liveChannelsQuery = useQuery({
     queryKey: ['live-channels'],
     queryFn: getLiveChannels,
@@ -91,6 +92,22 @@ export function LiveChannelsPage() {
     if (!liveChannelsQuery.data) {
       return;
     }
+    if (!homeChannelDefaultAppliedRef.current) {
+      homeChannelDefaultAppliedRef.current = true;
+      const homeAlias = homeChannel?.echoToAlias;
+      const homeOption = homeAlias
+          ? liveChannelsQuery.data.find((channel) => channel.echoToAlias === homeAlias)
+          : null;
+      if (homeOption) {
+        setOpenChannels([{
+          echoToAlias: homeOption.echoToAlias,
+          label: homeOption.label,
+          sendAllowed: homeOption.sendAllowed,
+        }]);
+        setActiveAlias(homeOption.echoToAlias);
+        return;
+      }
+    }
     const allowedChannels = new Map(liveChannelsQuery.data.map((channel) => [channel.echoToAlias, channel]));
     setOpenChannels((current) => current
         .filter((channel) => allowedChannels.has(channel.echoToAlias))
@@ -102,7 +119,7 @@ export function LiveChannelsPage() {
             sendAllowed: allowedChannel.sendAllowed,
           };
         }));
-  }, [liveChannelsQuery.data]);
+  }, [homeChannel?.echoToAlias, liveChannelsQuery.data]);
 
   useEffect(() => {
     if (openChannels.length === 0) {
@@ -538,6 +555,10 @@ function readOpenChannels() {
   } catch {
     return [];
   }
+}
+
+function hasSavedOpenChannels() {
+  return window.sessionStorage.getItem(openChannelsStorageKey) !== null;
 }
 
 function readActiveAlias() {
