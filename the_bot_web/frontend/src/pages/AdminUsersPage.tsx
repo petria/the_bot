@@ -228,6 +228,7 @@ function UsersTable({
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th>ID</Table.Th>
             <Table.Th>User</Table.Th>
             <Table.Th>Home channel</Table.Th>
             <Table.Th>Identity links</Table.Th>
@@ -238,6 +239,7 @@ function UsersTable({
         <Table.Tbody>
           {users.map((user) => (
             <Table.Tr key={user.id ?? user.username}>
+              <Table.Td><UserIdCell user={user} /></Table.Td>
               <Table.Td><UserCell user={user} /></Table.Td>
               <Table.Td><HomeChannelCell user={user} /></Table.Td>
               <Table.Td><IdentityCell user={user} onUnlinkIdentity={onUnlinkIdentity} /></Table.Td>
@@ -599,6 +601,14 @@ function UserActions({
   );
 }
 
+function UserIdCell({ user }: { user: AdminUser }) {
+  return (
+    <Text size="sm" fw={700} ff="monospace">
+      {user.id ?? '-'}
+    </Text>
+  );
+}
+
 function UserCell({ user }: { user: AdminUser }) {
   return (
     <Stack gap={2} className="admin-users-cell">
@@ -819,8 +829,7 @@ function channelKey(echoToAlias: string) {
 }
 
 function compareUsers(left: AdminUser, right: AdminUser) {
-  if (left.reserved !== right.reserved) {
-    return left.reserved ? -1 : 1;
-  }
-  return (left.username || '').localeCompare(right.username || '');
+  const leftId = left.id ?? Number.MAX_SAFE_INTEGER;
+  const rightId = right.id ?? Number.MAX_SAFE_INTEGER;
+  return leftId - rightId || (left.username || '').localeCompare(right.username || '');
 }
