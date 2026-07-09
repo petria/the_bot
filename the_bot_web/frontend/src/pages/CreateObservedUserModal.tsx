@@ -82,6 +82,7 @@ export function CreateObservedUserModal({
       connectionType: target.connectionType,
       network: target.network,
       echoToAlias: target.echoToAlias,
+      homeChannel: defaultHomeChannel(target),
       observedUserId: target.observedUserId,
       observedUsername: target.observedUsername,
       observedDisplayName: target.observedDisplayName,
@@ -184,7 +185,25 @@ function defaultPermissions(target?: KnownUserTarget | null) {
   if (!target?.connectionType || !target.echoToAlias) {
     return ['web.user'];
   }
-  return ['web.user', `channels.view.${connectionKey(target.connectionType)}.${channelKey(target.echoToAlias)}`];
+  return [
+    'web.user',
+    `channels.view.${connectionKey(target.connectionType)}.${channelKey(target.echoToAlias)}`,
+    `channels.send.${connectionKey(target.connectionType)}.${channelKey(target.echoToAlias)}`,
+    'logs.read.current-chat',
+    'logs.read.current-channel',
+  ];
+}
+
+function defaultHomeChannel(target: KnownUserTarget) {
+  if (!target.connectionType || !target.echoToAlias) {
+    return null;
+  }
+  return {
+    connectionType: target.connectionType,
+    network: target.network,
+    echoToAlias: target.echoToAlias,
+    label: [target.connectionType, target.network, target.echoToAlias].filter(Boolean).join(' / '),
+  };
 }
 
 function suggestName(target: KnownUserTarget) {

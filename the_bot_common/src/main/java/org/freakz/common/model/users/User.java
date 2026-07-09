@@ -27,6 +27,8 @@ public class User extends DataNodeBase {
   private String discordId;
   @JsonProperty("whatsappId")
   private String whatsappId;
+  @JsonProperty("homeChannel")
+  private UserHomeChannel homeChannel;
   @JsonProperty("chatIdentities")
   private List<UserChatIdentity> chatIdentities = new ArrayList<>();
   @JsonProperty("permissions")
@@ -114,6 +116,14 @@ public class User extends DataNodeBase {
     this.whatsappId = whatsappId;
   }
 
+  public UserHomeChannel getHomeChannel() {
+    return homeChannel;
+  }
+
+  public void setHomeChannel(UserHomeChannel homeChannel) {
+    this.homeChannel = homeChannel;
+  }
+
   public List<UserChatIdentity> getChatIdentities() {
     return chatIdentities;
   }
@@ -135,12 +145,12 @@ public class User extends DataNodeBase {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     User user = (User) o;
-    return Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(whatsappId, user.whatsappId) && Objects.equals(chatIdentities, user.chatIdentities) && Objects.equals(permissions, user.permissions);
+    return Objects.equals(username, user.username) && Objects.equals(password, user.password) && Objects.equals(name, user.name) && Objects.equals(email, user.email) && Objects.equals(ircNick, user.ircNick) && Objects.equals(telegramId, user.telegramId) && Objects.equals(discordId, user.discordId) && Objects.equals(whatsappId, user.whatsappId) && Objects.equals(homeChannel, user.homeChannel) && Objects.equals(chatIdentities, user.chatIdentities) && Objects.equals(permissions, user.permissions);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(username, password, name, email, ircNick, telegramId, discordId, whatsappId, chatIdentities, permissions);
+    return Objects.hash(username, password, name, email, ircNick, telegramId, discordId, whatsappId, homeChannel, chatIdentities, permissions);
   }
 
   @Override
@@ -154,6 +164,7 @@ public class User extends DataNodeBase {
         ", telegramId='" + telegramId + '\'' +
         ", discordId='" + discordId + '\'' +
         ", whatsappId='" + whatsappId + '\'' +
+        ", homeChannel=" + homeChannel +
         ", chatIdentities=" + chatIdentities +
         ", permissions=" + permissions +
         '}';
@@ -168,6 +179,7 @@ public class User extends DataNodeBase {
     private String telegramId;
     private String discordId;
     private String whatsappId;
+    private UserHomeChannel homeChannel;
     private List<UserChatIdentity> chatIdentities = new ArrayList<>();
     private List<String> permissions = new ArrayList<>();
 
@@ -211,6 +223,11 @@ public class User extends DataNodeBase {
       return this;
     }
 
+    public Builder homeChannel(UserHomeChannel homeChannel) {
+      this.homeChannel = homeChannel;
+      return this;
+    }
+
     public Builder chatIdentities(List<UserChatIdentity> chatIdentities) {
       this.chatIdentities = chatIdentities == null ? new ArrayList<>() : new ArrayList<>(chatIdentities);
       return this;
@@ -223,6 +240,7 @@ public class User extends DataNodeBase {
 
     public User build() {
       User user = new User(username, password, name, email, ircNick, telegramId, discordId, whatsappId);
+      user.setHomeChannel(homeChannel);
       user.setChatIdentities(chatIdentities);
       user.setPermissions(permissions);
       return user;

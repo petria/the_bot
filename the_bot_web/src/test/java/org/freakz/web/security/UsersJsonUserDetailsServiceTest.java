@@ -1,9 +1,12 @@
 package org.freakz.web.security;
 
 import org.freakz.common.model.users.User;
+import org.freakz.common.model.users.UserHomeChannel;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserChatIdentityAlreadyLinkedException;
+import org.freakz.web.channels.ChannelAccessService;
 import org.freakz.web.config.TheBotWebProperties;
+import org.freakz.web.livechannels.LiveChannelCatalogService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -17,6 +20,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class UsersJsonUserDetailsServiceTest {
 
@@ -251,12 +256,21 @@ class UsersJsonUserDetailsServiceTest {
         "111",
         "222",
         "333",
+        homeChannel("IRC-AMIGAFIN"),
         List.of(BotPermission.HERMES_USE)));
 
     User created = service.findByUsername("normal").orElseThrow();
     assertThat(created.getId()).isEqualTo(4L);
+    assertThat(created.getHomeChannel().getEchoToAlias()).isEqualTo("IRC-AMIGAFIN");
     assertThat(created.getPassword()).doesNotContain("normal-password");
     assertThat(passwordEncoder.matches("normal-password", created.getPassword())).isTrue();
+    assertThat(created.getPermissions()).contains(
+        BotPermission.WEB_USER,
+        BotPermission.HERMES_USE,
+        "channels.view.irc.irc-amigafin",
+        "channels.send.irc.irc-amigafin",
+        BotPermission.LOGS_READ_CURRENT_CHAT,
+        BotPermission.LOGS_READ_CURRENT_CHANNEL);
 
     service.updateUser(created.getId(), new UsersJsonUserDetailsService.AdminUserUpdate(
         "Normal Edited",
@@ -265,11 +279,21 @@ class UsersJsonUserDetailsServiceTest {
         "333",
         "444",
         "555",
+        homeChannel("IRC-NEW"),
         List.of()));
     User edited = service.findByUsername("normal").orElseThrow();
     assertThat(edited.getUsername()).isEqualTo("normal");
     assertThat(edited.getName()).isEqualTo("Normal Edited");
-    assertThat(edited.getPermissions()).isEmpty();
+    assertThat(edited.getHomeChannel().getEchoToAlias()).isEqualTo("IRC-NEW");
+    assertThat(edited.getPermissions()).contains(
+        BotPermission.WEB_USER,
+        "channels.view.irc.irc-new",
+        "channels.send.irc.irc-new",
+        BotPermission.LOGS_READ_CURRENT_CHAT,
+        BotPermission.LOGS_READ_CURRENT_CHANNEL);
+    assertThat(edited.getPermissions()).doesNotContain(
+        "channels.view.irc.irc-amigafin",
+        "channels.send.irc.irc-amigafin");
 
     service.resetUserPassword(created.getId(), new UsersJsonUserDetailsService.AdminPasswordReset("reset-password"));
     User reset = service.findByUsername("normal").orElseThrow();
@@ -277,6 +301,54 @@ class UsersJsonUserDetailsServiceTest {
 
     service.deleteUser(created.getId());
     assertThat(service.findByUsername("normal")).isEmpty();
+  }
+
+  @Test
+  void adminCreateRejectsMissingOrUnconfiguredHomeChannel() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 3,
+              "permissions": ["*"],
+              "username": "admin",
+              "password": "%s"
+            }
+          ]
+        }
+        """.formatted(passwordEncoder.encode("admin-password")));
+
+    UsersJsonUserDetailsService service = serviceFor(usersFile);
+
+    assertThatThrownBy(() -> service.createUser(new UsersJsonUserDetailsService.AdminUserCreate(
+        "missing-home",
+        "normal-password",
+        "Missing Home",
+        "",
+        "",
+        "",
+        "",
+        "",
+        null,
+        List.of())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Home channel is required");
+
+    assertThatThrownBy(() -> service.createUser(new UsersJsonUserDetailsService.AdminUserCreate(
+        "bad-home",
+        "normal-password",
+        "Bad Home",
+        "",
+        "",
+        "",
+        "",
+        "",
+        homeChannel("IRC-MISSING"),
+        List.of())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("configured public channel");
   }
 
   @Test
@@ -313,6 +385,7 @@ class UsersJsonUserDetailsServiceTest {
             "IRC_CONNECTION",
             "IRCNet",
             "IRC-AMIGAFIN",
+            homeChannel("IRC-AMIGAFIN"),
             "pete!user@example.invalid",
             "_Pete_",
             "Petri",
@@ -323,8 +396,12 @@ class UsersJsonUserDetailsServiceTest {
     assertThat(passwordEncoder.matches("normal-password", created.getPassword())).isTrue();
     assertThat(created.getName()).isEqualTo("Petri");
     assertThat(created.getIrcNick()).isEqualTo("_Pete_");
-    assertThat(created.getPermissions()).containsExactly(
+    assertThat(created.getHomeChannel().getEchoToAlias()).isEqualTo("IRC-AMIGAFIN");
+    assertThat(created.getPermissions()).contains(
         "channels.view.irc.irc-amigafin",
+        "channels.send.irc.irc-amigafin",
+        BotPermission.LOGS_READ_CURRENT_CHAT,
+        BotPermission.LOGS_READ_CURRENT_CHANNEL,
         BotPermission.WEB_USER);
     assertThat(created.getChatIdentities()).singleElement().satisfies(identity -> {
       assertThat(identity.getConnectionType()).isEqualTo("IRC_CONNECTION");
@@ -346,6 +423,7 @@ class UsersJsonUserDetailsServiceTest {
             "IRC_CONNECTION",
             "IRCNet",
             "IRC-AMIGAFIN",
+            homeChannel("IRC-AMIGAFIN"),
             "pete!user@example.invalid",
             "_Pete_",
             "Petri",
@@ -360,6 +438,33 @@ class UsersJsonUserDetailsServiceTest {
   private UsersJsonUserDetailsService serviceFor(Path usersFile) {
     TheBotWebProperties properties = new TheBotWebProperties();
     properties.setUsersFile(usersFile.toString());
-    return new UsersJsonUserDetailsService(properties, JsonMapper.builder().build(), new BCryptPasswordEncoder());
+    return new UsersJsonUserDetailsService(
+        properties,
+        JsonMapper.builder().build(),
+        new BCryptPasswordEncoder(),
+        liveChannelCatalogService(),
+        new ChannelAccessService());
+  }
+
+  private LiveChannelCatalogService liveChannelCatalogService() {
+    LiveChannelCatalogService service = mock(LiveChannelCatalogService.class);
+    when(service.publicChannels()).thenReturn(List.of(
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "IRC-AMIGAFIN",
+            "IRCNet / #amigafin",
+            "IRC_CONNECTION",
+            "IRCNet",
+            "channel"),
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "IRC-NEW",
+            "IRCNet / #new",
+            "IRC_CONNECTION",
+            "IRCNet",
+            "channel")));
+    return service;
+  }
+
+  private UserHomeChannel homeChannel(String echoToAlias) {
+    return new UserHomeChannel("IRC_CONNECTION", "IRCNet", echoToAlias, null);
   }
 }

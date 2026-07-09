@@ -2,6 +2,7 @@ package org.freakz.common.users;
 
 import org.freakz.common.model.users.User;
 import org.freakz.common.model.users.UserChatIdentity;
+import org.freakz.common.model.users.UserHomeChannel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.json.JsonMapper;
@@ -105,6 +106,39 @@ class UsersJsonStoreTest {
     assertThatThrownBy(() -> store.addUser(User.builder().username(" PETRIA ").password("hash").build()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Username already exists");
+  }
+
+  @Test
+  void persistsAndCopiesHomeChannelWhileOldUsersCanRemainUnset() throws Exception {
+    Path usersFile = tempDir.resolve("users.json");
+    Files.writeString(usersFile, """
+        {
+          "data_values": [
+            {
+              "id": 1,
+              "permissions": ["web.user"],
+              "username": "old",
+              "password": "hash"
+            }
+          ]
+        }
+        """);
+
+    UsersJsonStore store = new UsersJsonStore(usersFile, JsonMapper.builder().build());
+    assertThat(store.findByUsername("old")).get().extracting(User::getHomeChannel).isNull();
+
+    User created = store.addUser(User.builder()
+        .username("normal")
+        .password("hash")
+        .homeChannel(new UserHomeChannel("IRC_CONNECTION", "IRCNet", "IRC-AMIGAFIN", "IRCNet / #amigafin"))
+        .build());
+
+    assertThat(created.getHomeChannel().getEchoToAlias()).isEqualTo("IRC-AMIGAFIN");
+    assertThat(store.findByUsername("normal").orElseThrow().getHomeChannel().getConnectionType())
+        .isEqualTo("IRC_CONNECTION");
+    assertThat(Files.readString(usersFile))
+        .contains("\"homeChannel\"")
+        .contains("\"echoToAlias\" : \"IRC-AMIGAFIN\"");
   }
 
   @Test

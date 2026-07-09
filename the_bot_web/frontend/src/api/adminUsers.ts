@@ -12,6 +12,13 @@ export interface AdminChatIdentity {
   linkedBy: string | null;
 }
 
+export interface AdminUserHomeChannel {
+  connectionType: string | null;
+  network: string | null;
+  echoToAlias: string | null;
+  label: string | null;
+}
+
 export interface AdminUser {
   id: number | null;
   username: string | null;
@@ -21,6 +28,7 @@ export interface AdminUser {
   telegramId: string | null;
   discordId: string | null;
   whatsappId: string | null;
+  homeChannel: AdminUserHomeChannel | null;
   chatIdentities: AdminChatIdentity[] | null;
   permissions: string[];
   reserved: boolean;
@@ -29,6 +37,7 @@ export interface AdminUser {
 export interface AdminUsersResponse {
   users: AdminUser[];
   availablePermissions: string[];
+  availableHomeChannels: AdminUserHomeChannel[];
 }
 
 export interface AdminUserCreateRequest {
@@ -40,6 +49,7 @@ export interface AdminUserCreateRequest {
   telegramId: string;
   discordId: string;
   whatsappId: string;
+  homeChannel: AdminUserHomeChannel | null;
   permissions: string[];
 }
 
@@ -67,6 +77,7 @@ export interface AdminObservedUserCreateRequest {
   connectionType: string | null;
   network: string | null;
   echoToAlias: string | null;
+  homeChannel: AdminUserHomeChannel | null;
   observedUserId: string | null;
   observedUsername: string | null;
   observedDisplayName: string | null;
