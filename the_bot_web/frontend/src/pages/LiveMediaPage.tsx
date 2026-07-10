@@ -228,7 +228,7 @@ function TypeCell({ item }: { item: LiveMediaItem }) {
     return (
       <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
         <Link2 size={18} />
-        <Badge variant="light">{item.provider || 'Web'}</Badge>
+        <Badge variant="light" style={{ whiteSpace: 'nowrap' }}>{item.provider || 'Web'}</Badge>
       </Group>
     );
   }
@@ -236,7 +236,7 @@ function TypeCell({ item }: { item: LiveMediaItem }) {
   return (
     <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
       <Icon size={18} />
-      <Badge variant="light">{item.mediaType || 'media'}</Badge>
+      <Badge variant="light" style={{ whiteSpace: 'nowrap' }}>{item.mediaType || 'media'}</Badge>
     </Group>
   );
 }
