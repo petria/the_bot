@@ -1,4 +1,4 @@
-package org.freakz.io.contoller;
+package org.freakz.io.controller;
 
 
 import org.freakz.common.model.feed.Message;

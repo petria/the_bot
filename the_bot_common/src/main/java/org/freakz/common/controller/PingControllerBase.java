@@ -1,4 +1,4 @@
-package org.freakz.common.contoller;
+package org.freakz.common.controller;
 
 import org.freakz.common.model.response.PingResponse;
 import org.springframework.http.ResponseEntity;
