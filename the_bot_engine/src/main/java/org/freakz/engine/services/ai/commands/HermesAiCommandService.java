@@ -89,7 +89,7 @@ public class HermesAiCommandService {
       }
 
       String instructions = buildInstructions(command);
-      String input = buildInitialInput(request, command, argumentsText, sessionKey, allowedTools);
+      ModelInput input = ModelInput.text(buildInitialInput(request, command, argumentsText, sessionKey, allowedTools));
       int maxIterations = Math.max(1, Math.min(command.getMaxToolIterations(), 10));
       if (usesModelFinalToolResult(command)) {
         maxIterations = Math.max(2, maxIterations);
@@ -100,7 +100,7 @@ public class HermesAiCommandService {
         AiCommandModelResponse modelResponse = parseModelResponse(responseText);
         if (modelResponse.invalidResponse()) {
           String repairInput = buildInvalidResponseRepairInput(command, argumentsText, responseText, allowedTools);
-          responseText = createModelResponse(client, settings, sessionKey, instructions, repairInput);
+          responseText = createModelResponse(client, settings, sessionKey, instructions, ModelInput.text(repairInput));
           modelResponse = parseModelResponse(responseText);
         }
         if (modelResponse.invalidResponse()) {
@@ -129,7 +129,9 @@ public class HermesAiCommandService {
             return;
           }
         }
-        input = buildToolResultInput(command, argumentsText, modelResponse.toolName(), toolResult);
+        input = ModelInput.of(
+            buildToolResultInput(command, argumentsText, modelResponse.toolName(), toolResult),
+            extractImageDataUrl(toolResult));
       }
 
       processReply(request, "AI command stopped before producing a final answer.");
@@ -424,12 +426,24 @@ public class HermesAiCommandService {
       HermesSettings settings,
       String sessionKey,
       String instructions,
-      String input) throws Exception {
+      ModelInput input) throws Exception {
     ObjectNode body = jsonMapper.createObjectNode();
     body.put("model", settings.model());
     body.put("conversation", sessionKey);
     body.put("instructions", instructions);
-    body.put("input", input == null ? "" : input);
+    if (input == null || input.imageDataUrl() == null) {
+      body.put("input", input == null ? "" : input.text());
+    } else {
+      ArrayNode content = jsonMapper.createArrayNode();
+      content.addObject().put("type", "input_text").put("text", input.text());
+      content.addObject().put("type", "input_image").put("image_url", input.imageDataUrl());
+      ObjectNode message = jsonMapper.createObjectNode();
+      message.put("role", "user");
+      message.set("content", content);
+      ArrayNode inputItems = jsonMapper.createArrayNode();
+      inputItems.add(message);
+      body.set("input", inputItems);
+    }
 
     String response = client.post()
         .uri("/v1/responses")
@@ -452,6 +466,15 @@ public class HermesAiCommandService {
       String sessionKey,
       String instructions,
       String input) throws Exception {
+    return createModelResponse(client, settings, sessionKey, instructions, ModelInput.text(input));
+  }
+
+  private String createModelResponse(
+      WebClient client,
+      HermesSettings settings,
+      String sessionKey,
+      String instructions,
+      ModelInput input) throws Exception {
     if (settings.useChatCompletionsApi()) {
       return createChatCompletion(client, settings, sessionKey, instructions, input);
     }
@@ -463,14 +486,23 @@ public class HermesAiCommandService {
       HermesSettings settings,
       String sessionKey,
       String instructions,
-      String input) throws Exception {
+      ModelInput input) throws Exception {
     ObjectNode systemMessage = jsonMapper.createObjectNode();
     systemMessage.put("role", "system");
     systemMessage.put("content", instructions);
 
     ObjectNode userMessage = jsonMapper.createObjectNode();
     userMessage.put("role", "user");
-    userMessage.put("content", input == null ? "" : input);
+    if (input == null || input.imageDataUrl() == null) {
+      userMessage.put("content", input == null ? "" : input.text());
+    } else {
+      ArrayNode content = jsonMapper.createArrayNode();
+      content.addObject().put("type", "text").put("text", input.text());
+      ObjectNode image = content.addObject();
+      image.put("type", "image_url");
+      image.putObject("image_url").put("url", input.imageDataUrl());
+      userMessage.set("content", content);
+    }
 
     ObjectNode body = jsonMapper.createObjectNode();
     body.put("model", settings.model());
@@ -562,6 +594,11 @@ public class HermesAiCommandService {
             - weather.compare: arguments must include locations array with at least two place names.
               Use this when the user asks to compare temperatures or asks which place is warmer/cooler.
             """);
+        case "image.analyze" -> sb.append("""
+            - image.analyze: arguments must include url with a direct image URL.
+              Optional question or prompt tells the vision model what to inspect.
+              Use this for chart, graph, map, screenshot, and other visual analysis.
+            """);
         default -> sb.append("- ").append(tool).append(": use concise JSON arguments.\n");
       }
     }
@@ -608,7 +645,38 @@ public class HermesAiCommandService {
         command == null ? "" : command.getName(),
         argumentsText == null ? "" : argumentsText,
         toolName == null ? "" : toolName,
-        toolResult == null ? "" : toolResult);
+        sanitizeToolResultForPrompt(toolResult));
+  }
+
+  private String sanitizeToolResultForPrompt(String toolResult) {
+    if (toolResult == null || toolResult.isBlank()) {
+      return "";
+    }
+    try {
+      JsonNode node = jsonMapper.readTree(toolResult);
+      if (node.isObject() && node.has("imageDataUrl")) {
+        ObjectNode copy = (ObjectNode) node.deepCopy();
+        copy.remove("imageDataUrl");
+        copy.put("imageAttached", true);
+        return copy.toString();
+      }
+    } catch (Exception ignored) {
+      // Keep non-JSON tool output unchanged.
+    }
+    return toolResult;
+  }
+
+  private String extractImageDataUrl(String toolResult) {
+    if (toolResult == null || toolResult.isBlank()) {
+      return null;
+    }
+    try {
+      JsonNode node = jsonMapper.readTree(toolResult);
+      String value = node.path("imageDataUrl").asString("").trim();
+      return value.startsWith("data:image/") ? value : null;
+    } catch (Exception ignored) {
+      return null;
+    }
   }
 
   String buildInvalidResponseRepairInput(
@@ -979,6 +1047,16 @@ public class HermesAiCommandService {
 
     static AiCommandModelResponse invalid() {
       return new AiCommandModelResponse(null, null, null, true);
+    }
+  }
+
+  record ModelInput(String text, String imageDataUrl) {
+    static ModelInput text(String text) {
+      return new ModelInput(text == null ? "" : text, null);
+    }
+
+    static ModelInput of(String text, String imageDataUrl) {
+      return new ModelInput(text == null ? "" : text, imageDataUrl);
     }
   }
 

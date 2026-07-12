@@ -26,7 +26,8 @@ public class AdminAiCommandConfigService {
       "users.get",
       "dataValues.query",
       "dataValues.aggregate",
-      "dataValues.stats");
+      "dataValues.stats",
+      "image.analyze");
 
   private final Environment environment;
   private final TheBotProperties botProperties;
