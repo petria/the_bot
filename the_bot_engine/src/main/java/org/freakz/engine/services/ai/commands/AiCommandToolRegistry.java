@@ -47,6 +47,7 @@ public class AiCommandToolRegistry {
   private final ChatLogAccessService chatLogAccessService;
   private final HokanNodeContextTokenService tokenService;
   private final JsonMapper jsonMapper;
+  private final ImageAnalysisToolService imageAnalysisToolService;
 
   public AiCommandToolRegistry(
       ObjectProvider<WeatherAPIService> weatherAPIServiceProvider,
@@ -54,13 +55,15 @@ public class AiCommandToolRegistry {
       DataValuesService dataValuesService,
       ChatLogAccessService chatLogAccessService,
       HokanNodeContextTokenService tokenService,
-      JsonMapper jsonMapper) {
+      JsonMapper jsonMapper,
+      ImageAnalysisToolService imageAnalysisToolService) {
     this.weatherAPIServiceProvider = weatherAPIServiceProvider;
     this.usersService = usersService;
     this.dataValuesService = dataValuesService;
     this.chatLogAccessService = chatLogAccessService;
     this.tokenService = tokenService;
     this.jsonMapper = jsonMapper;
+    this.imageAnalysisToolService = imageAnalysisToolService;
   }
 
   public List<String> availableToolNames() {
@@ -73,7 +76,8 @@ public class AiCommandToolRegistry {
         "dataValues.aggregate",
         "dataValues.stats",
         "logs.read",
-        "logs.search");
+        "logs.search",
+        "image.analyze");
   }
 
   public String execute(String toolName, JsonNode arguments) {
@@ -91,6 +95,7 @@ public class AiCommandToolRegistry {
       case "dataValues.stats" -> dataValuesStats(arguments);
       case "logs.read" -> logsRead(arguments, request);
       case "logs.search" -> logsSearch(arguments, request);
+      case "image.analyze" -> imageAnalysisToolService.analyze(new ImageAnalysisToolService.JsonNodeArguments(arguments));
       default -> error("Unknown AI command tool: " + toolName);
     };
   }
