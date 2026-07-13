@@ -183,6 +183,30 @@ public class HermesAiCommandService {
     return clientBuilder.build();
   }
 
+  /** Executes one vision request through the configured AI-command Hermes route. */
+  public String analyzeImage(EngineRequest request, String prompt, String imageDataUrl) throws Exception {
+    if (!settingsService.aiEnabled()) {
+      throw new IllegalStateException("AI not available");
+    }
+    HermesSettings settings = settingsService.resolveAiCommandSettings();
+    if (!settings.configured()) {
+      throw new IllegalStateException("Hermes is not configured");
+    }
+    if (!settings.useResponsesApi() && !settings.useChatCompletionsApi()) {
+      throw new IllegalStateException("Hermes AI-command route does not support vision");
+    }
+    String sessionSource = "water:" + settingsService.getBotInstanceId() + ":"
+        + (request == null ? "unknown" : String.valueOf(request.getNetwork())) + ":"
+        + (request == null ? "unknown" : String.valueOf(request.getReplyTo()));
+    String sessionKey = buildStableSessionId(sessionSource);
+    return createModelResponse(
+        buildClient(settings),
+        settings,
+        sessionKey,
+        prompt,
+        ModelInput.of(prompt, imageDataUrl));
+  }
+
   private boolean isWeatherCommand(AiCommandDefinition command, List<String> allowedTools) {
     return command != null
         && command.getName() != null

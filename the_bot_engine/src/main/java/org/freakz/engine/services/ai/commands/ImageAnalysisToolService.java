@@ -3,6 +3,7 @@ package org.freakz.engine.services.ai.commands;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.freakz.engine.services.urls.UrlSecurityValidator;
+import org.freakz.engine.services.water.WaterSiteTls;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -48,11 +49,7 @@ public class ImageAnalysisToolService {
     }
     try {
       URI requested = URI.create(sourceUrl.trim());
-      ImageData image = cache.getIfPresent(sourceUrl.trim());
-      if (image == null) {
-        image = download(requested);
-        cache.put(sourceUrl.trim(), image);
-      }
+      ImageData image = loadImage(sourceUrl.trim());
       ObjectNode result = jsonMapper.createObjectNode();
       result.put("tool", "image.analyze");
       result.put("sourceUrl", sourceUrl.trim());
@@ -68,7 +65,37 @@ public class ImageAnalysisToolService {
     }
   }
 
+  public ImageData loadImage(String sourceUrl) throws Exception {
+    String normalizedUrl = sourceUrl == null ? "" : sourceUrl.trim();
+    if (normalizedUrl.isBlank()) {
+      throw new IllegalArgumentException("image URL is blank");
+    }
+    ImageData image = cache.getIfPresent(normalizedUrl);
+    if (image != null) {
+      return image;
+    }
+    image = download(URI.create(normalizedUrl));
+    cache.put(normalizedUrl, image);
+    return image;
+  }
+
+  public ImageData loadWaterSiteImage(String sourceUrl) throws Exception {
+    String normalizedUrl = sourceUrl == null ? "" : sourceUrl.trim();
+    if (!normalizedUrl.startsWith("https://wwwi2.ymparisto.fi/")) {
+      throw new IllegalArgumentException("water image URL is not allowed");
+    }
+    URI requested = URI.create(normalizedUrl);
+    if (!securityValidator.isAllowed(requested)) {
+      throw new IllegalArgumentException("water image URL is not allowed");
+    }
+    return download(requested, WaterSiteTls.context());
+  }
+
   private ImageData download(URI initialUri) throws Exception {
+    return download(initialUri, null);
+  }
+
+  private ImageData download(URI initialUri, javax.net.ssl.SSLContext sslContext) throws Exception {
     URI current = initialUri;
     for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
       if (!securityValidator.isAllowed(current)) {
@@ -80,7 +107,12 @@ public class ImageAnalysisToolService {
           .header("Accept", "image/*")
           .GET()
           .build();
-      HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+      HttpClient client = sslContext == null ? httpClient : HttpClient.newBuilder()
+          .connectTimeout(Duration.ofSeconds(5))
+          .followRedirects(HttpClient.Redirect.NEVER)
+          .sslContext(sslContext)
+          .build();
+      HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
       int status = response.statusCode();
       if (status >= 300 && status < 400) {
         String location = response.headers().firstValue("location").orElse(null);
@@ -88,6 +120,9 @@ public class ImageAnalysisToolService {
           throw new IllegalArgumentException("too many image redirects");
         }
         current = current.resolve(location);
+        if (sslContext != null && !"wwwi2.ymparisto.fi".equalsIgnoreCase(current.getHost())) {
+          throw new IllegalArgumentException("water image redirect is not allowed");
+        }
         continue;
       }
       if (status < 200 || status >= 300) {
@@ -144,6 +179,6 @@ public class ImageAnalysisToolService {
     }
   }
 
-  private record ImageData(String mediaType, String dataUrl) {
+  public record ImageData(String mediaType, String dataUrl) {
   }
 }
