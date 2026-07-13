@@ -135,7 +135,8 @@ class AiCommandToolRegistryTest {
         mock(DataValuesService.class),
         chatLogAccessService,
         tokenService,
-        jsonMapper);
+        jsonMapper,
+        mock(ImageAnalysisToolService.class));
     JsonNode args = jsonMapper.readTree("""
         {"lines":2,"date":"2026-06-09"}
         """);
@@ -174,7 +175,8 @@ class AiCommandToolRegistryTest {
         mock(DataValuesService.class),
         chatLogAccessService,
         tokenService,
-        jsonMapper);
+        jsonMapper,
+        mock(ImageAnalysisToolService.class));
     JsonNode args = jsonMapper.readTree("""
         {"scope":"current-chat","query":"","maxMatches":20}
         """);
@@ -202,7 +204,8 @@ class AiCommandToolRegistryTest {
         mock(DataValuesService.class),
         mock(ChatLogAccessService.class),
         mock(HokanNodeContextTokenService.class),
-        jsonMapper);
+        jsonMapper,
+        mock(ImageAnalysisToolService.class));
   }
 
   private ForecastResponse forecast(String name, String tempC) {
