@@ -163,7 +163,9 @@ public class BotEngine {
     String replyMessage = null;
     if (implicitOpenClawChat) {
       request.setCommand("!hokan " + originalCommand);
-      replyMessage = parseAndExecute(request, user, false);
+      // Implicit public/private AI chats are asynchronous just like explicit !hokan
+      // commands, so keep the processing indicator active until the reply arrives.
+      replyMessage = parseAndExecute(request, user, true);
     } else if (explicitCommand) {
       replyMessage = parseAndExecute(request, user, true);
     }
