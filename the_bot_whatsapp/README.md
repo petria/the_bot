@@ -6,7 +6,7 @@ The image contains `wacli` and a small HTTP wrapper:
 
 - `wacli sync --follow` receives WhatsApp Web messages and posts them to `bot-io`.
 - `POST /send` executes `wacli --json send text` for outbound messages.
-- `POST /presence` executes `wacli --json presence typing` for typing indicators.
+- `POST /presence` executes `wacli --json presence typing` for typing indicators. When sync owns the store lock, the patched wacli delegates presence through the running sync process.
 - `GET /health` returns healthy only when the `wacli` store is authenticated.
 - `GET /status` returns `wacli doctor --json` diagnostics.
 

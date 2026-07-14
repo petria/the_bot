@@ -75,6 +75,10 @@ public class BotConnection {
     log.debug("sendProcessingIndicator(Message message) not implemented: {}", this.getClass());
   }
 
+  public void stopProcessingIndicator(Message message) {
+    log.debug("stopProcessingIndicator(Message message) not implemented: {}", this.getClass());
+  }
+
   public void stop() {
     log.debug("stop() not implemented: {}", this.getClass());
   }

@@ -1499,6 +1499,15 @@ public class ConnectionManager implements CommandLineRunner {
     }
   }
 
+  public void stopProcessingIndicatorToConnection(int connectionId, Message message) throws InvalidChannelIdException {
+    BotConnection connection = this.connectionMap.get(connectionId);
+    if (connection != null) {
+      connection.stopProcessingIndicator(message);
+    } else {
+      throw new InvalidChannelIdException("No connection found with connectionId: " + connectionId);
+    }
+  }
+
   class Dual {
     public BotConnection connection;
     public BotConnectionChannel channel;

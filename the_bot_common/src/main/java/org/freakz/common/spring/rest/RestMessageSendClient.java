@@ -50,6 +50,16 @@ public class RestMessageSendClient {
     }
   }
 
+  public ResponseEntity<String> stopProcessingIndicator(int connectionId, Message message) {
+    String url = baseUrl + "/processing/stop/" + connectionId;
+    try {
+      return restTemplate.postForEntity(url, message, String.class);
+    } catch (Exception e) {
+      log.debug("Error stopping processing indicator: {}", e.getMessage());
+      return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+  }
+
   public ResponseEntity<SendMessageByEchoToAliasResponse> sendMessageByEchoToAlias(SendMessageByEchoToAliasRequest request) {
     String url = baseUrl + "/send_message_by_echo_to_alias";
     try {

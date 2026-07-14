@@ -97,6 +97,42 @@ class MediaHandlerTest(unittest.TestCase):
         self.assertEqual("media is not downloaded yet", handler.response[1]["message"])
 
 
+class PresenceHandlerTest(unittest.TestCase):
+    def test_presence_executes_typing_command(self):
+        handler = handler_with_wacli({
+            "stdout": '{"sent":true}',
+            "stderr": "",
+            "exitCode": 0,
+            "timedOut": False,
+        })
+        captured = {}
+        handler.read_json_payload = lambda: {"to": "120363@g.us", "presence": "typing"}
+        handler.run_wacli = lambda command, to: captured.update({"command": command, "to": to}) or handler.respond(200, {"status": "OK"})
+
+        handler.handle_presence()
+
+        self.assertEqual(200, handler.response[0])
+        self.assertEqual("120363@g.us", captured["to"])
+        self.assertIn("presence", captured["command"])
+        self.assertIn("typing", captured["command"])
+
+    def test_presence_executes_paused_command(self):
+        handler = handler_with_wacli({
+            "stdout": '{"sent":true}',
+            "stderr": "",
+            "exitCode": 0,
+            "timedOut": False,
+        })
+        captured = {}
+        handler.read_json_payload = lambda: {"to": "120363@g.us", "presence": "paused"}
+        handler.run_wacli = lambda command, to: captured.update({"command": command}) or handler.respond(200, {"status": "OK"})
+
+        handler.handle_presence()
+
+        self.assertEqual(200, handler.response[0])
+        self.assertIn("paused", captured["command"])
+
+
 def handler_with_wacli(result):
     handler = server.Handler.__new__(server.Handler)
     def run_wacli_capture(command, timeout):

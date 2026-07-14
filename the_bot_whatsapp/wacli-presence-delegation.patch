@@ -1,0 +1,104 @@
+diff --git a/cmd/wacli/presence.go b/cmd/wacli/presence.go
+index f58c201..fb2a843 100644
+--- a/cmd/wacli/presence.go
++++ b/cmd/wacli/presence.go
+@@ -67,6 +67,18 @@ func runPresence(flags *rootFlags, to string, state types.ChatPresence, media st
+ 
+ 	a, lk, err := newApp(ctx, flags, true, false)
+ 	if err != nil {
++		resp, delegated, delegateErr := tryDelegateSend(ctx, flags, err, sendDelegateRequest{
++			Kind:          "presence",
++			To:            to,
++			Presence:      string(state),
++			PresenceMedia: media,
++		})
++		if delegated {
++			if delegateErr != nil {
++				return delegateErr
++			}
++			return writeDelegatedSendOutput(flags, "presence", resp)
++		}
+ 		return err
+ 	}
+ 	defer closeApp(a, lk)
+@@ -103,6 +115,17 @@ func runPresence(flags *rootFlags, to string, state types.ChatPresence, media st
+ 	return nil
+ }
+ 
++func presenceStateFromString(value string) (types.ChatPresence, error) {
++	switch strings.ToLower(strings.TrimSpace(value)) {
++	case string(types.ChatPresenceComposing):
++		return types.ChatPresenceComposing, nil
++	case string(types.ChatPresencePaused):
++		return types.ChatPresencePaused, nil
++	default:
++		return "", fmt.Errorf("unsupported presence %q", value)
++	}
++}
++
+ func presenceMediaFromString(media string) (types.ChatPresenceMedia, error) {
+ 	switch strings.ToLower(strings.TrimSpace(media)) {
+ 	case "":
+diff --git a/cmd/wacli/send_ipc.go b/cmd/wacli/send_ipc.go
+index 2e26cad..d738485 100644
+--- a/cmd/wacli/send_ipc.go
++++ b/cmd/wacli/send_ipc.go
+@@ -15,6 +15,7 @@ import (
+ 	"github.com/openclaw/wacli/internal/lock"
+ 	"github.com/openclaw/wacli/internal/out"
+ 	"github.com/openclaw/wacli/internal/store"
++	"github.com/openclaw/wacli/internal/wa"
+ 	"go.mau.fi/whatsmeow/types"
+ )
+ 
+@@ -45,6 +46,8 @@ type sendDelegateRequest struct {
+ 	Sender         string   `json:"sender,omitempty"`
+ 	PostSendWaitMS int64    `json:"post_send_wait_ms,omitempty"`
+ 	TimeoutMS      int64    `json:"timeout_ms,omitempty"`
++	Presence       string   `json:"presence,omitempty"`
++	PresenceMedia  string   `json:"presence_media,omitempty"`
+ }
+ 
+ type sendDelegateResponse struct {
+@@ -191,11 +194,32 @@ func executeDelegatedSend(parent context.Context, a *app.App, req sendDelegateRe
+ 		return executeDelegatedSticker(ctx, a, req)
+ 	case "react":
+ 		return executeDelegatedReact(ctx, a, req)
++	case "presence":
++		return executeDelegatedPresence(ctx, a, req)
+ 	default:
+ 		return sendDelegateResponse{}, fmt.Errorf("unsupported send kind %q", req.Kind)
+ 	}
+ }
+ 
++func executeDelegatedPresence(ctx context.Context, a *app.App, req sendDelegateRequest) (sendDelegateResponse, error) {
++	toJID, err := wa.ParseUserOrJID(req.To)
++	if err != nil {
++		return sendDelegateResponse{}, err
++	}
++	state, err := presenceStateFromString(req.Presence)
++	if err != nil {
++		return sendDelegateResponse{}, err
++	}
++	media, err := presenceMediaFromString(req.PresenceMedia)
++	if err != nil {
++		return sendDelegateResponse{}, err
++	}
++	if err := a.WA().SendChatPresence(ctx, toJID, state, media); err != nil {
++		return sendDelegateResponse{}, err
++	}
++	return sendDelegateResponse{OK: true, Sent: true, To: toJID.String()}, nil
++}
++
+ func executeDelegatedText(ctx context.Context, a *app.App, req sendDelegateRequest) (sendDelegateResponse, error) {
+ 	toJID, err := resolveRecipient(a, req.To, recipientOptions{pick: req.Pick, asJSON: true})
+ 	if err != nil {
+@@ -331,6 +355,8 @@ func writeDelegatedSendOutput(flags *rootFlags, kind string, resp sendDelegateRe
+ 		} else {
+ 			fmt.Fprintf(os.Stdout, "Reacted %s to %s (id %s)\n", resp.Reaction, resp.Target, resp.ID)
+ 		}
++	case "presence":
++		fmt.Fprintf(os.Stdout, "Presence sent to %s\n", resp.To)
+ 	default:
+ 		fmt.Fprintf(os.Stdout, "Sent to %s (id %s)\n", resp.To, resp.ID)
+ 	}

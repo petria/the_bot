@@ -23,6 +23,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.config.ConfiguredChannelResolver;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.ProcessingIndicatorService;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
@@ -63,6 +64,7 @@ public class BotEngine {
   private final HermesAiCommandService hermesAiCommandService;
   private final ConfiguredChannelResolver configuredChannelResolver;
   private final ConsoleOutputService consoleOutputService;
+  private final ProcessingIndicatorService processingIndicatorService;
   private String botName = "HokanTheBot";
 
   public BotEngine(
@@ -77,7 +79,8 @@ public class BotEngine {
       AiCommandRegistryService aiCommandRegistryService,
       HermesAiCommandService hermesAiCommandService,
       ConfiguredChannelResolver configuredChannelResolver,
-      ConsoleOutputService consoleOutputService)
+      ConsoleOutputService consoleOutputService,
+      ProcessingIndicatorService processingIndicatorService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -92,6 +95,7 @@ public class BotEngine {
     this.hermesAiCommandService = hermesAiCommandService;
     this.configuredChannelResolver = configuredChannelResolver;
     this.consoleOutputService = consoleOutputService;
+    this.processingIndicatorService = processingIndicatorService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -321,7 +325,7 @@ public class BotEngine {
       } else {
         try {
           if (sendProcessingIndicator) {
-            sendProcessingIndicator(request);
+            startProcessingIndicator(request);
           }
           reply = abstractCmd.executeCommand(request, results);
 
@@ -355,7 +359,7 @@ public class BotEngine {
           sendReplyMessage(request, AiCommandHelpFormatter.formatDetailed(command)));
     }
     if (sendProcessingIndicator) {
-      sendProcessingIndicator(request);
+      startProcessingIndicator(request);
     }
     hermesAiCommandService.ask(request, command, args.joinArgs(0));
     return AiCommandExecutionResult.matched(null);
@@ -368,28 +372,8 @@ public class BotEngine {
         || UserPermissions.has(user, requiredPermission);
   }
 
-  private void sendProcessingIndicator(EngineRequest request) {
-    if (request.getFromConnectionId() < 0) {
-      return;
-    }
-    Message message =
-        Message.builder()
-            .sender(this.botName)
-            .timestamp(System.currentTimeMillis())
-            .time(LocalDateTime.now())
-            .requestTimestamp(request.getTimestamp())
-            .message("processing")
-            .messageSource(MessageSource.NONE)
-            .target(request.getReplyTo())
-            .id(request.getFromChannelId() == null ? null : "" + request.getFromChannelId())
-            .build();
-    try {
-      ResponseEntity<String> response =
-          restMessageSendClient.sendProcessingIndicator(request.getFromConnectionId(), message);
-      log.debug("Processing indicator status: {}", response.getStatusCode());
-    } catch (Exception ex) {
-      log.debug("Processing indicator failed: {}", ex.getMessage());
-    }
+  private void startProcessingIndicator(EngineRequest request) {
+    processingIndicatorService.start(request, this.botName);
   }
 
   private boolean isAnonymousAiCommandAllowed(AbstractCmd abstractCmd, EngineRequest request, User user) {
@@ -415,6 +399,15 @@ public class BotEngine {
   }
 
   public String sendReplyMessage(EngineRequest request, String reply) {
+
+    try {
+      return sendReplyMessageInternal(request, reply);
+    } finally {
+      processingIndicatorService.stop(request);
+    }
+  }
+
+  private String sendReplyMessageInternal(EngineRequest request, String reply) {
 
     if (ConsoleOutputService.NETWORK.equals(request.getNetwork())) {
       consoleOutputService.recordReply(request, reply);

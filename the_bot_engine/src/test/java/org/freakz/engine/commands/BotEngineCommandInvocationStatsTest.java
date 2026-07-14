@@ -13,6 +13,7 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.config.ConfiguredChannelResolver;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.HokanServices;
+import org.freakz.engine.services.ProcessingIndicatorService;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
@@ -239,7 +240,8 @@ class BotEngineCommandInvocationStatsTest {
         aiCommandRegistryService,
         hermesAiCommandService,
         new ConfiguredChannelResolver(),
-        new ConsoleOutputService());
+        new ConsoleOutputService(),
+        new ProcessingIndicatorService(null));
   }
 
   private AiCommandRegistryService emptyAiRegistry() {
