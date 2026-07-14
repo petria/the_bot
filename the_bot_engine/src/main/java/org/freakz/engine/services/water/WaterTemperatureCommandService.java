@@ -50,21 +50,30 @@ public class WaterTemperatureCommandService {
   @Async
   public void ask(EngineRequest request, String requestedLocation) {
     String requested = requestedLocation == null ? "" : requestedLocation.trim();
+    long started = System.nanoTime();
     String response;
     try {
+      long stageStarted = System.nanoTime();
       WaterPointIndexService.Resolution resolution = pointIndexService.resolve(requested);
+      log.debug("Water station resolve took {} ms: location={}", elapsedMillis(stageStarted), requested);
       if (!resolution.found()) {
         response = resolution.ambiguous()
             ? requested + ": N/A (matches: " + resolution.matches().stream()
                 .limit(4).map(WaterPointIndexService.WaterPoint::name).reduce((a, b) -> a + ", " + b).orElse("") + ")"
             : requested + ": N/A";
       } else {
+        stageStarted = System.nanoTime();
         String chartUrl = pointIndexService.resolveTemperatureChartUrl(resolution.point());
+        log.debug("Water chart lookup took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
         if (chartUrl == null || chartUrl.isBlank()) {
           response = resolution.displayName() + ": N/A";
         } else {
+          stageStarted = System.nanoTime();
           ImageAnalysisToolService.ImageData image = imageAnalysisToolService.loadWaterSiteImage(chartUrl);
+          log.debug("Water chart download took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
+          stageStarted = System.nanoTime();
           String modelResponse = hermesAiCommandService.analyzeImage(request, VISION_PROMPT, image.dataUrl());
+          log.debug("Water Hermes vision request took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
           response = formatTemperature(resolution.displayName(), modelResponse);
         }
       }
@@ -73,6 +82,11 @@ public class WaterTemperatureCommandService {
       response = requested + ": N/A";
     }
     botEngine.sendReplyMessage(request, formatReplyForTarget(request, response));
+    log.debug("Water command completed in {} ms: location={} response={}", elapsedMillis(started), requested, response);
+  }
+
+  private long elapsedMillis(long started) {
+    return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
   }
 
   String formatTemperature(String pointName, String modelResponse) {

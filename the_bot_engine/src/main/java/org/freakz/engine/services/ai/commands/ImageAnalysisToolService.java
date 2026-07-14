@@ -5,6 +5,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.freakz.engine.services.urls.UrlSecurityValidator;
 import org.freakz.engine.services.water.WaterSiteTls;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -32,13 +34,26 @@ public class ImageAnalysisToolService {
       .maximumSize(32)
       .expireAfterWrite(Duration.ofMinutes(10))
       .build();
+  private final Cache<String, ImageData> waterCache;
 
   public ImageAnalysisToolService(UrlSecurityValidator securityValidator, JsonMapper jsonMapper) {
+    this(securityValidator, jsonMapper, Duration.ofMinutes(15));
+  }
+
+  @Autowired
+  public ImageAnalysisToolService(
+      UrlSecurityValidator securityValidator,
+      JsonMapper jsonMapper,
+      @Value("${the.bot.water.image-cache-ttl:15m}") Duration waterImageCacheTtl) {
     this.securityValidator = securityValidator;
     this.jsonMapper = jsonMapper;
     this.httpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(5))
         .followRedirects(HttpClient.Redirect.NEVER)
+        .build();
+    this.waterCache = Caffeine.newBuilder()
+        .maximumSize(128)
+        .expireAfterWrite(waterImageCacheTtl)
         .build();
   }
 
@@ -88,7 +103,13 @@ public class ImageAnalysisToolService {
     if (!securityValidator.isAllowed(requested)) {
       throw new IllegalArgumentException("water image URL is not allowed");
     }
-    return download(requested, WaterSiteTls.context());
+    ImageData cached = waterCache.getIfPresent(normalizedUrl);
+    if (cached != null) {
+      return cached;
+    }
+    ImageData image = download(requested, WaterSiteTls.context());
+    waterCache.put(normalizedUrl, image);
+    return image;
   }
 
   private ImageData download(URI initialUri) throws Exception {
