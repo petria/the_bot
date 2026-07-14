@@ -5,10 +5,12 @@ import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.users.User;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public class EngineRequest {
 
   private long timestamp;
+  private String requestId;
   private String command;
   private String replyTo;
   private int fromConnectionId;
@@ -32,11 +34,12 @@ public class EngineRequest {
   private ChatIdentity chatIdentity;
 
   public EngineRequest() {
-
+    this.requestId = UUID.randomUUID().toString();
   }
 
   public EngineRequest(long timestamp, String command, String replyTo, int fromConnectionId, boolean isPrivateChannel, Long fromChannelId, String fromSenderId, String fromSender, String network, String chatProtocol, String chatType, String chatId, String echoToAlias, User user, TheBotConfig botConfig, ChatIdentity chatIdentity) {
     this.timestamp = timestamp;
+    this.requestId = UUID.randomUUID().toString();
     this.command = command;
     this.replyTo = replyTo;
     this.fromConnectionId = fromConnectionId;
@@ -60,6 +63,14 @@ public class EngineRequest {
 
   public long getTimestamp() {
     return timestamp;
+  }
+
+  public String getRequestId() {
+    return requestId;
+  }
+
+  public void setRequestId(String requestId) {
+    this.requestId = requestId;
   }
 
   public void setTimestamp(long timestamp) {
@@ -227,6 +238,7 @@ public class EngineRequest {
 
   public static class Builder {
     private long timestamp;
+    private String requestId = UUID.randomUUID().toString();
     private String command;
     private String replyTo;
     private int fromConnectionId;
@@ -245,6 +257,11 @@ public class EngineRequest {
 
     public Builder timestamp(long timestamp) {
       this.timestamp = timestamp;
+      return this;
+    }
+
+    public Builder requestId(String requestId) {
+      this.requestId = requestId;
       return this;
     }
 
@@ -324,7 +341,9 @@ public class EngineRequest {
     }
 
     public EngineRequest build() {
-      return new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
+      EngineRequest request = new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
+      request.setRequestId(requestId);
+      return request;
     }
 
   }

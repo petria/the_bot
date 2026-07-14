@@ -92,6 +92,20 @@ public class WhatsAppConnection extends BotConnection {
     }
   }
 
+  @Override
+  public void stopProcessingIndicator(Message message) {
+    String to = firstNonBlank(message.getId(), message.getTarget());
+    if (to == null) {
+      log.debug("Can not stop WhatsApp typing indicator without target");
+      return;
+    }
+    try {
+      sendPresence(to, "paused");
+    } catch (Exception e) {
+      log.debug("WhatsApp typing stop failed: {}", e.getMessage());
+    }
+  }
+
   protected void sendText(String to, String text) {
     String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
     String url = sendBaseUrl.replaceFirst("/+$", "") + "/send";

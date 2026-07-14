@@ -64,6 +64,17 @@ public class MessagesController {
     return ResponseEntity.ok().build();
   }
 
+  @PostMapping("/processing/stop/{connectionId}")
+  public ResponseEntity<?> stopProcessingIndicator(
+      @PathVariable int connectionId, @RequestBody Message message) {
+    try {
+      connectionManager.stopProcessingIndicatorToConnection(connectionId, message);
+    } catch (Exception e) {
+      log.debug("Stopping processing indicator failed for connection {}: {}", connectionId, e.getMessage());
+    }
+    return ResponseEntity.ok().build();
+  }
+
   @PostMapping("/send_message_by_echo_to_alias")
   public ResponseEntity<?> sendByEchoToAlias(@RequestBody SendMessageByEchoToAliasRequest request) {
     long startedAt = System.currentTimeMillis();
