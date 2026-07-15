@@ -14,6 +14,9 @@ public class Message {
   private String sender;
   private String target;
   private String message;
+  private String replyToMessageId;
+  private String messageThreadId;
+  private String replyToSenderId;
 
   public Message() {
   }
@@ -97,17 +100,41 @@ public class Message {
     this.message = message;
   }
 
+  public String getReplyToMessageId() {
+    return replyToMessageId;
+  }
+
+  public void setReplyToMessageId(String replyToMessageId) {
+    this.replyToMessageId = replyToMessageId;
+  }
+
+  public String getMessageThreadId() {
+    return messageThreadId;
+  }
+
+  public void setMessageThreadId(String messageThreadId) {
+    this.messageThreadId = messageThreadId;
+  }
+
+  public String getReplyToSenderId() {
+    return replyToSenderId;
+  }
+
+  public void setReplyToSenderId(String replyToSenderId) {
+    this.replyToSenderId = replyToSenderId;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Message message1 = (Message) o;
-    return timestamp == message1.timestamp && requestTimestamp == message1.requestTimestamp && Objects.equals(id, message1.id) && Objects.equals(messageSource, message1.messageSource) && Objects.equals(time, message1.time) && Objects.equals(sender, message1.sender) && Objects.equals(target, message1.target) && Objects.equals(message, message1.message);
+    return timestamp == message1.timestamp && requestTimestamp == message1.requestTimestamp && Objects.equals(id, message1.id) && Objects.equals(messageSource, message1.messageSource) && Objects.equals(time, message1.time) && Objects.equals(sender, message1.sender) && Objects.equals(target, message1.target) && Objects.equals(message, message1.message) && Objects.equals(replyToMessageId, message1.replyToMessageId) && Objects.equals(messageThreadId, message1.messageThreadId) && Objects.equals(replyToSenderId, message1.replyToSenderId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, messageSource, timestamp, requestTimestamp, time, sender, target, message);
+    return Objects.hash(id, messageSource, timestamp, requestTimestamp, time, sender, target, message, replyToMessageId, messageThreadId, replyToSenderId);
   }
 
   @Override
@@ -121,6 +148,8 @@ public class Message {
         ", sender='" + sender + '\'' +
         ", target='" + target + '\'' +
         ", message='" + message + '\'' +
+        ", replyToMessageId='" + replyToMessageId + '\'' +
+        ", messageThreadId='" + messageThreadId + '\'' +
         '}';
   }
 
@@ -133,6 +162,9 @@ public class Message {
     private String sender;
     private String target;
     private String message;
+    private String replyToMessageId;
+    private String messageThreadId;
+    private String replyToSenderId;
 
     public Builder id(String id) {
       this.id = id;
@@ -174,8 +206,27 @@ public class Message {
       return this;
     }
 
+    public Builder replyToMessageId(String replyToMessageId) {
+      this.replyToMessageId = replyToMessageId;
+      return this;
+    }
+
+    public Builder messageThreadId(String messageThreadId) {
+      this.messageThreadId = messageThreadId;
+      return this;
+    }
+
+    public Builder replyToSenderId(String replyToSenderId) {
+      this.replyToSenderId = replyToSenderId;
+      return this;
+    }
+
     public Message build() {
-      return new Message(id, messageSource, timestamp, requestTimestamp, time, sender, target, message);
+      Message result = new Message(id, messageSource, timestamp, requestTimestamp, time, sender, target, message);
+      result.setReplyToMessageId(replyToMessageId);
+      result.setMessageThreadId(messageThreadId);
+      result.setReplyToSenderId(replyToSenderId);
+      return result;
     }
   }
 }

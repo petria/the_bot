@@ -48,8 +48,9 @@ public class WhatsAppWebhookController {
       JsonNode payload = objectMapper.readTree(body);
       WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(payload);
       if (log.isDebugEnabled()) {
-        log.debug("WhatsApp webhook parsed messageId={} chatJid={} senderJid={} text={} media={} directMediaUrl={} mediaContentType={} fields={}",
+        log.debug("WhatsApp webhook parsed messageId={} replyToMessageId={} chatJid={} senderJid={} text={} media={} directMediaUrl={} mediaContentType={} fields={}",
             event.getMessageId(),
+            event.getReplyToMessageId(),
             event.getChatJid(),
             event.effectiveSenderJid(),
             event.getText() != null && !event.getText().isBlank(),

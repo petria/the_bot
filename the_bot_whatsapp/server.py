@@ -63,6 +63,12 @@ class Handler(BaseHTTPRequestHandler):
             "--message",
             message,
         ]
+        reply_to = str(payload.get("replyTo", "")).strip()
+        reply_to_sender = str(payload.get("replyToSender", "")).strip()
+        if reply_to:
+            command.extend(["--reply-to", reply_to])
+        if reply_to_sender:
+            command.extend(["--reply-to-sender", reply_to_sender])
         self.run_wacli(command, to)
 
     def handle_presence(self):

@@ -75,7 +75,16 @@ public class WhatsAppConnection extends BotConnection {
     if (to == null) {
       throw new IllegalArgumentException("Missing WhatsApp message target");
     }
-    sendText(to, message.getMessage());
+    if (isBlank(message.getReplyToMessageId())) {
+      sendText(to, message.getMessage());
+    } else {
+      try {
+        sendText(to, message.getMessage(), message.getReplyToMessageId(), message.getReplyToSenderId());
+      } catch (RuntimeException e) {
+        log.warn("WhatsApp quoted reply failed for message {}; sending to group: {}", message.getReplyToMessageId(), e.getMessage());
+        sendText(to, message.getMessage());
+      }
+    }
   }
 
   @Override
@@ -107,12 +116,22 @@ public class WhatsAppConnection extends BotConnection {
   }
 
   protected void sendText(String to, String text) {
+    sendText(to, text, null, null);
+  }
+
+  private void sendText(String to, String text, String replyToMessageId, String replyToSenderId) {
     String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
     String url = sendBaseUrl.replaceFirst("/+$", "") + "/send";
 
     Map<String, String> request = new HashMap<>();
     request.put("to", to);
     request.put("message", text);
+    if (!isBlank(replyToMessageId)) {
+      request.put("replyTo", replyToMessageId);
+    }
+    if (!isBlank(replyToSenderId)) {
+      request.put("replyToSender", replyToSenderId);
+    }
     try {
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
           .uri(URI.create(url))
@@ -298,5 +317,9 @@ public class WhatsAppConnection extends BotConnection {
       }
     }
     return null;
+  }
+
+  private boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 }

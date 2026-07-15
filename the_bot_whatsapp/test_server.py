@@ -133,6 +133,32 @@ class PresenceHandlerTest(unittest.TestCase):
         self.assertIn("paused", captured["command"])
 
 
+class SendHandlerTest(unittest.TestCase):
+    def test_send_text_includes_quoted_reply_options(self):
+        handler = handler_with_wacli({
+            "stdout": '{"sent":true}',
+            "stderr": "",
+            "exitCode": 0,
+            "timedOut": False,
+        })
+        captured = {}
+        handler.read_json_payload = lambda: {
+            "to": "120363@g.us",
+            "message": "reply",
+            "replyTo": "original-id",
+            "replyToSender": "358449125874@s.whatsapp.net",
+        }
+        handler.run_wacli = lambda command, to: captured.update({"command": command, "to": to}) or handler.respond(200, {"status": "OK"})
+
+        handler.handle_send()
+
+        self.assertEqual("120363@g.us", captured["to"])
+        self.assertIn("--reply-to", captured["command"])
+        self.assertIn("original-id", captured["command"])
+        self.assertIn("--reply-to-sender", captured["command"])
+        self.assertIn("358449125874@s.whatsapp.net", captured["command"])
+
+
 def handler_with_wacli(result):
     handler = server.Handler.__new__(server.Handler)
     def run_wacli_capture(command, timeout):
