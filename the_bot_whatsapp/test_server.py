@@ -158,7 +158,7 @@ class SendHandlerTest(unittest.TestCase):
         self.assertIn("--reply-to-sender", captured["command"])
         self.assertIn("358449125874@s.whatsapp.net", captured["command"])
 
-    def test_send_text_resolves_bot_sender_for_own_quoted_message(self):
+    def test_send_text_leaves_bot_sender_resolution_to_wacli(self):
         handler = handler_with_wacli({
             "stdout": '{"sent":true}',
             "stderr": "",
@@ -172,36 +172,12 @@ class SendHandlerTest(unittest.TestCase):
             "replyTo": "bot-message-id",
         }
 
-        def run_wacli_capture(command, timeout):
-            handler.last_command = command
-            if "messages" in command:
-                return {
-                    "stdout": '{"data":{"FromMe":true}}',
-                    "stderr": "",
-                    "exitCode": 0,
-                    "timedOut": False,
-                }
-            if "auth" in command:
-                return {
-                    "stdout": '{"data":{"linked_jid":"358449125874@s.whatsapp.net"}}',
-                    "stderr": "",
-                    "exitCode": 0,
-                    "timedOut": False,
-                }
-            return {
-                "stdout": '{"sent":true}',
-                "stderr": "",
-                "exitCode": 0,
-                "timedOut": False,
-            }
-
-        handler.run_wacli_capture = run_wacli_capture
         handler.run_wacli = lambda command, to: captured.update({"command": command, "to": to}) or handler.respond(200, {"status": "OK"})
 
         handler.handle_send()
 
-        self.assertIn("--reply-to-sender", captured["command"])
-        self.assertIn("358449125874@s.whatsapp.net", captured["command"])
+        self.assertIn("--reply-to", captured["command"])
+        self.assertNotIn("--reply-to-sender", captured["command"])
 
 
 def handler_with_wacli(result):
