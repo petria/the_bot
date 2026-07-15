@@ -65,11 +65,47 @@ class Handler(BaseHTTPRequestHandler):
         ]
         reply_to = str(payload.get("replyTo", "")).strip()
         reply_to_sender = str(payload.get("replyToSender", "")).strip()
+        if reply_to and not reply_to_sender:
+            reply_to_sender = self.resolve_bot_reply_sender(to, reply_to)
         if reply_to:
             command.extend(["--reply-to", reply_to])
         if reply_to_sender:
             command.extend(["--reply-to-sender", reply_to_sender])
         self.run_wacli(command, to)
+
+    def resolve_bot_reply_sender(self, chat, message_id):
+        result = self.run_wacli_capture([
+            WACLI_BIN,
+            "--json",
+            "--store",
+            STORE_DIR,
+            "messages",
+            "show",
+            "--chat",
+            chat,
+            "--id",
+            message_id,
+        ], timeout=10)
+        if result["timedOut"] or result["exitCode"] != 0:
+            return ""
+        body = parse_json_or_text(result["stdout"])
+        data = body.get("data") if isinstance(body, dict) else None
+        if not isinstance(data, dict) or not data.get("FromMe"):
+            return ""
+
+        auth = self.run_wacli_capture([
+            WACLI_BIN,
+            "--json",
+            "--store",
+            STORE_DIR,
+            "auth",
+            "status",
+        ], timeout=10)
+        if auth["timedOut"] or auth["exitCode"] != 0:
+            return ""
+        auth_body = parse_json_or_text(auth["stdout"])
+        auth_data = auth_body.get("data") if isinstance(auth_body, dict) else None
+        return str(auth_data.get("linked_jid", "")).strip() if isinstance(auth_data, dict) else ""
 
     def handle_presence(self):
         if not self.authorized():
