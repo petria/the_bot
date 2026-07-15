@@ -11,6 +11,8 @@ public class WacliWebhookMessageEvent {
 
   private final String chatJid;
   private final String messageId;
+  private final String replyToMessageId;
+  private final String replyToSenderJid;
   private final String senderJid;
   private final String pushName;
   private final String text;
@@ -24,6 +26,8 @@ public class WacliWebhookMessageEvent {
   public WacliWebhookMessageEvent(
       String chatJid,
       String messageId,
+      String replyToMessageId,
+      String replyToSenderJid,
       String senderJid,
       String pushName,
       String text,
@@ -35,6 +39,8 @@ public class WacliWebhookMessageEvent {
       Instant timestamp) {
     this.chatJid = chatJid;
     this.messageId = messageId;
+    this.replyToMessageId = replyToMessageId;
+    this.replyToSenderJid = replyToSenderJid;
     this.senderJid = senderJid;
     this.pushName = pushName;
     this.text = text;
@@ -63,6 +69,14 @@ public class WacliWebhookMessageEvent {
     if (senderJid == null) {
       senderJid = jidValue(first(info, "SenderJID", "sender_jid", "senderJid", "Sender", "sender"));
     }
+    String replyToMessageId = textValue(first(root, "ReplyToID", "reply_to_id", "replyToId", "ReplyToMessageID", "replyToMessageId"));
+    if (replyToMessageId == null) {
+      replyToMessageId = textValue(first(info, "ReplyToID", "reply_to_id", "replyToId", "ReplyToMessageID", "replyToMessageId"));
+    }
+    String replyToSenderJid = jidValue(first(root, "ReplyToSenderJID", "reply_to_sender_jid", "replyToSenderJid"));
+    if (replyToSenderJid == null) {
+      replyToSenderJid = jidValue(first(info, "ReplyToSenderJID", "reply_to_sender_jid", "replyToSenderJid"));
+    }
     String pushName = textValue(first(root, "PushName", "push_name", "pushName"));
     if (pushName == null) {
       pushName = textValue(first(info, "PushName", "push_name", "pushName"));
@@ -88,7 +102,7 @@ public class WacliWebhookMessageEvent {
     String mediaDirectPath = textValue(first(media, "DirectPath", "directPath"));
     boolean fromMe = booleanValue(firstNonNull(first(root, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe"), first(info, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe")));
     Instant timestamp = instantValue(firstNonNull(first(root, "Timestamp", "timestamp"), first(info, "Timestamp", "timestamp")));
-    return new WacliWebhookMessageEvent(chatJid, messageId, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, mediaDirectPath, fromMe, timestamp);
+    return new WacliWebhookMessageEvent(chatJid, messageId, replyToMessageId, replyToSenderJid, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, mediaDirectPath, fromMe, timestamp);
   }
 
   public static String fieldSummary(JsonNode root) {
@@ -132,6 +146,14 @@ public class WacliWebhookMessageEvent {
 
   public String getSenderJid() {
     return senderJid;
+  }
+
+  public String getReplyToMessageId() {
+    return replyToMessageId;
+  }
+
+  public String getReplyToSenderJid() {
+    return replyToSenderJid;
   }
 
   public String getPushName() {

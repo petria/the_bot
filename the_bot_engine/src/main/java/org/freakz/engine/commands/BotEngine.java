@@ -432,6 +432,9 @@ public class BotEngine {
               .messageSource(MessageSource.NONE)
               .target(request.getReplyTo())
               .id("" + request.getFromChannelId())
+              .replyToMessageId(request.getReplyToMessageId())
+              .messageThreadId(request.getMessageThreadId())
+              .replyToSenderId(request.getReplyToSenderId())
               .build();
       try {
 //        Response response = messageSendClient.sendMessage(request.getFromConnectionId(), message);

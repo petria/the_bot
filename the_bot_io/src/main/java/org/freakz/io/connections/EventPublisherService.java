@@ -52,7 +52,10 @@ public class EventPublisherService implements EventPublisher {
       Long channelId,
       String senderId,
       String echoToAlias,
-      boolean isPrivateChannel) {
+      boolean isPrivateChannel,
+      String replyToMessageId,
+      String messageThreadId,
+      String replyToSenderId) {
 
 /*    boolean isPrivateChannel = false;
     if (echoToAlias != null && echoToAlias.startsWith("PRIVATE-")) {
@@ -67,6 +70,9 @@ public class EventPublisherService implements EventPublisher {
             .timestamp(System.currentTimeMillis())
             .command(message)
             .replyTo(replyTo)
+            .replyToMessageId(replyToMessageId)
+            .messageThreadId(messageThreadId)
+            .replyToSenderId(replyToSenderId)
             .isPrivateChannel(isPrivateChannel)
             .fromConnectionId(connection.getId())
             .fromSender(sender)
@@ -146,10 +152,13 @@ public class EventPublisherService implements EventPublisher {
       Long channelId,
       String senderId,
       String echoToAlias,
-      boolean isPrivateChannel) {
+      boolean isPrivateChannel,
+      String replyToMessageId,
+      String messageThreadId,
+      String replyToSenderId) {
     taskExecutor.execute(() -> {
       log.debug("send async");
-      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias, isPrivateChannel);
+      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias, isPrivateChannel, replyToMessageId, messageThreadId, replyToSenderId);
       log.debug("send DONE");
     });
   }
@@ -174,7 +183,10 @@ public class EventPublisherService implements EventPublisher {
         null,
         ircUserIdentity(event.getActor()),
         echoToAlias,
-        true);
+        true,
+        null,
+        null,
+        null);
 
     return new org.freakz.common.model.users.User();
   }
@@ -202,7 +214,10 @@ public class EventPublisherService implements EventPublisher {
         null,
         ircUserIdentity(event.getActor()),
         echoToAlias,
-        false);
+        false,
+        null,
+        null,
+        null);
 
     return new org.freakz.common.model.users.User();
   }
@@ -245,6 +260,12 @@ public class EventPublisherService implements EventPublisher {
 
     logMessageForIdentity(identity, msg.getSender(), msg.getMessage());
     long userId = update.getMessage().getFrom().getId();
+    String replyToMessageId = update.getMessage().getReplyToMessage() == null
+        ? null
+        : String.valueOf(update.getMessage().getReplyToMessage().getMessageId());
+    String messageThreadId = update.getMessage().getMessageThreadId() == null
+        ? null
+        : String.valueOf(update.getMessage().getMessageThreadId());
 
     return publishToEngine(
         connection,
@@ -254,7 +275,10 @@ public class EventPublisherService implements EventPublisher {
         null,
         String.valueOf(userId),
         echoToAlias,
-        isPrivate);
+        isPrivate,
+        replyToMessageId,
+        messageThreadId,
+        null);
   }
 
   private org.freakz.common.model.users.User publishDiscordEvent(
@@ -291,6 +315,12 @@ public class EventPublisherService implements EventPublisher {
       logMessage = event.getMessageContent();
     }
     long userId = event.getMessageAuthor().asUser().get().getId();
+    String replyToMessageId = event.getMessage().getMessageReference()
+        .flatMap(reference -> reference.getMessageId().map(String::valueOf))
+        .orElse(null);
+    String messageThreadId = event.getMessage().isThreadMessage()
+        ? String.valueOf(event.getChannel().getId())
+        : null;
     ChatIdentity identity = buildChatIdentity(connection, replyTo, String.valueOf(userId), event.getMessageAuthor().getName(), false);
     logMessageForIdentity(identity, event.getMessageAuthor().getName(), logMessage);
 
@@ -307,7 +337,10 @@ public class EventPublisherService implements EventPublisher {
         id,
         String.valueOf(userId),
         echoToAlias,
-        isPrivate);
+        isPrivate,
+        replyToMessageId,
+        messageThreadId,
+        null);
     return new org.freakz.common.model.users.User();
   }
 
@@ -330,7 +363,10 @@ public class EventPublisherService implements EventPublisher {
         null,
         senderId,
         echoToAlias,
-        isPrivate);
+        isPrivate,
+        event.getReplyToMessageId(),
+        null,
+        event.getReplyToSenderJid());
     return new org.freakz.common.model.users.User();
   }
 

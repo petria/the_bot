@@ -42,37 +42,59 @@ public class ProcessingIndicatorService {
     if (!isSupported(request)) {
       return;
     }
-    stop(request);
-    sendStart(request, botName);
+    String key = requestKey(request);
+    Session previous = sessions.remove(key);
+    stopSession(previous);
 
-    Session session = new Session(request, botName, System.nanoTime());
-    sessions.put(requestKey(request), session);
-    session.refreshFuture = scheduler.scheduleAtFixedRate(
-        () -> refresh(session),
-        REFRESH_SECONDS,
-        REFRESH_SECONDS,
-        TimeUnit.SECONDS);
+    Session session = new Session(request, botName, System.nanoTime(), key);
+    sessions.put(key, session);
+    synchronized (session) {
+      if (sessions.get(key) != session) {
+        return;
+      }
+      sendStart(request, botName);
+      session.refreshFuture = scheduler.scheduleAtFixedRate(
+          () -> refresh(session),
+          REFRESH_SECONDS,
+          REFRESH_SECONDS,
+          TimeUnit.SECONDS);
+    }
   }
 
   public void stop(EngineRequest request) {
     if (request == null) {
       return;
     }
-    Session session = sessions.remove(requestKey(request));
-    if (session != null && session.refreshFuture != null) {
-      session.refreshFuture.cancel(false);
-    }
-    if (session != null && supportsExplicitStop(request)) {
-      sendStop(request, session.botName);
-    }
+    stopSession(sessions.remove(requestKey(request)));
   }
 
   private void refresh(Session session) {
-    if (elapsedSeconds(session.startedAt) >= MAX_DURATION_SECONDS) {
-      stop(session.request);
+    synchronized (session) {
+      if (sessions.get(session.key) != session) {
+        return;
+      }
+      if (elapsedSeconds(session.startedAt) >= MAX_DURATION_SECONDS) {
+        if (sessions.remove(session.key, session)) {
+          stopSession(session);
+        }
+        return;
+      }
+      sendStart(session.request, session.botName);
+    }
+  }
+
+  private void stopSession(Session session) {
+    if (session == null) {
       return;
     }
-    sendStart(session.request, session.botName);
+    synchronized (session) {
+      if (session.refreshFuture != null) {
+        session.refreshFuture.cancel(false);
+      }
+      if (supportsExplicitStop(session.request)) {
+        sendStop(session.request, session.botName);
+      }
+    }
   }
 
   private void sendStart(EngineRequest request, String botName) {
@@ -146,12 +168,14 @@ public class ProcessingIndicatorService {
     private final EngineRequest request;
     private final String botName;
     private final long startedAt;
+    private final String key;
     private volatile ScheduledFuture<?> refreshFuture;
 
-    private Session(EngineRequest request, String botName, long startedAt) {
+    private Session(EngineRequest request, String botName, long startedAt, String key) {
       this.request = request;
       this.botName = botName;
       this.startedAt = startedAt;
+      this.key = key;
     }
   }
 }

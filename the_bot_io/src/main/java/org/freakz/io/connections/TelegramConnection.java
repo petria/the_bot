@@ -66,9 +66,22 @@ public class TelegramConnection extends BotConnection {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(resolveChatId(message));
     sendMessage.setText(message.getMessage());
+    setTelegramThreadMetadata(sendMessage, message);
     try {
       this.bot.execute(sendMessage);
     } catch (TelegramApiException e) {
+      if (hasTelegramThreadMetadata(message)) {
+        log.warn("Telegram threaded reply failed; sending to chat: {}", e.getMessage());
+        sendMessage.setReplyToMessageId(null);
+        sendMessage.setMessageThreadId(null);
+        try {
+          this.bot.execute(sendMessage);
+          return;
+        } catch (TelegramApiException fallbackError) {
+          log.error("Telegram fallback send failed", fallbackError);
+          throw new RuntimeException(fallbackError);
+        }
+      }
       log.error("Telegram error", e);
       throw new RuntimeException(e);
     }
@@ -97,6 +110,34 @@ public class TelegramConnection extends BotConnection {
       return message.getId();
     }
     return message.getTarget();
+  }
+
+  private void setTelegramThreadMetadata(SendMessage sendMessage, Message message) {
+    Integer replyId = parseTelegramMessageId(message.getReplyToMessageId());
+    Integer threadId = parseTelegramMessageId(message.getMessageThreadId());
+    if (replyId != null) {
+      sendMessage.setReplyToMessageId(replyId);
+    }
+    if (threadId != null) {
+      sendMessage.setMessageThreadId(threadId);
+    }
+  }
+
+  private Integer parseTelegramMessageId(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      return Integer.valueOf(value);
+    } catch (NumberFormatException e) {
+      log.warn("Invalid Telegram thread metadata '{}'; sending without it", value);
+      return null;
+    }
+  }
+
+  private boolean hasTelegramThreadMetadata(Message message) {
+    return (message.getReplyToMessageId() != null && !message.getReplyToMessageId().isBlank())
+        || (message.getMessageThreadId() != null && !message.getMessageThreadId().isBlank());
   }
 
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {

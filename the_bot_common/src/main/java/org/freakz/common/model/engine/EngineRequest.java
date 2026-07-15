@@ -13,6 +13,9 @@ public class EngineRequest {
   private String requestId;
   private String command;
   private String replyTo;
+  private String replyToMessageId;
+  private String messageThreadId;
+  private String replyToSenderId;
   private int fromConnectionId;
 
   private boolean isPrivateChannel;
@@ -91,6 +94,30 @@ public class EngineRequest {
 
   public void setReplyTo(String replyTo) {
     this.replyTo = replyTo;
+  }
+
+  public String getReplyToMessageId() {
+    return replyToMessageId;
+  }
+
+  public void setReplyToMessageId(String replyToMessageId) {
+    this.replyToMessageId = replyToMessageId;
+  }
+
+  public String getMessageThreadId() {
+    return messageThreadId;
+  }
+
+  public void setMessageThreadId(String messageThreadId) {
+    this.messageThreadId = messageThreadId;
+  }
+
+  public String getReplyToSenderId() {
+    return replyToSenderId;
+  }
+
+  public void setReplyToSenderId(String replyToSenderId) {
+    this.replyToSenderId = replyToSenderId;
   }
 
   public int getFromConnectionId() {
@@ -194,12 +221,12 @@ public class EngineRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     EngineRequest that = (EngineRequest) o;
-    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
+    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(replyToMessageId, that.replyToMessageId) && Objects.equals(messageThreadId, that.messageThreadId) && Objects.equals(replyToSenderId, that.replyToSenderId) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
+    return Objects.hash(timestamp, command, replyTo, replyToMessageId, messageThreadId, replyToSenderId, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
   }
 
   @Override
@@ -208,6 +235,9 @@ public class EngineRequest {
         "timestamp=" + timestamp +
         ", command='" + command + '\'' +
         ", replyTo='" + replyTo + '\'' +
+        ", replyToMessageId='" + replyToMessageId + '\'' +
+        ", messageThreadId='" + messageThreadId + '\'' +
+        ", replyToSenderId='" + replyToSenderId + '\'' +
         ", fromConnectionId=" + fromConnectionId +
         ", isPrivateChannel=" + isPrivateChannel +
         ", fromChannelId=" + fromChannelId +
@@ -241,6 +271,9 @@ public class EngineRequest {
     private String requestId = UUID.randomUUID().toString();
     private String command;
     private String replyTo;
+    private String replyToMessageId;
+    private String messageThreadId;
+    private String replyToSenderId;
     private int fromConnectionId;
     private boolean isPrivateChannel;
     private Long fromChannelId;
@@ -272,6 +305,21 @@ public class EngineRequest {
 
     public Builder replyTo(String replyTo) {
       this.replyTo = replyTo;
+      return this;
+    }
+
+    public Builder replyToMessageId(String replyToMessageId) {
+      this.replyToMessageId = replyToMessageId;
+      return this;
+    }
+
+    public Builder messageThreadId(String messageThreadId) {
+      this.messageThreadId = messageThreadId;
+      return this;
+    }
+
+    public Builder replyToSenderId(String replyToSenderId) {
+      this.replyToSenderId = replyToSenderId;
       return this;
     }
 
@@ -343,6 +391,9 @@ public class EngineRequest {
     public EngineRequest build() {
       EngineRequest request = new EngineRequest(timestamp, command, replyTo, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig, chatIdentity);
       request.setRequestId(requestId);
+      request.setReplyToMessageId(replyToMessageId);
+      request.setMessageThreadId(messageThreadId);
+      request.setReplyToSenderId(replyToSenderId);
       return request;
     }
 

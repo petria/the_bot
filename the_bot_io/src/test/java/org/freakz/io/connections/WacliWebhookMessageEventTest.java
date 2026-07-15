@@ -113,4 +113,22 @@ class WacliWebhookMessageEventTest {
     assertThat(event.getMediaDirectPath()).isEqualTo("/o1/v/t24/f2/m234/image");
     assertThat(event.getText()).isEqualTo("test2");
   }
+
+  @Test
+  void parsesQuotedReplyMetadata() throws Exception {
+    WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(objectMapper.readTree("""
+        {
+          "Chat": "120363408176012025@g.us",
+          "ID": "reply-message-id",
+          "SenderJID": "162251029934316:96@lid",
+          "ReplyToID": "original-message-id",
+          "ReplyToSenderJID": "358449125874@s.whatsapp.net",
+          "Text": "!hokan hello",
+          "FromMe": false
+        }
+        """));
+
+    assertThat(event.getReplyToMessageId()).isEqualTo("original-message-id");
+    assertThat(event.getReplyToSenderJid()).isEqualTo("358449125874@s.whatsapp.net");
+  }
 }

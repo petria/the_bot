@@ -12,6 +12,7 @@ import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
@@ -217,12 +218,12 @@ public class DiscordServerConnection extends BotConnection {
       String outgoingMessage = formatOutgoingMessage(message.getMessage());
       Optional<ServerTextChannel> serverTextChannel = channel.asServerTextChannel();
       if (serverTextChannel.isPresent()) {
-        serverTextChannel.get().sendMessage(outgoingMessage).join();
+        sendDiscordMessage(serverTextChannel.get(), outgoingMessage, message);
         return;
       }
       Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
       if (privateChannel.isPresent()) {
-        privateChannel.get().sendMessage(outgoingMessage).join();
+        sendDiscordMessage(privateChannel.get(), outgoingMessage, message);
         return;
       }
       throw new RuntimeException("Could not send Discord message to unsupported channel: " + message.getTarget());
@@ -230,6 +231,24 @@ public class DiscordServerConnection extends BotConnection {
       throw new RuntimeException("Can't send Discord message to: " + message.getTarget());
     }
 
+  }
+
+  private void sendDiscordMessage(org.javacord.api.entity.message.Messageable target, String text, Message message) {
+    String replyId = message.getReplyToMessageId();
+    if (replyId != null && !replyId.isBlank()) {
+      try {
+        long messageId = Long.parseLong(replyId);
+        new MessageBuilder()
+            .replyTo(messageId, false)
+            .setContent(text)
+            .send(target)
+            .join();
+        return;
+      } catch (RuntimeException e) {
+        log.warn("Discord threaded reply failed for message {}; sending to channel: {}", replyId, e.getMessage());
+      }
+    }
+    target.sendMessage(text).join();
   }
 
   @Override
