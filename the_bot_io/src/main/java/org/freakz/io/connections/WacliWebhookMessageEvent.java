@@ -22,6 +22,7 @@ public class WacliWebhookMessageEvent {
   private final String mediaDirectPath;
   private final boolean fromMe;
   private final Instant timestamp;
+  private final List<String> mentionedJids;
 
   public WacliWebhookMessageEvent(
       String chatJid,
@@ -36,7 +37,8 @@ public class WacliWebhookMessageEvent {
       String mediaFileName,
       String mediaDirectPath,
       boolean fromMe,
-      Instant timestamp) {
+      Instant timestamp,
+      List<String> mentionedJids) {
     this.chatJid = chatJid;
     this.messageId = messageId;
     this.replyToMessageId = replyToMessageId;
@@ -50,6 +52,7 @@ public class WacliWebhookMessageEvent {
     this.mediaDirectPath = mediaDirectPath;
     this.fromMe = fromMe;
     this.timestamp = timestamp;
+    this.mentionedJids = mentionedJids == null ? List.of() : List.copyOf(mentionedJids);
   }
 
   public static WacliWebhookMessageEvent from(JsonNode root) {
@@ -102,7 +105,10 @@ public class WacliWebhookMessageEvent {
     String mediaDirectPath = textValue(first(media, "DirectPath", "directPath"));
     boolean fromMe = booleanValue(firstNonNull(first(root, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe"), first(info, "FromMe", "from_me", "fromMe", "IsFromMe", "isFromMe")));
     Instant timestamp = instantValue(firstNonNull(first(root, "Timestamp", "timestamp"), first(info, "Timestamp", "timestamp")));
-    return new WacliWebhookMessageEvent(chatJid, messageId, replyToMessageId, replyToSenderJid, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, mediaDirectPath, fromMe, timestamp);
+    List<String> mentionedJids = jidValues(first(
+        first(first(message, "ExtendedTextMessage", "extendedTextMessage"), "ContextInfo", "contextInfo"),
+        "MentionedJID", "mentionedJid", "MentionedJIDs", "mentionedJids"));
+    return new WacliWebhookMessageEvent(chatJid, messageId, replyToMessageId, replyToSenderJid, senderJid, pushName, text, mediaUrl, mediaContentType, mediaFileName, mediaDirectPath, fromMe, timestamp, mentionedJids);
   }
 
   public static String fieldSummary(JsonNode root) {
@@ -162,6 +168,10 @@ public class WacliWebhookMessageEvent {
 
   public String getText() {
     return text;
+  }
+
+  public List<String> getMentionedJids() {
+    return mentionedJids;
   }
 
   public boolean hasMedia() {
@@ -244,6 +254,27 @@ public class WacliWebhookMessageEvent {
       return user + "@" + server;
     }
     return blankToNull(node.asText());
+  }
+
+  private static List<String> jidValues(JsonNode node) {
+    if (node == null || node.isNull()) {
+      return List.of();
+    }
+    List<String> values = new ArrayList<>();
+    if (node.isArray()) {
+      node.forEach(item -> {
+        String value = jidValue(item);
+        if (value != null) {
+          values.add(value);
+        }
+      });
+    } else {
+      String value = jidValue(node);
+      if (value != null) {
+        values.add(value);
+      }
+    }
+    return values;
   }
 
   private static String textValue(JsonNode node) {

@@ -22,6 +22,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/status":
             self.handle_status()
             return
+        if self.path == "/identity":
+            self.handle_identity()
+            return
         if self.path.startswith("/media"):
             self.handle_media()
             return
@@ -153,6 +156,31 @@ class Handler(BaseHTTPRequestHandler):
             "timedOut": result["timedOut"],
         })
 
+    def handle_identity(self):
+        if not self.authorized():
+            self.respond(401, {"status": "NOK", "message": "Unauthorized"})
+            return
+        result = self.run_sqlite_capture(
+            "SELECT jid, lid FROM whatsmeow_device LIMIT 1",
+            timeout=10,
+        )
+        if result["timedOut"]:
+            self.respond(504, {"status": "NOK", "message": "wacli identity lookup timed out"})
+            return
+        if result["exitCode"] != 0:
+            self.respond(503, {
+                "status": "NOK",
+                "message": "wacli identity lookup failed",
+                "stderr": result["stderr"],
+            })
+            return
+        rows = [line.split("\t", 1) for line in result["stdout"].splitlines() if "\t" in line]
+        if not rows:
+            self.respond(503, {"status": "NOK", "message": "WhatsApp identity is not available"})
+            return
+        jid, lid = rows[0]
+        self.respond(200, {"status": "OK", "jid": jid, "lid": lid})
+
     def handle_media(self):
         if not self.authorized():
             self.respond(401, {"status": "NOK", "message": "Unauthorized"})
@@ -251,6 +279,15 @@ class Handler(BaseHTTPRequestHandler):
             "exitCode": result.returncode,
             "timedOut": False,
         }
+
+    def run_sqlite_capture(self, query, timeout):
+        return self.run_wacli_capture([
+            "sqlite3",
+            "-separator",
+            "\t",
+            os.path.join(STORE_DIR, "session.db"),
+            query,
+        ], timeout)
 
     def respond(self, status, body):
         raw = json.dumps(body).encode("utf-8")

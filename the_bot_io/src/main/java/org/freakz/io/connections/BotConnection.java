@@ -1,5 +1,6 @@
 package org.freakz.io.connections;
 
+import org.freakz.common.chat.BotSelfIdentity;
 
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.botconfig.TheBotConfig;
@@ -22,6 +23,7 @@ public class BotConnection {
   private Map<String, BotConnectionChannel> channelMap = new ConcurrentHashMap<>();
 
   private BotConnectionType type;
+  private volatile BotSelfIdentity selfIdentity;
 
   public BotConnection() {
     this.id = idCounter;
@@ -61,6 +63,22 @@ public class BotConnection {
 
   public BotConnectionType getType() {
     return type;
+  }
+
+  public BotSelfIdentity getSelfIdentity() {
+    return selfIdentity;
+  }
+
+  protected void setSelfIdentity(BotSelfIdentity selfIdentity) {
+    this.selfIdentity = selfIdentity;
+    log.info("Bot self identity initialized protocol={} displayName={} forms={}",
+        selfIdentity == null ? null : selfIdentity.getProtocol(),
+        selfIdentity == null ? null : selfIdentity.getDisplayName(),
+        selfIdentity == null ? List.of() : selfIdentity.getForms());
+  }
+
+  public boolean isBotMentioned(String message) {
+    return selfIdentity != null && selfIdentity.matches(message);
   }
 
   public void sendMessageTo(Message message) {

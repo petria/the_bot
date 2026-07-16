@@ -55,7 +55,8 @@ public class EventPublisherService implements EventPublisher {
       boolean isPrivateChannel,
       String replyToMessageId,
       String messageThreadId,
-      String replyToSenderId) {
+      String replyToSenderId,
+      boolean botMentioned) {
 
 /*    boolean isPrivateChannel = false;
     if (echoToAlias != null && echoToAlias.startsWith("PRIVATE-")) {
@@ -83,6 +84,7 @@ public class EventPublisherService implements EventPublisher {
             .chatType(chatIdentity.getChatType())
             .chatId(chatIdentity.getChatId())
             .echoToAlias(echoToAlias)
+            .botMentioned(botMentioned || connection.isBotMentioned(message))
             .build();
     try {
       ResponseEntity<EngineResponse> response = engineClient.handleEngineRequest(request);
@@ -155,10 +157,11 @@ public class EventPublisherService implements EventPublisher {
       boolean isPrivateChannel,
       String replyToMessageId,
       String messageThreadId,
-      String replyToSenderId) {
+      String replyToSenderId,
+      boolean botMentioned) {
     taskExecutor.execute(() -> {
       log.debug("send async");
-      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias, isPrivateChannel, replyToMessageId, messageThreadId, replyToSenderId);
+      publishToEngine(connection, message, sender, replyTo, channelId, senderId, echoToAlias, isPrivateChannel, replyToMessageId, messageThreadId, replyToSenderId, botMentioned);
       log.debug("send DONE");
     });
   }
@@ -186,7 +189,8 @@ public class EventPublisherService implements EventPublisher {
         true,
         null,
         null,
-        null);
+        null,
+        false);
 
     return new org.freakz.common.model.users.User();
   }
@@ -217,7 +221,8 @@ public class EventPublisherService implements EventPublisher {
         false,
         null,
         null,
-        null);
+        null,
+        false);
 
     return new org.freakz.common.model.users.User();
   }
@@ -278,7 +283,8 @@ public class EventPublisherService implements EventPublisher {
         isPrivate,
         replyToMessageId,
         messageThreadId,
-        null);
+        null,
+        false);
   }
 
   private org.freakz.common.model.users.User publishDiscordEvent(
@@ -340,7 +346,8 @@ public class EventPublisherService implements EventPublisher {
         isPrivate,
         replyToMessageId,
         messageThreadId,
-        null);
+        null,
+        false);
     return new org.freakz.common.model.users.User();
   }
 
@@ -366,7 +373,8 @@ public class EventPublisherService implements EventPublisher {
         isPrivate,
         event.getReplyToMessageId(),
         null,
-        event.getReplyToSenderJid());
+        event.getReplyToSenderJid(),
+        event.getMentionedJids().stream().anyMatch(connection::isBotMentioned));
     return new org.freakz.common.model.users.User();
   }
 

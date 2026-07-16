@@ -2,6 +2,7 @@ package org.freakz.io.connections;
 
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
+import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
@@ -312,6 +313,7 @@ public class IrcServerConnection extends BotConnection {
     this.connectionManager = connectionManager;
     this.config = config;
     this.botNick = botNick;
+    setSelfIdentity(new BotSelfIdentity("irc", botNick, List.of(botNick)));
 
     client = Client.builder()
         .user("hokan")

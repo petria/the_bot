@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.model.botconfig.TelegramConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
@@ -12,6 +13,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.GetMe;
 import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Audio;
@@ -143,6 +145,7 @@ public class TelegramConnection extends BotConnection {
   public void init(ConnectionManager connectionManager, String botName, TelegramConfig telegramConfig) throws TelegramApiException {
     this.connectionManager = connectionManager;
     this.bot = new HokanTelegram(connectionManager, telegramConfig.getToken(), this, this.publisher, this.mediaCaptureService, botName, telegramConfig);
+    setSelfIdentity(this.bot.resolveSelfIdentity());
     TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
     botSession = botsApi.registerBot(bot);
 
@@ -372,6 +375,14 @@ public class TelegramConnection extends BotConnection {
     @Override
     public String getBotUsername() {
       return this.botName;
+    }
+
+    BotSelfIdentity resolveSelfIdentity() throws TelegramApiException {
+      org.telegram.telegrambots.meta.api.objects.User self = execute(new GetMe());
+      return new BotSelfIdentity(
+          "telegram",
+          self.getUserName(),
+          List.of(String.valueOf(self.getId()), self.getUserName(), self.getFirstName(), commandBotName));
     }
 
     @Override

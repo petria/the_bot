@@ -1,6 +1,8 @@
 package org.freakz.io.connections;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.botconfig.WhatsAppConfig;
@@ -44,6 +46,8 @@ public class WhatsAppConnection extends BotConnection {
     this.connectionManager = connectionManager;
     this.config = config;
     this.botName = botName;
+    setSelfIdentity(new BotSelfIdentity("whatsapp", botName, java.util.List.of(botName)));
+    resolveSelfIdentity();
     registerConfiguredChannels();
   }
 
@@ -147,6 +151,32 @@ public class WhatsAppConnection extends BotConnection {
       }
     } catch (Exception e) {
       throw new RuntimeException("Unable to send WhatsApp message to " + to, e);
+    }
+  }
+
+  private void resolveSelfIdentity() {
+    String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
+    try {
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+          .uri(URI.create(sendBaseUrl.replaceFirst("/+$", "") + "/identity"))
+          .timeout(java.time.Duration.ofSeconds(3))
+          .GET();
+      String token = config == null ? null : config.getSendToken();
+      if (token != null && !token.isBlank()) {
+        requestBuilder.header("X-Bot-Whatsapp-Token", token);
+      }
+      HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        log.warn("WhatsApp self identity lookup failed: HTTP {}", response.statusCode());
+        return;
+      }
+      JsonNode body = OBJECT_MAPPER.readTree(response.body());
+      setSelfIdentity(new BotSelfIdentity(
+          "whatsapp",
+          firstNonBlank(body.path("jid").asText(null), botName),
+          java.util.List.of(body.path("jid").asText(null), body.path("lid").asText(null), botName)));
+    } catch (Exception e) {
+      log.warn("WhatsApp self identity lookup unavailable: {}", e.getMessage());
     }
   }
 
