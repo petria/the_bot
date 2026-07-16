@@ -197,7 +197,7 @@ public class BotEngine {
     }
 
     String messageWithoutUrls = UrlExtractor.removeUrls(message);
-    if (containsBotMention(messageWithoutUrls)) {
+    if (request.isBotMentioned() || containsBotMention(messageWithoutUrls)) {
       return true;
     }
     return messageWithoutUrls.contains("?") && !isAddressedToAnotherUser(messageWithoutUrls);

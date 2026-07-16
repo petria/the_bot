@@ -19,6 +19,7 @@ public class EngineRequest {
   private int fromConnectionId;
 
   private boolean isPrivateChannel;
+  private boolean botMentioned;
   private Long fromChannelId;
 
   private String fromSenderId;
@@ -221,12 +222,12 @@ public class EngineRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     EngineRequest that = (EngineRequest) o;
-    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(replyToMessageId, that.replyToMessageId) && Objects.equals(messageThreadId, that.messageThreadId) && Objects.equals(replyToSenderId, that.replyToSenderId) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
+    return timestamp == that.timestamp && fromConnectionId == that.fromConnectionId && isPrivateChannel == that.isPrivateChannel && botMentioned == that.botMentioned && Objects.equals(command, that.command) && Objects.equals(replyTo, that.replyTo) && Objects.equals(replyToMessageId, that.replyToMessageId) && Objects.equals(messageThreadId, that.messageThreadId) && Objects.equals(replyToSenderId, that.replyToSenderId) && Objects.equals(fromChannelId, that.fromChannelId) && Objects.equals(fromSenderId, that.fromSenderId) && Objects.equals(fromSender, that.fromSender) && Objects.equals(network, that.network) && Objects.equals(chatProtocol, that.chatProtocol) && Objects.equals(chatType, that.chatType) && Objects.equals(chatId, that.chatId) && Objects.equals(echoToAlias, that.echoToAlias) && Objects.equals(user, that.user) && Objects.equals(botConfig, that.botConfig);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestamp, command, replyTo, replyToMessageId, messageThreadId, replyToSenderId, fromConnectionId, isPrivateChannel, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
+    return Objects.hash(timestamp, command, replyTo, replyToMessageId, messageThreadId, replyToSenderId, fromConnectionId, isPrivateChannel, botMentioned, fromChannelId, fromSenderId, fromSender, network, chatProtocol, chatType, chatId, echoToAlias, user, botConfig);
   }
 
   @Override
@@ -240,6 +241,7 @@ public class EngineRequest {
         ", replyToSenderId='" + replyToSenderId + '\'' +
         ", fromConnectionId=" + fromConnectionId +
         ", isPrivateChannel=" + isPrivateChannel +
+        ", botMentioned=" + botMentioned +
         ", fromChannelId=" + fromChannelId +
         ", fromSenderId='" + fromSenderId + '\'' +
         ", fromSender='" + fromSender + '\'' +
@@ -265,6 +267,14 @@ public class EngineRequest {
     isPrivateChannel = privateChannel;
   }
 
+  public boolean isBotMentioned() {
+    return botMentioned;
+  }
+
+  public void setBotMentioned(boolean botMentioned) {
+    this.botMentioned = botMentioned;
+  }
+
 
   public static class Builder {
     private long timestamp;
@@ -276,6 +286,7 @@ public class EngineRequest {
     private String replyToSenderId;
     private int fromConnectionId;
     private boolean isPrivateChannel;
+    private boolean botMentioned;
     private Long fromChannelId;
     private String fromSenderId;
     private String fromSender;
@@ -330,6 +341,11 @@ public class EngineRequest {
 
     public Builder isPrivateChannel(boolean isPrivateChannel) {
       this.isPrivateChannel = isPrivateChannel;
+      return this;
+    }
+
+    public Builder botMentioned(boolean botMentioned) {
+      this.botMentioned = botMentioned;
       return this;
     }
 
@@ -394,6 +410,7 @@ public class EngineRequest {
       request.setReplyToMessageId(replyToMessageId);
       request.setMessageThreadId(messageThreadId);
       request.setReplyToSenderId(replyToSenderId);
+      request.setBotMentioned(botMentioned);
       return request;
     }
 

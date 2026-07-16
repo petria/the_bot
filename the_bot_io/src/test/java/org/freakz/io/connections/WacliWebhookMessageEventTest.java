@@ -87,6 +87,27 @@ class WacliWebhookMessageEventTest {
   }
 
   @Test
+  void parsesWhatsAppMentionedJidsFromExtendedTextContext() throws Exception {
+    WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(objectMapper.readTree("""
+        {
+          "Chat": {"User": "1203630", "Server": "g.us"},
+          "ID": "message-id",
+          "Text": "@66134711775265 hello",
+          "Message": {
+            "extendedTextMessage": {
+              "text": "@66134711775265 hello",
+              "contextInfo": {
+                "mentionedJid": ["66134711775265:2@lid"]
+              }
+            }
+          }
+        }
+        """));
+
+    assertThat(event.getMentionedJids()).containsExactly("66134711775265:2@lid");
+  }
+
+  @Test
   void parsesTopLevelMediaMetadataWithoutUrlAsMedia() throws Exception {
     WacliWebhookMessageEvent event = WacliWebhookMessageEvent.from(objectMapper.readTree("""
         {

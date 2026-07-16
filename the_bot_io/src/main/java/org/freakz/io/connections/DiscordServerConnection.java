@@ -1,6 +1,7 @@
 package org.freakz.io.connections;
 
 import org.freakz.common.exception.BotIOException;
+import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.model.botconfig.DiscordConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
@@ -75,6 +76,12 @@ public class DiscordServerConnection extends BotConnection {
         .setWaitForServersOnStartup(false)
         .login()
         .join();
+
+    org.javacord.api.entity.user.User self = api.getYourself();
+    setSelfIdentity(new BotSelfIdentity(
+        "discord",
+        self.getName(),
+        List.of(self.getIdAsString(), self.getName(), botName, config.getTheBotUserId())));
 
   }
 
