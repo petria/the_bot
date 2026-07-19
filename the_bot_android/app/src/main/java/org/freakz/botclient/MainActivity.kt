@@ -46,7 +46,7 @@ private fun LoginScreen(client: BotClient, onLoggedIn: () -> Unit) {
 
 @Composable
 private fun MainScreen(client: BotClient, onLogout: () -> Unit) {
-    val scope = rememberCoroutineScope(); var selected by remember { mutableStateOf("Inbox") }; var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }; var command by remember { mutableStateOf("") }; var reply by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope(); var selected by remember { mutableStateOf("Inbox") }; var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }; var command by remember { mutableStateOf("") }; var reply by remember { mutableStateOf("") }; var commandError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { runCatching { client.registerCurrentDevice(); notifications = client.notifications() } }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("The Bot", style = MaterialTheme.typography.headlineMedium)
@@ -58,7 +58,7 @@ private fun MainScreen(client: BotClient, onLogout: () -> Unit) {
         Button({ scope.launch { client.logout(); onLogout() } }) { Text("Logout") }
         when (selected) {
             "Inbox" -> LazyColumn { items(notifications) { item -> Text("${item.title}: ${item.body}", Modifier.padding(vertical = 8.dp)); Button({ scope.launch { client.markRead(item.eventId); notifications = client.notifications() } }) { Text("Mark read") } } }
-            "Console" -> { OutlinedTextField(command, { command = it }, label = { Text("Command") }, modifier = Modifier.fillMaxWidth()); Button({ scope.launch { reply = client.command(command).reply.orEmpty() } }) { Text("Run") }; Text(reply) }
+            "Console" -> { OutlinedTextField(command, { command = it; commandError = null }, label = { Text("Command") }, modifier = Modifier.fillMaxWidth()); Button({ scope.launch { commandError = null; runCatching { client.command(command).reply.orEmpty() }.onSuccess { reply = it }.onFailure { commandError = it.message ?: it::class.simpleName ?: "Command failed" } } }) { Text("Run") }; commandError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; Text(reply) }
             "Profile" -> Text("Profile and notification rules are managed by bot-web.")
             "Channels" -> Text("Channel access follows the permissions assigned to your bot user.")
         }

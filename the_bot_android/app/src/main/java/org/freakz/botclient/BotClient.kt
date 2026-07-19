@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
+import retrofit2.HttpException
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import com.google.firebase.messaging.FirebaseMessaging
@@ -29,16 +30,32 @@ class BotClient(context: Context) {
 
     suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))) }
     suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear() }
-    suspend fun currentUser() = api.me()
+    suspend fun currentUser() = authenticated { api.me() }
     suspend fun registerCurrentDevice() {
         val token = FirebaseMessaging.getInstance().token.await()
         api.registerDevice(DeviceRequest(token, "Android"))
     }
-    suspend fun notifications() = api.notifications()
-    suspend fun command(command: String) = api.command(CommandRequest(command))
-    suspend fun markRead(id: String) = api.markRead(id)
-    suspend fun markAllRead() = api.markAllRead()
+    suspend fun notifications() = authenticated { api.notifications() }
+    suspend fun command(command: String) = authenticated { api.command(CommandRequest(command)) }
+    suspend fun markRead(id: String) = authenticated { api.markRead(id) }
+    suspend fun markAllRead() = authenticated { api.markAllRead() }
     fun isLoggedIn() = prefs.getString("refreshToken", null) != null
     private fun save(tokens: TokenPair) { prefs.edit().putString("accessToken", tokens.accessToken).putString("refreshToken", tokens.refreshToken).apply() }
     private fun clear() { prefs.edit().clear().apply() }
+
+    private suspend fun refreshAccessToken() {
+        val refreshToken = prefs.getString("refreshToken", null)
+            ?: throw IllegalStateException("Mobile session has expired; please log in again")
+        save(api.refresh(RefreshRequest(refreshToken)))
+    }
+
+    private suspend fun <T> authenticated(request: suspend () -> T): T {
+        return try {
+            request()
+        } catch (error: HttpException) {
+            if (error.code() != 401) throw error
+            refreshAccessToken()
+            request()
+        }
+    }
 }
