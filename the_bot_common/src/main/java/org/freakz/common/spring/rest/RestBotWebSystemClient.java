@@ -1,6 +1,7 @@
 package org.freakz.common.spring.rest;
 
 import org.freakz.common.model.system.SystemStatusResponse;
+import org.freakz.common.model.mobile.MobileNotificationEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,6 +38,19 @@ public class RestBotWebSystemClient {
         HttpMethod.GET,
         new HttpEntity<>(headers),
         SystemStatusResponse.class);
+  }
+
+  public ResponseEntity<Void> publishMobileNotification(MobileNotificationEvent event) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+    if (internalApiToken != null && !internalApiToken.isBlank()) {
+      headers.set(INTERNAL_TOKEN_HEADER, internalApiToken);
+    }
+    return restTemplate.exchange(
+        baseUrl + "/internal/mobile/notifications",
+        HttpMethod.POST,
+        new HttpEntity<>(event, headers),
+        Void.class);
   }
 
   private String trimTrailingSlash(String value) {

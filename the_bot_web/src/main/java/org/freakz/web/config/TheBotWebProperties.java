@@ -20,6 +20,12 @@ public class TheBotWebProperties {
   private String openclawGatewayWsUrl = "ws://ubuntu-server.local:18889";
   private String openclawHealthUrl = "";
   private String internalApiToken = "";
+  private String mobileAuthFile = "runtime/data/mobile-auth.json";
+  private String mobileNotificationsFile = "runtime/data/mobile-notifications.json";
+  private long mobileAccessTokenSeconds = 900;
+  private long mobileRefreshTokenDays = 30;
+  private boolean mobileFcmEnabled = false;
+  private String mobileFcmCredentialsFile = "";
 
   public String getUsersFile() {
     return usersFile;
@@ -140,4 +146,17 @@ public class TheBotWebProperties {
   public void setInternalApiToken(String internalApiToken) {
     this.internalApiToken = internalApiToken;
   }
+
+  public String getMobileAuthFile() { return mobileAuthFile; }
+  public void setMobileAuthFile(String mobileAuthFile) { this.mobileAuthFile = mobileAuthFile; }
+  public String getMobileNotificationsFile() { return mobileNotificationsFile; }
+  public void setMobileNotificationsFile(String mobileNotificationsFile) { this.mobileNotificationsFile = mobileNotificationsFile; }
+  public long getMobileAccessTokenSeconds() { return mobileAccessTokenSeconds; }
+  public void setMobileAccessTokenSeconds(long mobileAccessTokenSeconds) { this.mobileAccessTokenSeconds = mobileAccessTokenSeconds; }
+  public long getMobileRefreshTokenDays() { return mobileRefreshTokenDays; }
+  public void setMobileRefreshTokenDays(long mobileRefreshTokenDays) { this.mobileRefreshTokenDays = mobileRefreshTokenDays; }
+  public boolean isMobileFcmEnabled() { return mobileFcmEnabled; }
+  public void setMobileFcmEnabled(boolean mobileFcmEnabled) { this.mobileFcmEnabled = mobileFcmEnabled; }
+  public String getMobileFcmCredentialsFile() { return mobileFcmCredentialsFile; }
+  public void setMobileFcmCredentialsFile(String mobileFcmCredentialsFile) { this.mobileFcmCredentialsFile = mobileFcmCredentialsFile; }
 }

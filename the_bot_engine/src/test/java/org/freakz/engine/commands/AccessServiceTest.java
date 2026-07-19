@@ -91,6 +91,22 @@ class AccessServiceTest {
     assertThat(resolved.getUsername()).isEqualTo("test");
   }
 
+  @Test
+  void mobileClientResolvesByAuthenticatedUsername() {
+    AccessService accessService = new AccessService(new FixedUsersService(List.of(
+        user("test", "SomeoneElse", List.of()),
+        unknownUser()
+    )));
+
+    User resolved = accessService.getUser(EngineRequest.builder()
+        .network("BOT_MOBILE_CLIENT")
+        .fromSender("test")
+        .fromSenderId("WEB-MOBILE:7")
+        .build());
+
+    assertThat(resolved.getUsername()).isEqualTo("test");
+  }
+
   private EngineRequest ircRequest(String nick, String userHost) {
     return EngineRequest.builder()
         .network("IRCNet")

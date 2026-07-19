@@ -27,6 +27,7 @@ import org.freakz.engine.services.ProcessingIndicatorService;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
+import org.freakz.engine.services.notifications.MobileNotificationPublisher;
 import org.freakz.engine.services.urls.UrlExtractor;
 import org.freakz.engine.services.urls.UrlResolutionService;
 import org.freakz.engine.services.wholelinetricker.WholeLineTriggers;
@@ -65,8 +66,10 @@ public class BotEngine {
   private final ConfiguredChannelResolver configuredChannelResolver;
   private final ConsoleOutputService consoleOutputService;
   private final ProcessingIndicatorService processingIndicatorService;
+  private final MobileNotificationPublisher mobileNotificationPublisher;
   private String botName = "HokanTheBot";
 
+  @org.springframework.beans.factory.annotation.Autowired
   public BotEngine(
       AccessService accessService,
       HokanServices hokanServices,
@@ -80,7 +83,8 @@ public class BotEngine {
       HermesAiCommandService hermesAiCommandService,
       ConfiguredChannelResolver configuredChannelResolver,
       ConsoleOutputService consoleOutputService,
-      ProcessingIndicatorService processingIndicatorService)
+      ProcessingIndicatorService processingIndicatorService,
+      MobileNotificationPublisher mobileNotificationPublisher)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -96,6 +100,7 @@ public class BotEngine {
     this.configuredChannelResolver = configuredChannelResolver;
     this.consoleOutputService = consoleOutputService;
     this.processingIndicatorService = processingIndicatorService;
+    this.mobileNotificationPublisher = mobileNotificationPublisher;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -104,6 +109,28 @@ public class BotEngine {
         new CommandHandlerLoader(configService.getActiveProfile(), this.botName);
     this.commandProviderRegistry = new CommandProviderRegistry(this.commandHandlerLoader, this.aiCommandRegistryService);
     this.wholeLineTriggers = new WholeLineTriggersImpl(this);
+  }
+
+  /** Compatibility constructor used by focused unit tests and embedded callers. */
+  public BotEngine(
+      AccessService accessService,
+      HokanServices hokanServices,
+      ConfigService configService,
+      UrlResolutionService urlResolutionService,
+      RestMessageSendClient restMessageSendClient,
+      PrivateChatAlertService privateChatAlertService,
+      ReplyOutputService replyOutputService,
+      CommandInvocationStatsService commandInvocationStatsService,
+      AiCommandRegistryService aiCommandRegistryService,
+      HermesAiCommandService hermesAiCommandService,
+      ConfiguredChannelResolver configuredChannelResolver,
+      ConsoleOutputService consoleOutputService,
+      ProcessingIndicatorService processingIndicatorService)
+      throws InitializeFailedException, IOException {
+    this(accessService, hokanServices, configService, urlResolutionService, restMessageSendClient,
+        privateChatAlertService, replyOutputService, commandInvocationStatsService,
+        aiCommandRegistryService, hermesAiCommandService, configuredChannelResolver,
+        consoleOutputService, processingIndicatorService, null);
   }
 
   public CommandHandlerLoader getCommandHandlerLoader() {
@@ -411,12 +438,18 @@ public class BotEngine {
 
   private String sendReplyMessageInternal(EngineRequest request, String reply) {
 
+    if (mobileNotificationPublisher != null) {
+      mobileNotificationPublisher.publishReply(request, reply);
+    }
+
     if (ConsoleOutputService.NETWORK.equals(request.getNetwork())) {
       consoleOutputService.recordReply(request, reply);
       return reply;
     }
 
-    if ("BOT_CLI_CLIENT".equals(request.getNetwork()) || "BOT_INTERNAL".equals(request.getNetwork())) {
+    if ("BOT_CLI_CLIENT".equals(request.getNetwork())
+        || "BOT_INTERNAL".equals(request.getNetwork())
+        || "BOT_MOBILE_CLIENT".equals(request.getNetwork())) {
       // log.debug("Not doing sendReplyMessage() because: {}", request.getNetwork());
 // TODO       countInterceptor.computeCount("OUT: commandHandler");
       return reply;
