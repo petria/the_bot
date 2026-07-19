@@ -21,6 +21,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.5.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.freakz</groupId>
             <artifactId>the_bot_common</artifactId>
             <version>${project.version}</version>

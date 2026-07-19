@@ -35,6 +35,7 @@ public class UserNotifyRuleService {
   private final UserNotifyRuleStore store;
   private final UsersService usersService;
   private final ConnectionManagerService connectionManagerService;
+  private final MobileNotificationPublisher mobileNotificationPublisher;
   private final Map<String, Long> lastSentByRuleId = new ConcurrentHashMap<>();
 
   @Autowired
@@ -42,21 +43,32 @@ public class UserNotifyRuleService {
       ConfigService configService,
       JsonMapper jsonMapper,
       UsersService usersService,
-      ConnectionManagerService connectionManagerService) {
+      ConnectionManagerService connectionManagerService,
+      MobileNotificationPublisher mobileNotificationPublisher) {
     this.store = new UserNotifyRuleStore(
         configService.getRuntimeDataFile(UserNotifyRuleStore.USER_NOTIFY_RULES_FILE).toPath(),
         jsonMapper);
     this.usersService = usersService;
     this.connectionManagerService = connectionManagerService;
+    this.mobileNotificationPublisher = mobileNotificationPublisher;
+  }
+
+  UserNotifyRuleService(
+      UserNotifyRuleStore store,
+      UsersService usersService,
+      ConnectionManagerService connectionManagerService,
+      MobileNotificationPublisher mobileNotificationPublisher) {
+    this.store = store;
+    this.usersService = usersService;
+    this.connectionManagerService = connectionManagerService;
+    this.mobileNotificationPublisher = mobileNotificationPublisher;
   }
 
   UserNotifyRuleService(
       UserNotifyRuleStore store,
       UsersService usersService,
       ConnectionManagerService connectionManagerService) {
-    this.store = store;
-    this.usersService = usersService;
-    this.connectionManagerService = connectionManagerService;
+    this(store, usersService, connectionManagerService, null);
   }
 
   public UserNotifyRuleListResponse list(String username) {
@@ -131,6 +143,13 @@ public class UserNotifyRuleService {
       return;
     }
     lastSentByRuleId.put(rule.getId(), System.currentTimeMillis());
+    if (mobileNotificationPublisher != null) {
+      mobileNotificationPublisher.publishRuleMatch(
+          rule.getUsername(),
+          "Bot notification",
+          notificationMessage(rule, request, message),
+          request);
+    }
   }
 
   private boolean matches(UserNotifyRule rule, User owner, String message) {

@@ -37,6 +37,7 @@ public class AccessService {
         case "BOT_WEB_CLIENT":
         case "BOT_CLI_CLIENT":
         case "BOT_WEB_CONSOLE":
+        case "BOT_MOBILE_CLIENT":
           if (Objects.equals(request.getFromSender(), user.getUsername())) {
             foundUser = user;
           }

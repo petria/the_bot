@@ -22,6 +22,7 @@ import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.freakz.common.users.BotPermission;
+import org.freakz.web.mobile.MobileBearerAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -30,13 +31,16 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
-      WebLoginFailureHandler webLoginFailureHandler) throws Exception {
+      WebLoginFailureHandler webLoginFailureHandler,
+      MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter) throws Exception {
     http
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             .ignoringRequestMatchers(
                 PathPatternRequestMatcher.pathPattern("/logout"),
-                PathPatternRequestMatcher.pathPattern("/api/web/cli/**"))
+                PathPatternRequestMatcher.pathPattern("/api/web/cli/**"),
+                PathPatternRequestMatcher.pathPattern("/api/mobile/**"),
+                PathPatternRequestMatcher.pathPattern("/internal/mobile/**"))
         )
         .authorizeHttpRequests(authorize -> authorize
             .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
@@ -47,6 +51,9 @@ public class SecurityConfig {
             .requestMatchers("/internal/system/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/cli/login").permitAll()
+            .requestMatchers("/api/mobile/auth/**").permitAll()
+            .requestMatchers("/internal/mobile/**").permitAll()
+            .requestMatchers("/api/mobile/**").authenticated()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
             .requestMatchers("/api/web/**").hasAnyAuthority(BotPermission.WEB_USER, BotPermission.WEB_ADMIN, BotPermission.ALL)
@@ -56,7 +63,9 @@ public class SecurityConfig {
             .defaultAuthenticationEntryPointFor(
                 apiAuthenticationEntryPoint(),
                 PathPatternRequestMatcher.pathPattern("/api/web/**"))
-        )
+            .defaultAuthenticationEntryPointFor(
+                apiAuthenticationEntryPoint(),
+                PathPatternRequestMatcher.pathPattern("/api/mobile/**")))
         .formLogin(formLogin -> formLogin
             .successHandler((request, response, authentication) -> relativeRedirect(response, "/"))
             .failureHandler(webLoginFailureHandler)
@@ -66,7 +75,9 @@ public class SecurityConfig {
             .logoutUrl("/logout")
             .logoutSuccessHandler((request, response, authentication) -> relativeRedirect(response, "/login?logout"))
             .permitAll()
-        );
+        )
+        .addFilterBefore(mobileBearerAuthenticationFilter,
+            org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 
