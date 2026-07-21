@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -47,6 +48,22 @@ public class UrlArchiveStore {
       Long viewCount,
       Duration ttl,
       UrlArchiveSource source) throws IOException {
+    return create(url, provider, title, author, description, duration, publishedAt, viewCount,
+        Map.of(), ttl, source);
+  }
+
+  public UrlArchiveRecord create(
+      String url,
+      String provider,
+      String title,
+      String author,
+      String description,
+      Duration duration,
+      Instant publishedAt,
+      Long viewCount,
+      Map<String, String> attributes,
+      Duration ttl,
+      UrlArchiveSource source) throws IOException {
     if (url == null || url.isBlank()) {
       throw new IllegalArgumentException("URL is required");
     }
@@ -65,6 +82,7 @@ public class UrlArchiveStore {
         duration,
         publishedAt,
         viewCount,
+        attributes,
         createdAt,
         createdAt.plus(ttl),
         source == null ? null : source.protocol(),

@@ -2,6 +2,7 @@ package org.freakz.common.urlarchive;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 
 public record UrlArchiveListItem(
     String id,
@@ -14,6 +15,7 @@ public record UrlArchiveListItem(
     Duration duration,
     Instant publishedAt,
     Long viewCount,
+    Map<String, String> attributes,
     Instant createdAt,
     Instant expiresAt,
     String sourceProtocol,
@@ -34,6 +36,7 @@ public record UrlArchiveListItem(
         record.getDuration(),
         record.getPublishedAt(),
         record.getViewCount(),
+        record.getAttributes(),
         record.getCreatedAt(),
         record.getExpiresAt(),
         record.getSourceProtocol(),

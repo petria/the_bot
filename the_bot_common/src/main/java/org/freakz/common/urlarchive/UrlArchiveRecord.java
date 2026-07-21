@@ -2,6 +2,7 @@ package org.freakz.common.urlarchive;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 
 public class UrlArchiveRecord {
 
@@ -15,6 +16,7 @@ public class UrlArchiveRecord {
   private Duration duration;
   private Instant publishedAt;
   private Long viewCount;
+  private Map<String, String> attributes;
   private Instant createdAt;
   private Instant expiresAt;
   private String sourceProtocol;
@@ -44,6 +46,29 @@ public class UrlArchiveRecord {
       String sourceChannelAlias,
       String sourceChannelName,
       String sourceSender) {
+    this(id, shortCode, url, provider, title, author, description, duration, publishedAt, viewCount,
+        Map.of(), createdAt, expiresAt, sourceProtocol, sourceNetwork, sourceChannelAlias, sourceChannelName, sourceSender);
+  }
+
+  public UrlArchiveRecord(
+      String id,
+      String shortCode,
+      String url,
+      String provider,
+      String title,
+      String author,
+      String description,
+      Duration duration,
+      Instant publishedAt,
+      Long viewCount,
+      Map<String, String> attributes,
+      Instant createdAt,
+      Instant expiresAt,
+      String sourceProtocol,
+      String sourceNetwork,
+      String sourceChannelAlias,
+      String sourceChannelName,
+      String sourceSender) {
     this.id = id;
     this.shortCode = shortCode;
     this.url = url;
@@ -54,6 +79,7 @@ public class UrlArchiveRecord {
     this.duration = duration;
     this.publishedAt = publishedAt;
     this.viewCount = viewCount;
+    this.attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
     this.createdAt = createdAt;
     this.expiresAt = expiresAt;
     this.sourceProtocol = sourceProtocol;
@@ -141,6 +167,14 @@ public class UrlArchiveRecord {
 
   public void setViewCount(Long viewCount) {
     this.viewCount = viewCount;
+  }
+
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
   }
 
   public Instant getCreatedAt() {
