@@ -61,8 +61,8 @@ public class UrlResolutionFormatter {
     if (!"N/A".equals(mileage)) {
       mileage += "km";
     }
-    return "[ " + vehicleName + " / " + registration + " / " + price + " / "
-        + power + " / " + mileage + " / " + listingTitle + " ]";
+    return "[ " + BOLD + vehicleName + " / " + registration + " / " + price + " / "
+        + power + " / " + mileage + " / " + listingTitle + BOLD + " ]";
   }
 
   private String value(java.util.Map<String, String> attributes, String key, String fallback) {

@@ -40,7 +40,7 @@ class NettiautoUrlResolverTest {
     UrlResolution resolution = resolver.resolve(uri).orElseThrow();
 
     assertThat(new UrlResolutionFormatter().format(resolution))
-        .isEqualTo("[ KTM X-Bow Street 2.0TFSI / IKX-838 / 79000€ / 177kW/241Hv / 15000km / Kotiintoimitus Avoauto 2012 - Vaihtoauto - Nettiauto ]");
+        .isEqualTo("[ \u0002KTM X-Bow Street 2.0TFSI / IKX-838 / 79000€ / 177kW/241Hv / 15000km / Kotiintoimitus Avoauto 2012 - Vaihtoauto - Nettiauto\u0002 ]");
   }
 
   @Test
