@@ -6,6 +6,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -19,6 +20,7 @@ public class GenericHtmlUrlResolver implements UrlResolver {
   private final SafeUrlDocumentFetcher documentFetcher;
   private final UrlSecurityValidator securityValidator;
 
+  @Autowired
   public GenericHtmlUrlResolver(
       SafeUrlDocumentFetcher documentFetcher,
       UrlSecurityValidator securityValidator) {
