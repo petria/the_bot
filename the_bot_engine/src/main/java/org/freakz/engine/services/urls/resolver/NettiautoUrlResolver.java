@@ -132,13 +132,44 @@ public class NettiautoUrlResolver implements UrlResolver {
         continue;
       }
       try {
-        JsonNode root = jsonMapper.readTree(data.substring(start));
+        String json = extractJsonObject(data, start);
+        if (json == null) {
+          continue;
+        }
+        JsonNode root = jsonMapper.readTree(json);
         return Optional.ofNullable(root == null ? null : root.path(field));
       } catch (Exception ignored) {
         // Continue with the other scripts.
       }
     }
     return Optional.empty();
+  }
+
+  private String extractJsonObject(String value, int start) {
+    int depth = 0;
+    boolean quoted = false;
+    boolean escaped = false;
+    for (int index = start; index < value.length(); index++) {
+      char current = value.charAt(index);
+      if (quoted) {
+        if (escaped) {
+          escaped = false;
+        } else if (current == '\\') {
+          escaped = true;
+        } else if (current == '"') {
+          quoted = false;
+        }
+        continue;
+      }
+      if (current == '"') {
+        quoted = true;
+      } else if (current == '{') {
+        depth++;
+      } else if (current == '}' && --depth == 0) {
+        return value.substring(start, index + 1);
+      }
+    }
+    return null;
   }
 
   private String text(JsonNode node, String field) {

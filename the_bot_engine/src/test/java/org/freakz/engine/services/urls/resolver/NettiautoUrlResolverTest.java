@@ -24,7 +24,7 @@ class NettiautoUrlResolverTest {
         <html><head>
           <title>KTM X-Bow Street 2.0TFSI / Kotiintoimitus Avoauto 2012 - Vaihtoauto - Nettiauto</title>
           <meta property="og:title" content="KTM X-Bow Street 2.0TFSI / Kotiintoimitus Avoauto 2012 - Vaihtoauto - Nettiauto">
-          <script type="application/json">{"productInfo":{"basePrice":79000,"mileageFromOdometer":"15000","registrationNumber":"IKX-838"}}</script>
+        <script type="application/json">window.digitalData = {'product': [{"productInfo":{"basePrice":79000,"mileageFromOdometer":"15000","registrationNumber":"IKX-838"}}]};</script>
         </head><body>
           <div class="vehicle-info-box">
             <div class="vehicle-info-box__vehicle-info">Teho</div>
