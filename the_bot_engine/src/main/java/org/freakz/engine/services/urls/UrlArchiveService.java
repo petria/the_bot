@@ -56,6 +56,7 @@ public class UrlArchiveService {
           resolution == null ? null : resolution.duration(),
           resolution == null ? null : resolution.publishedAt(),
           resolution == null ? null : resolution.viewCount(),
+          resolution == null ? java.util.Map.of() : resolution.attributes(),
           Duration.ofDays(retentionDays),
           new UrlArchiveSource(
               ChatIdentityUtil.sanitize(request.getChatProtocol(), ChatIdentityUtil.resolveProtocol(request.getNetwork())),

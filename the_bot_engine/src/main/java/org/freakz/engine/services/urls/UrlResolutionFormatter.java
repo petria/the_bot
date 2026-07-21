@@ -13,6 +13,9 @@ public class UrlResolutionFormatter {
       DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
 
   public String format(UrlResolution resolution) {
+    if ("Nettiauto".equalsIgnoreCase(resolution.provider())) {
+      return formatNettiauto(resolution);
+    }
     String title = clean(resolution.title());
     if (title == null) {
       return null;
@@ -42,6 +45,29 @@ public class UrlResolutionFormatter {
       result.append(" [").append(resolution.viewCount()).append(" views]");
     }
     return result.toString();
+  }
+
+  private String formatNettiauto(UrlResolution resolution) {
+    var attributes = resolution.attributes();
+    String vehicleName = value(attributes, "vehicleName", resolution.title());
+    String registration = value(attributes, "registrationNumber", "N/A");
+    String price = value(attributes, "price", "N/A");
+    String power = value(attributes, "power", "N/A");
+    String mileage = value(attributes, "mileage", "N/A");
+    String listingTitle = value(attributes, "listingTitle", "N/A");
+    if (!"N/A".equals(price)) {
+      price += "€";
+    }
+    if (!"N/A".equals(mileage)) {
+      mileage += "km";
+    }
+    return "[ " + vehicleName + " / " + registration + " / " + price + " / "
+        + power + " / " + mileage + " / " + listingTitle + " ]";
+  }
+
+  private String value(java.util.Map<String, String> attributes, String key, String fallback) {
+    String value = attributes == null ? null : clean(attributes.get(key));
+    return value == null ? fallback : value;
   }
 
   private String formatDuration(long seconds) {

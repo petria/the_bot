@@ -20,6 +20,7 @@ public class UrlResolverProperties {
   private String userAgent = "HokanTheBot URL resolver";
   private Youtube youtube = new Youtube();
   private Wikipedia wikipedia = new Wikipedia();
+  private Nettiauto nettiauto = new Nettiauto();
 
   public int getMaxUrlsPerMessage() {
     return maxUrlsPerMessage;
@@ -109,6 +110,14 @@ public class UrlResolverProperties {
     this.wikipedia = wikipedia;
   }
 
+  public Nettiauto getNettiauto() {
+    return nettiauto;
+  }
+
+  public void setNettiauto(Nettiauto nettiauto) {
+    this.nettiauto = nettiauto;
+  }
+
   public static class Youtube {
 
     private boolean enabled = true;
@@ -132,6 +141,19 @@ public class UrlResolverProperties {
   }
 
   public static class Wikipedia {
+
+    private boolean enabled = true;
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+  }
+
+  public static class Nettiauto {
 
     private boolean enabled = true;
 

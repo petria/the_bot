@@ -1,10 +1,7 @@
 package org.freakz.engine.services.urls.resolver;
 
 import org.freakz.engine.services.urls.UrlResolution;
-import org.freakz.engine.services.urls.UrlResolverProperties;
 import org.freakz.engine.services.urls.UrlSecurityValidator;
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.core.Ordered;
@@ -19,14 +16,20 @@ import java.util.Optional;
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class GenericHtmlUrlResolver implements UrlResolver {
 
-  private final UrlResolverProperties properties;
+  private final SafeUrlDocumentFetcher documentFetcher;
   private final UrlSecurityValidator securityValidator;
 
   public GenericHtmlUrlResolver(
-      UrlResolverProperties properties,
+      SafeUrlDocumentFetcher documentFetcher,
       UrlSecurityValidator securityValidator) {
-    this.properties = properties;
+    this.documentFetcher = documentFetcher;
     this.securityValidator = securityValidator;
+  }
+
+  public GenericHtmlUrlResolver(
+      org.freakz.engine.services.urls.UrlResolverProperties properties,
+      UrlSecurityValidator securityValidator) {
+    this(new SafeUrlDocumentFetcher(properties, securityValidator), securityValidator);
   }
 
   @Override
@@ -36,74 +39,31 @@ public class GenericHtmlUrlResolver implements UrlResolver {
 
   @Override
   public Optional<UrlResolution> resolve(URI uri) {
-    try {
-      Document document = fetch(uri);
-      if (document == null) {
-        return Optional.empty();
-      }
-
-      String title = firstContent(document, "meta[property=og:title]", "meta[name=twitter:title]");
-      if (title == null) {
-        title = clean(document.title());
-      }
-      if (title == null) {
-        return Optional.empty();
-      }
-
-      String provider = firstContent(document, "meta[property=og:site_name]");
-      if (provider == null) {
-        provider = inferProvider(uri);
-      }
-      String description = firstContent(
-          document,
-          "meta[property=og:description]",
-          "meta[name=twitter:description]",
-          "meta[name=description]");
-      String author = firstContent(document, "meta[name=author]", "meta[property=article:author]");
-
-      return Optional.of(new UrlResolution(
-          uri, provider, title, author, description, null, null, null));
-    } catch (Exception ex) {
-      return Optional.empty();
-    }
+    return documentFetcher.fetch(uri).flatMap(document -> resolve(uri, document));
   }
 
-  private Document fetch(URI initialUri) throws Exception {
-    URI uri = initialUri;
-    for (int redirects = 0; redirects <= properties.getMaxRedirects(); redirects++) {
-      if (!securityValidator.isAllowed(uri)) {
-        return null;
-      }
-
-      Connection.Response response = Jsoup.connect(uri.toString())
-          .userAgent(properties.getUserAgent())
-          .timeout(properties.getConnectTimeoutMillis() + properties.getReadTimeoutMillis())
-          .maxBodySize(properties.getMaxResponseBytes())
-          .followRedirects(false)
-          .ignoreContentType(true)
-          .ignoreHttpErrors(true)
-          .execute();
-
-      int status = response.statusCode();
-      if (status >= 300 && status < 400) {
-        String location = response.header("Location");
-        if (location == null || redirects == properties.getMaxRedirects()) {
-          return null;
-        }
-        uri = uri.resolve(location);
-        continue;
-      }
-
-      String contentType = response.contentType();
-      if (status >= 200 && status < 300
-          && contentType != null
-          && (contentType.toLowerCase(Locale.ROOT).contains("text/html")
-              || contentType.toLowerCase(Locale.ROOT).contains("application/xhtml+xml"))) {
-        return response.parse();
-      }
-      return null;
+  Optional<UrlResolution> resolve(URI uri, Document document) {
+    String title = firstContent(document, "meta[property=og:title]", "meta[name=twitter:title]");
+    if (title == null) {
+      title = clean(document.title());
     }
-    return null;
+    if (title == null) {
+      return Optional.empty();
+    }
+
+    String provider = firstContent(document, "meta[property=og:site_name]");
+    if (provider == null) {
+      provider = inferProvider(uri);
+    }
+    String description = firstContent(
+        document,
+        "meta[property=og:description]",
+        "meta[name=twitter:description]",
+        "meta[name=description]");
+    String author = firstContent(document, "meta[name=author]", "meta[property=article:author]");
+
+    return Optional.of(new UrlResolution(
+        uri, provider, title, author, description, null, null, null));
   }
 
   private String firstContent(Document document, String... selectors) {
