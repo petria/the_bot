@@ -68,7 +68,6 @@ public class NettiautoUrlResolver implements UrlResolver {
 
     String registration = firstText(
         text(productInfo, "registrationNumber"),
-        text(structuredData, "vehicleIdentificationNumber"),
         textByLabel(document, "Rekisterinumero"));
     String mileage = firstText(
         text(productInfo, "mileageFromOdometer"),
