@@ -113,6 +113,7 @@ services:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
+      - ${HOKAN_DATA_DIR:-.}/secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "0.0.0.0:8091:8091"
@@ -129,6 +130,8 @@ services:
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:-${HERMES_MANAGER_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}}
+      - THE_BOT_WEB_MOBILE_FCM_ENABLED=${THE_BOT_WEB_MOBILE_FCM_ENABLED:-false}
+      - THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=${THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE:-/run/secrets/firebase-service-account.json}
       - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-external}
       - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
       - THE_BOT_WEB_OPENCLAW_HEALTH_URL=${THE_BOT_WEB_OPENCLAW_HEALTH_URL:-}
