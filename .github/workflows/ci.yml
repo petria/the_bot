@@ -48,7 +48,7 @@ jobs:
           mkdir -p the_bot_android/app/src/prod
           printf '%s' "$FIREBASE_PROD_GOOGLE_SERVICES_JSON_B64" | base64 --decode > the_bot_android/app/src/prod/google-services.json
       - name: Assemble development Android client
-        run: gradle -p the_bot_android :app:assembleDevDebug --no-daemon
+        run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :app:assembleDevDebug --no-daemon
 
   build-and-push:
     runs-on: ubuntu-latest
