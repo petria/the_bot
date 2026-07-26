@@ -24,17 +24,9 @@ public class OpCmd extends AbstractCmd {
         || !"irc".equalsIgnoreCase(request.getChatProtocol())) {
       return null;
     }
-    var response = getBotEngine().getIrcOperatorManagementService()
+    getBotEngine().getIrcOperatorManagementService()
         .grantForRequester(request.getEchoToAlias(), request);
-    if (response == null || response.error() != null) {
-      return null;
-    }
-    if (response.granted()) {
-      return "Operator status granted.";
-    }
-    if (response.alreadyOperator()) {
-      return "You already have operator status.";
-    }
+    // !op is intentionally silent. The visible result is the IRC mode change.
     return null;
   }
 }
