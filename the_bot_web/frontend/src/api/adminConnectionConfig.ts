@@ -15,6 +15,7 @@ export type AdminConfigChannel = {
   captureResolvedUrls: boolean;
   captureImages: boolean;
   captureImageToAliases: string[] | null;
+  manageOperators: boolean;
 };
 
 export type AdminIrcServerConfig = {
@@ -97,4 +98,16 @@ export function saveAndApplyAdminConnectionConfig(
   config: AdminConnectionConfigPayload,
 ): Promise<AdminConnectionConfigApplyResponse> {
   return postJson<AdminConnectionConfigApplyResponse>('/api/web/admin/config/connections/apply', config);
+}
+
+export type IrcOperatorReconcileResponse = {
+  echoToAlias: string;
+  botHasOperator: boolean;
+  granted: string[];
+  skipped: string[];
+  error: string | null;
+};
+
+export function reconcileIrcOperators(echoToAlias: string): Promise<IrcOperatorReconcileResponse> {
+  return postJson<IrcOperatorReconcileResponse>('/api/web/admin/config/connections/operator-reconcile', { echoToAlias });
 }

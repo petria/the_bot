@@ -135,6 +135,7 @@ export function ConnectionsPage() {
                   captureResolvedUrls: false,
                   captureImages: false,
                   captureImageToAliases: [],
+                  manageOperators: false,
                 },
               })}
             />

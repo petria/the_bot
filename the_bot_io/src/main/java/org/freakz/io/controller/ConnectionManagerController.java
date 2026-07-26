@@ -9,6 +9,8 @@ import org.freakz.common.model.connectionmanager.GetKnownChatChannelsResponse;
 import org.freakz.common.model.connectionmanager.GetKnownChatUsersResponse;
 import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
@@ -92,5 +94,24 @@ public class ConnectionManagerController {
     response.setChannelUsers(users);
     //        response.setChannelUsers(List.of("Fuu", "Bar", "Test"));
     return ResponseEntity.ok(response);
+  }
+
+  @GetMapping("/irc/operator_state")
+  public ResponseEntity<?> getIrcOperatorState(@RequestParam String echoToAlias) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(echoToAlias);
+    if (joined == null || !(joined.connection instanceof org.freakz.io.connections.IrcServerConnection irc)) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.getOperatorState(echoToAlias));
+  }
+
+  @PostMapping("/irc/operators/reconcile")
+  public ResponseEntity<IrcOperatorReconcileResponse> reconcileIrcOperators(
+      @RequestBody IrcOperatorReconcileRequest request) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(request.echoToAlias());
+    if (joined == null || !(joined.connection instanceof org.freakz.io.connections.IrcServerConnection irc)) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.reconcileOperators(request));
   }
 }

@@ -21,6 +21,7 @@ import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,6 +126,22 @@ public class RestEngineClient {
   public ResponseEntity<GetCommandsResponse> getCommands() {
     String url = baseUrl + "/commands";
     return restTemplate.getForEntity(url, GetCommandsResponse.class);
+  }
+
+  public ResponseEntity<IrcOperatorReconcileResponse> reconcileIrcOperators(String echoToAlias) {
+    URI uri = UriComponentsBuilder
+        .fromUriString(baseUrl + "/internal/irc/operators/reconcile")
+        .queryParam("echoToAlias", echoToAlias)
+        .build()
+        .toUri();
+    return restTemplate.postForEntity(uri, null, IrcOperatorReconcileResponse.class);
+  }
+
+  public ResponseEntity<IrcOperatorReconcileResponse[]> reconcileAllIrcOperators() {
+    return restTemplate.postForEntity(
+        baseUrl + "/internal/irc/operators/reconcile-all",
+        null,
+        IrcOperatorReconcileResponse[].class);
   }
 
   public ResponseEntity<AiCommandConfigResponse> getAiCommands() {

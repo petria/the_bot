@@ -4,15 +4,20 @@ import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.exception.BotIOException;
+import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.model.botconfig.IrcServerConfig;
 import org.freakz.common.model.botconfig.TheBotConfig;
 import org.freakz.common.model.connectionmanager.ChannelUser;
+import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.element.mode.ChannelUserMode;
+import org.kitteh.irc.client.library.element.mode.ModeStatus;
 import org.kitteh.irc.client.library.event.channel.*;
 import org.kitteh.irc.client.library.event.client.ClientNegotiationCompleteEvent;
 import org.kitteh.irc.client.library.event.connection.ClientConnectionClosedEvent;
@@ -35,6 +40,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class IrcServerConnection extends BotConnection {
@@ -42,6 +48,8 @@ public class IrcServerConnection extends BotConnection {
   private static final Logger log = LoggerFactory.getLogger(IrcServerConnection.class);
 
   private final EventPublisher publisher;
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private RestEngineClient engineClient;
   private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
   private Client client;
   private ConnectionManager connectionManager;
@@ -56,6 +64,101 @@ public class IrcServerConnection extends BotConnection {
 
   public IrcServerConfig getConfig() {
     return config;
+  }
+
+  public IrcOperatorStateResponse getOperatorState(String echoToAlias) {
+    org.freakz.common.model.botconfig.Channel configured = resolveConfiguredEchoAlias(echoToAlias);
+    if (configured == null || client == null) {
+      return new IrcOperatorStateResponse(echoToAlias, null, false, List.of());
+    }
+    Optional<Channel> optional = client.getChannel(configured.getName());
+    if (optional.isEmpty()) {
+      return new IrcOperatorStateResponse(configured.getEchoToAlias(), configured.getName(), false, List.of());
+    }
+    Channel channel = optional.get();
+    Optional<User> botUser = channel.getUser(botNick);
+    boolean botHasOperator = botUser.map(user -> hasMode(channel, user, 'o')).orElse(false);
+    return new IrcOperatorStateResponse(
+        configured.getEchoToAlias(),
+        configured.getName(),
+        botHasOperator,
+        channelUsers(channel));
+  }
+
+  public IrcOperatorReconcileResponse reconcileOperators(IrcOperatorReconcileRequest request) {
+    IrcOperatorStateResponse state = getOperatorState(request == null ? null : request.echoToAlias());
+    if (!state.botHasOperator()) {
+      return new IrcOperatorReconcileResponse(state.echoToAlias(), false, List.of(), List.of(), "Bot is not an IRC channel operator");
+    }
+    Optional<ChannelUserMode> operatorMode = ChannelUserMode.get(client, 'o');
+    if (operatorMode.isEmpty()) {
+      return new IrcOperatorReconcileResponse(state.echoToAlias(), true, List.of(), List.of(), "IRC operator mode is unavailable");
+    }
+    List<String> authorized = request == null || request.nicks() == null ? List.of() : request.nicks();
+    Optional<Channel> optional = client.getChannel(state.channelName());
+    if (optional.isEmpty()) {
+      return new IrcOperatorReconcileResponse(state.echoToAlias(), true, List.of(), List.of(), "IRC channel is not joined");
+    }
+    Channel channel = optional.get();
+    var command = channel.commands().mode();
+    List<String> granted = new ArrayList<>();
+    List<String> skipped = new ArrayList<>();
+    for (User user : channel.getUsers()) {
+      if (!containsNick(authorized, user.getNick())) {
+        continue;
+      }
+      if (hasMode(channel, user, 'o')) {
+        skipped.add(user.getNick());
+      } else {
+        command.add(ModeStatus.Action.ADD, operatorMode.get(), user);
+        granted.add(user.getNick());
+      }
+    }
+    if (!granted.isEmpty()) {
+      command.execute();
+    }
+    return new IrcOperatorReconcileResponse(state.echoToAlias(), true, granted, skipped, null);
+  }
+
+  private org.freakz.common.model.botconfig.Channel resolveConfiguredEchoAlias(String echoToAlias) {
+    if (config == null || config.getChannelList() == null || echoToAlias == null) {
+      return null;
+    }
+    return config.getChannelList().stream()
+        .filter(channel -> channel.getEchoToAlias() != null && channel.getEchoToAlias().equalsIgnoreCase(echoToAlias))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private boolean containsNick(List<String> nicks, String nick) {
+    return nick != null && nicks.stream().anyMatch(value -> value != null && value.equalsIgnoreCase(nick));
+  }
+
+  private boolean hasMode(Channel channel, User user, char modeChar) {
+    return channel.getUserModes(user).orElseGet(java.util.TreeSet::new).stream()
+        .anyMatch(mode -> mode.getChar() == modeChar);
+  }
+
+  private List<ChannelUser> channelUsers(Channel channel) {
+    List<ChannelUser> users = new ArrayList<>();
+    for (User user : channel.getUsers()) {
+      IrcChannelModeMetadata modeMetadata = ircModeMetadata(channel, user);
+      users.add(ChannelUser.builder()
+          .account(user.getAccount().orElse(""))
+          .awayMessage(user.getAwayMessage().orElse(""))
+          .host(user.getHost())
+          .nick(user.getNick())
+          .operatorInformation(user.getOperatorInformation().orElse(""))
+          .realName(user.getRealName().orElse(""))
+          .server(user.getServer().orElse(""))
+          .userString(user.getUserString())
+          .displayPrefix(modeMetadata.displayPrefix())
+          .channelModes(modeMetadata.channelModes())
+          .channelRoles(List.of())
+          .isAway(user.isAway())
+          .build());
+    }
+    return users;
   }
 
   public Client getClient() {
@@ -73,6 +176,7 @@ public class IrcServerConnection extends BotConnection {
     org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(event.getChannel().getName());
     if (channel != null) {
       markIrcUserSeen(channel.getEchoToAlias(), event.getChannel(), event.getUser(), "IRC_JOIN");
+      requestOperatorReconciliation(channel.getEchoToAlias());
     }
     if (event.getClient().isUser(event.getUser())) { // It's me!
 //            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
@@ -126,6 +230,7 @@ public class IrcServerConnection extends BotConnection {
         client.getChannel(channelName).ifPresentOrElse(
             ircChannel -> markIrcUserSeen(channel.getEchoToAlias(), ircChannel, event.getNewUser(), "IRC_NICK"),
             () -> markIrcUserSeen(channel.getEchoToAlias(), event.getNewUser(), "IRC_NICK"));
+        requestOperatorReconciliation(channel.getEchoToAlias());
       }
     }
   }
@@ -143,6 +248,24 @@ public class IrcServerConnection extends BotConnection {
         markIrcUserSeen(channel.getEchoToAlias(), event.getChannel(), user, "IRC_NAMES");
       }
     }
+    org.freakz.common.model.botconfig.Channel configured = resolveByEchoTo(channelName);
+    if (configured != null) {
+      requestOperatorReconciliation(configured.getEchoToAlias());
+    }
+  }
+
+  private void requestOperatorReconciliation(String echoToAlias) {
+    org.freakz.common.model.botconfig.Channel configured = resolveConfiguredEchoAlias(echoToAlias);
+    if (engineClient == null || configured == null || !Boolean.TRUE.equals(configured.getManageOperators())) {
+      return;
+    }
+    CompletableFuture.runAsync(() -> {
+      try {
+        engineClient.reconcileIrcOperators(echoToAlias);
+      } catch (RuntimeException e) {
+        log.debug("IRC operator reconciliation request failed for {}: {}", echoToAlias, e.getMessage());
+      }
+    });
   }
 
   private void updateChannelMap(String channelName) throws BotIOException {
@@ -307,6 +430,11 @@ public class IrcServerConnection extends BotConnection {
     IrcServerConfig oldConfig = this.config;
     this.config = newConfig;
     applyJoinOnStartChanges(oldConfig, newConfig);
+    if (newConfig.getChannelList() != null) {
+      newConfig.getChannelList().stream()
+          .filter(channel -> Boolean.TRUE.equals(channel.getManageOperators()))
+          .forEach(channel -> requestOperatorReconciliation(channel.getEchoToAlias()));
+    }
   }
 
   public void init(ConnectionManager connectionManager, String botNick, String ircRealName, IrcServerConfig config) {

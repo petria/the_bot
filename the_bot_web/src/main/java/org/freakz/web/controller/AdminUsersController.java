@@ -139,6 +139,9 @@ public class AdminUsersController {
         permissions.add(channelAccessService.viewPermission(channel.connectionType(), channel.echoToAlias()));
         permissions.add(channelAccessService.sendPermission(channel.connectionType(), channel.echoToAlias()));
         permissions.add(channelAccessService.adminPermission(channel.connectionType(), channel.echoToAlias()));
+        if ("IRC_CONNECTION".equalsIgnoreCase(channel.connectionType())) {
+          permissions.add(channelAccessService.modePermission(channel.connectionType(), channel.echoToAlias()));
+        }
       });
     } catch (RuntimeException ignored) {
       // User management should remain available even when bot-io is temporarily down.

@@ -25,5 +25,7 @@ class ChannelPermissionUtilTest {
         .isEqualTo("channels.send.discord.discord-hokandev");
     assertThat(ChannelPermissionUtil.adminPermission("IRC_CONNECTION", "IRC-HOKANDEV"))
         .isEqualTo("channel.admin.irc.irc-hokandev");
+    assertThat(ChannelPermissionUtil.modePermission("IRC_CONNECTION", "IRC-HOKANDEV"))
+        .isEqualTo("channel.mode.irc.irc-hokandev");
   }
 }

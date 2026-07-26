@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Plus, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -29,6 +29,7 @@ import {
   AdminTelegramConfig,
   AdminWhatsAppConfig,
   getAdminConnectionConfig,
+  reconcileIrcOperators,
   PromoteChannelState,
   saveAndApplyAdminConnectionConfig,
   saveAdminConnectionConfig,
@@ -50,6 +51,7 @@ const emptyChannel: AdminConfigChannel = {
   captureResolvedUrls: false,
   captureImages: false,
   captureImageToAliases: [],
+  manageOperators: false,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -325,6 +327,7 @@ function IrcConfigsEditor({
             <ChannelsEditor
               channels={config.channelList ?? []}
               allowImageCapture={false}
+              allowOperatorManagement
               onChange={(channelList) => updateIrc(configs, index, { channelList }, onChange)}
             />
           </Stack>
@@ -435,12 +438,15 @@ function WhatsAppEditor({
 function ChannelsEditor({
   channels,
   allowImageCapture,
+  allowOperatorManagement = false,
   onChange,
 }: {
   channels: AdminConfigChannel[];
   allowImageCapture: boolean;
+  allowOperatorManagement?: boolean;
   onChange: (channels: AdminConfigChannel[]) => void;
 }) {
+  const [operatorMessage, setOperatorMessage] = useState<string | null>(null);
   const addChannel = () => onChange([...channels, { ...emptyChannel, echoToAliases: [], captureImageToAliases: [] }]);
 
   return (
@@ -531,6 +537,37 @@ function ChannelsEditor({
               checked={channel.alertMessages}
               onChange={(event) => updateChannel(channels, index, { alertMessages: event.currentTarget.checked }, onChange)}
             />
+            {allowOperatorManagement ? (
+              <>
+                <Switch
+                  label="Manage IRC operators"
+                  description="Automatically grant channel operator status to linked users with the channel mode permission."
+                  checked={channel.manageOperators}
+                  onChange={(event) => updateChannel(channels, index, { manageOperators: event.currentTarget.checked }, onChange)}
+                />
+                {channel.manageOperators && channel.echoToAlias ? (
+                  <Group gap="sm">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<ShieldCheck size={15} />}
+                      onClick={async () => {
+                        setOperatorMessage(null);
+                        try {
+                          const result = await reconcileIrcOperators(channel.echoToAlias as string);
+                          setOperatorMessage(result.error || `Reconciled: ${result.granted.length} granted, ${result.skipped.length} already op.`);
+                        } catch (error) {
+                          setOperatorMessage(error instanceof Error ? error.message : 'Operator reconciliation failed.');
+                        }
+                      }}
+                    >
+                      Reconcile operators now
+                    </Button>
+                    {operatorMessage ? <Text size="xs" c="dimmed">{operatorMessage}</Text> : null}
+                  </Group>
+                ) : null}
+              </>
+            ) : null}
             <Switch
               label="Capture URLs"
               checked={channel.captureResolvedUrls}
