@@ -147,6 +147,25 @@ public class ConnectionManager implements CommandLineRunner {
     return joinedChannelsMap.get(normalizeEchoToAlias(echoToAlias));
   }
 
+  public IrcServerConnection findIrcServerConnectionForConfiguredAlias(String echoToAlias) {
+    if (echoToAlias == null || echoToAlias.isBlank()) {
+      return null;
+    }
+    for (BotConnection connection : connectionMap.values()) {
+      if (!(connection instanceof IrcServerConnection irc) || irc.getConfig() == null
+          || irc.getConfig().getChannelList() == null) {
+        continue;
+      }
+      boolean configured = irc.getConfig().getChannelList().stream()
+          .anyMatch(channel -> channel.getEchoToAlias() != null
+              && channel.getEchoToAlias().equalsIgnoreCase(echoToAlias));
+      if (configured) {
+        return irc;
+      }
+    }
+    return null;
+  }
+
   public void markMessageReceived(String echoToAlias, String actor, String source) {
     markMessageReceived(echoToAlias, actor, source, null, null, null);
   }
