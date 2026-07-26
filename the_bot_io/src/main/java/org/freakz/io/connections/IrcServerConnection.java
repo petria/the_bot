@@ -11,6 +11,8 @@ import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
@@ -118,6 +120,43 @@ public class IrcServerConnection extends BotConnection {
       command.execute();
     }
     return new IrcOperatorReconcileResponse(state.echoToAlias(), true, granted, skipped, null);
+  }
+
+  public IrcOperatorGrantResponse grantOperator(IrcOperatorGrantRequest request) {
+    IrcOperatorStateResponse state = getOperatorState(request == null ? null : request.echoToAlias());
+    if (!state.botHasOperator()) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), false, false, false,
+          "Bot is not an IRC channel operator");
+    }
+    if (request == null || request.nick() == null || request.nick().isBlank()) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), true, false, false, "IRC nick is required");
+    }
+    Optional<ChannelUserMode> operatorMode = ChannelUserMode.get(client, 'o');
+    if (operatorMode.isEmpty()) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), true, false, false,
+          "IRC operator mode is unavailable");
+    }
+    Optional<Channel> optional = client.getChannel(state.channelName());
+    if (optional.isEmpty()) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), true, false, false,
+          "IRC channel is not joined");
+    }
+    Channel channel = optional.get();
+    Optional<User> target = channel.getUsers().stream()
+        .filter(user -> user.getNick().equalsIgnoreCase(request.nick()))
+        .findFirst();
+    if (target.isEmpty()) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), true, false, false,
+          "IRC nick is not present in the channel");
+    }
+    User user = target.get();
+    if (hasMode(channel, user, 'o')) {
+      return new IrcOperatorGrantResponse(state.echoToAlias(), true, false, true, null);
+    }
+    var command = channel.commands().mode();
+    command.add(ModeStatus.Action.ADD, operatorMode.get(), user);
+    command.execute();
+    return new IrcOperatorGrantResponse(state.echoToAlias(), true, true, false, null);
   }
 
   private org.freakz.common.model.botconfig.Channel resolveConfiguredEchoAlias(String echoToAlias) {

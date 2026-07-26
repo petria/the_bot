@@ -11,6 +11,8 @@ import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
 import org.freakz.common.model.connectionmanager.GetConnectionMapResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
@@ -113,5 +115,15 @@ public class ConnectionManagerController {
       return ResponseEntity.notFound().build();
     }
     return ResponseEntity.ok(irc.reconcileOperators(request));
+  }
+
+  @PostMapping("/irc/operators/grant")
+  public ResponseEntity<IrcOperatorGrantResponse> grantIrcOperator(
+      @RequestBody IrcOperatorGrantRequest request) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(request.echoToAlias());
+    if (joined == null || !(joined.connection instanceof org.freakz.io.connections.IrcServerConnection irc)) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.grantOperator(request));
   }
 }

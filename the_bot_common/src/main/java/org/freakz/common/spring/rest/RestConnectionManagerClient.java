@@ -10,6 +10,8 @@ import org.freakz.common.model.connectionmanager.GetKnownUserTargetsResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,6 +121,13 @@ public class RestConnectionManagerClient {
         baseUrl + "/irc/operators/reconcile",
         request,
         IrcOperatorReconcileResponse.class);
+  }
+
+  public IrcOperatorGrantResponse grantIrcOperator(IrcOperatorGrantRequest request) {
+    return restTemplate.postForObject(
+        baseUrl + "/irc/operators/grant",
+        request,
+        IrcOperatorGrantResponse.class);
   }
 
   private String withOptionalQuery(String url, String query) {

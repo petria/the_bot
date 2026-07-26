@@ -7,8 +7,6 @@ import org.freakz.common.exception.NotImplementedException;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.annotations.HokanCommandHandler;
 import org.freakz.engine.commands.api.AbstractCmd;
-import org.freakz.engine.dto.OPRequestResponse;
-import org.freakz.engine.services.api.ServiceRequestType;
 
 @HokanCommandHandler
 public class OpCmd extends AbstractCmd {
@@ -20,10 +18,23 @@ public class OpCmd extends AbstractCmd {
 
   @Override
   public String executeCommand(EngineRequest request, JSAPResult results) {
-
-    OPRequestResponse response =
-        doServiceRequestMethods(request, results, ServiceRequestType.ChannelOpRequest);
-
-    return response.getResponse();
+    if (request == null
+        || request.isPrivateChannel()
+        || request.getChatProtocol() == null
+        || !"irc".equalsIgnoreCase(request.getChatProtocol())) {
+      return null;
+    }
+    var response = getBotEngine().getIrcOperatorManagementService()
+        .grantForRequester(request.getEchoToAlias(), request);
+    if (response == null || response.error() != null) {
+      return null;
+    }
+    if (response.granted()) {
+      return "Operator status granted.";
+    }
+    if (response.alreadyOperator()) {
+      return "You already have operator status.";
+    }
+    return null;
   }
 }
