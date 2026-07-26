@@ -13,6 +13,8 @@ import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
+import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
+import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
@@ -157,6 +159,37 @@ public class IrcServerConnection extends BotConnection {
     command.add(ModeStatus.Action.ADD, operatorMode.get(), user);
     command.execute();
     return new IrcOperatorGrantResponse(state.echoToAlias(), true, true, false, null);
+  }
+
+  public IrcChannelControlResponse controlChannel(IrcChannelControlRequest request) {
+    org.freakz.common.model.botconfig.Channel configured =
+        resolveConfiguredEchoAlias(request == null ? null : request.echoToAlias());
+    String echoToAlias = configured == null ? request == null ? null : request.echoToAlias() : configured.getEchoToAlias();
+    String channelName = configured == null ? null : configured.getName();
+    String action = request == null || request.action() == null ? null : request.action().trim().toUpperCase();
+    if (configured == null) {
+      return new IrcChannelControlResponse(echoToAlias, channelName, action, false, false,
+          "IRC channel is not configured");
+    }
+    if (client == null || action == null || (!"JOIN".equals(action) && !"PART".equals(action))) {
+      return new IrcChannelControlResponse(echoToAlias, channelName, action, false, false,
+          "IRC channel action is unavailable");
+    }
+    if ("JOIN".equals(action)) {
+      if (client.getChannel(channelName).isPresent()) {
+        return new IrcChannelControlResponse(echoToAlias, channelName, action, false, true, null);
+      }
+      client.addChannel(channelName);
+      return new IrcChannelControlResponse(echoToAlias, channelName, action, true, true, null);
+    }
+    if (client.getChannel(channelName).isEmpty()) {
+      return new IrcChannelControlResponse(echoToAlias, channelName, action, false, false, null);
+    }
+    client.removeChannel(channelName, "requested by IRC admin command");
+    if (connectionManager != null) {
+      connectionManager.removeJoinedChannelForConnection(echoToAlias, this);
+    }
+    return new IrcChannelControlResponse(echoToAlias, channelName, action, true, false, null);
   }
 
   private org.freakz.common.model.botconfig.Channel resolveConfiguredEchoAlias(String echoToAlias) {

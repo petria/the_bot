@@ -13,6 +13,8 @@ import org.freakz.common.model.connectionmanager.IrcOperatorReconcileRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
+import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
+import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
@@ -125,5 +127,18 @@ public class ConnectionManagerController {
       return ResponseEntity.notFound().build();
     }
     return ResponseEntity.ok(irc.grantOperator(request));
+  }
+
+  @PostMapping("/irc/channel_control")
+  public ResponseEntity<IrcChannelControlResponse> controlIrcChannel(
+      @RequestBody IrcChannelControlRequest request) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(request.echoToAlias());
+    org.freakz.io.connections.IrcServerConnection irc = joined == null
+        ? connectionManager.findIrcServerConnectionForConfiguredAlias(request.echoToAlias())
+        : joined.connection instanceof org.freakz.io.connections.IrcServerConnection candidate ? candidate : null;
+    if (irc == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.controlChannel(request));
   }
 }
