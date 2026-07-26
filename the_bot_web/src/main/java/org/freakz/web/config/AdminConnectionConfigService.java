@@ -222,7 +222,8 @@ public class AdminConnectionConfigService {
             false,
             false,
             false,
-            List.of()))
+            List.of(),
+            false))
         .toList();
   }
 
@@ -333,7 +334,8 @@ public class AdminConnectionConfigService {
           item.path("alertMessages").asBoolean(false),
           item.path("captureResolvedUrls").asBoolean(false),
           item.path("captureImages").asBoolean(false),
-          aliasesFrom(item.get("captureImageToAliases"))));
+          aliasesFrom(item.get("captureImageToAliases")),
+          item.path("manageOperators").asBoolean(false)));
     }
     return channels;
   }
@@ -476,7 +478,8 @@ public class AdminConnectionConfigService {
         source.alertMessages(),
         source.captureResolvedUrls(),
         source.captureImages(),
-        normalizeAliases(source.captureImageToAliases()));
+        normalizeAliases(source.captureImageToAliases()),
+        source.manageOperators());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -784,7 +787,8 @@ public class AdminConnectionConfigService {
             channel.alertMessages(),
             channel.captureResolvedUrls(),
             channel.captureImages(),
-            normalizeAliases(channel.captureImageToAliases())))
+            normalizeAliases(channel.captureImageToAliases()),
+            channel.manageOperators()))
         .toList();
   }
 
@@ -904,6 +908,7 @@ public class AdminConnectionConfigService {
       item.put("alertMessages", channel.alertMessages());
       item.put("captureResolvedUrls", channel.captureResolvedUrls());
       item.put("captureImages", channel.captureImages());
+      item.put("manageOperators", channel.manageOperators());
       ArrayNode captureAliases = jsonMapper.createArrayNode();
       channel.captureImageToAliases().forEach(captureAliases::add);
       item.set("captureImageToAliases", captureAliases);
@@ -1075,7 +1080,28 @@ public class AdminConnectionConfigService {
       boolean alertMessages,
       boolean captureResolvedUrls,
       boolean captureImages,
-      List<String> captureImageToAliases) {
+      List<String> captureImageToAliases,
+      boolean manageOperators) {
+
+    public ChannelDto(
+        String id,
+        String description,
+        String name,
+        String type,
+        String echoToAlias,
+        List<String> echoToAliases,
+        boolean joinOnStart,
+        boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands,
+        boolean resolveUrls,
+        boolean alertMessages,
+        boolean captureResolvedUrls,
+        boolean captureImages,
+        List<String> captureImageToAliases) {
+      this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
+          publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
+          captureResolvedUrls, captureImages, captureImageToAliases, false);
+    }
 
     public ChannelDto(
         String id,
@@ -1103,7 +1129,8 @@ public class AdminConnectionConfigService {
           alertMessages,
           false,
           false,
-          List.of());
+          List.of(),
+          false);
     }
   }
 }

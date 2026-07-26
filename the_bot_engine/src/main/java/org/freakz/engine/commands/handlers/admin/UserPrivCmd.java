@@ -112,19 +112,22 @@ public class UserPrivCmd extends AbstractCmd {
   private String updateUserPermissions(EngineRequest request, List<String> args, boolean grant) {
     if (args.size() != 4) {
       return "Usage: !userpriv " + (grant ? "grant" : "revoke")
-          + " <username> view|send all|irc|discord|telegram|whatsapp|<echoToAlias>";
+          + " <username> view|send|mode all|irc|discord|telegram|whatsapp|<echoToAlias>";
     }
 
     String username = args.get(1);
     String mode = normalize(args.get(2));
-    if (!"view".equals(mode) && !"send".equals(mode)) {
-      return "Privilege mode must be view or send.";
+    if (!"view".equals(mode) && !"send".equals(mode) && !"mode".equals(mode)) {
+      return "Privilege mode must be view, send, or mode.";
     }
 
     PermissionTarget target = resolveTarget(request, args.get(3));
     if (target == null) {
       return "Could not resolve privilege target: " + args.get(3)
           + "\nUse !userpriv channels to list channel aliases.";
+    }
+    if ("mode".equals(mode) && !"channel".equals(target.kind())) {
+      return "The mode privilege must target one channel alias.";
     }
 
     List<String> permissions = permissionsFor(mode, target, grant);
@@ -247,6 +250,9 @@ public class UserPrivCmd extends AbstractCmd {
   }
 
   private List<String> permissionsFor(String mode, PermissionTarget target, boolean grant) {
+    if ("mode".equals(mode)) {
+      return List.of(ChannelPermissionUtil.modePermission(target.connectionType(), target.echoToAlias()));
+    }
     List<String> permissions = new ArrayList<>();
     boolean includeView = "view".equals(mode) || grant;
     boolean includeSend = "send".equals(mode) || (!grant && "view".equals(mode));

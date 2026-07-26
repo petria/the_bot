@@ -43,3 +43,15 @@ export async function refreshSystemStatus(): Promise<SystemStatusResponse> {
 export function getSystemStatusStreamUrl(): string {
   return '/api/web/system/status/stream';
 }
+
+export type IrcOperatorReconcileResult = {
+  echoToAlias: string;
+  botHasOperator: boolean;
+  granted: string[];
+  skipped: string[];
+  error: string | null;
+};
+
+export function reconcileAllIrcOperators(): Promise<IrcOperatorReconcileResult[]> {
+  return postJson<IrcOperatorReconcileResult[]>('/api/web/admin/config/connections/operator-reconcile-all', {});
+}

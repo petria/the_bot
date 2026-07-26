@@ -39,6 +39,7 @@ import org.freakz.engine.services.howto.HowtoIndexService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.livechannel.LiveChannelEventService;
 import org.freakz.engine.services.media.MediaStorageSettingsService;
+import org.freakz.engine.services.irc.IrcOperatorManagementService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -110,6 +111,7 @@ public class EngineController {
   private final LiveChannelEventService liveChannelEventService;
   private final PrivateChatAlertService privateChatAlertService;
   private final MediaStorageSettingsService mediaStorageSettingsService;
+  private final IrcOperatorManagementService ircOperatorManagementService;
 
   public EngineController(
       BotEngine botEngine,
@@ -130,7 +132,8 @@ public class EngineController {
       ConsoleOutputService consoleOutputService,
       LiveChannelEventService liveChannelEventService,
       PrivateChatAlertService privateChatAlertService,
-      MediaStorageSettingsService mediaStorageSettingsService) {
+      MediaStorageSettingsService mediaStorageSettingsService,
+      IrcOperatorManagementService ircOperatorManagementService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -150,6 +153,7 @@ public class EngineController {
     this.liveChannelEventService = liveChannelEventService;
     this.privateChatAlertService = privateChatAlertService;
     this.mediaStorageSettingsService = mediaStorageSettingsService;
+    this.ircOperatorManagementService = ircOperatorManagementService;
   }
 
   @PostMapping("/handle_request")
@@ -236,6 +240,16 @@ public class EngineController {
   @GetMapping("/commands")
   public ResponseEntity<?> getCommands() {
     return ResponseEntity.ok(commandCatalogService.getCommands());
+  }
+
+  @PostMapping("/internal/irc/operators/reconcile")
+  public ResponseEntity<?> reconcileIrcOperators(@RequestParam String echoToAlias) {
+    return ResponseEntity.ok(ircOperatorManagementService.reconcile(echoToAlias));
+  }
+
+  @PostMapping("/internal/irc/operators/reconcile-all")
+  public ResponseEntity<?> reconcileAllIrcOperators() {
+    return ResponseEntity.ok(ircOperatorManagementService.reconcileAll());
   }
 
   @GetMapping("/howto/index")

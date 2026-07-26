@@ -84,6 +84,10 @@ public class ChannelAccessService {
     return ChannelPermissionUtil.adminPermission(connectionType, echoToAlias);
   }
 
+  public String modePermission(String connectionType, String echoToAlias) {
+    return ChannelPermissionUtil.modePermission(connectionType, echoToAlias);
+  }
+
   public String connectionKey(String connectionType) {
     return ChannelPermissionUtil.connectionKey(connectionType);
   }

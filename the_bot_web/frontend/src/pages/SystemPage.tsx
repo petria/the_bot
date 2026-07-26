@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import {
   getSystemStatusStreamUrl,
   refreshSystemStatus,
+  reconcileAllIrcOperators,
   type SystemComponentStatus,
   type SystemStatusResponse,
 } from '../api/system';
@@ -15,6 +16,8 @@ export function SystemPage() {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<Error | null>(null);
+  const [operatorAction, setOperatorAction] = useState<string | null>(null);
+  const [reconcilingOperators, setReconcilingOperators] = useState(false);
 
   useEffect(() => {
     let closed = false;
@@ -80,6 +83,24 @@ export function SystemPage() {
       ) : null}
       {refreshError ? <SystemError error={refreshError} /> : null}
 
+      <Card withBorder radius="sm">
+        <Group justify="space-between" gap="sm">
+          <div>
+            <Text fw={700}>IRC operator management</Text>
+            <Text size="sm" c="dimmed">Reconcile enabled IRC channels using linked users with channel mode permission.</Text>
+          </div>
+          <Button
+            size="sm"
+            variant="light"
+            onClick={reconcileOperators}
+            loading={reconcilingOperators}
+          >
+            Reconcile enabled channels
+          </Button>
+        </Group>
+        {operatorAction ? <Text size="sm" c="dimmed" mt="sm">{operatorAction}</Text> : null}
+      </Card>
+
       {status ? (
         <>
           <Text size="sm" c="dimmed">
@@ -105,6 +126,20 @@ export function SystemPage() {
       setRefreshError(error instanceof Error ? error : new Error('Could not refresh system status.'));
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function reconcileOperators() {
+    setReconcilingOperators(true);
+    setOperatorAction(null);
+    try {
+      const results = await reconcileAllIrcOperators();
+      const granted = results.reduce((count, result) => count + result.granted.length, 0);
+      setOperatorAction(`Reconciled ${results.length} enabled channel(s); granted ${granted} operator status update(s).`);
+    } catch (error) {
+      setOperatorAction(error instanceof Error ? error.message : 'IRC operator reconciliation failed.');
+    } finally {
+      setReconcilingOperators(false);
     }
   }
 }
