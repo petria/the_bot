@@ -3,6 +3,8 @@ package org.freakz.web.controller;
 import org.freakz.common.model.connectionmanager.ChannelUser;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelEvent;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
@@ -25,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -149,6 +152,54 @@ class AdminLiveChannelsControllerTest {
 
     assertThat(response.getChannelUsers()).hasSize(1);
     verify(connectionManagerClient).getChannelUsersByEchoToAlias(new ChannelUsersByEchoToAliasRequest("IRC-HOKANDEV"));
+  }
+
+  @Test
+  void ircOperatorModeUpdatesSelectedUsers() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    IrcOperatorModeResponse result = new IrcOperatorModeResponse(
+        "IRC-HOKANDEV", true, true, List.of("petria"), List.of(), null);
+    when(connectionManagerClient.setIrcOperatorMode(new IrcOperatorModeRequest(
+        "IRC-HOKANDEV", List.of("petria"), true))).thenReturn(result);
+    LiveChannelCatalogService catalogService = mock(LiveChannelCatalogService.class);
+    when(catalogService.findPublicChannel("IRC-HOKANDEV")).thenReturn(Optional.of(
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "IRC-HOKANDEV", "#hokandev", "IRC_CONNECTION", "IRCNet", "channel")));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        mock(RestEngineClient.class),
+        connectionManagerClient,
+        new ChannelAccessService(),
+        catalogService,
+        mock(AdminConnectionConfigService.class));
+
+    IrcOperatorModeResponse response = controller.setIrcOperatorMode(
+        principal("petria", "channel.mode.irc.irc-hokandev"),
+        new AdminLiveChannelsController.IrcOperatorModeUpdateRequest("IRC-HOKANDEV", List.of("petria"), true));
+
+    assertThat(response.changed()).containsExactly("petria");
+    verify(connectionManagerClient).setIrcOperatorMode(new IrcOperatorModeRequest(
+        "IRC-HOKANDEV", List.of("petria"), true));
+  }
+
+  @Test
+  void ircOperatorModeRequiresModePermission() {
+    LiveChannelCatalogService catalogService = mock(LiveChannelCatalogService.class);
+    when(catalogService.findPublicChannel("IRC-HOKANDEV")).thenReturn(Optional.of(
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "IRC-HOKANDEV", "#hokandev", "IRC_CONNECTION", "IRCNet", "channel")));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        mock(RestEngineClient.class),
+        mock(RestConnectionManagerClient.class),
+        new ChannelAccessService(),
+        catalogService,
+        mock(AdminConnectionConfigService.class));
+
+    assertThatThrownBy(() -> controller.setIrcOperatorMode(
+        principal("viewer", BotPermission.WEB_USER, "channels.view.irc.irc-hokandev"),
+        new AdminLiveChannelsController.IrcOperatorModeUpdateRequest("IRC-HOKANDEV", List.of("petria"), false)))
+        .isInstanceOf(ResponseStatusException.class)
+        .extracting("statusCode.value")
+        .isEqualTo(403);
   }
 
   private AdminLiveChannelsController controller(RestEngineClient engineClient) {

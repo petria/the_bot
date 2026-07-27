@@ -12,6 +12,8 @@ import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
 import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
 import org.slf4j.Logger;
@@ -130,6 +132,13 @@ public class RestConnectionManagerClient {
         baseUrl + "/irc/operators/grant",
         request,
         IrcOperatorGrantResponse.class);
+  }
+
+  public IrcOperatorModeResponse setIrcOperatorMode(IrcOperatorModeRequest request) {
+    return restTemplate.postForObject(
+        baseUrl + "/irc/operators/mode",
+        request,
+        IrcOperatorModeResponse.class);
   }
 
   public IrcChannelControlResponse controlIrcChannel(IrcChannelControlRequest request) {

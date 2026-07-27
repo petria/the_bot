@@ -13,6 +13,8 @@ import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorStateResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorGrantResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
 import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
 import org.freakz.common.model.feed.Message;
@@ -159,6 +161,52 @@ public class IrcServerConnection extends BotConnection {
     command.add(ModeStatus.Action.ADD, operatorMode.get(), user);
     command.execute();
     return new IrcOperatorGrantResponse(state.echoToAlias(), true, true, false, null);
+  }
+
+  public IrcOperatorModeResponse setOperatorMode(IrcOperatorModeRequest request) {
+    IrcOperatorStateResponse state = getOperatorState(request == null ? null : request.echoToAlias());
+    boolean operator = request != null && request.operator();
+    if (!state.botHasOperator()) {
+      return new IrcOperatorModeResponse(state.echoToAlias(), false, operator, List.of(), List.of(),
+          "Bot is not an IRC channel operator");
+    }
+    List<String> requestedNicks = request == null || request.nicks() == null ? List.of() : request.nicks();
+    List<String> nicks = requestedNicks.stream()
+        .filter(nick -> nick != null && !nick.isBlank())
+        .map(String::trim)
+        .distinct()
+        .toList();
+    if (nicks.isEmpty()) {
+      return new IrcOperatorModeResponse(state.echoToAlias(), true, operator, List.of(), List.of(), "IRC nick is required");
+    }
+    Optional<ChannelUserMode> operatorMode = ChannelUserMode.get(client, 'o');
+    if (operatorMode.isEmpty()) {
+      return new IrcOperatorModeResponse(state.echoToAlias(), true, operator, List.of(), List.of(),
+          "IRC operator mode is unavailable");
+    }
+    Optional<Channel> optional = client.getChannel(state.channelName());
+    if (optional.isEmpty()) {
+      return new IrcOperatorModeResponse(state.echoToAlias(), true, operator, List.of(), List.of(), "IRC channel is not joined");
+    }
+    Channel channel = optional.get();
+    var command = channel.commands().mode();
+    List<String> changed = new ArrayList<>();
+    List<String> unchanged = new ArrayList<>();
+    for (String nick : nicks) {
+      Optional<User> target = channel.getUsers().stream()
+          .filter(user -> user.getNick().equalsIgnoreCase(nick))
+          .findFirst();
+      if (target.isEmpty() || hasMode(channel, target.get(), 'o') == operator) {
+        unchanged.add(nick);
+        continue;
+      }
+      command.add(operator ? ModeStatus.Action.ADD : ModeStatus.Action.REMOVE, operatorMode.get(), target.get());
+      changed.add(target.get().getNick());
+    }
+    if (!changed.isEmpty()) {
+      command.execute();
+    }
+    return new IrcOperatorModeResponse(state.echoToAlias(), true, operator, changed, unchanged, null);
   }
 
   public IrcChannelControlResponse controlChannel(IrcChannelControlRequest request) {
