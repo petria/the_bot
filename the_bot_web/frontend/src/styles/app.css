@@ -160,10 +160,17 @@ body,
 }
 
 .live-channel-user-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
   min-width: 0;
   padding: 6px 8px;
   border-radius: var(--mantine-radius-sm);
   background: color-mix(in srgb, var(--mantine-color-dark-7), var(--mantine-color-dark-6) 20%);
+}
+
+.live-channel-user-details {
+  min-width: 0;
 }
 
 .system-card {

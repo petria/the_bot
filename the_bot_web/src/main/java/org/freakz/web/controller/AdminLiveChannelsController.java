@@ -2,6 +2,8 @@ package org.freakz.web.controller;
 
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasRequest;
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
+import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
@@ -106,7 +108,9 @@ public class AdminLiveChannelsController {
             channel.network(),
             channel.channelType(),
             accessService.canSend(principal, channel.connectionType(), channel.echoToAlias()),
-            accessService.canAdmin(principal, channel.connectionType(), channel.echoToAlias())))
+            accessService.canAdmin(principal, channel.connectionType(), channel.echoToAlias()),
+            "irc".equals(accessService.connectionKey(channel.connectionType()))
+                && accessService.canMode(principal, channel.connectionType(), channel.echoToAlias())))
         .toList();
     return new LiveChannelsResponse(channels);
   }
@@ -235,6 +239,35 @@ public class AdminLiveChannelsController {
     return response.getBody();
   }
 
+  @PostMapping("/irc-operator-mode")
+  public IrcOperatorModeResponse setIrcOperatorMode(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody IrcOperatorModeUpdateRequest request) {
+    String echoToAlias = trim(request == null ? null : request.echoToAlias());
+    List<String> nicks = request == null || request.nicks() == null ? List.of() : request.nicks().stream()
+        .map(this::trim)
+        .filter(nick -> !nick.isBlank())
+        .distinct()
+        .toList();
+    if (echoToAlias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    if (nicks.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select at least one IRC user");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(echoToAlias);
+    if (!"irc".equals(accessService.connectionKey(channel.connectionType()))) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "IRC operator actions are only available for IRC channels");
+    }
+    accessService.requireMode(principal, channel.connectionType(), echoToAlias);
+    IrcOperatorModeResponse response = connectionManagerClient.setIrcOperatorMode(
+        new IrcOperatorModeRequest(echoToAlias, nicks, request.operator()));
+    if (response == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-io did not return an IRC operator action result");
+    }
+    return response;
+  }
+
   @PostMapping("/send")
   public LiveChannelSendResponse send(
       @AuthenticationPrincipal BotUserPrincipal principal,
@@ -281,7 +314,8 @@ public class AdminLiveChannelsController {
       String network,
       String channelType,
       boolean sendAllowed,
-      boolean adminAllowed) {
+      boolean adminAllowed,
+      boolean modeAllowed) {
   }
 
   public record LiveChannelSettingsUpdateRequest(
@@ -291,6 +325,9 @@ public class AdminLiveChannelsController {
       boolean resolveUrls,
       boolean captureResolvedUrls,
       boolean captureImages) {
+  }
+
+  public record IrcOperatorModeUpdateRequest(String echoToAlias, List<String> nicks, boolean operator) {
   }
 
   public record ErrorResponse(String message, String detail) {

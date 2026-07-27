@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   Collapse,
   Group,
   Loader,
@@ -30,6 +31,7 @@ import {
   getLiveChannelUsers,
   saveAndApplyLiveChannelSettings,
   sendLiveChannelMessage,
+  setLiveChannelIrcOperatorMode,
   type LiveChannel,
   type LiveChannelEvent,
   type LiveChannelSettings,
@@ -42,6 +44,7 @@ type OpenChannel = {
   label: string;
   sendAllowed: boolean;
   adminAllowed: boolean;
+  modeAllowed: boolean;
 };
 
 type ChannelLine = {
@@ -83,6 +86,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
       label: option?.label ?? selectedAlias,
       sendAllowed: option?.channel.sendAllowed ?? false,
       adminAllowed: option?.channel.adminAllowed ?? false,
+      modeAllowed: option?.channel.modeAllowed ?? false,
     };
     setOpenChannels((current) => [...current, channel]);
     setActiveAlias(selectedAlias);
@@ -115,6 +119,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
           label: homeOption.label,
           sendAllowed: homeOption.sendAllowed,
           adminAllowed: homeOption.adminAllowed,
+          modeAllowed: homeOption.modeAllowed,
         }]);
         setActiveAlias(homeOption.echoToAlias);
         return;
@@ -130,6 +135,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
             label: allowedChannel.label,
             sendAllowed: allowedChannel.sendAllowed,
             adminAllowed: allowedChannel.adminAllowed,
+            modeAllowed: allowedChannel.modeAllowed,
           };
         }));
   }, [homeChannel?.echoToAlias, liveChannelsQuery.data]);
@@ -252,6 +258,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
   const [settingsDraft, setSettingsDraft] = useState<LiveChannelSettings | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [streamConnected, setStreamConnected] = useState(false);
+  const [selectedNicks, setSelectedNicks] = useState<Set<string>>(() => new Set());
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const nextIdRef = useRef(2);
@@ -270,6 +277,10 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     return [...(usersQuery.data ?? [])].sort((left, right) =>
         compareChannelUsers(left, right));
   }, [usersQuery.data]);
+
+  const selectedUserNicks = useMemo(() => channelUsers
+      .map((user) => user.nick?.trim() ?? '')
+      .filter((nick) => nick && selectedNicks.has(nick.toLowerCase())), [channelUsers, selectedNicks]);
 
   const settingsQuery = useQuery({
     queryKey: ['live-channel-settings', channel.echoToAlias],
@@ -306,6 +317,39 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
       queryClient.setQueryData(['live-channel-settings', channel.echoToAlias], response.settings);
     },
   });
+
+  const operatorModeMutation = useMutation({
+    mutationFn: (operator: boolean) => setLiveChannelIrcOperatorMode(channel.echoToAlias, selectedUserNicks, operator),
+    onSuccess: (response) => {
+      if (response.error) {
+        appendLine(`error> ${response.error}`);
+        return;
+      }
+      const action = response.operator ? 'opped' : 'deopped';
+      if (response.changed?.length) {
+        appendLine(`system> ${action}: ${response.changed.join(', ')}`);
+      }
+      if (response.unchanged?.length) {
+        appendLine(`system> unchanged: ${response.unchanged.join(', ')}`);
+      }
+      setSelectedNicks(new Set());
+      void queryClient.invalidateQueries({ queryKey: ['live-channel-users', channel.echoToAlias] });
+    },
+    onError: (error) => {
+      const apiError = error instanceof ApiError ? error : null;
+      appendLine(`error> ${apiError?.detail || apiError?.message || error.message}`);
+    },
+  });
+
+  useEffect(() => {
+    const availableNicks = new Set(channelUsers
+        .map((user) => user.nick?.trim().toLowerCase())
+        .filter((nick): nick is string => Boolean(nick)));
+    setSelectedNicks((current) => {
+      const next = new Set([...current].filter((nick) => availableNicks.has(nick)));
+      return next.size === current.size ? current : next;
+    });
+  }, [channelUsers]);
 
   useEffect(() => {
     focusInput();
@@ -564,6 +608,27 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                 <Text fw={600}>Users</Text>
                 <Badge variant="light">{channelUsers.length}</Badge>
               </Group>
+              {channel.modeAllowed ? (
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    disabled={selectedUserNicks.length === 0 || operatorModeMutation.isPending}
+                    loading={operatorModeMutation.isPending && operatorModeMutation.variables === true}
+                    onClick={() => operatorModeMutation.mutate(true)}
+                  >
+                    Op selected
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="orange"
+                    disabled={selectedUserNicks.length === 0 || operatorModeMutation.isPending}
+                    loading={operatorModeMutation.isPending && operatorModeMutation.variables === false}
+                    onClick={() => operatorModeMutation.mutate(false)}
+                  >
+                    Deop selected
+                  </Button>
+                </Group>
+              ) : null}
               {usersQuery.isLoading ? <Loader size="sm" /> : null}
               {usersQuery.isError ? (
                 <Text size="sm" c="red">
@@ -576,8 +641,31 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
               <Stack gap="xs" className="live-channel-users-list">
                 {channelUsers.map((user, index) => (
                   <div key={userKey(user, index)} className="live-channel-user-row">
-                    <Text size="sm" fw={500} truncate="end">{userDisplayName(user)}</Text>
-                    <Text size="xs" c="dimmed" truncate="end">{userDetail(user)}</Text>
+                    <Checkbox
+                      aria-label={`Select ${userDisplayName(user)}`}
+                      checked={Boolean(user.nick?.trim()) && selectedNicks.has((user.nick ?? '').trim().toLowerCase())}
+                      disabled={!channel.modeAllowed || !user.nick?.trim() || operatorModeMutation.isPending}
+                      onChange={(event) => {
+                        const nick = user.nick?.trim();
+                        if (!nick) {
+                          return;
+                        }
+                        setSelectedNicks((current) => {
+                          const next = new Set(current);
+                          const key = nick.toLowerCase();
+                          if (event.currentTarget.checked) {
+                            next.add(key);
+                          } else {
+                            next.delete(key);
+                          }
+                          return next;
+                        });
+                      }}
+                    />
+                    <div className="live-channel-user-details">
+                      <Text size="sm" fw={500} truncate="end">{userDisplayName(user)}</Text>
+                      <Text size="xs" c="dimmed" truncate="end">{userDetail(user)}</Text>
+                    </div>
                   </div>
                 ))}
               </Stack>
@@ -712,6 +800,7 @@ function readOpenChannels() {
           label: channel.label,
           sendAllowed: channel.sendAllowed === true,
           adminAllowed: channel.adminAllowed === true,
+          modeAllowed: channel.modeAllowed === true,
         }));
   } catch {
     return [];

@@ -42,6 +42,10 @@ public class ChannelAccessService {
     return has(principal, adminPermission(connectionType, echoToAlias));
   }
 
+  public boolean canMode(BotUserPrincipal principal, String connectionType, String echoToAlias) {
+    return has(principal, modePermission(connectionType, echoToAlias));
+  }
+
   public boolean hasAnyChannelView(BotUserPrincipal principal) {
     if (principal == null) {
       return false;
@@ -69,6 +73,12 @@ public class ChannelAccessService {
   public void requireAdmin(BotUserPrincipal principal, String connectionType, String echoToAlias) {
     if (!canAdmin(principal, connectionType, echoToAlias)) {
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to manage this channel");
+    }
+  }
+
+  public void requireMode(BotUserPrincipal principal, String connectionType, String echoToAlias) {
+    if (!canMode(principal, connectionType, echoToAlias)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to change channel modes");
     }
   }
 

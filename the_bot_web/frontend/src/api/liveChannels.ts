@@ -31,6 +31,7 @@ export type LiveChannel = {
   channelType: string | null;
   sendAllowed: boolean;
   adminAllowed: boolean;
+  modeAllowed: boolean;
 };
 
 export type LiveChannelSettings = {
@@ -59,6 +60,15 @@ export type LiveChannelUser = {
   channelModes: string[] | null;
   channelRoles: string[] | null;
   away: boolean;
+};
+
+export type IrcOperatorModeResponse = {
+  echoToAlias: string | null;
+  botHasOperator: boolean;
+  operator: boolean;
+  changed: string[] | null;
+  unchanged: string[] | null;
+  error: string | null;
 };
 
 type LiveChannelEventsResponse = {
@@ -120,5 +130,17 @@ export async function sendLiveChannelMessage(echoToAlias: string, message: strin
   return postJson<LiveChannelSendResponse>('/api/web/live-channels/send', {
     echoToAlias,
     message,
+  });
+}
+
+export async function setLiveChannelIrcOperatorMode(
+  echoToAlias: string,
+  nicks: string[],
+  operator: boolean,
+): Promise<IrcOperatorModeResponse> {
+  return postJson<IrcOperatorModeResponse>('/api/web/live-channels/irc-operator-mode', {
+    echoToAlias,
+    nicks,
+    operator,
   });
 }
