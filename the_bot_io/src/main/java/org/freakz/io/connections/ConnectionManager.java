@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -141,6 +142,14 @@ public class ConnectionManager implements CommandLineRunner {
 
   public Map<String, JoinedChannelContainer> getJoinedChannelsMap() {
     return this.joinedChannelsMap;
+  }
+
+  @Scheduled(fixedDelayString = "${the.bot.irc.user-reconciliation-interval-ms:60000}")
+  public void reconcileIrcUserLists() {
+    connectionMap.values().stream()
+        .filter(IrcServerConnection.class::isInstance)
+        .map(IrcServerConnection.class::cast)
+        .forEach(IrcServerConnection::reconcileJoinedChannelUsers);
   }
 
   public JoinedChannelContainer getJoinedChannelContainer(String echoToAlias) {
@@ -282,6 +291,43 @@ public class ConnectionManager implements CommandLineRunner {
       return;
     }
     knownUsersByUserAndChannel.remove(userKey + "|" + normalizedEchoToAlias);
+  }
+
+  public int reconcileIrcChannelUsers(
+      BotConnection connection,
+      String echoToAlias,
+      List<ChannelUser> liveUsers) {
+    String normalizedEchoToAlias = normalizeEchoToAlias(echoToAlias);
+    if (connection == null || normalizedEchoToAlias == null) {
+      return 0;
+    }
+    Set<String> liveIdentities = (liveUsers == null ? List.<ChannelUser>of() : liveUsers).stream()
+        .flatMap(user -> Stream.of(user.getAccount(), user.getUserString(), user.getNick()))
+        .filter(value -> value != null && !value.isBlank())
+        .map(this::normalizeLookup)
+        .filter(value -> value != null)
+        .collect(Collectors.toSet());
+    AtomicInteger removed = new AtomicInteger();
+    knownUsersByUserAndChannel.entrySet().removeIf(entry -> {
+      KnownUserPresence presence = entry.getValue();
+      if (presence == null
+          || presence.connectionId != connection.getId()
+          || !normalizedEchoToAlias.equals(normalizeEchoToAlias(presence.echoToAlias))) {
+        return false;
+      }
+      boolean present = Stream.of(presence.userId, presence.username)
+          .filter(value -> value != null && !value.isBlank())
+          .map(this::normalizeLookup)
+          .anyMatch(liveIdentities::contains);
+      if (!present) {
+        removed.incrementAndGet();
+      }
+      return !present;
+    });
+    if (removed.get() > 0) {
+      log.debug("IRC user reconciliation removed {} stale users from {}", removed, echoToAlias);
+    }
+    return removed.get();
   }
 
   public List<org.freakz.common.model.connectionmanager.ChannelActivityResponse> getChannelActivity() {
@@ -1024,7 +1070,9 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   private List<String> channelUserKeys(ChannelUser user) {
-    return Stream.of(user.getAccount(), user.getUserString(), user.getNick(), user.getRealName())
+    // Real names are descriptive IRC metadata, not unique identities. Different
+    // clients often advertise the same real name and must remain separate rows.
+    return Stream.of(user.getAccount(), user.getUserString(), user.getNick())
         .filter(value -> value != null && !value.isBlank())
         .map(value -> value.toLowerCase())
         .distinct()
