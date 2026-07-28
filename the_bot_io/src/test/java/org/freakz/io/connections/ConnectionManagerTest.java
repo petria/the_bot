@@ -126,6 +126,36 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void channelUsersKeepsDifferentNicksWithTheSameRealName() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {
+      @Override
+      public String getNetwork() {
+        return "IRCNet";
+      }
+
+      @Override
+      public List<ChannelUser> getChannelUsersByEchoToAlias(String echoToAlias, BotConnectionChannel channel) {
+        return List.of(
+            ChannelUser.builder().nick("_Pete_").userString("petria").realName("Petri Airio").build(),
+            ChannelUser.builder().nick("fufufufff").userString("~petria").realName("Petri Airio").build());
+      }
+    };
+    BotConnectionChannel channel = new BotConnectionChannel(
+        "irc-channel-id",
+        "IRC-HOKANDEV",
+        BotConnectionType.IRC_CONNECTION.name(),
+        "IRCNet",
+        "#HokanDEV");
+
+    connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, connection, channel);
+
+    List<ChannelUser> users = connectionManager.getChannelUsersByEchoToAlias("IRC-HOKANDEV");
+
+    assertThat(users).extracting(ChannelUser::getNick).containsExactly("_Pete_", "fufufufff");
+  }
+
+  @Test
   void channelUsersIncludesObservedModeAndRoleMetadata() throws Exception {
     ConnectionManager connectionManager = new ConnectionManager();
     BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {

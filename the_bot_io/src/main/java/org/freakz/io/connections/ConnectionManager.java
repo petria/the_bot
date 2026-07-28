@@ -1024,7 +1024,9 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
   private List<String> channelUserKeys(ChannelUser user) {
-    return Stream.of(user.getAccount(), user.getUserString(), user.getNick(), user.getRealName())
+    // Real names are descriptive IRC metadata, not unique identities. Different
+    // clients often advertise the same real name and must remain separate rows.
+    return Stream.of(user.getAccount(), user.getUserString(), user.getNick())
         .filter(value -> value != null && !value.isBlank())
         .map(value -> value.toLowerCase())
         .distinct()
