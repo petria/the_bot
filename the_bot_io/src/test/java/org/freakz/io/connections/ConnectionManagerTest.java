@@ -156,6 +156,32 @@ class ConnectionManagerTest {
   }
 
   @Test
+  void reconcilesStaleIrcUsersAgainstCurrentSnapshot() throws Exception {
+    ConnectionManager connectionManager = new ConnectionManager();
+    BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {
+      @Override
+      public String getNetwork() {
+        return "IRCNet";
+      }
+    };
+    BotConnectionChannel channel = new BotConnectionChannel(
+        "irc-channel-id", "IRC-HOKANDEV", BotConnectionType.IRC_CONNECTION.name(), "IRCNet", "#HokanDEV");
+
+    connectionManager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, connection, channel);
+    connectionManager.markUserSeen(connection, "IRC-HOKANDEV", "oldnick", "oldnick", "Old User", "IRC_NAMES");
+    connectionManager.markUserSeen(connection, "IRC-HOKANDEV", "currentnick", "currentnick", "Current User", "IRC_NAMES");
+
+    int removed = connectionManager.reconcileIrcChannelUsers(
+        connection,
+        "IRC-HOKANDEV",
+        List.of(ChannelUser.builder().nick("currentnick").userString("currentnick").build()));
+
+    assertThat(removed).isEqualTo(1);
+    assertThat(connectionManager.findKnownUsers("oldnick")).isEmpty();
+    assertThat(connectionManager.findKnownUsers("currentnick")).hasSize(1);
+  }
+
+  @Test
   void channelUsersIncludesObservedModeAndRoleMetadata() throws Exception {
     ConnectionManager connectionManager = new ConnectionManager();
     BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {

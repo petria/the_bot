@@ -333,12 +333,16 @@ public class IrcServerConnection extends BotConnection {
 
   @Handler
   public void onUserQuitEvent(UserQuitEvent event) {
-    event.getAffectedChannel().ifPresent(channel -> {
-      org.freakz.common.model.botconfig.Channel configuredChannel = resolveByEchoTo(channel.getName());
-      if (configuredChannel != null) {
-        removeIrcUserSeen(configuredChannel.getEchoToAlias(), event.getUser());
-      }
-    });
+    if (config == null || config.getChannelList() == null) {
+      return;
+    }
+    // IRC QUIT removes the user from every channel on this connection. Kitteh
+    // exposes only one optional affected channel, which is insufficient when
+    // the user was present in several configured channels.
+    config.getChannelList().stream()
+        .map(channel -> resolveByEchoTo(channel.getName()))
+        .filter(java.util.Objects::nonNull)
+        .forEach(channel -> removeIrcUserSeen(channel.getEchoToAlias(), event.getUser()));
   }
 
   @Handler
@@ -361,17 +365,41 @@ public class IrcServerConnection extends BotConnection {
     log.debug("onChannelUsersUpdatedEvent: {}", channelName);
     updateChannelMap(channelName);
     List<User> users = event.getChannel().getUsers();
+    org.freakz.common.model.botconfig.Channel configured = resolveByEchoTo(channelName);
+    if (configured != null) {
+      connectionManager.reconcileIrcChannelUsers(
+          this,
+          configured.getEchoToAlias(),
+          channelUsers(event.getChannel()));
+    }
     for (User user : users) {
       log.debug("{} -> user -> {}", channelName, user.toString());
-      org.freakz.common.model.botconfig.Channel channel = resolveByEchoTo(channelName);
-      if (channel != null) {
-        markIrcUserSeen(channel.getEchoToAlias(), event.getChannel(), user, "IRC_NAMES");
+      if (configured != null) {
+        markIrcUserSeen(configured.getEchoToAlias(), event.getChannel(), user, "IRC_NAMES");
       }
     }
-    org.freakz.common.model.botconfig.Channel configured = resolveByEchoTo(channelName);
     if (configured != null) {
       requestOperatorReconciliation(configured.getEchoToAlias());
     }
+  }
+
+  public void reconcileJoinedChannelUsers() {
+    if (client == null || config == null || config.getChannelList() == null) {
+      return;
+    }
+    client.getChannels().stream()
+        .map(Channel::getName)
+        .map(this::resolveByEchoTo)
+        .filter(java.util.Objects::nonNull)
+        .forEach(channel -> requestUserReconciliation(channel.getName()));
+  }
+
+  private void requestUserReconciliation(String channelName) {
+    if (client == null || channelName == null || channelName.isBlank()) {
+      return;
+    }
+    log.debug("Requesting IRC NAMES reconciliation for {}", channelName);
+    client.sendRawLineAvoidingDuplication("NAMES " + channelName);
   }
 
   private void requestOperatorReconciliation(String echoToAlias) {
