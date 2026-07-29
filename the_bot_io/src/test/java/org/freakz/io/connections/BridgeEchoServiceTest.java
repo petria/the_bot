@@ -75,6 +75,76 @@ class BridgeEchoServiceTest {
   }
 
   @Test
+  void echoesIrcMembershipNotices() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    RecordingConnection targetConnection = addTarget(connectionManager, "TARGET", "#target");
+    Channel source = sourceChannel("SOURCE", "TARGET");
+
+    BridgeEchoService.echoIrcJoinToConfiguredTargets(connectionManager, source, "petria");
+    BridgeEchoService.echoIrcPartToConfiguredTargets(connectionManager, source, "petria", "gone for lunch");
+    BridgeEchoService.echoIrcQuitToConfiguredTargets(connectionManager, source, "petria", "bye");
+
+    assertThat(targetConnection.sentMessages)
+        .extracting(Message::getMessage)
+        .containsExactly(
+            "* petria has joined #source",
+            "* petria has left #source (gone for lunch)",
+            "* petria has quit IRC from #source (bye)");
+  }
+
+  @Test
+  void sanitizesAndOmitsIrcMembershipReasons() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    RecordingConnection targetConnection = addTarget(connectionManager, "TARGET", "#target");
+    Channel source = sourceChannel("SOURCE", "TARGET");
+
+    BridgeEchoService.echoIrcPartToConfiguredTargets(connectionManager, source, "petria", "line one\r\nline two\u0002");
+    BridgeEchoService.echoIrcQuitToConfiguredTargets(connectionManager, source, "petria", " \t ");
+
+    assertThat(targetConnection.sentMessages)
+        .extracting(Message::getMessage)
+        .containsExactly(
+            "* petria has left #source (line one line two)",
+            "* petria has quit IRC from #source");
+  }
+
+  @Test
+  void continuesIrcMembershipEchoAfterMissingTarget() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    RecordingConnection targetConnection = addTarget(connectionManager, "TARGET", "#target");
+
+    BridgeEchoService.echoIrcJoinToConfiguredTargets(
+        connectionManager,
+        sourceChannel("SOURCE", "MISSING", "SOURCE", "TARGET"),
+        "petria");
+
+    assertThat(targetConnection.sentMessages)
+        .extracting(Message::getMessage)
+        .containsExactly("* petria has joined #source");
+  }
+
+  @Test
+  void disablingIrcMembershipDoesNotDisableNormalEcho() {
+    ConnectionManager connectionManager = new ConnectionManager();
+    RecordingConnection targetConnection = addTarget(connectionManager, "TARGET", "#target");
+    Channel source = sourceChannel("SOURCE", "TARGET");
+    source.setEchoIrcActivity(false);
+
+    BridgeEchoService.echoToConfiguredTargets(
+        connectionManager,
+        source,
+        "IRC",
+        "petria",
+        "hello",
+        "Hokan");
+    BridgeEchoService.echoIrcJoinToConfiguredTargets(connectionManager, source, "petria");
+
+    assertThat(targetConnection.sentMessages)
+        .extracting(Message::getMessage)
+        .containsExactly("<petria@IRC>: hello");
+  }
+
+  @Test
   void treatsNullBlankAndCommandsAsSkipped() {
     assertThat(BridgeEchoService.shouldSkipEcho(null, "Hokan")).isTrue();
     assertThat(BridgeEchoService.shouldSkipEcho(" ", "Hokan")).isTrue();
@@ -89,6 +159,7 @@ class BridgeEchoServiceTest {
         .name("#source")
         .echoToAlias(sourceEchoToAlias)
         .echoToAliases(List.of(targetAliases))
+        .echoIrcActivity(true)
         .build();
   }
 

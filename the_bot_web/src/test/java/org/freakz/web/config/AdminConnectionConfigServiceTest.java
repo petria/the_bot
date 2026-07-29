@@ -173,7 +173,9 @@ class AdminConnectionConfigServiceTest {
         true,
         true,
         false,
-        List.of());
+        List.of(),
+        false,
+        true);
     AdminConnectionConfigPayload edited = new AdminConnectionConfigPayload(
         payload.botConfig(),
         List.of(new IrcServerConfigDto(
@@ -195,7 +197,8 @@ class AdminConnectionConfigServiceTest {
         .contains("\"allowAnonymousAiCommands\" : true")
         .contains("\"resolveUrls\" : true")
         .contains("\"alertMessages\" : true")
-        .contains("\"captureResolvedUrls\" : true");
+        .contains("\"captureResolvedUrls\" : true")
+        .contains("\"echoIrcActivity\" : true");
   }
 
   @Test

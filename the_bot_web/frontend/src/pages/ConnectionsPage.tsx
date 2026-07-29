@@ -127,6 +127,7 @@ export function ConnectionsPage() {
                   type: channel.type,
                   echoToAlias: channel.echoToAlias,
                   echoToAliases: [],
+                  echoIrcActivity: false,
                   joinOnStart: false,
                   publicAiEnabled: false,
                   allowAnonymousAiCommands: false,

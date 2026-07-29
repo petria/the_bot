@@ -302,8 +302,10 @@ public class IrcServerConnection extends BotConnection {
 //            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
       return;
     }
-    // It's not me!
-//        event.getChannel().sendMessage("Welcome, " + event.getUser().getNick() + "! :3");
+    BridgeEchoService.echoIrcJoinToConfiguredTargets(
+        connectionManager,
+        channel,
+        event.getUser().getNick());
   }
 
   @Handler
@@ -320,6 +322,11 @@ public class IrcServerConnection extends BotConnection {
           event.getUser().getNick(),
           event.getUser().getNick(),
           event.getUser().getRealName().orElse(null));
+      BridgeEchoService.echoIrcPartToConfiguredTargets(
+          connectionManager,
+          channel,
+          event.getUser().getNick(),
+          event.getMessage());
     }
   }
 
@@ -336,13 +343,27 @@ public class IrcServerConnection extends BotConnection {
     if (config == null || config.getChannelList() == null) {
       return;
     }
-    // IRC QUIT removes the user from every channel on this connection. Kitteh
-    // exposes only one optional affected channel, which is insufficient when
-    // the user was present in several configured channels.
+    List<org.freakz.common.model.botconfig.Channel> affectedChannels =
+        event.getUser().getChannels().stream()
+            .map(this::resolveByEchoTo)
+            .filter(java.util.Objects::nonNull)
+            .toList();
+
+    // IRC QUIT removes the user from every channel on this connection.
     config.getChannelList().stream()
         .map(channel -> resolveByEchoTo(channel.getName()))
         .filter(java.util.Objects::nonNull)
         .forEach(channel -> removeIrcUserSeen(channel.getEchoToAlias(), event.getUser()));
+
+    if (event.getClient().isUser(event.getUser())) {
+      return;
+    }
+    affectedChannels.forEach(channel ->
+        BridgeEchoService.echoIrcQuitToConfiguredTargets(
+            connectionManager,
+            channel,
+            event.getUser().getNick(),
+            event.getMessage()));
   }
 
   @Handler
