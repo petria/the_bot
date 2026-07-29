@@ -43,6 +43,7 @@ const emptyChannel: AdminConfigChannel = {
   type: null,
   echoToAlias: null,
   echoToAliases: [],
+  echoIrcActivity: false,
   joinOnStart: false,
   publicAiEnabled: false,
   allowAnonymousAiCommands: false,
@@ -506,6 +507,19 @@ function ChannelsEditor({
                   onChange,
                 )}
               />
+              {allowOperatorManagement ? (
+                <Switch
+                  label="Echo IRC activity"
+                  description="Forward JOIN, PART, and QUIT notices to echo targets"
+                  checked={channel.echoIrcActivity}
+                  onChange={(event) => updateChannel(
+                    channels,
+                    index,
+                    { echoIrcActivity: event.currentTarget.checked },
+                    onChange,
+                  )}
+                />
+              ) : null}
               <TextInput
                 label="Description"
                 value={channel.description ?? ''}

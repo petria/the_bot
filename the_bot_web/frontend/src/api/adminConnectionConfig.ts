@@ -7,6 +7,7 @@ export type AdminConfigChannel = {
   type: string | null;
   echoToAlias: string | null;
   echoToAliases: string[] | null;
+  echoIrcActivity: boolean;
   joinOnStart: boolean;
   publicAiEnabled: boolean;
   allowAnonymousAiCommands: boolean;
