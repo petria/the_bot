@@ -152,6 +152,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
+      - SERVER_PORT=${HERMES_MANAGER_MAIN_SERVER_PORT:-8651}
       - HERMES_MANAGER_DATA_DIR=/hermes-data
       - HERMES_CONTAINER_NAME=${HERMES_MAIN_CONTAINER_NAME:-bot-hermes-main}
       - HERMES_MANAGER_PROFILE_PORTS=chat:8643,ai-command:8645
@@ -175,6 +176,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
+      - SERVER_PORT=${HERMES_MANAGER_DEVELOP_SERVER_PORT:-8652}
       - HERMES_MANAGER_DATA_DIR=/hermes-data-dev
       - HERMES_CONTAINER_NAME=${HERMES_DEVELOP_CONTAINER_NAME:-bot-hermes-develop}
       - HERMES_MANAGER_PROFILE_PORTS=chat:8663,ai-command:8665
