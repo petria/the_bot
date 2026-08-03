@@ -56,6 +56,7 @@ class AdminLiveChannelsControllerTest {
     RestEngineClient engineClient = mock(RestEngineClient.class);
     when(engineClient.liveChannelEventStreamUri("IRC-HOKANDEV", 5))
         .thenReturn(URI.create("http://bot-engine:8100/api/hokan/engine/internal/live-channels/stream?echoToAlias=IRC-HOKANDEV&afterId=5"));
+    when(engineClient.internalRequest(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
     AdminLiveChannelsController controller = controller(engineClient);
 
     ResponseEntity<SseEmitter> response = controller.stream(principal("petria"), "IRC-HOKANDEV", 5);
