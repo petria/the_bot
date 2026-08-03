@@ -10,7 +10,12 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
+import org.freakz.common.spring.security.InternalApiTokenFilter;
 
+import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.Executor;
 
@@ -51,5 +56,18 @@ public class SpringApplicationBotEngine {
     executor.setThreadNamePrefix("BotServices-");
     executor.initialize();
     return executor;
+  }
+
+  @Bean
+  public FilterRegistrationBean<InternalApiTokenFilter> internalApiTokenFilter(
+      @Value("${the.bot.internal-api-token:}") String token) {
+    FilterRegistrationBean<InternalApiTokenFilter> registration =
+        new FilterRegistrationBean<>(new InternalApiTokenFilter(
+            token,
+            List.of("/api/hokan/engine/"),
+            List.of("/api/hokan/engine/openclaw/")));
+    registration.addUrlPatterns("/api/hokan/engine/*");
+    registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+    return registration;
   }
 }

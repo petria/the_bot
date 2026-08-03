@@ -25,8 +25,9 @@ public class RestMessageSendClient {
   @Autowired
   public RestMessageSendClient(
       RestTemplate restTemplate,
-      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl) {
-    this.restTemplate = restTemplate;
+      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl,
+      @Value("${the.bot.internal-api-token:}") String internalApiToken) {
+    this.restTemplate = InternalRestTemplate.withToken(restTemplate, internalApiToken);
     this.baseUrl = trimTrailingSlash(botIoBaseUrl) + "/api/hokan/io/messages";
   }
 

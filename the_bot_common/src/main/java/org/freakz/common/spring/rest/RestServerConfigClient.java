@@ -18,9 +18,14 @@ public class RestServerConfigClient {
   @Autowired
   public RestServerConfigClient(
       RestTemplate restTemplate,
-      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl) {
-    this.restTemplate = restTemplate;
+      @Value("${the.bot.rest.bot-io-base-url:http://bot-io:8090}") String botIoBaseUrl,
+      @Value("${the.bot.internal-api-token:}") String internalApiToken) {
+    this.restTemplate = InternalRestTemplate.withToken(restTemplate, internalApiToken);
     this.baseUrl = trimTrailingSlash(botIoBaseUrl) + "/api/hokan/io/server_config";
+  }
+
+  public RestServerConfigClient(RestTemplate restTemplate, String botIoBaseUrl) {
+    this(restTemplate, botIoBaseUrl, "");
   }
 
   public String reloadConfig() {

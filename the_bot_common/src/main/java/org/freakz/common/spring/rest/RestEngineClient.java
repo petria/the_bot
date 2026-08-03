@@ -47,18 +47,32 @@ public class RestEngineClient {
   private final RestTemplate restTemplate;
   private final RestTemplate longRunningRestTemplate;
   private final String baseUrl;
+  private final String internalApiToken;
 
   @Autowired
   public RestEngineClient(
       RestTemplate restTemplate,
-      @Value("${the.bot.rest.bot-engine-base-url:http://bot-engine:8100}") String botEngineBaseUrl) {
-    this.restTemplate = restTemplate;
+      @Value("${the.bot.rest.bot-engine-base-url:http://bot-engine:8100}") String botEngineBaseUrl,
+      @Value("${the.bot.internal-api-token:}") String internalApiToken) {
+    this.restTemplate = InternalRestTemplate.withToken(restTemplate, internalApiToken);
+    this.internalApiToken = internalApiToken == null ? "" : internalApiToken.trim();
     SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
     requestFactory.setConnectTimeout(Duration.ofSeconds(3));
     requestFactory.setReadTimeout(Duration.ofMinutes(5));
     this.longRunningRestTemplate = new RestTemplate(requestFactory);
-    this.longRunningRestTemplate.setInterceptors(restTemplate.getInterceptors());
+    this.longRunningRestTemplate.setInterceptors(this.restTemplate.getInterceptors());
     this.baseUrl = trimTrailingSlash(botEngineBaseUrl) + "/api/hokan/engine";
+  }
+
+  public RestEngineClient(RestTemplate restTemplate, String botEngineBaseUrl) {
+    this(restTemplate, botEngineBaseUrl, "");
+  }
+
+  public java.net.http.HttpRequest.Builder internalRequest(java.net.http.HttpRequest.Builder builder) {
+    if (internalApiToken.isBlank()) {
+      throw new IllegalStateException("Internal API token is not configured");
+    }
+    return builder.header(InternalApiTokenInterceptor.HEADER, internalApiToken);
   }
 
 

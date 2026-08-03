@@ -1,7 +1,14 @@
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # Hokan the Bot engine container
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
+    logging: *default-logging
     user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
@@ -19,7 +26,7 @@ services:
       - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
       - THE_BOT_WEB_PUBLIC_BASE_URL=${THE_BOT_WEB_PUBLIC_BASE_URL:-http://localhost:8091}
       - THE_BOT_REST_BOT_WEB_BASE_URL=${THE_BOT_REST_BOT_WEB_BASE_URL:-http://bot-web:8091}
-      - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:-${HERMES_MANAGER_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}}
+      - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
       - HOKAN_BOT_INSTANCE_ID=${HOKAN_BOT_INSTANCE_ID:-dev}
       - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
@@ -56,6 +63,7 @@ services:
   # Hokan the Bot io container
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
+    logging: *default-logging
     user: "${PUID}:${PGID}"
     depends_on:
       - bot-whatsapp
@@ -81,11 +89,13 @@ services:
       - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
       - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET:-}
       - WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
+      - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
     container_name: bot-io
 
   # Hokan the Bot WhatsApp sidecar using wacli
   bot-whatsapp:
     image: ghcr.io/petria/the_bot-whatsapp:${WHATSAPP_IMAGE_TAG:-latest}
+    logging: *default-logging
     restart: unless-stopped
     user: "${PUID}:${PGID}"
     volumes:
@@ -103,6 +113,7 @@ services:
   # Hokan the Bot web UI container
   bot-web:
     image: ghcr.io/petria/the_bot-web:${WEB_IMAGE_TAG:-latest}
+    logging: *default-logging
     user: "${PUID}:${PGID}"
     group_add:
       - "${DOCKER_GID:-989}"
@@ -129,7 +140,7 @@ services:
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
-      - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:-${HERMES_MANAGER_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}}
+      - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
       - THE_BOT_WEB_MOBILE_FCM_ENABLED=${THE_BOT_WEB_MOBILE_FCM_ENABLED:-false}
       - THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=${THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE:-/run/secrets/firebase-service-account.json}
       - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-external}
@@ -140,6 +151,7 @@ services:
   # Hokan the Bot Hermes Manager - Main instance
   bot-hermes-manager-main:
     image: ghcr.io/petria/the_bot-hermes-manager:${HERMES_MANAGER_IMAGE_TAG:-latest}
+    logging: *default-logging
     container_name: bot-hermes-manager-main
     restart: unless-stopped
     user: "${PUID:-1002}:${PGID:-1002}"
@@ -152,6 +164,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
+      - SERVER_PORT=${HERMES_MANAGER_MAIN_SERVER_PORT:-8651}
       - HERMES_MANAGER_DATA_DIR=/hermes-data
       - HERMES_CONTAINER_NAME=${HERMES_MAIN_CONTAINER_NAME:-bot-hermes-main}
       - HERMES_MANAGER_PROFILE_PORTS=chat:8643,ai-command:8645
@@ -163,6 +176,7 @@ services:
   # Hokan the Bot Hermes Manager - Develop instance
   bot-hermes-manager-develop:
     image: ghcr.io/petria/the_bot-hermes-manager:${HERMES_MANAGER_IMAGE_TAG:-latest}
+    logging: *default-logging
     container_name: bot-hermes-manager-develop
     restart: unless-stopped
     user: "${PUID:-1002}:${PGID:-1002}"
@@ -175,6 +189,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
+      - SERVER_PORT=${HERMES_MANAGER_DEVELOP_SERVER_PORT:-8652}
       - HERMES_MANAGER_DATA_DIR=/hermes-data-dev
       - HERMES_CONTAINER_NAME=${HERMES_DEVELOP_CONTAINER_NAME:-bot-hermes-develop}
       - HERMES_MANAGER_PROFILE_PORTS=chat:8663,ai-command:8665

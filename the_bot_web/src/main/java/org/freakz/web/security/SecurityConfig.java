@@ -56,6 +56,7 @@ public class SecurityConfig {
             .requestMatchers("/api/mobile/**").authenticated()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
+            .requestMatchers("/api/web/messages/**").hasAuthority(BotPermission.WEB_ADMIN)
             .requestMatchers("/api/web/**").hasAnyAuthority(BotPermission.WEB_USER, BotPermission.WEB_ADMIN, BotPermission.ALL)
             .anyRequest().authenticated()
         )

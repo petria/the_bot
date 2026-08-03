@@ -7,7 +7,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.Ordered;
+import org.freakz.common.spring.security.InternalApiTokenFilter;
 
+import java.util.List;
 import java.util.TimeZone;
 
 @SpringBootApplication
@@ -24,5 +29,18 @@ public class SpringApplicationBotIo {
     TimeZone.setDefault(TimeZone.getTimeZone(timezone));
 
     SpringApplication.run(SpringApplicationBotIo.class, args);
+  }
+
+  @org.springframework.context.annotation.Bean
+  FilterRegistrationBean<InternalApiTokenFilter> internalApiTokenFilter(
+      @Value("${the.bot.internal-api-token:}") String token) {
+    FilterRegistrationBean<InternalApiTokenFilter> registration =
+        new FilterRegistrationBean<>(new InternalApiTokenFilter(
+            token,
+            List.of("/api/hokan/io/"),
+            List.of()));
+    registration.addUrlPatterns("/api/hokan/io/*");
+    registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+    return registration;
   }
 }

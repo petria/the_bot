@@ -162,7 +162,7 @@ public class ConsoleController {
   }
 
   private void bridgeEngineStream(URI uri, SseEmitter emitter) {
-    HttpRequest request = HttpRequest.newBuilder(uri)
+    HttpRequest request = engineClient.internalRequest(HttpRequest.newBuilder(uri))
         .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
         .timeout(Duration.ofHours(1))
         .GET()

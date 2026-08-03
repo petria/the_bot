@@ -71,6 +71,7 @@ class ConsoleControllerTest {
     RestEngineClient engineClient = mock(RestEngineClient.class);
     when(engineClient.consoleEventStreamUri("web-console:7:session-1", 5))
         .thenReturn(URI.create("http://bot-engine:8100/api/hokan/engine/internal/console/stream?sessionKey=web-console:7:session-1&afterId=5"));
+    when(engineClient.internalRequest(any())).thenAnswer(invocation -> invocation.getArgument(0));
     ConsoleController controller = new ConsoleController(engineClient);
 
     ResponseEntity<SseEmitter> response = controller.stream(principal("petria"), "session-1", 5);

@@ -192,8 +192,8 @@ public class AdminLiveChannelsController {
           .body(emitter);
     }
     liveChannelStreamExecutor.execute(() -> {
-      HttpRequest request = HttpRequest.newBuilder(uri)
-          .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
+        HttpRequest request = engineClient.internalRequest(HttpRequest.newBuilder(uri))
+            .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)
           .timeout(Duration.ofHours(1))
           .GET()
           .build();

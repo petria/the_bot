@@ -1,0 +1,10 @@
+[Unit]
+Description=Run The Bot Docker storage maintenance periodically
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

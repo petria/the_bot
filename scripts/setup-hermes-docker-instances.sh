@@ -91,6 +91,11 @@ if [[ "$TARGET" != "local" && "$TARGET" != "localhost" ]]; then
     ssh "$TARGET" "mkdir -p '$remote_overlay_dir'"
     scp -q "$SCRIPT_DIR"/hermes/* "$TARGET:$remote_overlay_dir/"
   fi
+  if [[ -f "$SCRIPT_DIR/docker-maintenance.sh" ]]; then
+    ssh "$TARGET" "mkdir -p '$remote_overlay_dir'"
+    scp -q "$SCRIPT_DIR/docker-maintenance.sh" "$TARGET:$remote_overlay_dir/docker-maintenance.sh"
+    ssh "$TARGET" "chmod 0755 '$remote_overlay_dir/docker-maintenance.sh'"
+  fi
   echo "Running Docker Hermes setup on $TARGET"
   ssh "$TARGET" bash "$remote_script" \
     --target local \
@@ -169,6 +174,14 @@ compose() {
 }
 
 prune_docker_if_disk_is_low() {
+  local maintenance_script="$SCRIPT_DIR/docker-maintenance.sh"
+  if [[ ! -x "$maintenance_script" && -x "$SCRIPT_DIR/hermes/docker-maintenance.sh" ]]; then
+    maintenance_script="$SCRIPT_DIR/hermes/docker-maintenance.sh"
+  fi
+  if [[ -x "$maintenance_script" ]]; then
+    "$maintenance_script" --cleanup
+    return
+  fi
   local docker_root usage
   docker_root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || printf '/var/lib/docker')"
   usage="$(df -P "$docker_root" | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }')"
@@ -409,11 +422,18 @@ EOF
 chmod 600 "$DEPLOY_DIR/.env"
 
 cat > "$DEPLOY_DIR/docker-compose.yml" <<EOF
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   ${SERVICE_NAME}:
     build:
       context: ./hermes-agent
     image: \${HERMES_IMAGE:-bot-hermes-agent:local}
+    logging: *default-logging
     container_name: ${SERVICE_NAME}
     restart: unless-stopped
     volumes:
