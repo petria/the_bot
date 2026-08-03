@@ -5,4 +5,5 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
+Environment=DOCKER_MAINTENANCE_LOCK_FILE=/run/lock/the-bot-docker-maintenance.lock
 ExecStart=/usr/local/sbin/the-bot-docker-maintenance --cleanup
