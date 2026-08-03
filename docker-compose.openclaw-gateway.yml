@@ -1,6 +1,13 @@
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   bot-openclaw:
     image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    logging: *default-logging
     user: "${PUID:-1001}:${PGID:-1001}"
     volumes:
       - ${OPENCLAW_DATA_DIR:-.}/openclaw/state:/state
