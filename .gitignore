@@ -10,6 +10,7 @@
 /the_bot_web/frontend/node_modules/
 /the_bot_web/frontend/dist/
 /the_bot_web/frontend/.vite/
+/the_bot_web/frontend/coverage/
 secret.properties
 /runtime/
 !/runtime/

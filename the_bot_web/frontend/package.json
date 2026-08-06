@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "vitest run",
+    "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=coverage/junit.xml",
     "test:watch": "vitest",
     "build": "npm test && tsc -b && vite build",
     "preview": "vite preview"
@@ -27,6 +28,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^29.1.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
