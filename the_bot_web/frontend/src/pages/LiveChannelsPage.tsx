@@ -650,10 +650,11 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                         if (!nick) {
                           return;
                         }
+                        const checked = event.currentTarget.checked;
                         setSelectedNicks((current) => {
                           const next = new Set(current);
                           const key = nick.toLowerCase();
-                          if (event.currentTarget.checked) {
+                          if (checked) {
                             next.add(key);
                           } else {
                             next.delete(key);
