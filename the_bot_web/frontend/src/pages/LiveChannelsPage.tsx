@@ -38,21 +38,25 @@ import {
   type LiveChannelUser,
 } from '../api/liveChannels';
 import { getMe, type UserHomeChannel } from '../api/me';
-
-type OpenChannel = {
-  echoToAlias: string;
-  label: string;
-  sendAllowed: boolean;
-  adminAllowed: boolean;
-  modeAllowed: boolean;
-};
+import {
+  compareChannelUsers,
+  formatEvent,
+  hasSavedOpenChannels,
+  maxMessageLength,
+  openChannelFromLiveChannel,
+  readActiveAlias,
+  readOpenChannels,
+  userDetail,
+  userDisplayName,
+  userKey,
+  type OpenChannel,
+} from './liveChannelsModel';
 
 type ChannelLine = {
   id: number;
   text: string;
 };
 
-const maxMessageLength = 900;
 const openChannelsStorageKey = 'the-bot-live-channels-open';
 const activeAliasStorageKey = 'the-bot-live-channels-active';
 
@@ -81,13 +85,15 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
       return;
     }
     const option = channelOptions.find((channel) => channel.value === selectedAlias);
-    const channel = {
-      echoToAlias: selectedAlias,
-      label: option?.label ?? selectedAlias,
-      sendAllowed: option?.channel.sendAllowed ?? false,
-      adminAllowed: option?.channel.adminAllowed ?? false,
-      modeAllowed: option?.channel.modeAllowed ?? false,
-    };
+    const channel = option?.channel
+        ? openChannelFromLiveChannel(option.channel)
+        : {
+          echoToAlias: selectedAlias,
+          label: selectedAlias,
+          sendAllowed: false,
+          adminAllowed: false,
+          modeAllowed: false,
+        };
     setOpenChannels((current) => [...current, channel]);
     setActiveAlias(selectedAlias);
     setSelectedAlias(null);
@@ -114,13 +120,7 @@ export function LiveChannelsPage({ homeChannel }: { homeChannel?: UserHomeChanne
           ? liveChannelsQuery.data.find((channel) => channel.echoToAlias === homeAlias)
           : null;
       if (homeOption) {
-        setOpenChannels([{
-          echoToAlias: homeOption.echoToAlias,
-          label: homeOption.label,
-          sendAllowed: homeOption.sendAllowed,
-          adminAllowed: homeOption.adminAllowed,
-          modeAllowed: homeOption.modeAllowed,
-        }]);
+        setOpenChannels([openChannelFromLiveChannel(homeOption)]);
         setActiveAlias(homeOption.echoToAlias);
         return;
       }
@@ -295,7 +295,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
   }, [settingsQuery.data]);
 
   const sendMutation = useMutation({
-    mutationFn: () => sendLiveChannelMessage(channel.echoToAlias, trimmedMessage),
+    mutationFn: (messageToSend: string) => sendLiveChannelMessage(channel.echoToAlias, messageToSend),
     onError: (error) => {
       const apiError = error instanceof ApiError ? error : null;
       appendLine(`error> ${apiError?.detail || apiError?.message || error.message}`);
@@ -413,7 +413,7 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     if (!canSend) {
       return;
     }
-    sendMutation.mutate();
+    sendMutation.mutate(trimmedMessage);
     setMessage('');
   };
 
@@ -702,12 +702,6 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
   );
 }
 
-function userDisplayName(user: LiveChannelUser) {
-  const baseName = user.nick || user.realName || user.account || user.userString || 'unknown';
-  const prefix = user.displayPrefix?.trim() || '';
-  return `${prefix}${baseName}`;
-}
-
 function updateSettingsDraft(
   setSettingsDraft: Dispatch<SetStateAction<LiveChannelSettings | null>>,
   patch: Partial<LiveChannelSettings>,
@@ -715,103 +709,4 @@ function updateSettingsDraft(
 ) {
   resetMutation();
   setSettingsDraft((current) => (current ? { ...current, ...patch } : current));
-}
-
-function compareChannelUsers(left: LiveChannelUser, right: LiveChannelUser) {
-  const leftOperator = isChannelOperator(left);
-  const rightOperator = isChannelOperator(right);
-  if (leftOperator !== rightOperator) {
-    return leftOperator ? -1 : 1;
-  }
-  return userSortName(left).localeCompare(userSortName(right), undefined, { sensitivity: 'base' });
-}
-
-function userSortName(user: LiveChannelUser) {
-  return user.nick || user.realName || user.account || user.userString || 'unknown';
-}
-
-function isChannelOperator(user: LiveChannelUser) {
-  const prefix = user.displayPrefix?.trim();
-  if (prefix === '@') {
-    return true;
-  }
-  const modes = user.channelModes?.map((mode) => mode.trim().toLowerCase()) ?? [];
-  if (modes.includes('@') || modes.includes('o')) {
-    return true;
-  }
-  const roles = user.channelRoles?.map((role) => role.trim().toLowerCase()) ?? [];
-  return roles.includes('operator') || roles.includes('op');
-}
-
-function userDetail(user: LiveChannelUser) {
-  const roles = user.channelRoles?.filter(Boolean) ?? [];
-  const modes = user.channelModes?.filter((mode) => mode && mode !== user.displayPrefix) ?? [];
-  const parts = [
-    user.realName && user.realName !== user.nick ? user.realName : null,
-    ...roles,
-    ...modes,
-    user.operatorInformation && !roles.some((role) => role.toLowerCase() === user.operatorInformation?.toLowerCase())
-      ? user.operatorInformation
-      : null,
-    user.away ? 'away' : null,
-  ].filter(Boolean);
-  return parts.length === 0 ? (user.account || user.userString || '-') : parts.join(' / ');
-}
-
-function userKey(user: LiveChannelUser, index: number) {
-  return user.account || user.userString || user.nick || user.realName || `user-${index}`;
-}
-
-function formatEvent(event: LiveChannelEvent) {
-  const timestamp = formatTime(event.createdAt);
-  const message = event.message || '';
-  if (event.direction === 'WEB_OUTBOUND') {
-    return `${timestamp} ${message}`;
-  }
-  const sender = event.sender || 'unknown';
-  return `${timestamp} ${sender}: ${message}`;
-}
-
-function formatTime(value: number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '--:--:--';
-  }
-  return [
-    date.getHours(),
-    date.getMinutes(),
-    date.getSeconds(),
-  ].map((part) => part.toString().padStart(2, '0')).join(':');
-}
-
-function readOpenChannels() {
-  try {
-    const raw = window.sessionStorage.getItem(openChannelsStorageKey);
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw) as OpenChannel[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed
-        .filter((channel) => typeof channel.echoToAlias === 'string' && typeof channel.label === 'string')
-        .map((channel) => ({
-          echoToAlias: channel.echoToAlias,
-          label: channel.label,
-          sendAllowed: channel.sendAllowed === true,
-          adminAllowed: channel.adminAllowed === true,
-          modeAllowed: channel.modeAllowed === true,
-        }));
-  } catch {
-    return [];
-  }
-}
-
-function hasSavedOpenChannels() {
-  return window.sessionStorage.getItem(openChannelsStorageKey) !== null;
-}
-
-function readActiveAlias() {
-  return window.sessionStorage.getItem(activeAliasStorageKey);
 }
