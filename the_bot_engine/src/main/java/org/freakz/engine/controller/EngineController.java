@@ -22,6 +22,8 @@ import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
@@ -412,6 +414,24 @@ public class EngineController {
   public ResponseEntity<IrcTopicEventResponse> handleIrcTopicEvent(
       @RequestBody IrcTopicEventRequest request) {
     return ResponseEntity.ok(ircTopicManagementService.handleTopicEvent(request));
+  }
+
+  @PostMapping("/internal/irc/topic")
+  public ResponseEntity<IrcTopicSetResponse> setIrcTopicFromWeb(
+      @RequestBody IrcTopicWebSetRequest request) {
+    User user = ircTopicManagementService.findUser(request == null ? null : request.username());
+    String echoToAlias = request == null ? null : request.echoToAlias();
+    if (!ircTopicManagementService.canSetTopic(echoToAlias, user)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+    IrcTopicSetResponse response = ircTopicManagementService.setTopic(
+        echoToAlias,
+        request.topic(),
+        EngineRequest.builder().user(user).build());
+    if (response.error() != null) {
+      return ResponseEntity.badRequest().body(response);
+    }
+    return ResponseEntity.ok(response);
   }
 
   private String trim(String value) {

@@ -4,6 +4,9 @@ import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasReques
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
@@ -30,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -148,6 +153,68 @@ public class AdminLiveChannelsController {
             request.resolveUrls(),
             request.captureResolvedUrls(),
             request.captureImages()));
+  }
+
+  @GetMapping("/topic")
+  public LiveChannelTopicResponse topic(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestParam String echoToAlias) {
+    String alias = trim(echoToAlias);
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    requireIrcChannel(channel);
+    accessService.requireView(principal, channel.connectionType(), alias);
+    IrcTopicStateResponse state = connectionManagerClient.getIrcTopicStates().stream()
+        .filter(item -> alias.equalsIgnoreCase(item.echoToAlias()))
+        .findFirst()
+        .orElse(null);
+    return state == null
+        ? new LiveChannelTopicResponse(alias, channel.label(), null, null, false, false, false, false, false)
+        : new LiveChannelTopicResponse(
+            state.echoToAlias(),
+            state.channelName(),
+            state.configuredTopic(),
+            state.currentTopic(),
+            state.manageTopic(),
+            state.connected(),
+            state.joined(),
+            state.mismatch(),
+            accessService.canAdmin(principal, channel.connectionType(), alias) && state.manageTopic());
+  }
+
+  @PutMapping("/topic")
+  public IrcTopicSetResponse saveTopic(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody IrcTopicUpdateRequest request) {
+    String alias = trim(request == null ? null : request.echoToAlias());
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    requireIrcChannel(channel);
+    accessService.requireAdmin(principal, channel.connectionType(), alias);
+    if (request.topic() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Topic is required");
+    }
+    IrcTopicSetResponse response;
+    try {
+      response = engineClient.setIrcTopicFromWeb(
+          new IrcTopicWebSetRequest(alias, request.topic(), principal.getUsername()));
+    } catch (RestClientResponseException e) {
+      String detail = e.getResponseBodyAsString();
+      throw new ResponseStatusException(
+          HttpStatus.valueOf(e.getStatusCode().value()),
+          detail == null || detail.isBlank() ? "bot-engine rejected the topic update" : detail,
+          e);
+    } catch (RestClientException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not update IRC topic through bot-engine", e);
+    }
+    if (response == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return a topic result");
+    }
+    return response;
   }
 
   @GetMapping("/events")
@@ -304,6 +371,12 @@ public class AdminLiveChannelsController {
             null));
   }
 
+  private void requireIrcChannel(LiveChannelCatalogService.LiveChannelCatalogItem channel) {
+    if (!"irc".equals(accessService.connectionKey(channel.connectionType()))) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Topic actions are only available for IRC channels");
+    }
+  }
+
   public record LiveChannelsResponse(List<LiveChannelResponse> channels) {
   }
 
@@ -328,6 +401,21 @@ public class AdminLiveChannelsController {
   }
 
   public record IrcOperatorModeUpdateRequest(String echoToAlias, List<String> nicks, boolean operator) {
+  }
+
+  public record IrcTopicUpdateRequest(String echoToAlias, String topic) {
+  }
+
+  public record LiveChannelTopicResponse(
+      String echoToAlias,
+      String channelName,
+      String configuredTopic,
+      String currentTopic,
+      boolean manageTopic,
+      boolean connected,
+      boolean joined,
+      boolean mismatch,
+      boolean editable) {
   }
 
   public record ErrorResponse(String message, String detail) {

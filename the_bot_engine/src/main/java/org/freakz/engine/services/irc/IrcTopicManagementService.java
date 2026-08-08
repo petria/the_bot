@@ -66,8 +66,7 @@ public class IrcTopicManagementService {
       return new IrcTopicSetResponse(echoToAlias, channelConfig.channel().getName(), false, false, null,
           "IRC topic management is disabled");
     }
-    String required = ChannelPermissionUtil.adminPermission("IRC_CONNECTION", channelConfig.channel().getEchoToAlias());
-    if (request == null || !UserPermissions.has(request.getUser(), required)) {
+    if (request == null || !canSetTopic(echoToAlias, request.getUser())) {
       return new IrcTopicSetResponse(echoToAlias, channelConfig.channel().getName(), false, false, null, null);
     }
     String topic = truncate(requestedTopic);
@@ -80,6 +79,26 @@ public class IrcTopicManagementService {
     }
     return new IrcTopicSetResponse(response.echoToAlias(), response.channelName(), response.changed(),
         response.truncated() || !equals(topic, requestedTopic), topic, response.error());
+  }
+
+  public boolean canSetTopic(String echoToAlias, User user) {
+    ChannelConfig channelConfig = findChannel(echoToAlias);
+    if (channelConfig == null || !Boolean.TRUE.equals(channelConfig.channel().getManageTopic())) {
+      return false;
+    }
+    String required = ChannelPermissionUtil.adminPermission("IRC_CONNECTION", channelConfig.channel().getEchoToAlias());
+    return UserPermissions.has(user, required);
+  }
+
+  public User findUser(String username) {
+    if (username == null || username.isBlank()) {
+      return null;
+    }
+    return usersService.findAll().stream()
+        .map(node -> (User) node)
+        .filter(user -> username.equalsIgnoreCase(user.getUsername()))
+        .findFirst()
+        .orElse(null);
   }
 
   public String guardedTopic(String echoToAlias) {

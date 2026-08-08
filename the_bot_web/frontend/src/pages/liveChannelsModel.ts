@@ -1,6 +1,6 @@
 import type { LiveChannel, LiveChannelEvent, LiveChannelUser } from '../api/liveChannels';
 
-export type OpenChannel = Pick<LiveChannel, 'echoToAlias' | 'label' | 'sendAllowed' | 'adminAllowed' | 'modeAllowed'>;
+export type OpenChannel = Pick<LiveChannel, 'echoToAlias' | 'label' | 'connectionType' | 'sendAllowed' | 'adminAllowed' | 'modeAllowed'>;
 
 export const maxMessageLength = 900;
 
@@ -11,10 +11,16 @@ export function openChannelFromLiveChannel(channel: LiveChannel): OpenChannel {
   return {
     echoToAlias: channel.echoToAlias,
     label: channel.label,
+    connectionType: channel.connectionType,
     sendAllowed: channel.sendAllowed,
     adminAllowed: channel.adminAllowed,
     modeAllowed: channel.modeAllowed,
   };
+}
+
+export function isIrcConnection(connectionType: string | null | undefined) {
+  const normalized = connectionType?.trim().toLowerCase() ?? '';
+  return normalized === 'irc' || normalized === 'irc_connection';
 }
 
 export function userDisplayName(user: LiveChannelUser) {
@@ -105,6 +111,7 @@ export function readOpenChannels(storage: Storage = window.sessionStorage): Open
         .map((channel) => ({
           echoToAlias: channel.echoToAlias,
           label: channel.label,
+          connectionType: typeof channel.connectionType === 'string' ? channel.connectionType : null,
           sendAllowed: channel.sendAllowed === true,
           adminAllowed: channel.adminAllowed === true,
           modeAllowed: channel.modeAllowed === true,

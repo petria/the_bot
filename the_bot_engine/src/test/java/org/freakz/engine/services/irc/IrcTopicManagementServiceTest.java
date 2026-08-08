@@ -92,6 +92,15 @@ class IrcTopicManagementServiceTest {
     assertThat(response.topic()).hasSize(IrcTopicManagementService.FALLBACK_TOPIC_LIMIT);
   }
 
+  @Test
+  void webTopicAuthorizationUsesConfiguredChannelAdminPermission() {
+    assertThat(service.canSetTopic("IRC-TEST", user("petria", "petria", "channel.admin.irc.irc-test")))
+        .isTrue();
+    assertThat(service.canSetTopic("IRC-TEST", user("viewer", "viewer", "channels.view.irc")))
+        .isFalse();
+    assertThat(service.findUser("PETRIA").getUsername()).isEqualTo("petria");
+  }
+
   private EngineRequest request() {
     return EngineRequest.builder().user(user("petria", "petria", "channel.admin.irc.irc-test")).build();
   }
