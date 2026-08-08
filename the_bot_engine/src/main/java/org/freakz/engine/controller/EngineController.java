@@ -20,6 +20,8 @@ import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
@@ -40,6 +42,7 @@ import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.livechannel.LiveChannelEventService;
 import org.freakz.engine.services.media.MediaStorageSettingsService;
 import org.freakz.engine.services.irc.IrcOperatorManagementService;
+import org.freakz.engine.services.irc.IrcTopicManagementService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -112,6 +115,7 @@ public class EngineController {
   private final PrivateChatAlertService privateChatAlertService;
   private final MediaStorageSettingsService mediaStorageSettingsService;
   private final IrcOperatorManagementService ircOperatorManagementService;
+  private final IrcTopicManagementService ircTopicManagementService;
 
   public EngineController(
       BotEngine botEngine,
@@ -133,7 +137,8 @@ public class EngineController {
       LiveChannelEventService liveChannelEventService,
       PrivateChatAlertService privateChatAlertService,
       MediaStorageSettingsService mediaStorageSettingsService,
-      IrcOperatorManagementService ircOperatorManagementService) {
+      IrcOperatorManagementService ircOperatorManagementService,
+      IrcTopicManagementService ircTopicManagementService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -154,6 +159,7 @@ public class EngineController {
     this.privateChatAlertService = privateChatAlertService;
     this.mediaStorageSettingsService = mediaStorageSettingsService;
     this.ircOperatorManagementService = ircOperatorManagementService;
+    this.ircTopicManagementService = ircTopicManagementService;
   }
 
   @PostMapping("/handle_request")
@@ -400,6 +406,12 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  @PostMapping("/internal/irc/topic-event")
+  public ResponseEntity<IrcTopicEventResponse> handleIrcTopicEvent(
+      @RequestBody IrcTopicEventRequest request) {
+    return ResponseEntity.ok(ircTopicManagementService.handleTopicEvent(request));
   }
 
   private String trim(String value) {

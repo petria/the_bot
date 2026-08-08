@@ -22,6 +22,8 @@ import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,6 +151,10 @@ public class RestEngineClient {
         .build()
         .toUri();
     return restTemplate.postForEntity(uri, null, IrcOperatorReconcileResponse.class);
+  }
+
+  public IrcTopicEventResponse handleIrcTopicEvent(IrcTopicEventRequest request) {
+    return restTemplate.postForObject(baseUrl + "/internal/irc/topic-event", request, IrcTopicEventResponse.class);
   }
 
   public ResponseEntity<IrcOperatorReconcileResponse[]> reconcileAllIrcOperators() {

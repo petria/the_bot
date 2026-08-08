@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import * as configApi from '../api/adminConnectionConfig';
 import { renderPage } from '../test/pageTestUtils';
@@ -17,10 +17,13 @@ describe('AdminConnectionConfigPage', () => {
             echoToAliases: [], echoIrcActivity: false, joinOnStart: true, publicAiEnabled: true,
             allowAnonymousAiCommands: false, resolveUrls: false, alertMessages: false,
             captureResolvedUrls: false, captureImages: false, captureImageToAliases: [], manageOperators: false,
+            manageTopic: true, topic: 'Guarded topic',
           }],
         }],
         discordConfig: null, telegramConfig: null, whatsappConfig: null,
       },
+      topicStates: [{ echoToAlias: 'IRC-TEST', channelName: '#test', manageTopic: true,
+        configuredTopic: 'Guarded topic', currentTopic: 'Guarded topic', connected: true, joined: true, mismatch: false }],
     });
 
     renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
@@ -28,5 +31,11 @@ describe('AdminConnectionConfigPage', () => {
     expect(await screen.findByText('Manage Connections')).toBeInTheDocument();
     expect(screen.getByDisplayValue('IRC-TEST')).toBeInTheDocument();
     expect(screen.getByLabelText('Public AI')).toBeChecked();
+    expect(screen.getByRole('switch', { name: /Manage topic/ })).toBeChecked();
+    expect(screen.getByDisplayValue('Guarded topic')).toBeInTheDocument();
+    expect(screen.getByText(/Current IRC topic: Guarded topic/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Discord' }));
+    expect(screen.queryByText('Manage topic')).not.toBeInTheDocument();
   });
 });

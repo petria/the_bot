@@ -6,6 +6,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -70,6 +71,25 @@ public class BotConfigService {
             defaults.dataDir(),
             defaults.logDir());
     theBotConfig = configReader.readBotConfig(objectMapper, bootstrapConfig);
+  }
+
+  public synchronized boolean updateIrcChannelTopic(String echoToAlias, String topic) throws IOException {
+    if (bootstrapConfig == null) {
+      reloadConfig();
+    }
+    String runtimeConfigFile = bootstrapConfig.runtimeConfigFile();
+    if (runtimeConfigFile == null || runtimeConfigFile.isBlank()) {
+      String profile = bootstrapConfig.profile();
+      runtimeConfigFile = bootstrapConfig.runtimeDir()
+          + (profile == null || profile.isBlank() ? "" : profile + ".")
+          + ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
+    }
+    boolean updated = RuntimeConfigStore.updateIrcChannelTopic(
+        Path.of(runtimeConfigFile), echoToAlias, topic, objectMapper);
+    if (updated) {
+      reloadConfig();
+    }
+    return updated;
   }
 
   public File getRuntimeDirFile(String fileName) {

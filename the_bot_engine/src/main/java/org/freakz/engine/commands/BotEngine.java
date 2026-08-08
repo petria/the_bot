@@ -27,6 +27,7 @@ import org.freakz.engine.services.ProcessingIndicatorService;
 import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.irc.IrcOperatorManagementService;
 import org.freakz.engine.services.irc.IrcChannelControlService;
+import org.freakz.engine.services.irc.IrcTopicManagementService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.MobileNotificationPublisher;
@@ -71,6 +72,7 @@ public class BotEngine {
   private final MobileNotificationPublisher mobileNotificationPublisher;
   private final IrcOperatorManagementService ircOperatorManagementService;
   private final IrcChannelControlService ircChannelControlService;
+  private final IrcTopicManagementService ircTopicManagementService;
   private String botName = "HokanTheBot";
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -90,7 +92,8 @@ public class BotEngine {
       ProcessingIndicatorService processingIndicatorService,
       MobileNotificationPublisher mobileNotificationPublisher,
       IrcOperatorManagementService ircOperatorManagementService,
-      IrcChannelControlService ircChannelControlService)
+      IrcChannelControlService ircChannelControlService,
+      IrcTopicManagementService ircTopicManagementService)
       throws InitializeFailedException, IOException {
     this.accessService = accessService;
     this.hokanServices = hokanServices;
@@ -109,6 +112,7 @@ public class BotEngine {
     this.mobileNotificationPublisher = mobileNotificationPublisher;
     this.ircOperatorManagementService = ircOperatorManagementService;
     this.ircChannelControlService = ircChannelControlService;
+    this.ircTopicManagementService = ircTopicManagementService;
 
     if (configService != null) {
       this.botName = configService.readBotConfig().getBotConfig().getBotName();
@@ -138,7 +142,7 @@ public class BotEngine {
     this(accessService, hokanServices, configService, urlResolutionService, restMessageSendClient,
         privateChatAlertService, replyOutputService, commandInvocationStatsService,
         aiCommandRegistryService, hermesAiCommandService, configuredChannelResolver,
-        consoleOutputService, processingIndicatorService, null, null, null);
+        consoleOutputService, processingIndicatorService, null, null, null, null);
   }
 
   public CommandHandlerLoader getCommandHandlerLoader() {
@@ -167,6 +171,10 @@ public class BotEngine {
 
   public IrcChannelControlService getIrcChannelControlService() {
     return ircChannelControlService;
+  }
+
+  public IrcTopicManagementService getIrcTopicManagementService() {
+    return ircTopicManagementService;
   }
 
   public ReplyOutputService getReplyOutputService() {

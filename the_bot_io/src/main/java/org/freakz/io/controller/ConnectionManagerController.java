@@ -17,6 +17,10 @@ import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
 import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStatesResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
@@ -152,5 +156,27 @@ public class ConnectionManagerController {
       return ResponseEntity.notFound().build();
     }
     return ResponseEntity.ok(irc.controlChannel(request));
+  }
+
+  @PostMapping("/irc/topic")
+  public ResponseEntity<IrcTopicSetResponse> setIrcTopic(@RequestBody IrcTopicSetRequest request) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(request.echoToAlias());
+    org.freakz.io.connections.IrcServerConnection irc = joined == null
+        ? connectionManager.findIrcServerConnectionForConfiguredAlias(request.echoToAlias())
+        : joined.connection instanceof org.freakz.io.connections.IrcServerConnection candidate ? candidate : null;
+    if (irc == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.setTopic(request));
+  }
+
+  @GetMapping("/irc/topic_states")
+  public ResponseEntity<IrcTopicStatesResponse> getIrcTopicStates() {
+    List<IrcTopicStateResponse> states = connectionManager.getConnectionMap().values().stream()
+        .filter(org.freakz.io.connections.IrcServerConnection.class::isInstance)
+        .map(org.freakz.io.connections.IrcServerConnection.class::cast)
+        .flatMap(connection -> connection.topicStates().stream())
+        .toList();
+    return ResponseEntity.ok(new IrcTopicStatesResponse(states));
   }
 }

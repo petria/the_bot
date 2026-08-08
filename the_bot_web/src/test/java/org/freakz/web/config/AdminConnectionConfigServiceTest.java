@@ -152,6 +152,30 @@ class AdminConnectionConfigServiceTest {
   }
 
   @Test
+  void savesIrcTopicManagementSettings() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    IrcServerConfigDto irc = payload.ircServerConfigs().getFirst();
+    ChannelDto original = irc.channelList().getFirst();
+    ChannelDto edited = new ChannelDto(
+        original.id(), original.description(), original.name(), original.type(), original.echoToAlias(),
+        original.echoToAliases(), original.joinOnStart(), original.publicAiEnabled(),
+        original.allowAnonymousAiCommands(), original.resolveUrls(), original.alertMessages(),
+        original.captureResolvedUrls(), original.captureImages(), original.captureImageToAliases(),
+        original.manageOperators(), original.echoIrcActivity(), true, "guarded topic");
+
+    service.saveConfig(new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        List.of(new IrcServerConfigDto(irc.name(), irc.connectStartup(), irc.networkName(), irc.host(), irc.port(), List.of(edited))),
+        payload.discordConfig(), payload.telegramConfig(), payload.whatsappConfig()));
+
+    assertThat(Files.readString(files.runtimeConfigFile()))
+        .contains("\"manageTopic\" : true")
+        .contains("\"topic\" : \"guarded topic\"");
+  }
+
+  @Test
   void savesChannelFeatureFlags() throws Exception {
     TestFiles files = writeConfig();
     AdminConnectionConfigService service = serviceFor(files.bootstrapFile());

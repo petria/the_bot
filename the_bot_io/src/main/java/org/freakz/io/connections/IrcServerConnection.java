@@ -17,6 +17,11 @@ import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
 import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
@@ -240,6 +245,107 @@ public class IrcServerConnection extends BotConnection {
     return new IrcChannelControlResponse(echoToAlias, channelName, action, true, false, null);
   }
 
+  public IrcTopicSetResponse setTopic(IrcTopicSetRequest request) {
+    org.freakz.common.model.botconfig.Channel configured =
+        resolveConfiguredEchoAlias(request == null ? null : request.echoToAlias());
+    if (configured == null) {
+      return new IrcTopicSetResponse(request == null ? null : request.echoToAlias(), null, false, false, null,
+          "IRC channel is not configured");
+    }
+    if (client == null) {
+      return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), false, false, null,
+          "IRC connection is unavailable");
+    }
+    Optional<Channel> optional = client.getChannel(configured.getName());
+    if (optional.isEmpty()) {
+      return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), false, false, null,
+          "IRC channel is not joined");
+    }
+    String requestedTopic = request == null || request.topic() == null ? "" : request.topic();
+    String topic = truncateTopic(requestedTopic);
+    String current = optional.get().getTopic().getValue().orElse("");
+    if (current.equals(topic)) {
+      return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), false,
+          !requestedTopic.equals(topic), topic, null);
+    }
+    optional.get().commands().topic().topic(topic).execute();
+    configured.setTopic(topic);
+    return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), true,
+        !requestedTopic.equals(topic), topic, null);
+  }
+
+  public List<IrcTopicStateResponse> topicStates() {
+    List<IrcTopicStateResponse> states = new ArrayList<>();
+    for (org.freakz.common.model.botconfig.Channel configured : config == null || config.getChannelList() == null
+        ? List.<org.freakz.common.model.botconfig.Channel>of() : config.getChannelList()) {
+      Optional<Channel> joined = client == null || configured.getName() == null
+          ? Optional.empty() : client.getChannel(configured.getName());
+      String current = joined.map(channel -> channel.getTopic().getValue().orElse(null)).orElse(null);
+      String saved = configured.getTopic();
+      states.add(new IrcTopicStateResponse(
+          configured.getEchoToAlias(),
+          configured.getName(),
+          Boolean.TRUE.equals(configured.getManageTopic()),
+          saved,
+          current,
+          client != null,
+          joined.isPresent(),
+          current != null && saved != null && !current.equals(saved)));
+    }
+    return states;
+  }
+
+  private void handleTopicEvent(ChannelTopicEvent event) {
+    org.freakz.common.model.botconfig.Channel configured = resolveByEchoTo(event.getChannel().getName());
+    if (configured == null || !Boolean.TRUE.equals(configured.getManageTopic())) {
+      return;
+    }
+    String setter = event.getNewTopic().getSetter().map(org.kitteh.irc.client.library.element.Actor::getName).orElse(null);
+    String topic = event.getNewTopic().getValue().orElse("");
+    if (setter != null && botNick != null && setter.equalsIgnoreCase(botNick)) {
+      return;
+    }
+    IrcTopicEventResponse response;
+    if (engineClient == null) {
+      response = new IrcTopicEventResponse("RESTORE", configured.getTopic() == null ? "" : configured.getTopic(), false,
+          "bot-engine is unavailable");
+    } else {
+      try {
+        response = engineClient.handleIrcTopicEvent(new IrcTopicEventRequest(
+            configured.getEchoToAlias(), configured.getName(), topic, setter, event.isNew()));
+      } catch (RuntimeException e) {
+        log.warn("IRC topic policy request failed for {}: {}", configured.getEchoToAlias(), e.getMessage());
+        response = new IrcTopicEventResponse("RESTORE", configured.getTopic() == null ? "" : configured.getTopic(), false,
+            "bot-engine is unavailable");
+      }
+    }
+    if (response == null) {
+      return;
+    }
+    if ("ACCEPT".equalsIgnoreCase(response.action())) {
+      configured.setTopic(response.topic());
+      if (response.message() != null) {
+        log.info("{} for IRC channel {}", response.message(), configured.getEchoToAlias());
+      }
+      return;
+    }
+    if ("RESTORE".equalsIgnoreCase(response.action())) {
+      String restoreTopic = response.topic() == null ? "" : response.topic();
+      configured.setTopic(restoreTopic);
+      event.getChannel().commands().topic().topic(restoreTopic).execute();
+      log.info("Restored guarded topic for IRC channel {}", configured.getEchoToAlias());
+    }
+  }
+
+  private String truncateTopic(String topic) {
+    return topic.length() <= 390 ? topic : topic.substring(0, 390);
+  }
+
+  @Handler
+  public void onChannelTopicEvent(ChannelTopicEvent event) {
+    handleTopicEvent(event);
+  }
+
   private org.freakz.common.model.botconfig.Channel resolveConfiguredEchoAlias(String echoToAlias) {
     if (config == null || config.getChannelList() == null || echoToAlias == null) {
       return null;
@@ -299,7 +405,9 @@ public class IrcServerConnection extends BotConnection {
       requestOperatorReconciliation(channel.getEchoToAlias());
     }
     if (event.getClient().isUser(event.getUser())) { // It's me!
-//            event.getChannel().sendMessage("Hello world! Kitteh's here for cuddles.");
+      if (Boolean.TRUE.equals(channel == null ? null : channel.getManageTopic())) {
+        event.getChannel().commands().topic().query();
+      }
       return;
     }
     BridgeEchoService.echoIrcJoinToConfiguredTargets(
@@ -603,6 +711,24 @@ public class IrcServerConnection extends BotConnection {
       newConfig.getChannelList().stream()
           .filter(channel -> Boolean.TRUE.equals(channel.getManageOperators()))
           .forEach(channel -> requestOperatorReconciliation(channel.getEchoToAlias()));
+      newConfig.getChannelList().stream()
+          .filter(channel -> Boolean.TRUE.equals(channel.getManageTopic()))
+          .forEach(this::enforceConfiguredTopic);
+    }
+  }
+
+  private void enforceConfiguredTopic(org.freakz.common.model.botconfig.Channel configured) {
+    if (client == null || configured == null || configured.getName() == null) {
+      return;
+    }
+    Optional<Channel> joined = client.getChannel(configured.getName());
+    if (joined.isEmpty()) {
+      return;
+    }
+    String desired = configured.getTopic() == null ? "" : truncateTopic(configured.getTopic());
+    String current = joined.get().getTopic().getValue().orElse("");
+    if (!current.equals(desired)) {
+      joined.get().commands().topic().topic(desired).execute();
     }
   }
 

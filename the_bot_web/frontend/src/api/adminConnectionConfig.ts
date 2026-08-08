@@ -17,6 +17,8 @@ export type AdminConfigChannel = {
   captureImages: boolean;
   captureImageToAliases: string[] | null;
   manageOperators: boolean;
+  manageTopic: boolean;
+  topic: string | null;
 };
 
 export type AdminIrcServerConfig = {
@@ -65,6 +67,18 @@ export type AdminConnectionConfigResponse = {
   configFile: string;
   lastModifiedAt: string;
   config: AdminConnectionConfigPayload;
+  topicStates: AdminIrcTopicState[];
+};
+
+export type AdminIrcTopicState = {
+  echoToAlias: string | null;
+  channelName: string | null;
+  manageTopic: boolean;
+  configuredTopic: string | null;
+  currentTopic: string | null;
+  connected: boolean;
+  joined: boolean;
+  mismatch: boolean;
 };
 
 export type AdminConnectionConfigApplyTarget = {
