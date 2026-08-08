@@ -58,6 +58,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -69,6 +70,8 @@ public class IrcServerConnection extends BotConnection {
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private RestEngineClient engineClient;
   private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
+  private static final long PENDING_TOPIC_TIMEOUT_MILLIS = 15_000L;
+  private final Map<String, PendingTopicChange> pendingTopicChanges = new ConcurrentHashMap<>();
   private Client client;
   private ConnectionManager connectionManager;
   private IrcServerConfig config;
@@ -370,7 +373,7 @@ public class IrcServerConnection extends BotConnection {
       return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), false,
           !requestedTopic.equals(topic), topic, null);
     }
-    optional.get().commands().topic().topic(topic).execute();
+    sendTopic(optional.get(), configured.getEchoToAlias(), topic);
     configured.setTopic(topic);
     return new IrcTopicSetResponse(configured.getEchoToAlias(), configured.getName(), true,
         !requestedTopic.equals(topic), topic, null);
@@ -404,7 +407,12 @@ public class IrcServerConnection extends BotConnection {
     }
     String setter = event.getNewTopic().getSetter().map(org.kitteh.irc.client.library.element.Actor::getName).orElse(null);
     String topic = event.getNewTopic().getValue().orElse("");
+    if (consumePendingTopic(configured.getEchoToAlias(), topic)) {
+      log.debug("Ignored bot-originated topic event for {}", configured.getEchoToAlias());
+      return;
+    }
     if (setter != null && botNick != null && setter.equalsIgnoreCase(botNick)) {
+      log.debug("Ignored self topic event for {} setter={}", configured.getEchoToAlias(), setter);
       return;
     }
     IrcTopicEventResponse response;
@@ -434,13 +442,41 @@ public class IrcServerConnection extends BotConnection {
     if ("RESTORE".equalsIgnoreCase(response.action())) {
       String restoreTopic = response.topic() == null ? "" : response.topic();
       configured.setTopic(restoreTopic);
-      event.getChannel().commands().topic().topic(restoreTopic).execute();
+      sendTopic(event.getChannel(), configured.getEchoToAlias(), restoreTopic);
       log.info("Restored guarded topic for IRC channel {}", configured.getEchoToAlias());
     }
   }
 
   private String truncateTopic(String topic) {
     return topic.length() <= 390 ? topic : topic.substring(0, 390);
+  }
+
+  private void sendTopic(Channel channel, String echoToAlias, String topic) {
+    pendingTopicChanges.put(topicKey(echoToAlias), new PendingTopicChange(topic, System.currentTimeMillis()));
+    channel.commands().topic().topic(topic).execute();
+  }
+
+  private boolean consumePendingTopic(String echoToAlias, String topic) {
+    String key = topicKey(echoToAlias);
+    PendingTopicChange pending = pendingTopicChanges.get(key);
+    if (pending == null) {
+      return false;
+    }
+    if (System.currentTimeMillis() - pending.createdAt() > PENDING_TOPIC_TIMEOUT_MILLIS) {
+      pendingTopicChanges.remove(key, pending);
+      return false;
+    }
+    if (!java.util.Objects.equals(pending.topic(), topic)) {
+      return false;
+    }
+    return pendingTopicChanges.remove(key, pending);
+  }
+
+  private String topicKey(String echoToAlias) {
+    return echoToAlias == null ? "" : echoToAlias.trim().toLowerCase(java.util.Locale.ROOT);
+  }
+
+  private record PendingTopicChange(String topic, long createdAt) {
   }
 
   @Handler
@@ -876,7 +912,7 @@ public class IrcServerConnection extends BotConnection {
     String desired = configured.getTopic() == null ? "" : truncateTopic(configured.getTopic());
     String current = joined.get().getTopic().getValue().orElse("");
     if (!current.equals(desired)) {
-      joined.get().commands().topic().topic(desired).execute();
+      sendTopic(joined.get(), configured.getEchoToAlias(), desired);
     }
   }
 
