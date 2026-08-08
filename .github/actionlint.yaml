@@ -1,0 +1,4 @@
+# The Hermes deployment jobs use the repository's self-hosted shared AI runner.
+self-hosted-runner:
+  labels:
+    - shared-ai

@@ -5,6 +5,7 @@ on:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
+  workflow_dispatch:
 
 jobs:
   android-build:
@@ -50,7 +51,80 @@ jobs:
       - name: Assemble development Android client
         run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :app:assembleDevDebug --no-daemon
 
+  quality:
+    name: Unit tests and coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 26
+        uses: actions/setup-java@v5
+        with:
+          java-version: '26'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.18.0'
+          cache: npm
+          cache-dependency-path: the_bot_web/frontend/package-lock.json
+
+      - name: Install frontend dependencies and run coverage tests
+        id: frontend_tests
+        continue-on-error: true
+        working-directory: the_bot_web/frontend
+        run: |
+          npm ci
+          npm run test:ci
+
+      - name: Run backend tests and generate JaCoCo reports
+        id: backend_tests
+        continue-on-error: true
+        run: mvn -B verify --file pom.xml
+
+      - name: Publish test and coverage summary
+        if: ${{ always() }}
+        run: python3 scripts/ci/publish-test-coverage-summary.py
+
+      - name: Upload test and coverage reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage-reports
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            **/target/surefire-reports/**
+            **/target/site/jacoco/**
+            the_bot_web/frontend/coverage/**
+
+      - name: Enforce unit test gate
+        if: ${{ always() }}
+        env:
+          FRONTEND_TEST_OUTCOME: ${{ steps.frontend_tests.outcome }}
+          BACKEND_TEST_OUTCOME: ${{ steps.backend_tests.outcome }}
+        run: |
+          failed=0
+          if [ "$FRONTEND_TEST_OUTCOME" != "success" ]; then
+            echo "Frontend unit tests failed: $FRONTEND_TEST_OUTCOME"
+            failed=1
+          fi
+          if [ "$BACKEND_TEST_OUTCOME" != "success" ]; then
+            echo "Backend unit tests failed: $BACKEND_TEST_OUTCOME"
+            failed=1
+          fi
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+
   build-and-push:
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -608,21 +682,36 @@ jobs:
               echo "WHATSAPP_IMAGE_TAG=$WHATSAPP_IMAGE_TAG"
               echo "OPENCLAW_IMAGE=$OPENCLAW_IMAGE"
               echo "OPENCLAW_HOST_PORT=$OPENCLAW_HOST_PORT"
+              echo "OPENCLAW_HOOKS_TOKEN=$OPENCLAW_HOOKS_TOKEN"
+              echo "OPENCLAW_GATEWAY_TOKEN=$OPENCLAW_GATEWAY_TOKEN"
+              echo "OPENCLAW_AUTH_PROFILE_SECRET_KEY=$OPENCLAW_AUTH_PROFILE_SECRET_KEY"
+              echo "OPENCLAW_NODE_CONTEXT_SECRET=$OPENCLAW_NODE_CONTEXT_SECRET"
               echo "HERMES_BASE_URL=$HERMES_BASE_URL"
+              echo "HERMES_API_KEY=$HERMES_API_KEY"
               echo "HERMES_CHAT_BASE_URL=$HERMES_CHAT_BASE_URL"
+              echo "HERMES_CHAT_API_KEY=$HERMES_CHAT_API_KEY"
               echo "HERMES_CHAT_MODEL=$HERMES_CHAT_MODEL"
               echo "HERMES_CHAT_TIMEOUT_SECONDS=$HERMES_CHAT_TIMEOUT_SECONDS"
               echo "HERMES_CHAT_API_MODE=$HERMES_CHAT_API_MODE"
               echo "HERMES_AI_COMMAND_BASE_URL=$HERMES_AI_COMMAND_BASE_URL"
+              echo "HERMES_AI_COMMAND_API_KEY=$HERMES_AI_COMMAND_API_KEY"
               echo "HERMES_AI_COMMAND_MODEL=$HERMES_AI_COMMAND_MODEL"
               echo "HERMES_AI_COMMAND_TIMEOUT_SECONDS=$HERMES_AI_COMMAND_TIMEOUT_SECONDS"
               echo "HERMES_AI_COMMAND_API_MODE=$HERMES_AI_COMMAND_API_MODE"
               echo "HERMES_MODEL=$HERMES_MODEL"
               echo "HERMES_TIMEOUT_SECONDS=$HERMES_TIMEOUT_SECONDS"
               echo "HERMES_MANAGER_BASE_URL=$HERMES_MANAGER_BASE_URL"
+              echo "HERMES_MANAGER_TOKEN=$HERMES_MANAGER_TOKEN"
+              echo "WEATHER_API_KEY=$WEATHER_API_KEY"
+              echo "YOUTUBE_API_KEY=$YOUTUBE_API_KEY"
+              echo "DISCORD_SECRET=$DISCORD_SECRET"
+              echo "TELEGRAM_SECRET=$TELEGRAM_SECRET"
+              echo "WHATSAPP_WEBHOOK_SECRET=$WHATSAPP_WEBHOOK_SECRET"
+              echo "WHATSAPP_SEND_TOKEN=$WHATSAPP_SEND_TOKEN"
               echo "WEATHER_API_URL=$WEATHER_API_URL"
               echo "THE_BOT_WEB_PUBLIC_BASE_URL=$THE_BOT_WEB_PUBLIC_BASE_URL"
               echo "THE_BOT_MEDIA_STORAGE_HOST_DIR=$THE_BOT_MEDIA_STORAGE_HOST_DIR"
+              echo "THE_BOT_INTERNAL_API_TOKEN=$THE_BOT_INTERNAL_API_TOKEN"
               echo "THE_BOT_WEB_MOBILE_FCM_ENABLED=$THE_BOT_WEB_MOBILE_FCM_ENABLED"
               echo "THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=$THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE"
               echo "WHATSAPP_WACLI_DIR=$WHATSAPP_WACLI_DIR"

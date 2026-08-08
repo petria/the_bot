@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
 
@@ -6,6 +6,16 @@ const resolveModuleFile = (path: string) => fileURLToPath(new URL(path, import.m
 
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov', 'json-summary'],
+      reportsDirectory: './coverage',
+    },
+  },
   resolve: {
     alias: {
       'react-router/dom': resolveModuleFile('node_modules/react-router/dist/development/dom-export.mjs'),
