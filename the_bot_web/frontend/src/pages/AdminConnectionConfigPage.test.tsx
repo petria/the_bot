@@ -17,13 +17,15 @@ describe('AdminConnectionConfigPage', () => {
             echoToAliases: [], echoIrcActivity: false, joinOnStart: true, publicAiEnabled: true,
             allowAnonymousAiCommands: false, resolveUrls: false, alertMessages: false,
             captureResolvedUrls: false, captureImages: false, captureImageToAliases: [], manageOperators: false,
-            manageTopic: true, topic: 'Guarded topic',
+            manageTopic: true, topic: 'Guarded topic', manageMode: true, modes: '+st',
           }],
         }],
         discordConfig: null, telegramConfig: null, whatsappConfig: null,
       },
       topicStates: [{ echoToAlias: 'IRC-TEST', channelName: '#test', manageTopic: true,
         configuredTopic: 'Guarded topic', currentTopic: 'Guarded topic', connected: true, joined: true, mismatch: false }],
+      modeStates: [{ echoToAlias: 'IRC-TEST', channelName: '#test', manageMode: true,
+        configuredModes: '+st', currentModes: '+st', connected: true, joined: true, mismatch: false }],
     });
 
     renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
@@ -34,6 +36,9 @@ describe('AdminConnectionConfigPage', () => {
     expect(screen.getByRole('switch', { name: /Manage topic/ })).toBeChecked();
     expect(screen.getByDisplayValue('Guarded topic')).toBeInTheDocument();
     expect(screen.getByText(/Current IRC topic: Guarded topic/)).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Manage channel modes/ })).toBeChecked();
+    expect(screen.getByDisplayValue('+st')).toBeInTheDocument();
+    expect(screen.getByText(/Current IRC modes: \+st/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Discord' }));
     expect(screen.queryByText('Manage topic')).not.toBeInTheDocument();

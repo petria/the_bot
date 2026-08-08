@@ -28,6 +28,7 @@ import org.freakz.engine.services.ai.commands.HermesAiCommandService;
 import org.freakz.engine.services.irc.IrcOperatorManagementService;
 import org.freakz.engine.services.irc.IrcChannelControlService;
 import org.freakz.engine.services.irc.IrcTopicManagementService;
+import org.freakz.engine.services.irc.IrcModeManagementService;
 import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.MobileNotificationPublisher;
@@ -73,6 +74,8 @@ public class BotEngine {
   private final IrcOperatorManagementService ircOperatorManagementService;
   private final IrcChannelControlService ircChannelControlService;
   private final IrcTopicManagementService ircTopicManagementService;
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private IrcModeManagementService ircModeManagementService;
   private String botName = "HokanTheBot";
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -175,6 +178,10 @@ public class BotEngine {
 
   public IrcTopicManagementService getIrcTopicManagementService() {
     return ircTopicManagementService;
+  }
+
+  public IrcModeManagementService getIrcModeManagementService() {
+    return ircModeManagementService;
   }
 
   public ReplyOutputService getReplyOutputService() {

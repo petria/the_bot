@@ -7,6 +7,9 @@ import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeWebSetRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendResponse;
@@ -217,6 +220,59 @@ public class AdminLiveChannelsController {
     return response;
   }
 
+  @GetMapping("/mode")
+  public LiveChannelModeResponse mode(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestParam String echoToAlias) {
+    String alias = trim(echoToAlias);
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    requireIrcChannel(channel);
+    accessService.requireView(principal, channel.connectionType(), alias);
+    IrcModeStateResponse state = connectionManagerClient.getIrcModeStates().stream()
+        .filter(item -> alias.equalsIgnoreCase(item.echoToAlias()))
+        .findFirst()
+        .orElse(null);
+    return state == null
+        ? new LiveChannelModeResponse(alias, channel.label(), null, null, false, false, false, false, false)
+        : new LiveChannelModeResponse(
+            state.echoToAlias(), state.channelName(), state.configuredModes(), state.currentModes(),
+            state.manageMode(), state.connected(), state.joined(), state.mismatch(),
+            accessService.canAdmin(principal, channel.connectionType(), alias) && state.manageMode());
+  }
+
+  @PutMapping("/mode")
+  public IrcModeSetResponse saveMode(
+      @AuthenticationPrincipal BotUserPrincipal principal,
+      @RequestBody IrcModeUpdateRequest request) {
+    String alias = trim(request == null ? null : request.echoToAlias());
+    if (alias.isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Channel alias is required");
+    }
+    LiveChannelCatalogService.LiveChannelCatalogItem channel = liveChannel(alias);
+    requireIrcChannel(channel);
+    accessService.requireAdmin(principal, channel.connectionType(), alias);
+    if (request.modes() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Modes are required");
+    }
+    IrcModeSetResponse response;
+    try {
+      response = engineClient.setIrcModesFromWeb(
+          new IrcModeWebSetRequest(alias, request.modes(), principal.getUsername()));
+    } catch (RestClientResponseException e) {
+      throw new ResponseStatusException(HttpStatus.valueOf(e.getStatusCode().value()),
+          e.getResponseBodyAsString(), e);
+    } catch (RestClientException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not update IRC channel modes through bot-engine", e);
+    }
+    if (response == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return a mode result");
+    }
+    return response;
+  }
+
   @GetMapping("/events")
   public LiveChannelEventsResponse events(
       @AuthenticationPrincipal BotUserPrincipal principal,
@@ -406,12 +462,27 @@ public class AdminLiveChannelsController {
   public record IrcTopicUpdateRequest(String echoToAlias, String topic) {
   }
 
+  public record IrcModeUpdateRequest(String echoToAlias, String modes) {
+  }
+
   public record LiveChannelTopicResponse(
       String echoToAlias,
       String channelName,
       String configuredTopic,
       String currentTopic,
       boolean manageTopic,
+      boolean connected,
+      boolean joined,
+      boolean mismatch,
+      boolean editable) {
+  }
+
+  public record LiveChannelModeResponse(
+      String echoToAlias,
+      String channelName,
+      String configuredModes,
+      String currentModes,
+      boolean manageMode,
       boolean connected,
       boolean joined,
       boolean mismatch,

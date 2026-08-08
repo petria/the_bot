@@ -4,10 +4,12 @@ import org.freakz.common.config.BotRuntimeBootstrapConfig;
 import org.freakz.common.config.BotRuntimeBootstrapLoader;
 import org.freakz.common.config.ConfigConstants;
 import org.freakz.common.config.TheBotProperties;
+import org.freakz.common.irc.IrcChannelModeSpec;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.spring.rest.RestServerConfigClient;
 import org.freakz.common.spring.rest.RestConnectionManagerClient;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -244,6 +246,8 @@ public class AdminConnectionConfigService {
             false,
             false,
             false,
+            null,
+            false,
             null))
         .toList();
   }
@@ -286,7 +290,8 @@ public class AdminConnectionConfigService {
             discordConfigFrom(root.get("discordConfig")),
             telegramConfigFrom(root.get("telegramConfig")),
             whatsappConfigFrom(root.get("whatsappConfig"))),
-        connectionManagerClient == null ? List.of() : connectionManagerClient.getIrcTopicStates());
+        connectionManagerClient == null ? List.of() : connectionManagerClient.getIrcTopicStates(),
+        connectionManagerClient == null ? List.of() : connectionManagerClient.getIrcModeStates());
   }
 
   private BotConfigDto botConfigFrom(JsonNode node) {
@@ -360,7 +365,9 @@ public class AdminConnectionConfigService {
           item.path("manageOperators").asBoolean(false),
           item.path("echoIrcActivity").asBoolean(false),
           item.path("manageTopic").asBoolean(false),
-          text(item, "topic")));
+          text(item, "topic"),
+          item.path("manageMode").asBoolean(false),
+          text(item, "modes")));
     }
     return channels;
   }
@@ -507,7 +514,9 @@ public class AdminConnectionConfigService {
         source.manageOperators(),
         source.echoIrcActivity(),
         source.manageTopic(),
-        clean(source.topic()));
+        clean(source.topic()),
+        source.manageMode(),
+        normalizeModes(source.modes()));
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -706,7 +715,9 @@ public class AdminConnectionConfigService {
         channel.manageOperators(),
         channel.echoIrcActivity(),
         channel.manageTopic(),
-        channel.topic());
+        channel.topic(),
+        channel.manageMode(),
+        channel.modes());
   }
 
   private LiveChannelSettingsDto settingsFrom(ChannelDto channel) {
@@ -823,7 +834,9 @@ public class AdminConnectionConfigService {
             channel.manageOperators(),
             channel.echoIrcActivity(),
             channel.manageTopic(),
-            clean(channel.topic())))
+            clean(channel.topic()),
+            channel.manageMode(),
+            normalizeModes(channel.modes())))
         .toList();
   }
 
@@ -947,6 +960,8 @@ public class AdminConnectionConfigService {
       item.put("echoIrcActivity", channel.echoIrcActivity());
       item.put("manageTopic", channel.manageTopic());
       putNullable(item, "topic", channel.topic());
+      item.put("manageMode", channel.manageMode());
+      putNullable(item, "modes", channel.modes());
       ArrayNode captureAliases = jsonMapper.createArrayNode();
       channel.captureImageToAliases().forEach(captureAliases::add);
       item.set("captureImageToAliases", captureAliases);
@@ -1021,6 +1036,11 @@ public class AdminConnectionConfigService {
     return cleaned;
   }
 
+  private String normalizeModes(String value) {
+    String cleaned = clean(value);
+    return cleaned == null ? null : IrcChannelModeSpec.parse(cleaned).value();
+  }
+
   private record ConfigFile(Path path, String profile) {
   }
 
@@ -1035,10 +1055,21 @@ public class AdminConnectionConfigService {
       String configFile,
       Instant lastModifiedAt,
       AdminConnectionConfigPayload config,
-      List<IrcTopicStateResponse> topicStates) {
+      List<IrcTopicStateResponse> topicStates,
+      List<IrcModeStateResponse> modeStates) {
+
+    public AdminConnectionConfigResponse(
+        String profile,
+        String configFile,
+        Instant lastModifiedAt,
+        AdminConnectionConfigPayload config,
+        List<IrcTopicStateResponse> topicStates) {
+      this(profile, configFile, lastModifiedAt, config, topicStates, List.of());
+    }
 
     public AdminConnectionConfigResponse {
       topicStates = topicStates == null ? List.of() : List.copyOf(topicStates);
+      modeStates = modeStates == null ? List.of() : List.copyOf(modeStates);
     }
   }
 
@@ -1137,7 +1168,9 @@ public class AdminConnectionConfigService {
       boolean manageOperators,
       boolean echoIrcActivity,
       boolean manageTopic,
-      String topic) {
+      String topic,
+      boolean manageMode,
+      String modes) {
 
     public ChannelDto(
         String id,
@@ -1156,7 +1189,7 @@ public class AdminConnectionConfigService {
         List<String> captureImageToAliases) {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
-          captureResolvedUrls, captureImages, captureImageToAliases, false, false, false, null);
+          captureResolvedUrls, captureImages, captureImageToAliases, false, false, false, null, false, null);
     }
 
     public ChannelDto(
@@ -1179,7 +1212,32 @@ public class AdminConnectionConfigService {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
           captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
-          echoIrcActivity, false, null);
+          echoIrcActivity, false, null, false, null);
+    }
+
+    public ChannelDto(
+        String id,
+        String description,
+        String name,
+        String type,
+        String echoToAlias,
+        List<String> echoToAliases,
+        boolean joinOnStart,
+        boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands,
+        boolean resolveUrls,
+        boolean alertMessages,
+        boolean captureResolvedUrls,
+        boolean captureImages,
+        List<String> captureImageToAliases,
+        boolean manageOperators,
+        boolean echoIrcActivity,
+        boolean manageTopic,
+        String topic) {
+      this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
+          publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
+          captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
+          echoIrcActivity, manageTopic, topic, false, null);
     }
 
     public ChannelDto(
@@ -1211,6 +1269,8 @@ public class AdminConnectionConfigService {
           List.of(),
           false,
           false,
+          false,
+          null,
           false,
           null);
     }

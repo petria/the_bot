@@ -163,7 +163,7 @@ class AdminConnectionConfigServiceTest {
         original.echoToAliases(), original.joinOnStart(), original.publicAiEnabled(),
         original.allowAnonymousAiCommands(), original.resolveUrls(), original.alertMessages(),
         original.captureResolvedUrls(), original.captureImages(), original.captureImageToAliases(),
-        original.manageOperators(), original.echoIrcActivity(), true, "guarded topic");
+        original.manageOperators(), original.echoIrcActivity(), true, "guarded topic", true, "+st");
 
     service.saveConfig(new AdminConnectionConfigPayload(
         payload.botConfig(),
@@ -172,7 +172,9 @@ class AdminConnectionConfigServiceTest {
 
     assertThat(Files.readString(files.runtimeConfigFile()))
         .contains("\"manageTopic\" : true")
-        .contains("\"topic\" : \"guarded topic\"");
+        .contains("\"topic\" : \"guarded topic\"")
+        .contains("\"manageMode\" : true")
+        .contains("\"modes\" : \"+st\"");
   }
 
   @Test

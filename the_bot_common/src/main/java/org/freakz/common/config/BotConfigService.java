@@ -74,6 +74,14 @@ public class BotConfigService {
   }
 
   public synchronized boolean updateIrcChannelTopic(String echoToAlias, String topic) throws IOException {
+    return updateIrcChannelValue(echoToAlias, "topic", topic);
+  }
+
+  public synchronized boolean updateIrcChannelModes(String echoToAlias, String modes) throws IOException {
+    return updateIrcChannelValue(echoToAlias, "modes", modes);
+  }
+
+  private synchronized boolean updateIrcChannelValue(String echoToAlias, String property, String value) throws IOException {
     if (bootstrapConfig == null) {
       reloadConfig();
     }
@@ -84,8 +92,9 @@ public class BotConfigService {
           + (profile == null || profile.isBlank() ? "" : profile + ".")
           + ConfigConstants.RUNTIME_CONFIG_FILE_NAME;
     }
-    boolean updated = RuntimeConfigStore.updateIrcChannelTopic(
-        Path.of(runtimeConfigFile), echoToAlias, topic, objectMapper);
+    boolean updated = "topic".equals(property)
+        ? RuntimeConfigStore.updateIrcChannelTopic(Path.of(runtimeConfigFile), echoToAlias, value, objectMapper)
+        : RuntimeConfigStore.updateIrcChannelModes(Path.of(runtimeConfigFile), echoToAlias, value, objectMapper);
     if (updated) {
       reloadConfig();
     }

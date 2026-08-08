@@ -44,4 +44,16 @@ class RuntimeConfigStoreTest {
     assertThat(RuntimeConfigStore.updateIrcChannelTopic(
         config, "missing", "topic", JsonMapper.builder().build())).isFalse();
   }
+
+  @Test
+  void updatesConfiguredIrcChannelModes() throws Exception {
+    Path config = tempDir.resolve("config.json");
+    Files.writeString(config, """
+        {"ircServerConfigs":[{"channelList":[{"echoToAlias":"IRC-FIRST","modes":"+s"}]}]}
+        """);
+
+    assertThat(RuntimeConfigStore.updateIrcChannelModes(
+        config, "IRC-FIRST", "+st", JsonMapper.builder().build())).isTrue();
+    assertThat(Files.readString(config)).contains("\"modes\" : \"+st\"");
+  }
 }

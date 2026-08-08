@@ -3,6 +3,7 @@ package org.freakz.io.connections;
 import net.engio.mbassy.listener.Handler;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.chat.BotSelfIdentity;
+import org.freakz.common.irc.IrcChannelModeSpec;
 import org.freakz.common.exception.BotIOException;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.model.botconfig.IrcServerConfig;
@@ -22,12 +23,18 @@ import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeEventRequest;
+import org.freakz.common.model.connectionmanager.IrcModeEventResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.element.mode.ChannelUserMode;
+import org.kitteh.irc.client.library.element.mode.ChannelMode;
 import org.kitteh.irc.client.library.element.mode.ModeStatus;
 import org.kitteh.irc.client.library.event.channel.*;
 import org.kitteh.irc.client.library.event.client.ClientNegotiationCompleteEvent;
@@ -94,6 +101,101 @@ public class IrcServerConnection extends BotConnection {
         configured.getName(),
         botHasOperator,
         channelUsers(channel));
+  }
+
+  public IrcModeSetResponse setModes(IrcModeSetRequest request) {
+    org.freakz.common.model.botconfig.Channel configured = resolveConfiguredEchoAlias(request == null ? null : request.echoToAlias());
+    String alias = configured == null ? request == null ? null : request.echoToAlias() : configured.getEchoToAlias();
+    String channelName = configured == null ? null : configured.getName();
+    if (configured == null || client == null) {
+      return new IrcModeSetResponse(alias, channelName, false, null, "IRC channel is unavailable");
+    }
+    IrcChannelModeSpec desired;
+    try {
+      desired = IrcChannelModeSpec.parse(request == null ? null : request.modes());
+    } catch (IllegalArgumentException e) {
+      return new IrcModeSetResponse(alias, channelName, false, null, e.getMessage());
+    }
+    Optional<Channel> joined = client.getChannel(channelName);
+    if (joined.isEmpty()) {
+      return new IrcModeSetResponse(alias, channelName, false, desired.value(), "IRC channel is not joined");
+    }
+    Channel channel = joined.get();
+    String current = currentParameterlessModes(channel);
+    if (current.equals(desired.value())) {
+      return new IrcModeSetResponse(alias, channelName, false, desired.value(), null);
+    }
+    String unavailable = reconcileModes(channel, desired);
+    if (unavailable != null) {
+      return new IrcModeSetResponse(alias, channelName, false, desired.value(), unavailable);
+    }
+    configured.setModes(desired.value());
+    return new IrcModeSetResponse(alias, channelName, true, desired.value(), null);
+  }
+
+  public List<IrcModeStateResponse> modeStates() {
+    List<IrcModeStateResponse> states = new ArrayList<>();
+    List<org.freakz.common.model.botconfig.Channel> channels = config == null || config.getChannelList() == null
+        ? List.of() : config.getChannelList();
+    for (org.freakz.common.model.botconfig.Channel configured : channels) {
+      Optional<Channel> joined = client == null || configured.getName() == null
+          ? Optional.empty() : client.getChannel(configured.getName());
+      String current = joined.map(this::currentParameterlessModes).orElse(null);
+      String desired = configured.getModes() == null ? "" : configured.getModes();
+      states.add(new IrcModeStateResponse(
+          configured.getEchoToAlias(), configured.getName(),
+          Boolean.TRUE.equals(configured.getManageMode()), desired, current,
+          client != null, joined.isPresent(),
+          joined.isPresent() && Boolean.TRUE.equals(configured.getManageMode()) && !desired.equals(current)));
+    }
+    return states;
+  }
+
+  private String reconcileModes(Channel channel, IrcChannelModeSpec desired) {
+    IrcChannelModeSpec current = IrcChannelModeSpec.parse(currentParameterlessModes(channel));
+    var command = channel.commands().mode();
+    boolean changed = false;
+    for (char mode : current.value().substring(1).toCharArray()) {
+      if (!desired.contains(mode)) {
+        Optional<ChannelMode> channelMode = ChannelMode.get(client, mode);
+        if (channelMode.isEmpty()) {
+          return "IRC channel mode is unavailable: " + mode;
+        }
+        command.add(ModeStatus.Action.REMOVE, channelMode.get());
+        changed = true;
+      }
+    }
+    for (char mode : desired.value().substring(1).toCharArray()) {
+      if (!current.contains(mode)) {
+        Optional<ChannelMode> channelMode = ChannelMode.get(client, mode);
+        if (channelMode.isEmpty()) {
+          return "IRC channel mode is unavailable: " + mode;
+        }
+        if (channelMode.get().getType().isParameterRequiredOnSetting()) {
+          return "IRC channel mode requires a parameter and is not supported: " + mode;
+        }
+        command.add(ModeStatus.Action.ADD, channelMode.get());
+        changed = true;
+      }
+    }
+    if (changed) {
+      command.execute();
+    }
+    return null;
+  }
+
+  private String currentParameterlessModes(Channel channel) {
+    if (channel == null) {
+      return "";
+    }
+    String flags = channel.getModes().getAll().stream()
+        .filter(status -> !status.getMode().getType().isParameterRequiredOnSetting()
+            && !status.getMode().getType().isParameterRequiredOnRemoval())
+        .map(status -> String.valueOf(status.getMode().getChar()))
+        .distinct()
+        .sorted()
+        .reduce("", String::concat);
+    return flags.isEmpty() ? "" : "+" + flags;
   }
 
   public IrcOperatorReconcileResponse reconcileOperators(IrcOperatorReconcileRequest request) {
@@ -346,6 +448,46 @@ public class IrcServerConnection extends BotConnection {
     handleTopicEvent(event);
   }
 
+  private void handleModeEvent(ChannelModeEvent event) {
+    org.freakz.common.model.botconfig.Channel configured = resolveByEchoTo(event.getChannel().getName());
+    if (configured == null || !Boolean.TRUE.equals(configured.getManageMode())) {
+      return;
+    }
+    String setter = event.getActor() == null ? null : event.getActor().getName();
+    if (setter != null && botNick != null && setter.equalsIgnoreCase(botNick)) {
+      return;
+    }
+    String currentModes = currentParameterlessModes(event.getChannel());
+    IrcModeEventResponse response;
+    if (engineClient == null) {
+      response = new IrcModeEventResponse("RESTORE", configured.getModes(), false, "bot-engine is unavailable");
+    } else {
+      try {
+        response = engineClient.handleIrcModeEvent(new IrcModeEventRequest(
+            configured.getEchoToAlias(), configured.getName(), currentModes, setter));
+      } catch (RuntimeException e) {
+        log.warn("IRC mode policy request failed for {}: {}", configured.getEchoToAlias(), e.getMessage());
+        response = new IrcModeEventResponse("RESTORE", configured.getModes(), false, "bot-engine is unavailable");
+      }
+    }
+    if (response == null || !"RESTORE".equalsIgnoreCase(response.action())) {
+      if (response != null && "ACCEPT".equalsIgnoreCase(response.action())) {
+        configured.setModes(response.modes());
+      }
+      return;
+    }
+    String desired = response.modes() == null ? "" : response.modes();
+    IrcModeSetResponse restore = setModes(new IrcModeSetRequest(configured.getEchoToAlias(), desired));
+    if (restore.error() != null) {
+      log.warn("Could not restore IRC channel modes for {}: {}", configured.getEchoToAlias(), restore.error());
+    }
+  }
+
+  @Handler
+  public void onChannelModeEvent(ChannelModeEvent event) {
+    handleModeEvent(event);
+  }
+
   private org.freakz.common.model.botconfig.Channel resolveConfiguredEchoAlias(String echoToAlias) {
     if (config == null || config.getChannelList() == null || echoToAlias == null) {
       return null;
@@ -407,6 +549,9 @@ public class IrcServerConnection extends BotConnection {
     if (event.getClient().isUser(event.getUser())) { // It's me!
       if (Boolean.TRUE.equals(channel == null ? null : channel.getManageTopic())) {
         event.getChannel().commands().topic().query();
+      }
+      if (Boolean.TRUE.equals(channel == null ? null : channel.getManageMode())) {
+        event.getChannel().commands().mode().execute();
       }
       return;
     }
@@ -714,6 +859,9 @@ public class IrcServerConnection extends BotConnection {
       newConfig.getChannelList().stream()
           .filter(channel -> Boolean.TRUE.equals(channel.getManageTopic()))
           .forEach(this::enforceConfiguredTopic);
+      newConfig.getChannelList().stream()
+          .filter(channel -> Boolean.TRUE.equals(channel.getManageMode()))
+          .forEach(this::enforceConfiguredModes);
     }
   }
 
@@ -730,6 +878,14 @@ public class IrcServerConnection extends BotConnection {
     if (!current.equals(desired)) {
       joined.get().commands().topic().topic(desired).execute();
     }
+  }
+
+  private void enforceConfiguredModes(org.freakz.common.model.botconfig.Channel configured) {
+    if (configured == null || configured.getName() == null || client == null) {
+      return;
+    }
+    String desired = configured.getModes() == null ? "" : configured.getModes();
+    setModes(new IrcModeSetRequest(configured.getEchoToAlias(), desired));
   }
 
   public void init(ConnectionManager connectionManager, String botNick, String ircRealName, IrcServerConfig config) {

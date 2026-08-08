@@ -22,6 +22,10 @@ import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStatesResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStatesResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -167,6 +171,21 @@ public class RestConnectionManagerClient {
       return response == null ? List.of() : response.topics();
     } catch (Exception e) {
       log.debug("Error reading IRC topic states: {}", e.getMessage());
+      return List.of();
+    }
+  }
+
+  public IrcModeSetResponse setIrcModes(IrcModeSetRequest request) {
+    return restTemplate.postForObject(baseUrl + "/irc/modes", request, IrcModeSetResponse.class);
+  }
+
+  public List<IrcModeStateResponse> getIrcModeStates() {
+    try {
+      IrcModeStatesResponse response = restTemplate.getForObject(
+          baseUrl + "/irc/mode_states", IrcModeStatesResponse.class);
+      return response == null ? List.of() : response.modes();
+    } catch (Exception e) {
+      log.debug("Error reading IRC mode states: {}", e.getMessage());
       return List.of();
     }
   }

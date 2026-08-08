@@ -8,6 +8,9 @@ import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeWebSetRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelEvent;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
@@ -287,6 +290,31 @@ class AdminLiveChannelsControllerTest {
         .isInstanceOf(ResponseStatusException.class)
         .extracting("statusCode.value")
         .isEqualTo(400);
+  }
+
+  @Test
+  void modeReturnsLiveStateAndAllowsChannelAdminEdit() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    when(connectionManagerClient.getIrcModeStates()).thenReturn(List.of(
+        new IrcModeStateResponse("IRC-HOKANDEV", "#hokandev", true,
+            "+st", "+st", true, true, false)));
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.setIrcModesFromWeb(new IrcModeWebSetRequest(
+        "IRC-HOKANDEV", "+nst", "petria"))).thenReturn(
+        new IrcModeSetResponse("IRC-HOKANDEV", "#hokandev", true, "+nst", null));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        engineClient, connectionManagerClient, new ChannelAccessService(), ircCatalog(),
+        mock(AdminConnectionConfigService.class));
+
+    AdminLiveChannelsController.LiveChannelModeResponse state = controller.mode(
+        principal("petria"), "IRC-HOKANDEV");
+    IrcModeSetResponse response = controller.saveMode(
+        principal("petria"), new AdminLiveChannelsController.IrcModeUpdateRequest("IRC-HOKANDEV", "+nst"));
+
+    assertThat(state.currentModes()).isEqualTo("+st");
+    assertThat(state.editable()).isTrue();
+    assertThat(response.modes()).isEqualTo("+nst");
+    verify(engineClient).setIrcModesFromWeb(new IrcModeWebSetRequest("IRC-HOKANDEV", "+nst", "petria"));
   }
 
   private LiveChannelCatalogService ircCatalog() {

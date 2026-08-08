@@ -29,8 +29,10 @@ import {
   getLiveChannels,
   getLiveChannelSettings,
   getLiveChannelTopic,
+  getLiveChannelMode,
   getLiveChannelUsers,
   saveLiveChannelTopic,
+  saveLiveChannelMode,
   saveAndApplyLiveChannelSettings,
   sendLiveChannelMessage,
   setLiveChannelIrcOperatorMode,
@@ -266,6 +268,8 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
   const [selectedNicks, setSelectedNicks] = useState<Set<string>>(() => new Set());
   const [topicDraft, setTopicDraft] = useState('');
   const [topicDirty, setTopicDirty] = useState(false);
+  const [modeDraft, setModeDraft] = useState('');
+  const [modeDirty, setModeDirty] = useState(false);
   const outputRef = useRef<HTMLTextAreaElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const nextIdRef = useRef(2);
@@ -303,12 +307,27 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
     refetchIntervalInBackground: true,
   });
 
+  const modeQuery = useQuery({
+    queryKey: ['live-channel-mode', channel.echoToAlias],
+    queryFn: () => getLiveChannelMode(channel.echoToAlias),
+    enabled: isIrcConnection(channel.connectionType),
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
+  });
+
   useEffect(() => {
     if (!topicQuery.data || topicDirty) {
       return;
     }
     setTopicDraft(topicQuery.data.currentTopic ?? topicQuery.data.configuredTopic ?? '');
   }, [topicDirty, topicQuery.data]);
+
+  useEffect(() => {
+    if (!modeQuery.data || modeDirty) {
+      return;
+    }
+    setModeDraft(modeQuery.data.currentModes ?? modeQuery.data.configuredModes ?? '');
+  }, [modeDirty, modeQuery.data]);
 
   useEffect(() => {
     if (settingsQuery.data) {
@@ -371,6 +390,17 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
       }
       setTopicDirty(false);
       void queryClient.invalidateQueries({ queryKey: ['live-channel-topic', channel.echoToAlias] });
+    },
+  });
+
+  const saveModeMutation = useMutation({
+    mutationFn: () => saveLiveChannelMode(channel.echoToAlias, modeDraft),
+    onSuccess: (response) => {
+      if (response.modes != null) {
+        setModeDraft(response.modes);
+      }
+      setModeDirty(false);
+      void queryClient.invalidateQueries({ queryKey: ['live-channel-mode', channel.echoToAlias] });
     },
   });
 
@@ -642,6 +672,61 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                 </Alert>
               ) : null}
               {saveTopicMutation.isSuccess ? <Badge color="green">Topic saved</Badge> : null}
+            </Stack>
+          </Card>
+        ) : null}
+
+        {isIrcConnection(channel.connectionType) ? (
+          <Card withBorder radius="sm" className="live-channel-mode-panel">
+            <Stack gap="sm">
+              <Group justify="space-between" gap="sm">
+                <Text fw={600}>IRC channel modes</Text>
+                {modeQuery.data?.mismatch ? <Badge color="orange">Mode mismatch</Badge> : null}
+              </Group>
+              {modeQuery.isLoading ? <Loader size="sm" /> : null}
+              {modeQuery.isError ? (
+                <Alert color="red" variant="light" icon={<AlertTriangle size={18} />}>
+                  {modeQuery.error instanceof ApiError ? modeQuery.error.message : modeQuery.error.message}
+                </Alert>
+              ) : null}
+              <Group align="flex-end" gap="sm" wrap="wrap">
+                <TextInput
+                  aria-label={`${channel.echoToAlias} IRC modes`}
+                  label="Modes"
+                  description="Parameterless channel modes, for example +st"
+                  value={modeDraft}
+                  readOnly={!modeQuery.data?.editable}
+                  onChange={(event) => {
+                    setModeDraft(event.currentTarget.value);
+                    setModeDirty(true);
+                    saveModeMutation.reset();
+                  }}
+                  style={{ flex: '1 1 280px' }}
+                />
+                <Button
+                  leftSection={<Save size={18} />}
+                  loading={saveModeMutation.isPending}
+                  disabled={!modeQuery.data?.editable || !modeDirty || saveModeMutation.isPending}
+                  onClick={() => saveModeMutation.mutate()}
+                >
+                  Save modes
+                </Button>
+              </Group>
+              <Text size="sm" c="dimmed">
+                Current IRC modes: {modeQuery.data?.currentModes ?? 'unavailable'}
+                {modeQuery.data?.joined === false ? ' (channel not joined)' : ''}
+              </Text>
+              {!modeQuery.data?.editable && !modeQuery.isLoading && !modeQuery.isError ? (
+                <Text size="sm" c="dimmed">You have view-only access to IRC channel modes.</Text>
+              ) : null}
+              {saveModeMutation.isError ? (
+                <Alert color="red" variant="light" icon={<AlertTriangle size={18} />} title="Could not save IRC modes">
+                  {saveModeMutation.error instanceof ApiError
+                      ? saveModeMutation.error.message
+                      : saveModeMutation.error.message}
+                </Alert>
+              ) : null}
+              {saveModeMutation.isSuccess ? <Badge color="green">Modes saved</Badge> : null}
             </Stack>
           </Card>
         ) : null}

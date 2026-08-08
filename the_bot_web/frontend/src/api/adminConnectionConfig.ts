@@ -19,6 +19,8 @@ export type AdminConfigChannel = {
   manageOperators: boolean;
   manageTopic: boolean;
   topic: string | null;
+  manageMode: boolean;
+  modes: string | null;
 };
 
 export type AdminIrcServerConfig = {
@@ -68,6 +70,7 @@ export type AdminConnectionConfigResponse = {
   lastModifiedAt: string;
   config: AdminConnectionConfigPayload;
   topicStates: AdminIrcTopicState[];
+  modeStates: AdminIrcModeState[];
 };
 
 export type AdminIrcTopicState = {
@@ -76,6 +79,17 @@ export type AdminIrcTopicState = {
   manageTopic: boolean;
   configuredTopic: string | null;
   currentTopic: string | null;
+  connected: boolean;
+  joined: boolean;
+  mismatch: boolean;
+};
+
+export type AdminIrcModeState = {
+  echoToAlias: string | null;
+  channelName: string | null;
+  manageMode: boolean;
+  configuredModes: string | null;
+  currentModes: string | null;
   connected: boolean;
   joined: boolean;
   mismatch: boolean;

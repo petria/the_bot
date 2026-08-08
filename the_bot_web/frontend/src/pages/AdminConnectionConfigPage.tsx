@@ -29,6 +29,7 @@ import {
   AdminTelegramConfig,
   AdminWhatsAppConfig,
   AdminIrcTopicState,
+  AdminIrcModeState,
   getAdminConnectionConfig,
   reconcileIrcOperators,
   PromoteChannelState,
@@ -56,6 +57,8 @@ const emptyChannel: AdminConfigChannel = {
   manageOperators: false,
   manageTopic: false,
   topic: null,
+  manageMode: false,
+  modes: null,
 };
 
 const emptyDiscord: AdminDiscordConfig = {
@@ -212,6 +215,7 @@ export function AdminConnectionConfigPage() {
             botConfig={config.botConfig ?? emptyBotConfig}
             configs={config.ircServerConfigs ?? []}
             topicStates={configQuery.data?.topicStates ?? []}
+            modeStates={configQuery.data?.modeStates ?? []}
             onBotConfigChange={(botConfig) => setConfig({ ...config, botConfig })}
             onChange={(ircServerConfigs) => setConfig({ ...config, ircServerConfigs })}
           />
@@ -246,12 +250,14 @@ function IrcConfigsEditor({
   botConfig,
   configs,
   topicStates,
+  modeStates,
   onBotConfigChange,
   onChange,
 }: {
   botConfig: AdminBotConfig;
   configs: AdminIrcServerConfig[];
   topicStates: AdminIrcTopicState[];
+  modeStates: AdminIrcModeState[];
   onBotConfigChange: (config: AdminBotConfig) => void;
   onChange: (configs: AdminIrcServerConfig[]) => void;
 }) {
@@ -337,6 +343,7 @@ function IrcConfigsEditor({
               allowOperatorManagement
               allowTopicManagement
               topicStates={topicStates}
+              modeStates={modeStates}
               onChange={(channelList) => updateIrc(configs, index, { channelList }, onChange)}
             />
           </Stack>
@@ -450,6 +457,7 @@ function ChannelsEditor({
   allowOperatorManagement = false,
   allowTopicManagement = false,
   topicStates = [],
+  modeStates = [],
   onChange,
 }: {
   channels: AdminConfigChannel[];
@@ -457,6 +465,7 @@ function ChannelsEditor({
   allowOperatorManagement?: boolean;
   allowTopicManagement?: boolean;
   topicStates?: AdminIrcTopicState[];
+  modeStates?: AdminIrcModeState[];
   onChange: (channels: AdminConfigChannel[]) => void;
 }) {
   const [operatorMessage, setOperatorMessage] = useState<string | null>(null);
@@ -533,11 +542,19 @@ function ChannelsEditor({
                 />
               ) : null}
               {allowTopicManagement ? (
-                <TextInput
-                  label="Topic"
+              <TextInput
+                label="Topic"
                   description="Saved guarded topic. The live IRC topic is shown below."
                   value={channel.topic ?? ''}
                   onChange={(event) => updateChannel(channels, index, { topic: event.currentTarget.value }, onChange)}
+                />
+              ) : null}
+              {allowTopicManagement ? (
+                <TextInput
+                  label="Modes"
+                  description="Saved guarded parameterless IRC channel modes, for example +st."
+                  value={channel.modes ?? ''}
+                  onChange={(event) => updateChannel(channels, index, { modes: event.currentTarget.value }, onChange)}
                 />
               ) : null}
               <TextInput
@@ -613,6 +630,17 @@ function ChannelsEditor({
                 onChange={(event) => updateChannel(channels, index, { manageTopic: event.currentTarget.checked }, onChange)}
               />
             ) : null}
+            {allowTopicManagement && channel.echoToAlias ? (
+              <ModeState state={modeStates.find((state) => state.echoToAlias?.toLowerCase() === channel.echoToAlias?.toLowerCase())} />
+            ) : null}
+            {allowTopicManagement ? (
+              <Switch
+                label="Manage channel modes"
+                description="Restore unauthorized parameterless mode changes and accept changes from channel admins."
+                checked={channel.manageMode}
+                onChange={(event) => updateChannel(channels, index, { manageMode: event.currentTarget.checked }, onChange)}
+              />
+            ) : null}
             <Switch
               label="Capture URLs"
               checked={channel.captureResolvedUrls}
@@ -654,6 +682,19 @@ function TopicState({ state }: { state?: AdminIrcTopicState }) {
   const current = state.currentTopic ?? (state.joined ? '(empty)' : 'unavailable');
   const status = state.mismatch ? 'mismatch, guard will restore it' : state.joined ? 'in sync' : 'not joined';
   return <Text size="sm" c={state.mismatch ? 'orange' : 'dimmed'}>Current IRC topic: {current} ({status})</Text>;
+}
+
+function ModeState({ state }: { state?: AdminIrcModeState }) {
+  if (!state) {
+    return <Text size="sm" c="dimmed">Current IRC modes: unavailable</Text>;
+  }
+  const current = state.currentModes ?? (state.joined ? '(none)' : 'unavailable');
+  const status = state.mismatch ? 'mismatch, guard will restore it' : state.joined ? 'in sync' : 'not joined';
+  return (
+    <Text size="sm" c="dimmed">
+      Current IRC modes: {current} | Guarded: {state.configuredModes || '(none)'} | {status}
+    </Text>
+  );
 }
 
 function SecretNotice({ service }: { service: string }) {

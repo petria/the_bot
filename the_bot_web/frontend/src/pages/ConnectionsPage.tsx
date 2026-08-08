@@ -139,6 +139,8 @@ export function ConnectionsPage() {
                   manageOperators: false,
                   manageTopic: false,
                   topic: null,
+                  manageMode: false,
+                  modes: null,
                 },
               })}
             />

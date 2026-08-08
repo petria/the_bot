@@ -30,6 +30,23 @@ public final class RuntimeConfigStore {
       String echoToAlias,
       String topic,
       JsonMapper mapper) throws IOException {
+    return updateIrcChannelValue(configPath, echoToAlias, "topic", topic, mapper);
+  }
+
+  public static boolean updateIrcChannelModes(
+      Path configPath,
+      String echoToAlias,
+      String modes,
+      JsonMapper mapper) throws IOException {
+    return updateIrcChannelValue(configPath, echoToAlias, "modes", modes, mapper);
+  }
+
+  private static boolean updateIrcChannelValue(
+      Path configPath,
+      String echoToAlias,
+      String property,
+      String value,
+      JsonMapper mapper) throws IOException {
     if (configPath == null || echoToAlias == null || echoToAlias.isBlank()) {
       return false;
     }
@@ -60,7 +77,7 @@ public final class RuntimeConfigStore {
             }
             JsonNode alias = channelObject.get("echoToAlias");
             if (alias != null && echoToAlias.equalsIgnoreCase(alias.asText())) {
-              channelObject.put("topic", topic == null ? "" : topic);
+              channelObject.put(property, value == null ? "" : value);
               updated = true;
             }
           }
@@ -82,7 +99,7 @@ public final class RuntimeConfigStore {
       } finally {
         Files.deleteIfExists(tempFile);
       }
-      log.debug("Updated IRC channel topic in {} for {}", absolutePath, echoToAlias);
+      log.debug("Updated IRC channel {} in {} for {}", property, absolutePath, echoToAlias);
       return true;
     }
   }

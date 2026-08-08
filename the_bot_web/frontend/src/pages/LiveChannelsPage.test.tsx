@@ -9,6 +9,7 @@ import type {
   LiveChannelEvent,
   LiveChannelSettings,
   LiveChannelTopic,
+  LiveChannelMode,
   LiveChannelUser,
 } from '../api/liveChannels';
 import type { UserHomeChannel } from '../api/me';
@@ -18,8 +19,10 @@ const liveApi = vi.hoisted(() => ({
   getLiveChannelEventStreamUrl: vi.fn(),
   getLiveChannelSettings: vi.fn(),
   getLiveChannelTopic: vi.fn(),
+  getLiveChannelMode: vi.fn(),
   getLiveChannelUsers: vi.fn(),
   saveLiveChannelTopic: vi.fn(),
+  saveLiveChannelMode: vi.fn(),
   saveAndApplyLiveChannelSettings: vi.fn(),
   sendLiveChannelMessage: vi.fn(),
   setLiveChannelIrcOperatorMode: vi.fn(),
@@ -107,6 +110,18 @@ const topic: LiveChannelTopic = {
   editable: true,
 };
 
+const mode: LiveChannelMode = {
+  echoToAlias: 'IRC-TEST',
+  channelName: '#test',
+  configuredModes: '+st',
+  currentModes: '+st',
+  manageMode: true,
+  connected: true,
+  joined: true,
+  mismatch: false,
+  editable: true,
+};
+
 function user(overrides: Partial<LiveChannelUser>): LiveChannelUser {
   return {
     account: null,
@@ -163,12 +178,20 @@ beforeEach(() => {
   ]);
   liveApi.getLiveChannelSettings.mockResolvedValue(settings);
   liveApi.getLiveChannelTopic.mockResolvedValue(topic);
+  liveApi.getLiveChannelMode.mockResolvedValue(mode);
   liveApi.saveLiveChannelTopic.mockResolvedValue({
     echoToAlias: 'IRC-TEST',
     channelName: '#test',
     changed: true,
     truncated: false,
     topic: 'Updated topic',
+    error: null,
+  });
+  liveApi.saveLiveChannelMode.mockResolvedValue({
+    echoToAlias: 'IRC-TEST',
+    channelName: '#test',
+    changed: true,
+    modes: '+nst',
     error: null,
   });
   liveApi.saveAndApplyLiveChannelSettings.mockResolvedValue({ status: 'OK', settings });
@@ -318,6 +341,19 @@ describe('LiveChannelsPage', () => {
     expect(screen.getByPlaceholderText('Message to channel')).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Channel settings for IRC-VIEW' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Op selected' })).not.toBeInTheDocument();
+  });
+
+  it('edits and saves IRC channel modes for an authorized user', async () => {
+    const user = userEvent.setup();
+    renderPage({ connectionType: 'IRC', network: 'IRCNet', echoToAlias: 'IRC-TEST', label: '#test' });
+
+    const input = await screen.findByRole('textbox', { name: 'IRC-TEST IRC modes' });
+    await waitFor(() => expect(input).toHaveValue('+st'));
+    await user.clear(input);
+    await user.type(input, '+nst');
+    await user.click(screen.getByRole('button', { name: 'Save modes' }));
+
+    await waitFor(() => expect(liveApi.saveLiveChannelMode).toHaveBeenCalledWith('IRC-TEST', '+nst'));
   });
 
   it('loads, edits, and saves channel settings for an admin channel', async () => {

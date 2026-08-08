@@ -83,6 +83,26 @@ export type LiveChannelTopic = {
   editable: boolean;
 };
 
+export type LiveChannelMode = {
+  echoToAlias: string;
+  channelName: string | null;
+  configuredModes: string | null;
+  currentModes: string | null;
+  manageMode: boolean;
+  connected: boolean;
+  joined: boolean;
+  mismatch: boolean;
+  editable: boolean;
+};
+
+export type IrcModeSetResponse = {
+  echoToAlias: string | null;
+  channelName: string | null;
+  changed: boolean;
+  modes: string | null;
+  error: string | null;
+};
+
 export type IrcTopicSetResponse = {
   echoToAlias: string | null;
   channelName: string | null;
@@ -179,4 +199,16 @@ export async function saveLiveChannelTopic(
     echoToAlias,
     topic,
   });
+}
+
+export async function getLiveChannelMode(echoToAlias: string): Promise<LiveChannelMode> {
+  const params = new URLSearchParams({ echoToAlias });
+  return getJson<LiveChannelMode>(`/api/web/live-channels/mode?${params.toString()}`);
+}
+
+export async function saveLiveChannelMode(
+  echoToAlias: string,
+  modes: string,
+): Promise<IrcModeSetResponse> {
+  return putJson<IrcModeSetResponse>('/api/web/live-channels/mode', { echoToAlias, modes });
 }

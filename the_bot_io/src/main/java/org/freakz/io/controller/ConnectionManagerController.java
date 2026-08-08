@@ -21,6 +21,10 @@ import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicStatesResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStatesResponse;
 import org.freakz.io.connections.BotConnection;
 import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.JoinedChannelContainer;
@@ -178,5 +182,27 @@ public class ConnectionManagerController {
         .flatMap(connection -> connection.topicStates().stream())
         .toList();
     return ResponseEntity.ok(new IrcTopicStatesResponse(states));
+  }
+
+  @PostMapping("/irc/modes")
+  public ResponseEntity<IrcModeSetResponse> setIrcModes(@RequestBody IrcModeSetRequest request) {
+    JoinedChannelContainer joined = connectionManager.getJoinedChannelContainer(request.echoToAlias());
+    org.freakz.io.connections.IrcServerConnection irc = joined == null
+        ? connectionManager.findIrcServerConnectionForConfiguredAlias(request.echoToAlias())
+        : joined.connection instanceof org.freakz.io.connections.IrcServerConnection candidate ? candidate : null;
+    if (irc == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(irc.setModes(request));
+  }
+
+  @GetMapping("/irc/mode_states")
+  public ResponseEntity<IrcModeStatesResponse> getIrcModeStates() {
+    List<IrcModeStateResponse> states = connectionManager.getConnectionMap().values().stream()
+        .filter(org.freakz.io.connections.IrcServerConnection.class::isInstance)
+        .map(org.freakz.io.connections.IrcServerConnection.class::cast)
+        .flatMap(connection -> connection.modeStates().stream())
+        .toList();
+    return ResponseEntity.ok(new IrcModeStatesResponse(states));
   }
 }

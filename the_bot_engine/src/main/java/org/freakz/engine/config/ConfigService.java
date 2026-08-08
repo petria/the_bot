@@ -49,6 +49,10 @@ public class ConfigService {
     return delegate().updateIrcChannelTopic(echoToAlias, topic);
   }
 
+  public boolean updateIrcChannelModes(String echoToAlias, String modes) throws IOException {
+    return delegate().updateIrcChannelModes(echoToAlias, modes);
+  }
+
   public File getRuntimeDirFile(String fileName) {
     return delegate().getRuntimeDirFile(fileName);
   }

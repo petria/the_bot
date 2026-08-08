@@ -26,6 +26,10 @@ import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeEventRequest;
+import org.freakz.common.model.connectionmanager.IrcModeEventResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeWebSetRequest;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,6 +165,14 @@ public class RestEngineClient {
 
   public IrcTopicSetResponse setIrcTopicFromWeb(IrcTopicWebSetRequest request) {
     return restTemplate.postForObject(baseUrl + "/internal/irc/topic", request, IrcTopicSetResponse.class);
+  }
+
+  public IrcModeEventResponse handleIrcModeEvent(IrcModeEventRequest request) {
+    return restTemplate.postForObject(baseUrl + "/internal/irc/mode-event", request, IrcModeEventResponse.class);
+  }
+
+  public IrcModeSetResponse setIrcModesFromWeb(IrcModeWebSetRequest request) {
+    return restTemplate.postForObject(baseUrl + "/internal/irc/modes", request, IrcModeSetResponse.class);
   }
 
   public ResponseEntity<IrcOperatorReconcileResponse[]> reconcileAllIrcOperators() {
