@@ -405,7 +405,7 @@ public class IrcServerConnection extends BotConnection {
     if (configured == null || !Boolean.TRUE.equals(configured.getManageTopic())) {
       return;
     }
-    String setter = event.getNewTopic().getSetter().map(org.kitteh.irc.client.library.element.Actor::getName).orElse(null);
+    String setter = topicSetter(event);
     String topic = event.getNewTopic().getValue().orElse("");
     if (consumePendingTopic(configured.getEchoToAlias(), topic)) {
       log.debug("Ignored bot-originated topic event for {}", configured.getEchoToAlias());
@@ -449,6 +449,32 @@ public class IrcServerConnection extends BotConnection {
 
   private String truncateTopic(String topic) {
     return topic.length() <= 390 ? topic : topic.substring(0, 390);
+  }
+
+  private String topicSetter(ChannelTopicEvent event) {
+    String rawSetter = extractIrcOriginNick(event.getSource() == null ? null : event.getSource().getMessage());
+    if (rawSetter != null) {
+      return rawSetter;
+    }
+    return event.getNewTopic().getSetter()
+        .map(org.kitteh.irc.client.library.element.Actor::getName)
+        .orElse(null);
+  }
+
+  private String extractIrcOriginNick(String rawMessage) {
+    if (rawMessage == null || !rawMessage.startsWith(":")) {
+      return null;
+    }
+    int prefixEnd = rawMessage.indexOf(' ');
+    if (prefixEnd <= 1) {
+      return null;
+    }
+    String origin = rawMessage.substring(1, prefixEnd);
+    int userSeparator = origin.indexOf('!');
+    if (userSeparator <= 0) {
+      return null;
+    }
+    return origin.substring(0, userSeparator);
   }
 
   private void sendTopic(Channel channel, String echoToAlias, String topic) {

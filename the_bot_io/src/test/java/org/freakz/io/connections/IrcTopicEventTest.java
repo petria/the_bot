@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.kitteh.irc.client.library.command.TopicCommand;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel.Topic;
+import org.kitteh.irc.client.library.element.ServerMessage;
 import org.kitteh.irc.client.library.event.channel.ChannelTopicEvent;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -18,6 +19,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class IrcTopicEventTest {
 
@@ -110,5 +112,48 @@ class IrcTopicEventTest {
 
     verifyNoInteractions(engineClient);
     verify(topicCommand, times(1)).execute();
+  }
+
+  @Test
+  void resolvesExternalTopicSetterFromRawIrcMessageWhenMetadataIsMissing() {
+    Channel configured = Channel.builder()
+        .name("#test")
+        .echoToAlias("IRC-TEST")
+        .manageTopic(true)
+        .topic("saved topic")
+        .build();
+    IrcServerConnection connection = new IrcServerConnection(mock(EventPublisher.class));
+    ReflectionTestUtils.setField(connection, "config", IrcServerConfig.builder()
+        .name("server")
+        .ircNetwork(IrcNetwork.builder().name("IRCNet").build())
+        .channelList(List.of(configured))
+        .build());
+
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.handleIrcTopicEvent(any())).thenReturn(
+        new IrcTopicEventResponse("ACCEPT", "new topic", true, null));
+    ReflectionTestUtils.setField(connection, "engineClient", engineClient);
+
+    org.kitteh.irc.client.library.element.Channel ircChannel = mock(org.kitteh.irc.client.library.element.Channel.class);
+    when(ircChannel.getName()).thenReturn("#test");
+    Topic newTopic = mock(Topic.class);
+    when(newTopic.getValue()).thenReturn(Optional.of("new topic"));
+    when(newTopic.getSetter()).thenReturn(Optional.empty());
+    ServerMessage source = mock(ServerMessage.class);
+    when(source.getMessage()).thenReturn(":_Pete_!~petria@localhost TOPIC #test :new topic");
+    ChannelTopicEvent event = mock(ChannelTopicEvent.class);
+    when(event.getChannel()).thenReturn(ircChannel);
+    when(event.getNewTopic()).thenReturn(newTopic);
+    when(event.getSource()).thenReturn(source);
+    when(event.isNew()).thenReturn(true);
+
+    connection.onChannelTopicEvent(event);
+
+    org.mockito.ArgumentCaptor<org.freakz.common.model.connectionmanager.IrcTopicEventRequest> request =
+        org.mockito.ArgumentCaptor.forClass(org.freakz.common.model.connectionmanager.IrcTopicEventRequest.class);
+    verify(engineClient).handleIrcTopicEvent(request.capture());
+    assertThat(request.getValue().setterNick()).isEqualTo("_Pete_");
+    assertThat(configured.getTopic()).isEqualTo("new topic");
+    verifyNoMoreInteractions(engineClient);
   }
 }
