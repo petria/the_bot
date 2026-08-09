@@ -72,6 +72,17 @@ class IrcTopicManagementServiceTest {
   }
 
   @Test
+  void fullIrcUserhostSetterIsNormalizedBeforeAuthorization() throws Exception {
+    when(usersService.findAll()).thenReturn((List) List.of(user("petria", "_Pete_", "*")));
+
+    IrcTopicEventResponse response = service.handleTopicEvent(
+        new IrcTopicEventRequest("IRC-TEST", "#test", "new topic", "_Pete_!~petria@localhost", true));
+
+    assertThat(response.action()).isEqualTo("ACCEPT");
+    verify(configService).updateIrcChannelTopic("IRC-TEST", "new topic");
+  }
+
+  @Test
   void unknownSetterIsRestoredAndNotPersisted() throws Exception {
     IrcTopicEventResponse response = service.handleTopicEvent(
         new IrcTopicEventRequest("IRC-TEST", "#test", "intruder topic", null, true));

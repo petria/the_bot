@@ -71,7 +71,9 @@ public class IrcServerConnection extends BotConnection {
   private RestEngineClient engineClient;
   private final Queue<WhoisEvent> whoisEventQueue = new ConcurrentLinkedQueue<>();
   private static final long PENDING_TOPIC_TIMEOUT_MILLIS = 15_000L;
+  private static final long INCOMING_TOPIC_SOURCE_TIMEOUT_MILLIS = 5_000L;
   private final Map<String, PendingTopicChange> pendingTopicChanges = new ConcurrentHashMap<>();
+  private final Map<String, IncomingTopicChange> incomingTopicChanges = new ConcurrentHashMap<>();
   private Client client;
   private ConnectionManager connectionManager;
   private IrcServerConfig config;
@@ -452,29 +454,100 @@ public class IrcServerConnection extends BotConnection {
   }
 
   private String topicSetter(ChannelTopicEvent event) {
-    String rawSetter = extractIrcOriginNick(event.getSource() == null ? null : event.getSource().getMessage());
+    String channelKey = topicKey(event.getChannel().getName());
+    String rawMessage = event.getSource() == null ? null : event.getSource().getMessage();
+    String rawSetter = extractIrcOriginNick(rawMessage);
     if (rawSetter != null) {
+      incomingTopicChanges.remove(channelKey);
       return rawSetter;
     }
-    return event.getNewTopic().getSetter()
+    String metadataSetter = event.getNewTopic().getSetter()
         .map(org.kitteh.irc.client.library.element.Actor::getName)
         .orElse(null);
+    String normalizedMetadataSetter = normalizeIrcNick(metadataSetter);
+    if (normalizedMetadataSetter != null) {
+      incomingTopicChanges.remove(channelKey);
+      return normalizedMetadataSetter;
+    }
+    IncomingTopicChange incoming = incomingTopicChanges.get(channelKey);
+    if (incoming != null) {
+      if (System.currentTimeMillis() - incoming.createdAt() <= INCOMING_TOPIC_SOURCE_TIMEOUT_MILLIS
+          && java.util.Objects.equals(incoming.topic(), event.getNewTopic().getValue().orElse(""))) {
+        incomingTopicChanges.remove(channelKey, incoming);
+        return incoming.setterNick();
+      }
+      incomingTopicChanges.remove(channelKey, incoming);
+    }
+    return null;
   }
 
   private String extractIrcOriginNick(String rawMessage) {
-    if (rawMessage == null || !rawMessage.startsWith(":")) {
+    ParsedIncomingTopic topic = parseIncomingTopic(rawMessage);
+    return topic == null ? null : topic.setterNick();
+  }
+
+  private void rememberIncomingTopic(String rawMessage) {
+    ParsedIncomingTopic topic = parseIncomingTopic(rawMessage);
+    if (topic != null) {
+      incomingTopicChanges.put(topicKey(topic.channelName()),
+          new IncomingTopicChange(topic.topic(), topic.setterNick(), System.currentTimeMillis()));
+    }
+  }
+
+  private ParsedIncomingTopic parseIncomingTopic(String rawMessage) {
+    if (rawMessage == null || rawMessage.isBlank()) {
       return null;
     }
-    int prefixEnd = rawMessage.indexOf(' ');
+    String message = rawMessage.trim();
+    if (message.startsWith("@")) {
+      int tagsEnd = message.indexOf(' ');
+      if (tagsEnd < 0) {
+        return null;
+      }
+      message = message.substring(tagsEnd + 1).trim();
+    }
+    if (!message.startsWith(":")) {
+      return null;
+    }
+    int prefixEnd = message.indexOf(' ');
     if (prefixEnd <= 1) {
       return null;
     }
-    String origin = rawMessage.substring(1, prefixEnd);
-    int userSeparator = origin.indexOf('!');
-    if (userSeparator <= 0) {
+    String setterNick = normalizeIrcNick(message.substring(1, prefixEnd));
+    if (setterNick == null) {
       return null;
     }
-    return origin.substring(0, userSeparator);
+    String parameters = message.substring(prefixEnd + 1).trim();
+    int commandEnd = parameters.indexOf(' ');
+    if (commandEnd <= 0 || !"TOPIC".equalsIgnoreCase(parameters.substring(0, commandEnd))) {
+      return null;
+    }
+    String topicParameters = parameters.substring(commandEnd + 1).trim();
+    int channelEnd = topicParameters.indexOf(' ');
+    if (channelEnd <= 0) {
+      return null;
+    }
+    String channelName = topicParameters.substring(0, channelEnd);
+    String topic = topicParameters.substring(channelEnd + 1);
+    if (topic.startsWith(":")) {
+      topic = topic.substring(1);
+    }
+    return new ParsedIncomingTopic(channelName, topic, setterNick);
+  }
+
+  private String normalizeIrcNick(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    String nick = value.trim();
+    if (nick.startsWith(":")) {
+      nick = nick.substring(1);
+    }
+    int userSeparator = nick.indexOf('!');
+    if (userSeparator > 0) {
+      nick = nick.substring(0, userSeparator);
+    }
+    return nick.isBlank() ? null : nick;
   }
 
   private void sendTopic(Channel channel, String echoToAlias, String topic) {
@@ -503,6 +576,12 @@ public class IrcServerConnection extends BotConnection {
   }
 
   private record PendingTopicChange(String topic, long createdAt) {
+  }
+
+  private record IncomingTopicChange(String topic, String setterNick, long createdAt) {
+  }
+
+  private record ParsedIncomingTopic(String channelName, String topic, String setterNick) {
   }
 
   @Handler
@@ -965,7 +1044,10 @@ public class IrcServerConnection extends BotConnection {
         .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
         .then()
         .listeners()
-        .input(line -> log.debug("IRC << {}", line))
+        .input(line -> {
+          rememberIncomingTopic(line);
+          log.debug("IRC << {}", line);
+        })
         .output(line -> log.debug("IRC >> {}", line))
         .exception(e -> log.warn("IRC client exception", e))
         .then()

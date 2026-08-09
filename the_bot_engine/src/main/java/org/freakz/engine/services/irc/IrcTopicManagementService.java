@@ -45,7 +45,7 @@ public class IrcTopicManagementService {
 
     String configuredTopic = clean(channelConfig.channel().getTopic());
     String requestedTopic = truncate(request == null ? null : request.topic());
-    if (authorizedNick(request == null ? null : request.setterNick(), channelConfig)) {
+    if (authorizedNick(normalizeSetterNick(request == null ? null : request.setterNick()), channelConfig)) {
       persistTopic(channelConfig.channel().getEchoToAlias(), requestedTopic);
       return new IrcTopicEventResponse(
           "ACCEPT",
@@ -127,6 +127,21 @@ public class IrcTopicManagementService {
       }
     }
     return false;
+  }
+
+  private String normalizeSetterNick(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    String nick = value.trim();
+    if (nick.startsWith(":")) {
+      nick = nick.substring(1);
+    }
+    int userSeparator = nick.indexOf('!');
+    if (userSeparator > 0) {
+      nick = nick.substring(0, userSeparator);
+    }
+    return nick.isBlank() ? null : nick;
   }
 
   private ChannelConfig findChannel(String echoToAlias) {
