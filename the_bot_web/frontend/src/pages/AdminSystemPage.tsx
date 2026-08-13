@@ -19,9 +19,9 @@ const LOCAL_RUNNER_OPTIONS = [
 ];
 
 const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
-  { id: 'gpt-5.5', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
-  { id: 'gpt-5.4', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
-  { id: 'gpt-5.4-mini', suitability: 'tool-capable', label: 'OpenAI/Codex model', toolCapable: true, detail: 'Supported Codex model' },
+  { id: 'gpt-5.6-luna', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-5.6-terra', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-5.6-sol', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
 ];
 
 const OPENAI_MODEL_OPTIONS = OPENAI_MODEL_ITEMS.map((model) => model.id);
@@ -84,6 +84,8 @@ export function AdminSystemPage() {
   const activeModels = activeModelItems.map((model) => model.id);
   const selectedModel = activeModelItems.find((item) => item.id === selectedModelBackend?.model) || null;
   const hasChanges = Boolean(config && JSON.stringify(config) !== JSON.stringify(backendQuery.data));
+  const hasInvalidOpenAiModel = Boolean(config?.backends.some((backend) =>
+    backend.id === 'openai' && !OPENAI_MODEL_OPTIONS.includes(backend.model)));
   const discoveredModelOptions = useMemo(
     () => activeModelItems.map((model) => ({ value: model.id, label: `${model.id} - ${model.label}` })),
     [activeModelItems]
@@ -107,6 +109,11 @@ export function AdminSystemPage() {
       {applyFailed ? (
         <Alert color="yellow" variant="light" icon={<AlertCircle size={18} />}>
           Route changes were not applied. The values shown here are refreshed from saved Hermes manager state.
+        </Alert>
+      ) : null}
+      {hasInvalidOpenAiModel ? (
+        <Alert color="yellow" variant="light" icon={<AlertCircle size={18} />}>
+          The saved OpenAI model is no longer supported. Select gpt-5.6-luna, gpt-5.6-terra, or gpt-5.6-sol before saving route changes.
         </Alert>
       ) : null}
 
@@ -218,7 +225,7 @@ export function AdminSystemPage() {
                 <Button
                   leftSection={<Save size={18} />}
                   loading={saveMutation.isPending}
-                  disabled={!config || !hasChanges}
+                  disabled={!config || !hasChanges || hasInvalidOpenAiModel}
                   onClick={() => config && saveMutation.mutate(config)}
                 >
                   Save and apply
@@ -339,6 +346,7 @@ function BackendCard({
   onChange: (patch: Partial<HermesBackend>) => void;
 }) {
   const local = isLocalBackend(backend);
+  const unsupportedOpenAiModel = backend.id === 'openai' && !OPENAI_MODEL_OPTIONS.includes(backend.model);
   return (
     <Card withBorder radius="sm">
       <Stack gap="md">
@@ -388,6 +396,7 @@ function BackendCard({
               data={modelOptions}
               value={modelOptions.includes(backend.model) ? backend.model : null}
               placeholder={backend.model || 'Select model'}
+              error={unsupportedOpenAiModel ? 'Unsupported saved model' : undefined}
               searchable
               onChange={(value) => value && onChange({ model: value })}
             />
@@ -405,6 +414,11 @@ function BackendCard({
             onChange={(value) => onChange({ timeoutSeconds: typeof value === 'number' ? value : 120 })}
           />
         </Group>
+        {unsupportedOpenAiModel ? (
+          <Text c="red" size="sm">
+            Saved OpenAI model "{backend.model}" is not supported. Choose one of the available gpt-5.6 models.
+          </Text>
+        ) : null}
         {local ? (
           <Group grow align="flex-start">
             <NumberInput

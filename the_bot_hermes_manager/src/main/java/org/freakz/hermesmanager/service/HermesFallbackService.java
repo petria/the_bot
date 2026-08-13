@@ -59,8 +59,8 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String RESPONSES = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int MIN_CONTEXT_WINDOW = 65536;
-  private static final List<String> OPENAI_CODEX_MODELS = List.of("gpt-5.5", "gpt-5.4", "gpt-5.4-mini");
-  private static final String DEFAULT_OPENAI_CODEX_MODEL = "gpt-5.4-mini";
+  private static final List<String> OPENAI_MODELS = List.of("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol");
+  private static final String DEFAULT_OPENAI_MODEL = "gpt-5.6-luna";
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
@@ -170,13 +170,13 @@ public class HermesFallbackService implements ApplicationRunner {
   public HermesFallbackModelsResponse getModels(HermesModelDiscoveryRequest request) {
     String provider = normalizeProvider(request == null ? null : request.provider());
     if (OPENAI.equals(provider)) {
-      return new HermesFallbackModelsResponse(OPENAI_CODEX_MODELS, OPENAI_CODEX_MODELS.stream()
+      return new HermesFallbackModelsResponse(OPENAI_MODELS, OPENAI_MODELS.stream()
           .map(model -> new HermesFallbackModel(
               model,
               "tool-capable",
-              "OpenAI/Codex model",
+              "OpenAI model",
               true,
-              "Supported Codex model"))
+              "Supported OpenAI model"))
           .toList());
     }
     URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
@@ -360,12 +360,17 @@ public class HermesFallbackService implements ApplicationRunner {
     if (!MODE_ENABLED.equals(config.systemMode()) && !MODE_OFF.equals(config.systemMode())) {
       throw new IllegalArgumentException("systemMode must be enabled or off");
     }
+    config.backends().stream()
+        .filter(backend -> OPENAI.equals(backend.id()))
+        .forEach(this::validateBackend);
     List<String> activeBackendIds = config.routes().stream()
         .map(StoredRoute::backendId)
         .distinct()
         .toList();
     for (String backendId : activeBackendIds) {
-      validateBackend(backendById(config, backendId));
+      if (!OPENAI.equals(backendId)) {
+        validateBackend(backendById(config, backendId));
+      }
     }
     for (StoredRoute route : config.routes()) {
       backendById(config, route.backendId());
@@ -380,7 +385,11 @@ public class HermesFallbackService implements ApplicationRunner {
       throw new IllegalArgumentException("backend " + backend.id() + " timeoutSeconds must be positive");
     }
     if (OPENAI.equals(backend.id())) {
-      requireValue(backend.model(), "OpenAI model");
+      String model = requireValue(backend.model(), "OpenAI model");
+      if (!OPENAI_MODELS.contains(model)) {
+        throw new IllegalArgumentException(
+            "Unsupported OpenAI model: " + model + ". Supported models: " + String.join(", ", OPENAI_MODELS));
+      }
       return;
     }
     URI baseUrl = validatedBaseUrl(backend.baseUrl());
@@ -515,7 +524,7 @@ public class HermesFallbackService implements ApplicationRunner {
         "OpenAI backend",
         OPENAI,
         null,
-        firstNonBlank(openAiModel(legacyChat), openAiModel(legacyAiCommand), upstreamModel(OPENAI, DEFAULT_OPENAI_CODEX_MODEL)),
+        firstNonBlank(openAiModel(legacyChat), openAiModel(legacyAiCommand), upstreamModel(OPENAI, DEFAULT_OPENAI_MODEL)),
         firstNonBlank(text(legacyChat, "apiMode"), RESPONSES),
         intValue(legacyChat, "timeoutSeconds", DEFAULT_TIMEOUT_SECONDS),
         null,
@@ -651,7 +660,7 @@ public class HermesFallbackService implements ApplicationRunner {
           "OpenAI backend",
           OPENAI,
           null,
-          upstreamModel(OPENAI, DEFAULT_OPENAI_CODEX_MODEL),
+          DEFAULT_OPENAI_MODEL,
           RESPONSES,
           DEFAULT_TIMEOUT_SECONDS,
           null,
