@@ -35,6 +35,11 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
   value: TestResizeObserver,
 });
 
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: () => undefined,
+});
+
 afterEach(() => {
   cleanup();
   window.sessionStorage.clear();

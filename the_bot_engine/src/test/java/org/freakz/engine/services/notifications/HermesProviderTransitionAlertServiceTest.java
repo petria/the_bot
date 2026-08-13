@@ -64,7 +64,7 @@ class HermesProviderTransitionAlertServiceTest {
         "Hermes chat",
         "openai",
         null,
-        "gpt-5.5",
+        "gpt-5.6-luna",
         "responses",
         120,
         true,

@@ -71,6 +71,47 @@ export type IrcOperatorModeResponse = {
   error: string | null;
 };
 
+export type LiveChannelTopic = {
+  echoToAlias: string;
+  channelName: string | null;
+  configuredTopic: string | null;
+  currentTopic: string | null;
+  manageTopic: boolean;
+  connected: boolean;
+  joined: boolean;
+  mismatch: boolean;
+  editable: boolean;
+};
+
+export type LiveChannelMode = {
+  echoToAlias: string;
+  channelName: string | null;
+  configuredModes: string | null;
+  currentModes: string | null;
+  manageMode: boolean;
+  connected: boolean;
+  joined: boolean;
+  mismatch: boolean;
+  editable: boolean;
+};
+
+export type IrcModeSetResponse = {
+  echoToAlias: string | null;
+  channelName: string | null;
+  changed: boolean;
+  modes: string | null;
+  error: string | null;
+};
+
+export type IrcTopicSetResponse = {
+  echoToAlias: string | null;
+  channelName: string | null;
+  changed: boolean;
+  truncated: boolean;
+  topic: string | null;
+  error: string | null;
+};
+
 type LiveChannelEventsResponse = {
   events: LiveChannelEvent[] | null;
 };
@@ -143,4 +184,31 @@ export async function setLiveChannelIrcOperatorMode(
     nicks,
     operator,
   });
+}
+
+export async function getLiveChannelTopic(echoToAlias: string): Promise<LiveChannelTopic> {
+  const params = new URLSearchParams({ echoToAlias });
+  return getJson<LiveChannelTopic>(`/api/web/live-channels/topic?${params.toString()}`);
+}
+
+export async function saveLiveChannelTopic(
+  echoToAlias: string,
+  topic: string,
+): Promise<IrcTopicSetResponse> {
+  return putJson<IrcTopicSetResponse>('/api/web/live-channels/topic', {
+    echoToAlias,
+    topic,
+  });
+}
+
+export async function getLiveChannelMode(echoToAlias: string): Promise<LiveChannelMode> {
+  const params = new URLSearchParams({ echoToAlias });
+  return getJson<LiveChannelMode>(`/api/web/live-channels/mode?${params.toString()}`);
+}
+
+export async function saveLiveChannelMode(
+  echoToAlias: string,
+  modes: string,
+): Promise<IrcModeSetResponse> {
+  return putJson<IrcModeSetResponse>('/api/web/live-channels/mode', { echoToAlias, modes });
 }

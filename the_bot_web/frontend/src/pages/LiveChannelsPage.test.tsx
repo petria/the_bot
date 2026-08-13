@@ -8,6 +8,8 @@ import type {
   LiveChannel,
   LiveChannelEvent,
   LiveChannelSettings,
+  LiveChannelTopic,
+  LiveChannelMode,
   LiveChannelUser,
 } from '../api/liveChannels';
 import type { UserHomeChannel } from '../api/me';
@@ -16,7 +18,11 @@ const liveApi = vi.hoisted(() => ({
   getLiveChannels: vi.fn(),
   getLiveChannelEventStreamUrl: vi.fn(),
   getLiveChannelSettings: vi.fn(),
+  getLiveChannelTopic: vi.fn(),
+  getLiveChannelMode: vi.fn(),
   getLiveChannelUsers: vi.fn(),
+  saveLiveChannelTopic: vi.fn(),
+  saveLiveChannelMode: vi.fn(),
   saveAndApplyLiveChannelSettings: vi.fn(),
   sendLiveChannelMessage: vi.fn(),
   setLiveChannelIrcOperatorMode: vi.fn(),
@@ -92,6 +98,30 @@ const settings: LiveChannelSettings = {
   captureImages: false,
 };
 
+const topic: LiveChannelTopic = {
+  echoToAlias: 'IRC-TEST',
+  channelName: '#test',
+  configuredTopic: 'Configured topic',
+  currentTopic: 'Current topic',
+  manageTopic: true,
+  connected: true,
+  joined: true,
+  mismatch: false,
+  editable: true,
+};
+
+const mode: LiveChannelMode = {
+  echoToAlias: 'IRC-TEST',
+  channelName: '#test',
+  configuredModes: '+st',
+  currentModes: '+st',
+  manageMode: true,
+  connected: true,
+  joined: true,
+  mismatch: false,
+  editable: true,
+};
+
 function user(overrides: Partial<LiveChannelUser>): LiveChannelUser {
   return {
     account: null,
@@ -147,6 +177,23 @@ beforeEach(() => {
     user({ nick: 'Alice' }),
   ]);
   liveApi.getLiveChannelSettings.mockResolvedValue(settings);
+  liveApi.getLiveChannelTopic.mockResolvedValue(topic);
+  liveApi.getLiveChannelMode.mockResolvedValue(mode);
+  liveApi.saveLiveChannelTopic.mockResolvedValue({
+    echoToAlias: 'IRC-TEST',
+    channelName: '#test',
+    changed: true,
+    truncated: false,
+    topic: 'Updated topic',
+    error: null,
+  });
+  liveApi.saveLiveChannelMode.mockResolvedValue({
+    echoToAlias: 'IRC-TEST',
+    channelName: '#test',
+    changed: true,
+    modes: '+nst',
+    error: null,
+  });
   liveApi.saveAndApplyLiveChannelSettings.mockResolvedValue({ status: 'OK', settings });
   liveApi.sendLiveChannelMessage.mockResolvedValue({ sent: true, sentTo: '#test', message: 'hello' });
   liveApi.setLiveChannelIrcOperatorMode.mockResolvedValue({
@@ -241,6 +288,45 @@ describe('LiveChannelsPage', () => {
     expect(input).toHaveFocus();
   });
 
+  it('loads and explicitly saves the IRC topic', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const topicInput = await screen.findByRole('textbox', { name: 'IRC-TEST IRC topic' });
+    await waitFor(() => expect(topicInput).toHaveValue('Current topic'));
+    const saveButton = screen.getByRole('button', { name: 'Save topic' });
+    expect(saveButton).toBeDisabled();
+
+    await user.clear(topicInput);
+    await user.type(topicInput, 'Updated topic');
+    expect(saveButton).toBeEnabled();
+    await user.click(saveButton);
+
+    await waitFor(() => expect(liveApi.saveLiveChannelTopic).toHaveBeenCalledWith('IRC-TEST', 'Updated topic'));
+    expect(await screen.findByText('Topic saved')).toBeInTheDocument();
+  });
+
+  it('does not render a topic panel for non-IRC channels', async () => {
+    const discordChannel: LiveChannel = {
+      ...channel,
+      echoToAlias: 'DISCORD-TEST',
+      label: 'Discord test',
+      connectionType: 'DISCORD_CONNECTION',
+    };
+    liveApi.getLiveChannels.mockResolvedValue([discordChannel]);
+    liveApi.getLiveChannelUsers.mockResolvedValue([]);
+    renderPage({
+      connectionType: 'DISCORD_CONNECTION',
+      network: 'DiscordNetwork',
+      echoToAlias: discordChannel.echoToAlias,
+      label: discordChannel.label,
+    });
+
+    expect(await screen.findByText('Users')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'DISCORD-TEST IRC topic' })).not.toBeInTheDocument();
+    expect(liveApi.getLiveChannelTopic).not.toHaveBeenCalled();
+  });
+
   it('does not expose send, settings, or operator controls for a view-only channel', async () => {
     liveApi.getLiveChannels.mockResolvedValue([viewOnlyChannel]);
     liveApi.getLiveChannelUsers.mockResolvedValue([]);
@@ -255,6 +341,19 @@ describe('LiveChannelsPage', () => {
     expect(screen.getByPlaceholderText('Message to channel')).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Channel settings for IRC-VIEW' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Op selected' })).not.toBeInTheDocument();
+  });
+
+  it('edits and saves IRC channel modes for an authorized user', async () => {
+    const user = userEvent.setup();
+    renderPage({ connectionType: 'IRC', network: 'IRCNet', echoToAlias: 'IRC-TEST', label: '#test' });
+
+    const input = await screen.findByRole('textbox', { name: 'IRC-TEST IRC modes' });
+    await waitFor(() => expect(input).toHaveValue('+st'));
+    await user.clear(input);
+    await user.type(input, '+nst');
+    await user.click(screen.getByRole('button', { name: 'Save modes' }));
+
+    await waitFor(() => expect(liveApi.saveLiveChannelMode).toHaveBeenCalledWith('IRC-TEST', '+nst'));
   });
 
   it('loads, edits, and saves channel settings for an admin channel', async () => {

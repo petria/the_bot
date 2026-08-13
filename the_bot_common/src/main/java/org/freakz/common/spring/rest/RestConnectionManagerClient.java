@@ -16,6 +16,16 @@ import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
 import org.freakz.common.model.connectionmanager.IrcChannelControlRequest;
 import org.freakz.common.model.connectionmanager.IrcChannelControlResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicSetRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStatesResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStatesResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +37,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Component
 public class RestConnectionManagerClient {
@@ -147,6 +158,40 @@ public class RestConnectionManagerClient {
         baseUrl + "/irc/channel_control",
         request,
         IrcChannelControlResponse.class);
+  }
+
+  public IrcTopicSetResponse setIrcTopic(IrcTopicSetRequest request) {
+    return restTemplate.postForObject(baseUrl + "/irc/topic", request, IrcTopicSetResponse.class);
+  }
+
+  public List<IrcTopicStateResponse> getIrcTopicStates() {
+    try {
+      IrcTopicStatesResponse response = restTemplate.getForObject(
+          baseUrl + "/irc/topic_states", IrcTopicStatesResponse.class);
+      return response == null ? List.of() : response.topics();
+    } catch (Exception e) {
+      log.debug("Error reading IRC topic states: {}", e.getMessage());
+      return List.of();
+    }
+  }
+
+  public IrcModeSetResponse setIrcModes(IrcModeSetRequest request) {
+    return restTemplate.postForObject(baseUrl + "/irc/modes", request, IrcModeSetResponse.class);
+  }
+
+  public List<IrcModeStateResponse> getIrcModeStates() {
+    try {
+      IrcModeStatesResponse response = restTemplate.getForObject(
+          baseUrl + "/irc/mode_states", IrcModeStatesResponse.class);
+      return response == null ? List.of() : response.modes();
+    } catch (Exception e) {
+      log.debug("Error reading IRC mode states: {}", e.getMessage());
+      return List.of();
+    }
+  }
+
+  public IrcTopicEventResponse handleIrcTopicEvent(IrcTopicEventRequest request) {
+    return restTemplate.postForObject(baseUrl + "/irc/topic_event", request, IrcTopicEventResponse.class);
   }
 
   private String withOptionalQuery(String url, String query) {

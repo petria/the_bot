@@ -137,6 +137,10 @@ export function ConnectionsPage() {
                   captureImages: false,
                   captureImageToAliases: [],
                   manageOperators: false,
+                  manageTopic: false,
+                  topic: null,
+                  manageMode: false,
+                  modes: null,
                 },
               })}
             />

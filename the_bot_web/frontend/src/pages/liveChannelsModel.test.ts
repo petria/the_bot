@@ -91,6 +91,7 @@ describe('live channel view model', () => {
     expect(readOpenChannels(storage)).toEqual([{
       echoToAlias: 'IRC-TEST',
       label: '#test',
+      connectionType: null,
       sendAllowed: true,
       adminAllowed: false,
       modeAllowed: false,

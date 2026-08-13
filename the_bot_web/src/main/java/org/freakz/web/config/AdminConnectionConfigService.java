@@ -4,8 +4,12 @@ import org.freakz.common.config.BotRuntimeBootstrapConfig;
 import org.freakz.common.config.BotRuntimeBootstrapLoader;
 import org.freakz.common.config.ConfigConstants;
 import org.freakz.common.config.TheBotProperties;
+import org.freakz.common.irc.IrcChannelModeSpec;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.spring.rest.RestServerConfigClient;
+import org.freakz.common.spring.rest.RestConnectionManagerClient;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -15,11 +19,14 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.Charset;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,6 +46,23 @@ public class AdminConnectionConfigService {
   private final JsonMapper jsonMapper;
   private final RestServerConfigClient serverConfigClient;
   private final RestEngineClient engineClient;
+  private final RestConnectionManagerClient connectionManagerClient;
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public AdminConnectionConfigService(
+      Environment environment,
+      TheBotProperties botProperties,
+      JsonMapper jsonMapper,
+      RestServerConfigClient serverConfigClient,
+      RestEngineClient engineClient,
+      RestConnectionManagerClient connectionManagerClient) {
+    this.environment = environment;
+    this.botProperties = botProperties;
+    this.jsonMapper = jsonMapper;
+    this.serverConfigClient = serverConfigClient;
+    this.engineClient = engineClient;
+    this.connectionManagerClient = connectionManagerClient;
+  }
 
   public AdminConnectionConfigService(
       Environment environment,
@@ -46,11 +70,7 @@ public class AdminConnectionConfigService {
       JsonMapper jsonMapper,
       RestServerConfigClient serverConfigClient,
       RestEngineClient engineClient) {
-    this.environment = environment;
-    this.botProperties = botProperties;
-    this.jsonMapper = jsonMapper;
-    this.serverConfigClient = serverConfigClient;
-    this.engineClient = engineClient;
+    this(environment, botProperties, jsonMapper, serverConfigClient, engineClient, null);
   }
 
   public AdminConnectionConfigResponse readConfig() {
@@ -224,7 +244,11 @@ public class AdminConnectionConfigService {
             false,
             List.of(),
             false,
-            false))
+            false,
+            false,
+            null,
+            false,
+            null))
         .toList();
   }
 
@@ -265,7 +289,9 @@ public class AdminConnectionConfigService {
             ircConfigsFrom(root.get("ircServerConfigs")),
             discordConfigFrom(root.get("discordConfig")),
             telegramConfigFrom(root.get("telegramConfig")),
-            whatsappConfigFrom(root.get("whatsappConfig"))));
+            whatsappConfigFrom(root.get("whatsappConfig"))),
+        connectionManagerClient == null ? List.of() : connectionManagerClient.getIrcTopicStates(),
+        connectionManagerClient == null ? List.of() : connectionManagerClient.getIrcModeStates());
   }
 
   private BotConfigDto botConfigFrom(JsonNode node) {
@@ -337,7 +363,11 @@ public class AdminConnectionConfigService {
           item.path("captureImages").asBoolean(false),
           aliasesFrom(item.get("captureImageToAliases")),
           item.path("manageOperators").asBoolean(false),
-          item.path("echoIrcActivity").asBoolean(false)));
+          item.path("echoIrcActivity").asBoolean(false),
+          item.path("manageTopic").asBoolean(false),
+          text(item, "topic"),
+          item.path("manageMode").asBoolean(false),
+          text(item, "modes")));
     }
     return channels;
   }
@@ -482,7 +512,11 @@ public class AdminConnectionConfigService {
         source.captureImages(),
         normalizeAliases(source.captureImageToAliases()),
         source.manageOperators(),
-        source.echoIrcActivity());
+        source.echoIrcActivity(),
+        source.manageTopic(),
+        clean(source.topic()),
+        source.manageMode(),
+        normalizeModes(source.modes()));
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -679,7 +713,11 @@ public class AdminConnectionConfigService {
         settings.captureImages(),
         channel.captureImageToAliases(),
         channel.manageOperators(),
-        channel.echoIrcActivity());
+        channel.echoIrcActivity(),
+        channel.manageTopic(),
+        channel.topic(),
+        channel.manageMode(),
+        channel.modes());
   }
 
   private LiveChannelSettingsDto settingsFrom(ChannelDto channel) {
@@ -794,7 +832,11 @@ public class AdminConnectionConfigService {
             channel.captureImages(),
             normalizeAliases(channel.captureImageToAliases()),
             channel.manageOperators(),
-            channel.echoIrcActivity()))
+            channel.echoIrcActivity(),
+            channel.manageTopic(),
+            clean(channel.topic()),
+            channel.manageMode(),
+            normalizeModes(channel.modes())))
         .toList();
   }
 
@@ -916,6 +958,10 @@ public class AdminConnectionConfigService {
       item.put("captureImages", channel.captureImages());
       item.put("manageOperators", channel.manageOperators());
       item.put("echoIrcActivity", channel.echoIrcActivity());
+      item.put("manageTopic", channel.manageTopic());
+      putNullable(item, "topic", channel.topic());
+      item.put("manageMode", channel.manageMode());
+      putNullable(item, "modes", channel.modes());
       ArrayNode captureAliases = jsonMapper.createArrayNode();
       channel.captureImageToAliases().forEach(captureAliases::add);
       item.set("captureImageToAliases", captureAliases);
@@ -929,19 +975,29 @@ public class AdminConnectionConfigService {
     if (parent != null) {
       Files.createDirectories(parent);
     }
-    if (Files.exists(configPath)) {
-      String suffix = DateTimeFormatter.ISO_INSTANT.format(Instant.now()).replace(':', '-');
-      Files.copy(configPath, configPath.resolveSibling(configPath.getFileName() + ".bak." + suffix),
-          StandardCopyOption.COPY_ATTRIBUTES);
-    }
+    Path lockPath = configPath.resolveSibling(configPath.getFileName() + ".lock");
+    Path tempDirectory = parent == null ? Path.of(".") : parent;
+    try (FileChannel lockChannel = FileChannel.open(lockPath,
+        StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+         FileLock ignored = lockChannel.lock()) {
+      if (Files.exists(configPath)) {
+        String suffix = DateTimeFormatter.ISO_INSTANT.format(Instant.now()).replace(':', '-');
+        Files.copy(configPath, configPath.resolveSibling(configPath.getFileName() + ".bak." + suffix),
+            StandardCopyOption.COPY_ATTRIBUTES);
+      }
 
-    String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
-    Path tempFile = Files.createTempFile(parent, configPath.getFileName().toString(), ".tmp");
-    Files.writeString(tempFile, json, Charset.defaultCharset());
-    try {
-      Files.move(tempFile, configPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-    } catch (AtomicMoveNotSupportedException e) {
-      Files.move(tempFile, configPath, StandardCopyOption.REPLACE_EXISTING);
+      String json = jsonMapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+      Path tempFile = Files.createTempFile(tempDirectory, configPath.getFileName().toString(), ".tmp");
+      try {
+        Files.writeString(tempFile, json, Charset.defaultCharset());
+        try {
+          Files.move(tempFile, configPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+          Files.move(tempFile, configPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+      } finally {
+        Files.deleteIfExists(tempFile);
+      }
     }
   }
 
@@ -980,6 +1036,11 @@ public class AdminConnectionConfigService {
     return cleaned;
   }
 
+  private String normalizeModes(String value) {
+    String cleaned = clean(value);
+    return cleaned == null ? null : IrcChannelModeSpec.parse(cleaned).value();
+  }
+
   private record ConfigFile(Path path, String profile) {
   }
 
@@ -993,7 +1054,23 @@ public class AdminConnectionConfigService {
       String profile,
       String configFile,
       Instant lastModifiedAt,
-      AdminConnectionConfigPayload config) {
+      AdminConnectionConfigPayload config,
+      List<IrcTopicStateResponse> topicStates,
+      List<IrcModeStateResponse> modeStates) {
+
+    public AdminConnectionConfigResponse(
+        String profile,
+        String configFile,
+        Instant lastModifiedAt,
+        AdminConnectionConfigPayload config,
+        List<IrcTopicStateResponse> topicStates) {
+      this(profile, configFile, lastModifiedAt, config, topicStates, List.of());
+    }
+
+    public AdminConnectionConfigResponse {
+      topicStates = topicStates == null ? List.of() : List.copyOf(topicStates);
+      modeStates = modeStates == null ? List.of() : List.copyOf(modeStates);
+    }
   }
 
   public record AdminConnectionConfigApplyResponse(
@@ -1089,7 +1166,11 @@ public class AdminConnectionConfigService {
       boolean captureImages,
       List<String> captureImageToAliases,
       boolean manageOperators,
-      boolean echoIrcActivity) {
+      boolean echoIrcActivity,
+      boolean manageTopic,
+      String topic,
+      boolean manageMode,
+      String modes) {
 
     public ChannelDto(
         String id,
@@ -1108,7 +1189,55 @@ public class AdminConnectionConfigService {
         List<String> captureImageToAliases) {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
-          captureResolvedUrls, captureImages, captureImageToAliases, false, false);
+          captureResolvedUrls, captureImages, captureImageToAliases, false, false, false, null, false, null);
+    }
+
+    public ChannelDto(
+        String id,
+        String description,
+        String name,
+        String type,
+        String echoToAlias,
+        List<String> echoToAliases,
+        boolean joinOnStart,
+        boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands,
+        boolean resolveUrls,
+        boolean alertMessages,
+        boolean captureResolvedUrls,
+        boolean captureImages,
+        List<String> captureImageToAliases,
+        boolean manageOperators,
+        boolean echoIrcActivity) {
+      this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
+          publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
+          captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
+          echoIrcActivity, false, null, false, null);
+    }
+
+    public ChannelDto(
+        String id,
+        String description,
+        String name,
+        String type,
+        String echoToAlias,
+        List<String> echoToAliases,
+        boolean joinOnStart,
+        boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands,
+        boolean resolveUrls,
+        boolean alertMessages,
+        boolean captureResolvedUrls,
+        boolean captureImages,
+        List<String> captureImageToAliases,
+        boolean manageOperators,
+        boolean echoIrcActivity,
+        boolean manageTopic,
+        String topic) {
+      this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
+          publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
+          captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
+          echoIrcActivity, manageTopic, topic, false, null);
     }
 
     public ChannelDto(
@@ -1139,7 +1268,11 @@ public class AdminConnectionConfigService {
           false,
           List.of(),
           false,
-          false);
+          false,
+          false,
+          null,
+          false,
+          null);
     }
   }
 }

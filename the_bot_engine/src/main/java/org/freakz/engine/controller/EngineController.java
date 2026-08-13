@@ -20,6 +20,14 @@ import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
 import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
+import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeEventRequest;
+import org.freakz.common.model.connectionmanager.IrcModeEventResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeWebSetRequest;
 import org.freakz.common.model.security.WebLoginFailedEvent;
 import org.freakz.common.model.users.GetUsersResponse;
 import org.freakz.common.model.users.User;
@@ -40,6 +48,8 @@ import org.freakz.engine.services.console.ConsoleOutputService;
 import org.freakz.engine.services.livechannel.LiveChannelEventService;
 import org.freakz.engine.services.media.MediaStorageSettingsService;
 import org.freakz.engine.services.irc.IrcOperatorManagementService;
+import org.freakz.engine.services.irc.IrcTopicManagementService;
+import org.freakz.engine.services.irc.IrcModeManagementService;
 import org.freakz.engine.services.notifications.PrivateChatAlertService;
 import org.freakz.engine.services.notifications.WebLoginSecurityAlertService;
 import org.freakz.engine.services.notifications.UserNotifyRuleService;
@@ -112,6 +122,9 @@ public class EngineController {
   private final PrivateChatAlertService privateChatAlertService;
   private final MediaStorageSettingsService mediaStorageSettingsService;
   private final IrcOperatorManagementService ircOperatorManagementService;
+  private final IrcTopicManagementService ircTopicManagementService;
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private IrcModeManagementService ircModeManagementService;
 
   public EngineController(
       BotEngine botEngine,
@@ -133,7 +146,8 @@ public class EngineController {
       LiveChannelEventService liveChannelEventService,
       PrivateChatAlertService privateChatAlertService,
       MediaStorageSettingsService mediaStorageSettingsService,
-      IrcOperatorManagementService ircOperatorManagementService) {
+      IrcOperatorManagementService ircOperatorManagementService,
+      IrcTopicManagementService ircTopicManagementService) {
     this.botEngine = botEngine;
     this.countService = countService;
     this.usersService = usersService;
@@ -154,6 +168,7 @@ public class EngineController {
     this.privateChatAlertService = privateChatAlertService;
     this.mediaStorageSettingsService = mediaStorageSettingsService;
     this.ircOperatorManagementService = ircOperatorManagementService;
+    this.ircTopicManagementService = ircTopicManagementService;
   }
 
   @PostMapping("/handle_request")
@@ -400,6 +415,54 @@ public class EngineController {
       log.error("Config reload failed: {}", e.getMessage(), e);
       return ResponseEntity.internalServerError().body(e.getMessage());
     }
+  }
+
+  @PostMapping("/internal/irc/topic-event")
+  public ResponseEntity<IrcTopicEventResponse> handleIrcTopicEvent(
+      @RequestBody IrcTopicEventRequest request) {
+    return ResponseEntity.ok(ircTopicManagementService.handleTopicEvent(request));
+  }
+
+  @PostMapping("/internal/irc/topic")
+  public ResponseEntity<IrcTopicSetResponse> setIrcTopicFromWeb(
+      @RequestBody IrcTopicWebSetRequest request) {
+    User user = ircTopicManagementService.findUser(request == null ? null : request.username());
+    String echoToAlias = request == null ? null : request.echoToAlias();
+    if (!ircTopicManagementService.canSetTopic(echoToAlias, user)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+    IrcTopicSetResponse response = ircTopicManagementService.setTopic(
+        echoToAlias,
+        request.topic(),
+        EngineRequest.builder().user(user).build());
+    if (response.error() != null) {
+      return ResponseEntity.badRequest().body(response);
+    }
+    return ResponseEntity.ok(response);
+  }
+
+  @PostMapping("/internal/irc/mode-event")
+  public ResponseEntity<IrcModeEventResponse> handleIrcModeEvent(
+      @RequestBody IrcModeEventRequest request) {
+    return ResponseEntity.ok(ircModeManagementService.handleModeEvent(request));
+  }
+
+  @PostMapping("/internal/irc/modes")
+  public ResponseEntity<IrcModeSetResponse> setIrcModesFromWeb(
+      @RequestBody IrcModeWebSetRequest request) {
+    User user = ircModeManagementService.findUser(request == null ? null : request.username());
+    String echoToAlias = request == null ? null : request.echoToAlias();
+    if (!ircModeManagementService.canSetMode(echoToAlias, user)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+    IrcModeSetResponse response = ircModeManagementService.setModes(
+        echoToAlias,
+        request.modes(),
+        EngineRequest.builder().user(user).build());
+    if (response.error() != null) {
+      return ResponseEntity.badRequest().body(response);
+    }
+    return ResponseEntity.ok(response);
   }
 
   private String trim(String value) {

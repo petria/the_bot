@@ -5,6 +5,12 @@ import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasReques
 import org.freakz.common.model.connectionmanager.ChannelUsersByEchoToAliasResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeRequest;
 import org.freakz.common.model.connectionmanager.IrcOperatorModeResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicStateResponse;
+import org.freakz.common.model.connectionmanager.IrcTopicWebSetRequest;
+import org.freakz.common.model.connectionmanager.IrcModeStateResponse;
+import org.freakz.common.model.connectionmanager.IrcModeSetResponse;
+import org.freakz.common.model.connectionmanager.IrcModeWebSetRequest;
 import org.freakz.common.model.engine.livechannel.LiveChannelEvent;
 import org.freakz.common.model.engine.livechannel.LiveChannelEventsResponse;
 import org.freakz.common.model.engine.livechannel.LiveChannelSendRequest;
@@ -201,6 +207,122 @@ class AdminLiveChannelsControllerTest {
         .isInstanceOf(ResponseStatusException.class)
         .extracting("statusCode.value")
         .isEqualTo(403);
+  }
+
+  @Test
+  void topicReturnsLiveStateAndEditabilityForChannelAdmin() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    when(connectionManagerClient.getIrcTopicStates()).thenReturn(List.of(
+        new IrcTopicStateResponse("IRC-HOKANDEV", "#hokandev", true,
+            "saved topic", "live topic", true, true, false)));
+    LiveChannelCatalogService catalogService = ircCatalog();
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        mock(RestEngineClient.class),
+        connectionManagerClient,
+        new ChannelAccessService(),
+        catalogService,
+        mock(AdminConnectionConfigService.class));
+
+    AdminLiveChannelsController.LiveChannelTopicResponse response = controller.topic(
+        principal("petria"), "IRC-HOKANDEV");
+
+    assertThat(response.currentTopic()).isEqualTo("live topic");
+    assertThat(response.configuredTopic()).isEqualTo("saved topic");
+    assertThat(response.editable()).isTrue();
+  }
+
+  @Test
+  void topicIsReadOnlyForViewerWithoutChannelAdminPermission() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    when(connectionManagerClient.getIrcTopicStates()).thenReturn(List.of(
+        new IrcTopicStateResponse("IRC-HOKANDEV", "#hokandev", true,
+            "saved topic", "live topic", true, true, false)));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        mock(RestEngineClient.class),
+        connectionManagerClient,
+        new ChannelAccessService(),
+        ircCatalog(),
+        mock(AdminConnectionConfigService.class));
+
+    AdminLiveChannelsController.LiveChannelTopicResponse response = controller.topic(
+        principal("viewer", BotPermission.WEB_USER, "channels.view.irc.irc-hokandev"),
+        "IRC-HOKANDEV");
+
+    assertThat(response.editable()).isFalse();
+  }
+
+  @Test
+  void topicSaveUsesAuthenticatedUsernameAndEnginePolicy() {
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.setIrcTopicFromWeb(new IrcTopicWebSetRequest(
+        "IRC-HOKANDEV", "updated topic", "petria"))).thenReturn(
+        new IrcTopicSetResponse("IRC-HOKANDEV", "#hokandev", true, false, "updated topic", null));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        engineClient,
+        mock(RestConnectionManagerClient.class),
+        new ChannelAccessService(),
+        ircCatalog(),
+        mock(AdminConnectionConfigService.class));
+
+    IrcTopicSetResponse response = controller.saveTopic(
+        principal("petria"),
+        new AdminLiveChannelsController.IrcTopicUpdateRequest("IRC-HOKANDEV", "updated topic"));
+
+    assertThat(response.topic()).isEqualTo("updated topic");
+    verify(engineClient).setIrcTopicFromWeb(new IrcTopicWebSetRequest(
+        "IRC-HOKANDEV", "updated topic", "petria"));
+  }
+
+  @Test
+  void topicActionsRejectNonIrcChannels() {
+    LiveChannelCatalogService catalogService = mock(LiveChannelCatalogService.class);
+    when(catalogService.findPublicChannel("DISCORD-TEST")).thenReturn(Optional.of(
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "DISCORD-TEST", "Discord test", "DISCORD_CONNECTION", "DiscordNetwork", "channel")));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        mock(RestEngineClient.class),
+        mock(RestConnectionManagerClient.class),
+        new ChannelAccessService(),
+        catalogService,
+        mock(AdminConnectionConfigService.class));
+
+    assertThatThrownBy(() -> controller.topic(principal("petria"), "DISCORD-TEST"))
+        .isInstanceOf(ResponseStatusException.class)
+        .extracting("statusCode.value")
+        .isEqualTo(400);
+  }
+
+  @Test
+  void modeReturnsLiveStateAndAllowsChannelAdminEdit() {
+    RestConnectionManagerClient connectionManagerClient = mock(RestConnectionManagerClient.class);
+    when(connectionManagerClient.getIrcModeStates()).thenReturn(List.of(
+        new IrcModeStateResponse("IRC-HOKANDEV", "#hokandev", true,
+            "+st", "+st", true, true, false)));
+    RestEngineClient engineClient = mock(RestEngineClient.class);
+    when(engineClient.setIrcModesFromWeb(new IrcModeWebSetRequest(
+        "IRC-HOKANDEV", "+nst", "petria"))).thenReturn(
+        new IrcModeSetResponse("IRC-HOKANDEV", "#hokandev", true, "+nst", null));
+    AdminLiveChannelsController controller = new AdminLiveChannelsController(
+        engineClient, connectionManagerClient, new ChannelAccessService(), ircCatalog(),
+        mock(AdminConnectionConfigService.class));
+
+    AdminLiveChannelsController.LiveChannelModeResponse state = controller.mode(
+        principal("petria"), "IRC-HOKANDEV");
+    IrcModeSetResponse response = controller.saveMode(
+        principal("petria"), new AdminLiveChannelsController.IrcModeUpdateRequest("IRC-HOKANDEV", "+nst"));
+
+    assertThat(state.currentModes()).isEqualTo("+st");
+    assertThat(state.editable()).isTrue();
+    assertThat(response.modes()).isEqualTo("+nst");
+    verify(engineClient).setIrcModesFromWeb(new IrcModeWebSetRequest("IRC-HOKANDEV", "+nst", "petria"));
+  }
+
+  private LiveChannelCatalogService ircCatalog() {
+    LiveChannelCatalogService catalogService = mock(LiveChannelCatalogService.class);
+    when(catalogService.findPublicChannel("IRC-HOKANDEV")).thenReturn(Optional.of(
+        new LiveChannelCatalogService.LiveChannelCatalogItem(
+            "IRC-HOKANDEV", "#hokandev", "IRC_CONNECTION", "IRCNet", "channel")));
+    return catalogService;
   }
 
   private AdminLiveChannelsController controller(RestEngineClient engineClient) {
