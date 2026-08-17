@@ -9,6 +9,7 @@ services:
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
@@ -64,6 +65,7 @@ services:
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     depends_on:
       - bot-whatsapp
@@ -114,6 +116,7 @@ services:
   bot-web:
     image: ghcr.io/petria/the_bot-web:${WEB_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     group_add:
       - "${DOCKER_GID:-989}"
