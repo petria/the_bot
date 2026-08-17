@@ -57,6 +57,7 @@ public class LiveMediaController {
 
       Path storageDir = Path.of(settings.storageDir());
       List<LiveMediaItem> mediaItems = new MediaStore(storageDir, jsonMapper).listActive().stream()
+          .filter(item -> !"whatsapp-auth".equalsIgnoreCase(item.sourceProtocol()))
           .filter(item -> canView(principal, item.sourceProtocol(), item.sourceChannelAlias()))
           .map(LiveMediaItem::fromMedia)
           .toList();

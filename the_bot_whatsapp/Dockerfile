@@ -28,7 +28,6 @@ RUN apt-get update \
 
 COPY --from=wacli-builder /go/bin/wacli /usr/local/bin/wacli
 COPY server.py /opt/bot-whatsapp/server.py
-COPY supervisor.py /opt/bot-whatsapp/supervisor.py
 COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh

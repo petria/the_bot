@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import server
@@ -180,12 +181,55 @@ class SendHandlerTest(unittest.TestCase):
         self.assertNotIn("--reply-to-sender", captured["command"])
 
 
+class AuthenticationHandlerTest(unittest.TestCase):
+    def test_qr_payload_and_phone_are_normalized(self):
+        self.assertEqual("2@payload-that-is-long-enough", server.extract_qr_payload("QR: 2@payload-that-is-long-enough"))
+        self.assertEqual("+358449125874", server.normalize_phone("+358449125874"))
+        self.assertIsNone(server.normalize_phone("not-a-phone"))
+
+    def test_auth_status_requires_internal_token(self):
+        runtime = SimpleNamespace(snapshot=lambda: {"state": "UNAUTHENTICATED"})
+        handler = handler_with_runtime(runtime)
+        handler.path = "/auth/status"
+        handler.handle_auth_status()
+        self.assertEqual(401, handler.response[0])
+
+        handler.headers[server.INTERNAL_TOKEN_HEADER] = "internal-secret"
+        with patch.object(server, "INTERNAL_TOKEN", "internal-secret"):
+            handler.handle_auth_status()
+        self.assertEqual(200, handler.response[0])
+        self.assertEqual("UNAUTHENTICATED", handler.response[1]["auth"]["state"])
+
+    def test_auth_start_passes_method_and_phone_to_runtime(self):
+        calls = {}
+        runtime = SimpleNamespace(
+            start_auth=lambda method, phone: calls.update({"method": method, "phone": phone}) or (True, None),
+            snapshot=lambda: {"state": "STARTING"},
+        )
+        handler = handler_with_runtime(runtime)
+        handler.path = "/auth/start"
+        handler.headers[server.INTERNAL_TOKEN_HEADER] = "internal-secret"
+        handler.read_json_payload = lambda: {"method": "phone", "phone": "+358449125874"}
+        with patch.object(server, "INTERNAL_TOKEN", "internal-secret"):
+            handler.handle_auth_start()
+        self.assertEqual(202, handler.response[0])
+        self.assertEqual({"method": "phone", "phone": "+358449125874"}, calls)
+
+
 def handler_with_wacli(result):
     handler = server.Handler.__new__(server.Handler)
     def run_wacli_capture(command, timeout):
         handler.last_command = command
         return result
     handler.run_wacli_capture = run_wacli_capture
+    handler.respond = lambda status, body: setattr(handler, "response", (status, body))
+    handler.headers = {}
+    return handler
+
+
+def handler_with_runtime(runtime):
+    handler = server.Handler.__new__(server.Handler)
+    handler.server = SimpleNamespace(runtime=runtime)
     handler.respond = lambda status, body: setattr(handler, "response", (status, body))
     handler.headers = {}
     return handler

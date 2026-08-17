@@ -1,5 +1,18 @@
 import { getJson, postJson, putJson } from './client';
 
+export type AdminWhatsAppAuthStatus = {
+  state: string;
+  authenticated: boolean;
+  syncRunning: boolean;
+  authRunning: boolean;
+  method: string | null;
+  qrUrl: string | null;
+  linkExpiresAt: string | null;
+  pairingCode: string | null;
+  message: string | null;
+  error: string | null;
+};
+
 export type AdminConfigChannel = {
   id: string | null;
   description: string | null;
@@ -127,6 +140,21 @@ export function saveAndApplyAdminConnectionConfig(
   config: AdminConnectionConfigPayload,
 ): Promise<AdminConnectionConfigApplyResponse> {
   return postJson<AdminConnectionConfigApplyResponse>('/api/web/admin/config/connections/apply', config);
+}
+
+export function getAdminWhatsAppAuthStatus(): Promise<AdminWhatsAppAuthStatus> {
+  return getJson<AdminWhatsAppAuthStatus>('/api/web/admin/whatsapp/auth');
+}
+
+export function startAdminWhatsAppAuth(
+  method: 'qr' | 'phone',
+  phone?: string,
+): Promise<AdminWhatsAppAuthStatus> {
+  return postJson<AdminWhatsAppAuthStatus>('/api/web/admin/whatsapp/auth/start', { method, phone });
+}
+
+export function cancelAdminWhatsAppAuth(): Promise<AdminWhatsAppAuthStatus> {
+  return postJson<AdminWhatsAppAuthStatus>('/api/web/admin/whatsapp/auth/cancel', {});
 }
 
 export type IrcOperatorReconcileResponse = {

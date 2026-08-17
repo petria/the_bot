@@ -42,6 +42,7 @@ the:
     rest:
       bot-io-base-url: ${THE_BOT_WEB_BOT_IO_BASE_URL:http://localhost:8090}
       bot-engine-base-url: ${THE_BOT_WEB_BOT_ENGINE_BASE_URL:http://localhost:8100}
+      bot-whatsapp-base-url: ${THE_BOT_WEB_BOT_WHATSAPP_BASE_URL:http://localhost:8095}
       bot-web-base-url: ${THE_BOT_REST_BOT_WEB_BASE_URL:http://localhost:8091}
     internal-api-token: ${THE_BOT_INTERNAL_API_TOKEN:}
 

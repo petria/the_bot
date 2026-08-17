@@ -18,4 +18,4 @@ if [ -n "${WACLI_WEBHOOK_SECRET:-}" ]; then
   set -- "$@" --webhook-secret "$WACLI_WEBHOOK_SECRET"
 fi
 
-exec python /opt/bot-whatsapp/supervisor.py "$@"
+exec python /opt/bot-whatsapp/server.py "$@"
