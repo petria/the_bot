@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import * as configApi from '../api/adminConnectionConfig';
 import { renderPage } from '../test/pageTestUtils';
@@ -42,5 +42,36 @@ describe('AdminConnectionConfigPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Discord' }));
     expect(screen.queryByText('Manage topic')).not.toBeInTheDocument();
+  });
+
+  it('shows WhatsApp authentication controls and QR link', async () => {
+    vi.spyOn(configApi, 'getAdminConnectionConfig').mockResolvedValue({
+      profile: 'DEV', configFile: '/runtime/DEV.json', lastModifiedAt: '2026-08-06T10:00:00Z',
+      config: {
+        botConfig: null, ircServerConfigs: [], discordConfig: null, telegramConfig: null,
+        whatsappConfig: { network: 'WhatsApp', sendBaseUrl: 'http://bot-whatsapp:8095', connectStartup: true, channelList: [] },
+      },
+      topicStates: [], modeStates: [],
+    });
+    vi.spyOn(configApi, 'getAdminWhatsAppAuthStatus').mockResolvedValue({
+      state: 'WAITING_FOR_SCAN', authenticated: false, syncRunning: false, authRunning: true,
+      method: 'qr', qrUrl: 'https://example.test/media/qr?token=secret',
+      linkExpiresAt: '2026-08-17T20:45:00Z', pairingCode: null, message: 'Scan the QR code', error: null,
+    });
+    const start = vi.spyOn(configApi, 'startAdminWhatsAppAuth').mockResolvedValue({
+      state: 'STARTING', authenticated: false, syncRunning: false, authRunning: true,
+      method: 'qr', qrUrl: null, linkExpiresAt: null, pairingCode: null,
+      message: 'Starting WhatsApp authentication', error: null,
+    });
+
+    renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'WhatsApp' }));
+    expect(await screen.findByAltText('WhatsApp authentication QR code')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generate QR/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Generate QR/ }));
+    await waitFor(() => expect(start).toHaveBeenCalledWith('qr', undefined));
   });
 });

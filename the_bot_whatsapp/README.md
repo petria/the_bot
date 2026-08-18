@@ -38,14 +38,19 @@ Check the linked-device session:
 docker compose exec bot-whatsapp wacli --store /wacli auth status --json
 ```
 
-If it reports `authenticated=false`, re-authenticate and scan the QR code:
+If it reports `authenticated=false`, open Manage Connections → WhatsApp in the web UI and choose **Generate QR / re-authenticate**. The UI renders the current wacli QR payload into a short-lived media link that can be opened or copied to a phone. The link expires after two minutes.
+
+The UI also supports phone-number pairing as a fallback. Enter an E.164 number and choose **Pair by phone**.
+
+For a manual QR flow, authenticate and scan the QR code:
 
 ```bash
-docker compose exec bot-whatsapp wacli --store /wacli auth --qr-format terminal
-docker compose restart bot-whatsapp
+docker compose stop bot-whatsapp
+docker compose run --rm bot-whatsapp auth --qr-format terminal
+docker compose up -d bot-whatsapp
 ```
 
-The container exits if `wacli sync --follow` stops, and Docker restarts it through the compose `restart: unless-stopped` policy. Docker health is based on `/health`, so an invalid linked-device session is visible as an unhealthy `bot-whatsapp` container instead of a silently running wrapper.
+The sidecar keeps its HTTP API available while authentication is pending, and starts `wacli sync --follow` only after the store is authenticated. Docker health is based on `/health`, so an invalid linked-device session is visible as an unhealthy `bot-whatsapp` container instead of a silently running wrapper.
 
 ## Runtime Config
 

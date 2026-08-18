@@ -145,6 +145,19 @@ public class MediaStore {
     return Optional.empty();
   }
 
+  public void delete(String id) throws IOException {
+    if (id == null || id.isBlank()) {
+      return;
+    }
+    Path metadataPath = recordPath(id);
+    if (!Files.isRegularFile(metadataPath)) {
+      return;
+    }
+    Optional<MediaStoreRecord> record = readRecord(id);
+    deleteQuietly(metadataPath);
+    record.ifPresent(value -> deleteQuietly(fileDir.resolve(value.getFileName())));
+  }
+
   public void cleanupExpired() throws IOException {
     if (!Files.isDirectory(metadataDir)) {
       return;

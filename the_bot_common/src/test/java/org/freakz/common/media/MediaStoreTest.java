@@ -188,4 +188,20 @@ class MediaStoreTest {
 
     assertThat(store.listActive()).isEmpty();
   }
+
+  @Test
+  void deletesMediaById() throws Exception {
+    MediaStore store = new MediaStore(tempDir, new JsonMapper());
+    MediaStoreCreated created = store.create(
+        new byte[] {1, 2, 3},
+        "image/png",
+        "delete.png",
+        Duration.ofDays(1),
+        null);
+
+    store.delete(created.id());
+
+    assertThat(store.readPublic(created.id(), created.token())).isEmpty();
+    assertThat(store.listActive()).isEmpty();
+  }
 }

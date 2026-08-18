@@ -30,6 +30,12 @@ class AdminMediaContentControllerTest {
         "test.png",
         Duration.ofDays(1),
         new MediaStoreSource("discord", "Discord", "DISCORD-TEST", "test", "petria"));
+    new MediaStore(tempDir, mapper).create(
+        new byte[] {4, 5, 6},
+        "image/png",
+        "auth.png",
+        Duration.ofMinutes(2),
+        new MediaStoreSource("whatsapp-auth", "WhatsApp", null, null, "admin"));
 
     AdminMediaContentController.MediaContentResponse response = controller(mapper, settings(true)).getMediaContent();
 

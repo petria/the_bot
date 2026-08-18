@@ -39,7 +39,9 @@ public class AdminMediaContentController {
       if (settings.storageDir() == null || settings.storageDir().isBlank()) {
         return MediaContentResponse.from(settings, List.of(), "Media storage directory is not configured");
       }
-      List<MediaStoreListItem> items = new MediaStore(Path.of(settings.storageDir()), jsonMapper).listActive();
+      List<MediaStoreListItem> items = new MediaStore(Path.of(settings.storageDir()), jsonMapper).listActive().stream()
+          .filter(item -> !"whatsapp-auth".equalsIgnoreCase(item.sourceProtocol()))
+          .toList();
       return MediaContentResponse.from(settings, items, settings.detail());
     } catch (Exception e) {
       return MediaContentResponse.unavailable(e.getMessage());

@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import { AlertTriangle, Copy, ExternalLink, Plus, QrCode, Save, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -31,10 +31,13 @@ import {
   AdminIrcTopicState,
   AdminIrcModeState,
   getAdminConnectionConfig,
+  getAdminWhatsAppAuthStatus,
+  cancelAdminWhatsAppAuth,
   reconcileIrcOperators,
   PromoteChannelState,
   saveAndApplyAdminConnectionConfig,
   saveAdminConnectionConfig,
+  startAdminWhatsAppAuth,
 } from '../api/adminConnectionConfig';
 import { ApiError } from '../api/client';
 
@@ -422,6 +425,39 @@ function WhatsAppEditor({
   config: AdminWhatsAppConfig;
   onChange: (config: AdminWhatsAppConfig) => void;
 }) {
+  const queryClient = useQueryClient();
+  const [phone, setPhone] = useState('');
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const authQuery = useQuery({
+    queryKey: ['admin-whatsapp-auth'],
+    queryFn: getAdminWhatsAppAuthStatus,
+    refetchInterval: (query) => query.state.data?.authRunning ? 2000 : false,
+  });
+  const startMutation = useMutation({
+    mutationFn: (method: 'qr' | 'phone') => startAdminWhatsAppAuth(method, method === 'phone' ? phone.trim() : undefined),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['admin-whatsapp-auth'], result);
+      setCopyMessage(null);
+    },
+  });
+  const cancelMutation = useMutation({
+    mutationFn: cancelAdminWhatsAppAuth,
+    onSuccess: (result) => queryClient.setQueryData(['admin-whatsapp-auth'], result),
+  });
+  const auth = authQuery.data;
+
+  const copyQrLink = async () => {
+    if (!auth?.qrUrl) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(auth.qrUrl);
+      setCopyMessage('QR link copied.');
+    } catch {
+      setCopyMessage('Clipboard access failed; copy the link from the address bar.');
+    }
+  };
+
   return (
     <Stack gap="md">
       <SimpleGrid cols={{ base: 1, sm: 3 }}>
@@ -442,6 +478,88 @@ function WhatsAppEditor({
         />
       </SimpleGrid>
       <SecretNotice service="WhatsApp" />
+      <Card withBorder radius="sm">
+        <Stack gap="sm">
+          <Group justify="space-between" gap="sm">
+            <div>
+              <Title order={4}>WhatsApp authentication</Title>
+              <Text size="sm" c="dimmed">Generate a short-lived QR link for scanning from a phone.</Text>
+            </div>
+            <Text size="sm" fw={700} c={auth?.authenticated ? 'green' : 'yellow'}>
+              {authQuery.isLoading ? 'Checking…' : auth?.state || 'Unavailable'}
+            </Text>
+          </Group>
+
+          {authQuery.isError && <Alert color="red">Could not contact the WhatsApp authentication service.</Alert>}
+          {auth?.error && <Alert color="red">{auth.error}</Alert>}
+          {auth?.message && !auth?.error && <Text size="sm">{auth.message}</Text>}
+
+          {auth?.authenticated ? (
+            <Alert color="green" variant="light">WhatsApp is authenticated and sync is {auth.syncRunning ? 'running' : 'starting'}.</Alert>
+          ) : null}
+
+          {auth?.qrUrl ? (
+            <Group align="flex-start" gap="md" wrap="wrap">
+              <img
+                src={auth.qrUrl}
+                alt="WhatsApp authentication QR code"
+                width={256}
+                height={256}
+                style={{ imageRendering: 'pixelated', border: '1px solid var(--mantine-color-gray-4)' }}
+              />
+              <Stack gap="xs">
+                <Text size="sm">Open WhatsApp → Linked devices → Link a device, then scan this code.</Text>
+                {auth.linkExpiresAt && <Text size="xs" c="dimmed">QR link expires {formatAuthExpiry(auth.linkExpiresAt)}.</Text>}
+                <Group gap="xs">
+                  <Button size="xs" variant="light" leftSection={<Copy size={15} />} onClick={copyQrLink}>Copy link</Button>
+                  <Button size="xs" variant="subtle" leftSection={<ExternalLink size={15} />} component="a" href={auth.qrUrl} target="_blank" rel="noreferrer">Open link</Button>
+                </Group>
+                {copyMessage && <Text size="xs" c="green">{copyMessage}</Text>}
+              </Stack>
+            </Group>
+          ) : null}
+
+          {auth?.pairingCode ? <Alert color="blue">Enter pairing code <strong>{auth.pairingCode}</strong> in WhatsApp on the phone.</Alert> : null}
+
+          <Group gap="sm" align="flex-end" wrap="wrap">
+            <Button
+              leftSection={<QrCode size={16} />}
+              loading={startMutation.isPending}
+              onClick={() => startMutation.mutate('qr')}
+            >
+              Generate QR / re-authenticate
+            </Button>
+            <TextInput
+              label="Phone pairing fallback"
+              placeholder="+358401234567"
+              value={phone}
+              onChange={(event) => setPhone(event.currentTarget.value)}
+              disabled={startMutation.isPending}
+            />
+            <Button
+              variant="light"
+              loading={startMutation.isPending}
+              disabled={!phone.trim()}
+              onClick={() => startMutation.mutate('phone')}
+            >
+              Pair by phone
+            </Button>
+            {auth?.authRunning ? (
+              <Button
+                color="red"
+                variant="subtle"
+                leftSection={<X size={16} />}
+                loading={cancelMutation.isPending}
+                onClick={() => cancelMutation.mutate()}
+              >
+                Cancel
+              </Button>
+            ) : null}
+          </Group>
+          {startMutation.isError && <Alert color="red">{startMutation.error instanceof Error ? startMutation.error.message : 'Could not start authentication.'}</Alert>}
+          {cancelMutation.isError && <Alert color="red">{cancelMutation.error instanceof Error ? cancelMutation.error.message : 'Could not cancel authentication.'}</Alert>}
+        </Stack>
+      </Card>
       <ChannelsEditor
         channels={config.channelList ?? []}
         allowImageCapture
@@ -449,6 +567,11 @@ function WhatsAppEditor({
       />
     </Stack>
   );
+}
+
+function formatAuthExpiry(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString();
 }
 
 function ChannelsEditor({

@@ -55,6 +55,7 @@ public class MediaController {
       return ResponseEntity.ok()
           .contentType(MediaType.parseMediaType(result.record().getContentType()))
           .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + result.record().getOriginalFileName() + "\"")
+          .header("Referrer-Policy", "no-referrer")
           .cacheControl(CacheControl.noStore())
           .body(new FileSystemResource(result.file()));
     } catch (Exception e) {

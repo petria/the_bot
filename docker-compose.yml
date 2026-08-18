@@ -9,6 +9,7 @@ services:
   bot-engine:
     image: ghcr.io/petria/the_bot-engine:${ENGINE_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
@@ -64,6 +65,7 @@ services:
   bot-io:
     image: ghcr.io/petria/the_bot-io:${IO_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     depends_on:
       - bot-whatsapp
@@ -108,18 +110,21 @@ services:
       - WACLI_SYNC_MAX_DB_SIZE=${WACLI_SYNC_MAX_DB_SIZE:-2GB}
       - BOT_WHATSAPP_PORT=8095
       - BOT_WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
+      - BOT_WHATSAPP_INTERNAL_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
     container_name: bot-whatsapp
 
   # Hokan the Bot web UI container
   bot-web:
     image: ghcr.io/petria/the_bot-web:${WEB_IMAGE_TAG:-latest}
     logging: *default-logging
+    restart: unless-stopped
     user: "${PUID}:${PGID}"
     group_add:
       - "${DOCKER_GID:-989}"
     depends_on:
       - bot-engine
       - bot-io
+      - bot-whatsapp
     volumes:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
@@ -138,6 +143,7 @@ services:
       - THE_BOT_WEB_USERS_FILE=${THE_BOT_WEB_USERS_FILE:-/runtime/data/users.json}
       - THE_BOT_WEB_BOT_IO_BASE_URL=${THE_BOT_WEB_BOT_IO_BASE_URL:-http://bot-io:8090}
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
+      - THE_BOT_WEB_BOT_WHATSAPP_BASE_URL=${THE_BOT_WEB_BOT_WHATSAPP_BASE_URL:-http://bot-whatsapp:8095}
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
