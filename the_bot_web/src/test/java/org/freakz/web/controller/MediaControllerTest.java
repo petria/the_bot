@@ -61,6 +61,25 @@ class MediaControllerTest {
     assertThat(response.getBody()).isInstanceOf(FileSystemResource.class);
   }
 
+  @Test
+  void returnsPdfForValidShortLink() throws Exception {
+    JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
+    MediaStoreCreated created = new MediaStore(tempDir, mapper).create(
+        new byte[] {'%', 'P', 'D', 'F'},
+        "application/pdf",
+        "document.pdf",
+        Duration.ofDays(1),
+        null);
+
+    ResponseEntity<?> response = controller(mapper).getShortMedia(created.shortCode());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
+    assertThat(response.getHeaders().getFirst("Content-Disposition"))
+        .isEqualTo("inline; filename=\"document.pdf\"");
+    assertThat(response.getBody()).isInstanceOf(FileSystemResource.class);
+  }
+
   private MediaController controller() {
     return controller(JsonMapper.builder().findAndAddModules().build());
   }

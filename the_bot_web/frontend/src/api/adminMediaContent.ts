@@ -4,7 +4,7 @@ export type MediaContentItem = {
   id: string;
   shortCode: string;
   contentType: string;
-  mediaType: 'image' | 'video' | 'audio' | 'media';
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'media';
   originalFileName: string;
   sizeBytes: number;
   createdAt: string | null;

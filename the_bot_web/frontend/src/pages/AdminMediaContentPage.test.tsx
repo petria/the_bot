@@ -22,4 +22,24 @@ describe('AdminMediaContentPage', () => {
     expect(await screen.findByText('photo.png')).toBeInTheDocument();
     expect(await screen.findByText('TELEGRAM-TEST')).toBeInTheDocument();
   });
+
+  it('renders stored PDF documents', async () => {
+    vi.spyOn(mediaApi, 'getMediaContent').mockResolvedValue({
+      enabled: true,
+      storageDir: '/media',
+      publicUrlPrefix: '/media',
+      detail: null,
+      items: [{
+        id: '2', shortCode: 'pdf12', contentType: 'application/pdf', mediaType: 'document',
+        originalFileName: 'document.pdf', sizeBytes: 2048, createdAt: null, expiresAt: null,
+        sourceProtocol: 'WhatsApp', sourceNetwork: 'WhatsApp', sourceChannelAlias: 'WA-TEST',
+        sourceChannelName: 'WhatsApp', sourceSender: 'Petri',
+      }],
+    });
+
+    renderPage(<AdminMediaContentPage />);
+
+    expect(await screen.findByText('document.pdf')).toBeInTheDocument();
+    expect(await screen.findByText('document')).toBeInTheDocument();
+  });
 });

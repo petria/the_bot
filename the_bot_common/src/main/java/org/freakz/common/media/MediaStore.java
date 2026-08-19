@@ -233,6 +233,9 @@ public class MediaStore {
     if (value.equals("audio/mpeg") || value.equals("audio/mp4") || value.equals("audio/ogg") || value.equals("audio/opus") || value.equals("audio/wav") || value.equals("audio/webm")) {
       return value;
     }
+    if (value.equals("application/pdf")) {
+      return value;
+    }
     String fileName = originalFileName == null ? "" : originalFileName.toLowerCase();
     if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
       return "image/jpeg";
@@ -270,6 +273,9 @@ public class MediaStore {
     if (fileName.endsWith(".wav")) {
       return "audio/wav";
     }
+    if (fileName.endsWith(".pdf")) {
+      return "application/pdf";
+    }
     return null;
   }
 
@@ -286,6 +292,9 @@ public class MediaStore {
     }
     if (normalized.startsWith("audio/")) {
       return "audio";
+    }
+    if (normalized.equals("application/pdf")) {
+      return "document";
     }
     return "media";
   }
@@ -388,6 +397,7 @@ public class MediaStore {
       case "audio/opus" -> ".opus";
       case "audio/wav" -> ".wav";
       case "audio/webm" -> ".webm";
+      case "application/pdf" -> ".pdf";
       default -> ".jpg";
     };
   }
