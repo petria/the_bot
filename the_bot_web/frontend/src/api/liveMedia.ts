@@ -12,7 +12,7 @@ export type LiveMediaItem = {
   sourceChannelName: string | null;
   sourceSender: string | null;
   contentType: string | null;
-  mediaType: 'image' | 'video' | 'audio' | 'media' | null;
+  mediaType: 'image' | 'video' | 'audio' | 'document' | 'media' | null;
   originalFileName: string | null;
   sizeBytes: number | null;
   url: string | null;

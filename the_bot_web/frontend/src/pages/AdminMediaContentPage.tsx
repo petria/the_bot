@@ -16,11 +16,11 @@ import {
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Copy, ExternalLink, FileAudio, FileVideo, Image as ImageIcon, Search } from 'lucide-react';
+import { AlertCircle, Copy, ExternalLink, FileAudio, FileText, FileVideo, Image as ImageIcon, Search } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { getMediaContent, type MediaContentItem } from '../api/adminMediaContent';
 
-type MediaTypeFilter = 'all' | 'image' | 'video' | 'audio';
+type MediaTypeFilter = 'all' | 'image' | 'video' | 'audio' | 'document';
 
 export function AdminMediaContentPage() {
   const [typeFilter, setTypeFilter] = useState<MediaTypeFilter>('all');
@@ -99,6 +99,7 @@ export function AdminMediaContentPage() {
                 { label: 'Images', value: 'image' },
                 { label: 'Videos', value: 'video' },
                 { label: 'Audio', value: 'audio' },
+                { label: 'Documents', value: 'document' },
               ]}
             />
           </Group>
@@ -182,7 +183,13 @@ export function AdminMediaContentPage() {
 }
 
 function MediaTypeCell({ item }: { item: MediaContentItem }) {
-  const Icon = item.mediaType === 'image' ? ImageIcon : item.mediaType === 'video' ? FileVideo : FileAudio;
+  const Icon = item.mediaType === 'image'
+    ? ImageIcon
+    : item.mediaType === 'video'
+      ? FileVideo
+      : item.mediaType === 'audio'
+        ? FileAudio
+        : FileText;
   return (
     <Group gap="xs" wrap="nowrap">
       <Icon size={18} />

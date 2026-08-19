@@ -16,11 +16,11 @@ import {
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Copy, ExternalLink, FileAudio, FileVideo, Image as ImageIcon, Link2, RefreshCw, Search } from 'lucide-react';
+import { AlertCircle, Copy, ExternalLink, FileAudio, FileText, FileVideo, Image as ImageIcon, Link2, RefreshCw, Search } from 'lucide-react';
 import { ApiError } from '../api/client';
 import { getLiveMedia, type LiveMediaItem } from '../api/liveMedia';
 
-type TypeFilter = 'all' | 'media' | 'url' | 'image' | 'video' | 'audio';
+type TypeFilter = 'all' | 'media' | 'url' | 'image' | 'video' | 'audio' | 'document';
 
 const typeColumnStyle = { width: 132, minWidth: 132 };
 
@@ -49,7 +49,7 @@ export function LiveMediaPage() {
       if (typeFilter === 'url' && item.type !== 'url') {
         return false;
       }
-      if ((typeFilter === 'image' || typeFilter === 'video' || typeFilter === 'audio') && item.mediaType !== typeFilter) {
+      if ((typeFilter === 'image' || typeFilter === 'video' || typeFilter === 'audio' || typeFilter === 'document') && item.mediaType !== typeFilter) {
         return false;
       }
       if (channelFilter && channelFilter !== 'all' && item.sourceChannelAlias !== channelFilter) {
@@ -127,6 +127,7 @@ export function LiveMediaPage() {
                 { label: 'Images', value: 'image' },
                 { label: 'Videos', value: 'video' },
                 { label: 'Audio', value: 'audio' },
+                { label: 'Documents', value: 'document' },
               ]}
               onChange={(value) => setTypeFilter((value ?? 'all') as TypeFilter)}
               allowDeselect={false}
@@ -232,7 +233,13 @@ function TypeCell({ item }: { item: LiveMediaItem }) {
       </Group>
     );
   }
-  const Icon = item.mediaType === 'image' ? ImageIcon : item.mediaType === 'video' ? FileVideo : FileAudio;
+  const Icon = item.mediaType === 'image'
+    ? ImageIcon
+    : item.mediaType === 'video'
+      ? FileVideo
+      : item.mediaType === 'audio'
+        ? FileAudio
+        : FileText;
   return (
     <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
       <Icon size={18} />

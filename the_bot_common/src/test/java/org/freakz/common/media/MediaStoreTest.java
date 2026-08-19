@@ -1,7 +1,6 @@
 package org.freakz.common.media;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.time.Clock;
@@ -111,17 +110,26 @@ class MediaStoreTest {
   }
 
   @Test
-  void rejectsUnsupportedMediaType() {
+  void storesAndReadsPdfMedia() throws Exception {
     MediaStore store = new MediaStore(tempDir, new JsonMapper());
 
-    assertThatThrownBy(() -> store.create(
+    MediaStoreCreated created = store.create(
         new byte[] {1, 2, 3},
         "application/pdf",
         "test.pdf",
         Duration.ofDays(1),
-        null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Unsupported");
+        null);
+
+    assertThat(store.readPublicByShortCode(created.shortCode())).isPresent()
+        .get()
+        .satisfies(result -> {
+          assertThat(result.record().getContentType()).isEqualTo("application/pdf");
+          assertThat(result.record().getOriginalFileName()).isEqualTo("test.pdf");
+          assertThat(result.file().getFileName().toString()).endsWith(".pdf");
+    });
+    assertThat(MediaStore.mediaTypeLabel("application/pdf")).isEqualTo("document");
+    assertThat(MediaStore.normalizeContentType("application/octet-stream", "download.pdf"))
+        .isEqualTo("application/pdf");
   }
 
   @Test
