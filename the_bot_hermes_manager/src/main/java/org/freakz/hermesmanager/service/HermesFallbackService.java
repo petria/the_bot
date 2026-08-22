@@ -798,6 +798,9 @@ public class HermesFallbackService implements ApplicationRunner {
     if (backend.contextWindow() != null) {
       provider.put("context_length", backend.contextWindow());
     }
+    if (backend.contextWindow() != null && backend.model() != null && !backend.model().isBlank()) {
+      provider.put("models", Map.of(backend.model(), Map.of("context_length", backend.contextWindow())));
+    }
     putOptionalApiKey(provider, backend.encryptedApiKey());
     if (shouldDisableReasoning(backend)) {
       provider.put("extra_body", Map.of("reasoning_effort", "none"));
