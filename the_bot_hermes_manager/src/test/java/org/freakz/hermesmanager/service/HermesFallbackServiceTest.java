@@ -30,6 +30,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.core.type.TypeReference;
 
 class HermesFallbackServiceTest {
 
@@ -386,6 +387,37 @@ class HermesFallbackServiceTest {
     assertThat(stateDb).doesNotExist();
     assertThat(responseStore).doesNotExist();
     verify(gatewayService, atLeastOnce()).restart("ai-command");
+  }
+
+  @Test
+  void localBackendContextWindowWritesPerModelOverride() throws Exception {
+    createProfiles("chat", "ai-command");
+    HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
+    service.run(new DefaultApplicationArguments());
+
+    service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled",
+        List.of(openAiBackend("gpt-5.6-luna"), localBackend("local-0", "qwen3.5:27b", null)),
+        List.of(
+            new HermesRouteUpdate("chat", "Hermes chat", "local-0"),
+            new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
+
+    tools.jackson.dataformat.yaml.YAMLMapper yamlMapper = tools.jackson.dataformat.yaml.YAMLMapper.builder().build();
+    Map<String, Object> chatYaml = yamlMapper.readValue(
+        Files.readAllBytes(tempDir.resolve("profiles/chat/config.yaml")), new TypeReference<>() {});
+    List<Map<String, Object>> providers = (List<Map<String, Object>>) chatYaml.get("custom_providers");
+    assertThat(providers).hasSize(1);
+    Map<String, Object> provider = providers.get(0);
+    assertThat(provider.get("context_length")).isEqualTo(65536);
+    Map<String, Object> models = (Map<String, Object>) provider.get("models");
+    assertThat(models).isNotNull();
+    Map<String, Object> modelConfig = (Map<String, Object>) models.get("qwen3.5:27b");
+    assertThat(modelConfig).isNotNull();
+    assertThat(modelConfig.get("context_length")).isEqualTo(65536);
+
+    Map<String, Object> aiCommandYaml = yamlMapper.readValue(
+        Files.readAllBytes(tempDir.resolve("profiles/ai-command/config.yaml")), new TypeReference<>() {});
+    assertThat(aiCommandYaml.get("custom_providers")).isNull();
   }
 
   @Test

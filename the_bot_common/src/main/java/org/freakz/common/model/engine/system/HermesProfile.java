@@ -24,7 +24,7 @@ public record HermesProfile(
         Boolean healthy,
         Boolean toolCapable,
         String detail,
-        /** Context window size (tokens). Meaningful for ollama; nullable for openai. Persisted but not yet passed at runtime. */
+        /** Context window size (tokens). Meaningful for ollama; nullable for openai. Passed to the Hermes profile config at runtime for local providers. */
         Integer contextWindow,
         Boolean fallbackAllowed,
         String activeProvider,
