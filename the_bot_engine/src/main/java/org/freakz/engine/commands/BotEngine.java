@@ -203,23 +203,23 @@ public class BotEngine {
     String originalCommand = request.getCommand();
     boolean explicitCommand =
         originalCommand.startsWith("!") || originalCommand.startsWith(this.botName);
-    boolean implicitPrivateOpenClawChat =
+    boolean implicitPrivateAiChat =
         request.isPrivateChannel() && !explicitCommand;
-    boolean implicitPublicOpenClawChat =
+    boolean implicitPublicAiChat =
         !request.isPrivateChannel() && !explicitCommand && shouldHandlePublicAiChat(request);
-    boolean implicitOpenClawChat = implicitPrivateOpenClawChat || implicitPublicOpenClawChat;
+    boolean implicitAiChat = implicitPrivateAiChat || implicitPublicAiChat;
 
     String wholeLine = null;
     if (doWholeLineTriggerCheck) {
       wholeLine = handleWholeLineTriggers(request);
     }
 
-    if (!request.getCommand().startsWith(this.botName) && !implicitOpenClawChat) {
+    if (!request.getCommand().startsWith(this.botName) && !implicitAiChat) {
       this.urlResolutionService.handleEngineRequest(request, this);
     }
 
     String replyMessage = null;
-    if (implicitOpenClawChat) {
+    if (implicitAiChat) {
       request.setCommand("!hokan " + originalCommand);
       // Implicit public/private AI chats are asynchronous just like explicit !hokan
       // commands, so keep the processing indicator active until the reply arrives.

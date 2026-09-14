@@ -4,7 +4,7 @@ import org.freakz.common.model.system.SystemComponentStatus;
 import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.common.spring.rest.RestBotWebSystemClient;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.services.ai.claw.BotInstanceIdentityService;
+import org.freakz.engine.services.identity.BotInstanceIdentityService;
 import org.freakz.engine.services.api.*;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +56,6 @@ public class BuildInfoService extends AbstractSpringService {
         throw new IllegalStateException("Invalid bot-web system status response");
       }
       String moduleLines = status.components().stream()
-          .filter(component -> !"bot-openclaw".equals(component.name()))
           .map(this::formatComponent)
           .collect(Collectors.joining("\n"));
       return "== BOT INFO ==\n"

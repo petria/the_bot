@@ -28,31 +28,4 @@ public record SystemComponentStatus(
     String containerError,
     String error) {
 
-  public SystemComponentStatus withOpenClawDetails(String runtimeMode, String baseUrl, String healthStatus) {
-    return new SystemComponentStatus(
-        name,
-        status,
-        componentType,
-        runtimeMode,
-        healthUrl,
-        healthStatus,
-        baseUrl,
-        profiles,
-        version,
-        artifact,
-        uptimeSeconds,
-        startedAt,
-        receivedCalls,
-        requestedCalls,
-        responseTimeMs,
-        checkedAt,
-        containerName,
-        containerState,
-        containerStatusText,
-        image,
-        containerStartedAt,
-        restartCount,
-        containerError,
-        error);
-  }
 }

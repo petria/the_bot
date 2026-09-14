@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ai.claw;
+package org.freakz.engine.services.identity;
 
 import org.freakz.engine.config.ConfigService;
 import org.springframework.stereotype.Service;
@@ -26,13 +26,6 @@ public class BotInstanceIdentityService {
     return normalizeInstanceId(configured);
   }
 
-  public String getInstanceMount() {
-    String baseMount =
-        configService.getConfigValue("openclaw.external-base-mount", "OPENCLAW_EXTERNAL_BASE_MOUNT", "/mnt/hokan");
-    String normalizedBase = trimTrailingSlash(baseMount == null || baseMount.isBlank() ? "/mnt/hokan" : baseMount.trim());
-    return normalizedBase + "/" + getInstanceId();
-  }
-
   public String normalizeInstanceId(String value) {
     String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     if (normalized.isBlank()) {
@@ -45,7 +38,4 @@ public class BotInstanceIdentityService {
     return normalized;
   }
 
-  private String trimTrailingSlash(String value) {
-    return value.replaceFirst("/+$", "");
-  }
 }

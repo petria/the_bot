@@ -16,7 +16,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.freakz.common.model.engine.system.HermesFallbackProfileStatus;
 import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
-import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
@@ -43,7 +42,7 @@ class SystemControllerTest {
 
     SystemStatusResponse response = controller(restTemplate).getStatus();
 
-    assertThat(response.components()).hasSize(6);
+    assertThat(response.components()).hasSize(5);
     assertThat(response.components())
         .filteredOn(component -> component.name().equals("bot-io"))
         .singleElement()
@@ -101,32 +100,6 @@ class SystemControllerTest {
   }
 
   @Test
-  void mapsRestartingSidecarContainerToDegraded() {
-    RestTemplate restTemplate = new RestTemplate();
-    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
-    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
-
-    SystemStatusResponse response = controller(
-        restTemplate,
-        containerName -> {
-          if ("bot-openclaw".equals(containerName)) {
-            return containerStatus(containerName, "restarting");
-          }
-          return containerStatus(containerName, "running");
-        }).getStatus();
-
-    assertThat(response.components())
-        .filteredOn(component -> component.name().equals("bot-openclaw"))
-        .singleElement()
-        .satisfies(component -> {
-          assertThat(component.status()).isEqualTo("DEGRADED");
-          assertThat(component.containerState()).isEqualTo("restarting");
-        });
-    server.verify();
-  }
-
-  @Test
   void mapsUnhealthyWhatsappSidecarContainerToDown() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -153,106 +126,6 @@ class SystemControllerTest {
   }
 
   @Test
-  void mapsExternalOpenClawHealthWithoutLocalContainer() {
-    RestTemplate restTemplate = new RestTemplate();
-    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
-    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
-    server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
-        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
-
-    SystemStatusResponse response = controller(
-        restTemplate,
-        properties -> {
-          properties.setOpenclawDeploymentMode("external");
-          properties.setOpenclawGatewayWsUrl("ws://ubuntu-server:18889");
-        },
-        containerName -> {
-          if ("bot-openclaw".equals(containerName)) {
-            return ContainerStatus.missing(containerName);
-          }
-          return containerStatus(containerName, "running");
-        }).getStatus();
-
-    assertThat(response.components())
-        .filteredOn(component -> component.name().equals("bot-openclaw"))
-        .singleElement()
-        .satisfies(component -> {
-          assertThat(component.status()).isEqualTo("UP");
-          assertThat(component.componentType()).isEqualTo("OPENCLAW_GATEWAY");
-          assertThat(component.runtimeMode()).isEqualTo("external");
-          assertThat(component.baseUrl()).isEqualTo("ws://ubuntu-server:18889");
-          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server:18889/health");
-          assertThat(component.healthStatus()).isEqualTo("live");
-          assertThat(component.containerName()).isNull();
-          assertThat(component.containerError()).isNull();
-          assertThat(component.error()).isNull();
-        });
-    server.verify();
-  }
-
-  @Test
-  void showsOpenClawBackendFromBotEngineRuntimeSettings() {
-    RestTemplate restTemplate = new RestTemplate();
-    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
-    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
-    server.expect(once(), requestTo("http://docker.local:18889/health"))
-        .andRespond(withSuccess("{\"ok\":true,\"status\":\"live\"}", MediaType.APPLICATION_JSON));
-    RestEngineClient engineClient = mock(RestEngineClient.class);
-    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
-        "docker.local",
-        "ws://docker.local:18889",
-        "http://docker.local:18889",
-        "http://docker.local:18889/health",
-        List.of())));
-
-    SystemStatusResponse response = controller(
-        restTemplate,
-        properties -> properties.setOpenclawDeploymentMode("external"),
-        containerName -> ContainerStatus.missing(containerName),
-        engineClient).getStatus();
-
-    assertThat(response.components())
-        .filteredOn(component -> component.name().equals("bot-openclaw"))
-        .singleElement()
-        .satisfies(component -> {
-          assertThat(component.status()).isEqualTo("UP");
-          assertThat(component.baseUrl()).isEqualTo("ws://docker.local:18889");
-          assertThat(component.healthUrl()).isEqualTo("http://docker.local:18889/health");
-        });
-    server.verify();
-  }
-
-  @Test
-  void mapsExternalOpenClawHealthFailureToDown() {
-    RestTemplate restTemplate = new RestTemplate();
-    MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-    expectUpActuator(server, "http://bot-io:8090", "the_bot_io", "3.0-SNAPSHOT");
-    expectUpActuator(server, "http://bot-engine:8100", "the_bot_engine", "3.0-SNAPSHOT");
-    server.expect(once(), requestTo("http://ubuntu-server:18889/health"))
-        .andRespond(withException(new IOException("connection refused")));
-
-    SystemStatusResponse response = controller(
-        restTemplate,
-        properties -> {
-          properties.setOpenclawDeploymentMode("external");
-          properties.setOpenclawGatewayWsUrl("ws://ubuntu-server:18889");
-        },
-        containerName -> ContainerStatus.missing(containerName)).getStatus();
-
-    assertThat(response.components())
-        .filteredOn(component -> component.name().equals("bot-openclaw"))
-        .singleElement()
-        .satisfies(component -> {
-          assertThat(component.status()).isEqualTo("DOWN");
-          assertThat(component.healthUrl()).isEqualTo("http://ubuntu-server:18889/health");
-          assertThat(component.error()).contains("connection refused");
-        });
-    server.verify();
-  }
-
-  @Test
   void mapsHermesHealthFromBotEngineRuntimeSettings() {
     RestTemplate restTemplate = new RestTemplate();
     MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
@@ -261,12 +134,6 @@ class SystemControllerTest {
     server.expect(once(), requestTo("http://ubuntu-server.local:8643/health"))
         .andRespond(withSuccess("{\"ok\":true,\"status\":\"ok\"}", MediaType.APPLICATION_JSON));
     RestEngineClient engineClient = mock(RestEngineClient.class);
-    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
-        null,
-        null,
-        null,
-        null,
-        List.of())));
     when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
         "chat",
         "http://ubuntu-server.local:8643",
@@ -279,7 +146,8 @@ class SystemControllerTest {
 
     SystemStatusResponse response = controller(
         restTemplate,
-        properties -> properties.setOpenclawDeploymentMode("local"),
+        properties -> {
+        },
         containerName -> containerStatus(containerName, "running"),
         engineClient).getStatus();
 
@@ -310,12 +178,6 @@ class SystemControllerTest {
     server.expect(once(), requestTo("http://ubuntu-server.local:8643/health"))
         .andRespond(withException(new IOException("connection refused")));
     RestEngineClient engineClient = mock(RestEngineClient.class);
-    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
-        null,
-        null,
-        null,
-        null,
-        List.of())));
     when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
         "chat",
         "http://ubuntu-server.local:8643",
@@ -328,7 +190,8 @@ class SystemControllerTest {
 
     SystemStatusResponse response = controller(
         restTemplate,
-        properties -> properties.setOpenclawDeploymentMode("local"),
+        properties -> {
+        },
         containerName -> containerStatus(containerName, "running"),
         engineClient).getStatus();
 
@@ -416,15 +279,8 @@ class SystemControllerTest {
     properties.setBotIoBaseUrl("http://bot-io:8090");
     properties.setBotEngineBaseUrl("http://bot-engine:8100");
     properties.setDockerStatusEnabled(true);
-    properties.setOpenclawDeploymentMode("local");
     propertiesCustomizer.accept(properties);
     RestEngineClient engineClient = mock(RestEngineClient.class);
-    when(engineClient.getOpenClawSettings()).thenReturn(ResponseEntity.ok(new OpenClawSettingsResponse(
-        null,
-        properties.getOpenclawGatewayWsUrl(),
-        null,
-        null,
-        List.of())));
     when(engineClient.getHermesSettings()).thenReturn(ResponseEntity.ok(new HermesSettingsResponse(
         null,
         null,
@@ -451,7 +307,6 @@ class SystemControllerTest {
     properties.setBotIoBaseUrl("http://bot-io:8090");
     properties.setBotEngineBaseUrl("http://bot-engine:8100");
     properties.setDockerStatusEnabled(true);
-    properties.setOpenclawDeploymentMode("local");
     propertiesCustomizer.accept(properties);
     return new SystemController(
         restTemplate,

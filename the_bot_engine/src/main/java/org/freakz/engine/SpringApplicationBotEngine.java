@@ -65,7 +65,7 @@ public class SpringApplicationBotEngine {
         new FilterRegistrationBean<>(new InternalApiTokenFilter(
             token,
             List.of("/api/hokan/engine/"),
-            List.of("/api/hokan/engine/openclaw/")));
+            List.of()));
     registration.addUrlPatterns("/api/hokan/engine/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
     return registration;

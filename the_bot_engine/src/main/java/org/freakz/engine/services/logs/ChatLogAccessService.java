@@ -4,7 +4,7 @@ import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.users.BotPermission;
 import org.freakz.common.util.TextUtils;
 import org.freakz.engine.config.ConfigService;
-import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
+import org.freakz.engine.services.security.HokanContextTokenService;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -37,9 +37,9 @@ public class ChatLogAccessService {
   private static final int MAX_SEARCH_BYTES = 64_000;
 
   private final ConfigService configService;
-  private final HokanNodeContextTokenService tokenService;
+  private final HokanContextTokenService tokenService;
 
-  public ChatLogAccessService(ConfigService configService, HokanNodeContextTokenService tokenService) {
+  public ChatLogAccessService(ConfigService configService, HokanContextTokenService tokenService) {
     this.configService = configService;
     this.tokenService = tokenService;
   }
@@ -49,7 +49,7 @@ public class ChatLogAccessService {
       throw new IllegalArgumentException("missing request");
     }
 
-    HokanNodeContextTokenService.VerifiedNodeContext context =
+    HokanContextTokenService.VerifiedNodeContext context =
         tokenService.verifyToken(request.hokanContextToken());
     LogTarget target = resolveTarget(context, request);
     verifyPermission(context, target);
@@ -115,7 +115,7 @@ public class ChatLogAccessService {
       throw new IllegalArgumentException("missing request");
     }
 
-    HokanNodeContextTokenService.VerifiedNodeContext context =
+    HokanContextTokenService.VerifiedNodeContext context =
         tokenService.verifyToken(request.hokanContextToken());
     LogTarget target = resolveTarget(context, request);
     verifyPermission(context, target);
@@ -188,7 +188,7 @@ public class ChatLogAccessService {
   }
 
   private LogTarget resolveTarget(
-      HokanNodeContextTokenService.VerifiedNodeContext context,
+      HokanContextTokenService.VerifiedNodeContext context,
       LogReadRequest request) {
     String scope = sanitizeScope(request.scope());
     String protocol = segment(TextUtils.firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
@@ -199,7 +199,7 @@ public class ChatLogAccessService {
   }
 
   private LogTarget resolveTarget(
-      HokanNodeContextTokenService.VerifiedNodeContext context,
+      HokanContextTokenService.VerifiedNodeContext context,
       LogSearchRequest request) {
     String scope = sanitizeScope(request.scope());
     String protocol = segment(TextUtils.firstNonBlank(request.protocol(), context.chatProtocol()), "chat");
@@ -212,7 +212,7 @@ public class ChatLogAccessService {
   }
 
   private void verifyPermission(
-      HokanNodeContextTokenService.VerifiedNodeContext context,
+      HokanContextTokenService.VerifiedNodeContext context,
       LogTarget target) {
     if (context.hasPermission(BotPermission.LOGS_READ_ALL)) {
       return;

@@ -5,7 +5,7 @@ import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.dto.CmpWeatherResponse;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
-import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
+import org.freakz.engine.services.security.HokanContextTokenService;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.logs.ChatLogAccessService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
@@ -116,7 +116,7 @@ class AiCommandToolRegistryTest {
   void logsReadUsesCurrentRequestContextToken() throws Exception {
     ObjectProvider<WeatherAPIService> weatherProvider = mock(ObjectProvider.class);
     ChatLogAccessService chatLogAccessService = mock(ChatLogAccessService.class);
-    HokanNodeContextTokenService tokenService = mock(HokanNodeContextTokenService.class);
+    HokanContextTokenService tokenService = mock(HokanContextTokenService.class);
     EngineRequest request = EngineRequest.builder()
         .chatProtocol("irc")
         .network("IRCNet")
@@ -156,7 +156,7 @@ class AiCommandToolRegistryTest {
   void logsSearchWithoutTermsFallsBackToCurrentLogRead() throws Exception {
     ObjectProvider<WeatherAPIService> weatherProvider = mock(ObjectProvider.class);
     ChatLogAccessService chatLogAccessService = mock(ChatLogAccessService.class);
-    HokanNodeContextTokenService tokenService = mock(HokanNodeContextTokenService.class);
+    HokanContextTokenService tokenService = mock(HokanContextTokenService.class);
     EngineRequest request = EngineRequest.builder()
         .chatProtocol("irc")
         .network("IRCNet")
@@ -203,7 +203,7 @@ class AiCommandToolRegistryTest {
         mock(UsersService.class),
         mock(DataValuesService.class),
         mock(ChatLogAccessService.class),
-        mock(HokanNodeContextTokenService.class),
+        mock(HokanContextTokenService.class),
         jsonMapper,
         mock(ImageAnalysisToolService.class));
   }

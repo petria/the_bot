@@ -38,18 +38,13 @@ class InternalApiTokenFilterTest {
     assertThat(acceptedResponse.getStatus()).isEqualTo(200);
     assertThat(reached).isTrue();
 
-    MockHttpServletRequest excludedRequest = request("wrong");
-    excludedRequest.setRequestURI("/api/hokan/engine/openclaw/logs/read");
-    AtomicBoolean excludedReached = new AtomicBoolean();
-    filter.doFilter(excludedRequest, new MockHttpServletResponse(), (request, response) -> excludedReached.set(true));
-    assertThat(excludedReached).isTrue();
   }
 
   private InternalApiTokenFilter filter() {
     return new InternalApiTokenFilter(
         "secret",
         List.of("/api/hokan/engine/"),
-        List.of("/api/hokan/engine/openclaw/"));
+        List.of());
   }
 
   private MockHttpServletRequest request(String token) {

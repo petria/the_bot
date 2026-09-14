@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ai.claw;
+package org.freakz.engine.services.security;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
@@ -7,6 +7,7 @@ import org.freakz.common.users.BotPermission;
 import org.freakz.common.users.UserPermissions;
 import org.freakz.common.util.TextUtils;
 import org.freakz.engine.config.ConfigService;
+import org.freakz.engine.services.identity.BotInstanceIdentityService;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -21,7 +22,7 @@ import java.util.Base64;
 import java.util.List;
 
 @Service
-public class HokanNodeContextTokenService {
+public class HokanContextTokenService {
 
   private static final String HMAC_ALGO = "HmacSHA256";
 
@@ -29,7 +30,7 @@ public class HokanNodeContextTokenService {
   private final JsonMapper objectMapper;
   private final BotInstanceIdentityService botInstanceIdentityService;
 
-  public HokanNodeContextTokenService(
+  public HokanContextTokenService(
       ConfigService configService,
       JsonMapper objectMapper,
       BotInstanceIdentityService botInstanceIdentityService) {
@@ -41,7 +42,7 @@ public class HokanNodeContextTokenService {
   public String createToken(EngineRequest request, String sessionKey) {
     try {
       long issuedAt = Instant.now().getEpochSecond();
-      long ttlSeconds = parseLongConfig("openclawNodeContextTokenTtlSeconds", "OPENCLAW_NODE_CONTEXT_TOKEN_TTL_SECONDS", 43200L);
+      long ttlSeconds = parseLongConfig("hokanNodeContextTokenTtlSeconds", "HOKAN_NODE_CONTEXT_TOKEN_TTL_SECONDS", 43200L);
 
       ObjectNode payload = objectMapper.createObjectNode();
       payload.put("v", 1);
@@ -141,9 +142,7 @@ public class HokanNodeContextTokenService {
   private String resolveSecret() {
     String configured =
         TextUtils.firstNonBlank(
-            configService.getConfigValue("openclaw.node-context-secret", "OPENCLAW_NODE_CONTEXT_SECRET", null),
-            configService.getConfigValue("hokan.ai.openclaw.hooks.token", "OPENCLAW_HOOKS_TOKEN", null),
-            configService.getConfigValue("openclaw.gateway-token", "OPENCLAW_GATEWAY_TOKEN", null)
+            configService.getConfigValue("hokan.node-context-secret", "HOKAN_NODE_CONTEXT_SECRET", null)
         );
     if (configured == null || configured.isBlank()) {
       throw new IllegalStateException("missing secret for Hokan node context token");
@@ -152,7 +151,15 @@ public class HokanNodeContextTokenService {
   }
 
   private long parseLongConfig(String key, String envKey, long defaultValue) {
-    return OpenClawConfigSupport.parseLongConfig(configService, key, envKey, defaultValue);
+    String value = configService.getConfigValue(key, envKey, null);
+    if (value == null || value.isBlank()) {
+      return defaultValue;
+    }
+    try {
+      return Long.parseLong(value.trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid numeric configuration " + key + ": " + value, e);
+    }
   }
 
   private String base64Url(byte[] bytes) {

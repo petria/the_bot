@@ -17,9 +17,4 @@ secret.properties
 !/runtime/dev.properties
 /the_bot_ui_back/target/
 
-# Local OpenClaw runtime/config (contains secrets)
-openclaw/config/config.json
-openclaw/state/
-openclaw/workspace/
-openclaw/logs/
 /runtime/

@@ -14,11 +14,7 @@ public class TheBotWebProperties {
   private String botWebContainerName = "bot-web";
   private String botIoContainerName = "bot-io";
   private String botEngineContainerName = "bot-engine";
-  private String botOpenclawContainerName = "bot-openclaw";
   private String botWhatsappContainerName = "bot-whatsapp";
-  private String openclawDeploymentMode = "external";
-  private String openclawGatewayWsUrl = "ws://ubuntu-server.local:18889";
-  private String openclawHealthUrl = "";
   private String internalApiToken = "";
   private String mobileAuthFile = "runtime/data/mobile-auth.json";
   private String mobileNotificationsFile = "runtime/data/mobile-notifications.json";
@@ -99,44 +95,12 @@ public class TheBotWebProperties {
     this.botEngineContainerName = botEngineContainerName;
   }
 
-  public String getBotOpenclawContainerName() {
-    return botOpenclawContainerName;
-  }
-
-  public void setBotOpenclawContainerName(String botOpenclawContainerName) {
-    this.botOpenclawContainerName = botOpenclawContainerName;
-  }
-
   public String getBotWhatsappContainerName() {
     return botWhatsappContainerName;
   }
 
   public void setBotWhatsappContainerName(String botWhatsappContainerName) {
     this.botWhatsappContainerName = botWhatsappContainerName;
-  }
-
-  public String getOpenclawDeploymentMode() {
-    return openclawDeploymentMode;
-  }
-
-  public void setOpenclawDeploymentMode(String openclawDeploymentMode) {
-    this.openclawDeploymentMode = openclawDeploymentMode;
-  }
-
-  public String getOpenclawGatewayWsUrl() {
-    return openclawGatewayWsUrl;
-  }
-
-  public void setOpenclawGatewayWsUrl(String openclawGatewayWsUrl) {
-    this.openclawGatewayWsUrl = openclawGatewayWsUrl;
-  }
-
-  public String getOpenclawHealthUrl() {
-    return openclawHealthUrl;
-  }
-
-  public void setOpenclawHealthUrl(String openclawHealthUrl) {
-    this.openclawHealthUrl = openclawHealthUrl;
   }
 
   public String getInternalApiToken() {

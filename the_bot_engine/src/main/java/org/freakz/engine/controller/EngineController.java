@@ -18,8 +18,6 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicEventRequest;
 import org.freakz.common.model.connectionmanager.IrcTopicEventResponse;
 import org.freakz.common.model.connectionmanager.IrcTopicSetResponse;
@@ -39,8 +37,6 @@ import org.freakz.engine.config.ConfigService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.services.ai.commands.AiCommandToolRegistry;
 import org.freakz.engine.services.connections.ConnectionManagerService;
-import org.freakz.engine.services.ai.claw.OpenClawInstanceSettingsService;
-import org.freakz.engine.services.ai.claw.OpenClawLogAccessService;
 import org.freakz.engine.services.ai.hermes.HermesSettingsService;
 import org.freakz.engine.services.ai.hermes.HermesFallbackManagerService;
 import org.freakz.engine.services.howto.HowtoIndexService;
@@ -107,10 +103,8 @@ public class EngineController {
 
   private final ConnectionManagerService connectionManagerService;
   private final ConfigService configService;
-  private final OpenClawLogAccessService openClawLogAccessService;
   private final WebLoginSecurityAlertService webLoginSecurityAlertService;
   private final CommandCatalogService commandCatalogService;
-  private final OpenClawInstanceSettingsService openClawInstanceSettingsService;
   private final HermesSettingsService hermesSettingsService;
   private final HermesFallbackManagerService hermesFallbackManagerService;
   private final AiCommandRegistryService aiCommandRegistryService;
@@ -132,10 +126,8 @@ public class EngineController {
       UsersService usersService,
       ConnectionManagerService connectionManagerService,
       ConfigService configService,
-      OpenClawLogAccessService openClawLogAccessService,
       WebLoginSecurityAlertService webLoginSecurityAlertService,
       CommandCatalogService commandCatalogService,
-      OpenClawInstanceSettingsService openClawInstanceSettingsService,
       HermesSettingsService hermesSettingsService,
       HermesFallbackManagerService hermesFallbackManagerService,
       AiCommandRegistryService aiCommandRegistryService,
@@ -153,10 +145,8 @@ public class EngineController {
     this.usersService = usersService;
     this.connectionManagerService = connectionManagerService;
     this.configService = configService;
-    this.openClawLogAccessService = openClawLogAccessService;
     this.webLoginSecurityAlertService = webLoginSecurityAlertService;
     this.commandCatalogService = commandCatalogService;
-    this.openClawInstanceSettingsService = openClawInstanceSettingsService;
     this.hermesSettingsService = hermesSettingsService;
     this.hermesFallbackManagerService = hermesFallbackManagerService;
     this.aiCommandRegistryService = aiCommandRegistryService;
@@ -188,62 +178,6 @@ public class EngineController {
     return ResponseEntity.ok(response);
   }
 
-  @PostMapping(
-      path = "/openclaw/send_message_by_echo_to_alias",
-      consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE
-  )
-  public ResponseEntity<?> sendMessageByEchoToAliasForOpenClaw(
-      @RequestParam String echoToAlias,
-      @RequestParam String message,
-      @RequestHeader(value = "X-OpenClaw-Token", required = false) String openClawToken
-  ) {
-    String expectedToken =
-        configService.getConfigValue("hokan.ai.openclaw.hooks.token", "OPENCLAW_HOOKS_TOKEN", null);
-    if (expectedToken != null && !expectedToken.isBlank() && !expectedToken.equals(openClawToken)) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("invalid OpenClaw token");
-    }
-
-    SendMessageByEchoToAliasResponse response =
-        connectionManagerService.sendMessageByEchoToAlias(message, echoToAlias);
-
-    if (response == null || response.getSentTo() == null) {
-      return ResponseEntity.internalServerError().body("send_message_by_echo_to_alias failed");
-    }
-
-    if (response.getSentTo().startsWith("NOK:")) {
-      return ResponseEntity.badRequest().body(response);
-    }
-
-    return ResponseEntity.ok(response);
-  }
-
-  @PostMapping(
-      path = "/openclaw/logs/read",
-      consumes = MediaType.APPLICATION_JSON_VALUE
-  )
-  public ResponseEntity<?> readLogsForOpenClaw(@RequestBody OpenClawLogAccessService.LogReadRequest request) {
-    try {
-      return ResponseEntity.ok(openClawLogAccessService.readLogs(request));
-    } catch (SecurityException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
-
-  @PostMapping(
-      path = "/openclaw/logs/search",
-      consumes = MediaType.APPLICATION_JSON_VALUE
-  )
-  public ResponseEntity<?> searchLogsForOpenClaw(@RequestBody OpenClawLogAccessService.LogSearchRequest request) {
-    try {
-      return ResponseEntity.ok(openClawLogAccessService.searchLogs(request));
-    } catch (SecurityException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
-  }
 
   @GetMapping("/get_users")
   public ResponseEntity<?> handleGetUsers() {
@@ -483,16 +417,6 @@ public class EngineController {
         aiCommandRegistryService.configFile().getAbsolutePath(),
         aiCommandRegistryService.reload(),
         aiCommandToolRegistry.availableToolNames()));
-  }
-
-  @GetMapping("/internal/system/openclaw")
-  public ResponseEntity<OpenClawSettingsResponse> getOpenClawSettings() {
-    return ResponseEntity.ok(openClawInstanceSettingsService.getSettings());
-  }
-
-  @PostMapping("/internal/system/openclaw")
-  public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(@RequestBody OpenClawSettingsRequest request) {
-    return ResponseEntity.ok(openClawInstanceSettingsService.selectInstance(request.selectedInstanceId()));
   }
 
   @GetMapping("/internal/system/hermes")

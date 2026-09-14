@@ -20,11 +20,7 @@ the-bot-web:
   bot-web-container-name: ${THE_BOT_WEB_BOT_WEB_CONTAINER_NAME:bot-web}
   bot-io-container-name: ${THE_BOT_WEB_BOT_IO_CONTAINER_NAME:bot-io}
   bot-engine-container-name: ${THE_BOT_WEB_BOT_ENGINE_CONTAINER_NAME:bot-engine}
-  bot-openclaw-container-name: ${THE_BOT_WEB_BOT_OPENCLAW_CONTAINER_NAME:bot-openclaw}
   bot-whatsapp-container-name: ${THE_BOT_WEB_BOT_WHATSAPP_CONTAINER_NAME:bot-whatsapp}
-  openclaw-deployment-mode: ${OPENCLAW_DEPLOYMENT_MODE:external}
-  openclaw-gateway-ws-url: ${OPENCLAW_GATEWAY_WS_URL:ws://ubuntu-server.local:18889}
-  openclaw-health-url: ${THE_BOT_WEB_OPENCLAW_HEALTH_URL:${OPENCLAW_HEALTH_URL:}}
   internal-api-token: ${THE_BOT_INTERNAL_API_TOKEN:}
   mobile-auth-file: ${THE_BOT_WEB_MOBILE_AUTH_FILE:runtime/data/mobile-auth.json}
   mobile-notifications-file: ${THE_BOT_WEB_MOBILE_NOTIFICATIONS_FILE:runtime/data/mobile-notifications.json}

@@ -54,8 +54,7 @@ export function SystemPage() {
     };
   }, []);
 
-  const components = (status?.components ?? [])
-    .filter((component) => component.componentType !== 'OPENCLAW_GATEWAY');
+  const components = status?.components ?? [];
   const loading = !status && !streamError;
 
   return (

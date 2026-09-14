@@ -15,12 +15,11 @@ services:
       - ${HOKAN_DATA_DIR:-.}/runtime:/runtime
       - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
-      - ${HOKAN_DATA_DIR:-.}/openclaw/state:/openclaw-state
     ports:
       - "127.0.0.1:8100:8100"
     extra_hosts:
-      - "ubuntu-server:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
-      - "ubuntu-server.local:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
+      - "ubuntu-server:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
+      - "ubuntu-server.local:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
@@ -29,14 +28,7 @@ services:
       - THE_BOT_REST_BOT_WEB_BASE_URL=${THE_BOT_REST_BOT_WEB_BASE_URL:-http://bot-web:8091}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
       - HOKAN_BOT_INSTANCE_ID=${HOKAN_BOT_INSTANCE_ID:-dev}
-      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
-      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://ubuntu-server.local:18889}
-      - OPENCLAW_EXTERNAL_BASE_MOUNT=${OPENCLAW_EXTERNAL_BASE_MOUNT:-/mnt/hokan}
-      - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
-      - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
-      - OPENCLAW_NODE_CONTEXT_SECRET=${OPENCLAW_NODE_CONTEXT_SECRET:-}
+      - HOKAN_NODE_CONTEXT_SECRET=${HOKAN_NODE_CONTEXT_SECRET:-}
       - HERMES_CHAT_BASE_URL=${HERMES_CHAT_BASE_URL:-http://ubuntu-server.local:8643}
       - HERMES_CHAT_API_KEY=${HERMES_CHAT_API_KEY:-${HERMES_API_KEY:-}}
       - HERMES_AI_COMMAND_BASE_URL=${HERMES_AI_COMMAND_BASE_URL:-http://ubuntu-server.local:8645}
@@ -79,13 +71,6 @@ services:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - BOT_CONFIG_FILE=${BOT_CONFIG_FILE:-/runtime/dev.properties}
-      - OPENCLAW_HOOKS_TOKEN=${OPENCLAW_HOOKS_TOKEN:-}
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN:-${OPENCLAW_HOOKS_TOKEN:-}}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
-      - OPENCLAW_GATEWAY_WS_ORIGIN=${OPENCLAW_GATEWAY_WS_ORIGIN:-http://ubuntu-server.local:18889}
-      - OPENCLAW_STATE_DIR_HOST=${OPENCLAW_STATE_DIR_HOST:-/openclaw-state}
-      - OPENCLAW_RUNTIME_LOG_ROOT_LOCAL=${OPENCLAW_RUNTIME_LOG_ROOT_LOCAL:-/runtime/logs}
-      - OPENCLAW_NODE_CONTEXT_SECRET=${OPENCLAW_NODE_CONTEXT_SECRET:-}
       - WEATHER_API_KEY=${WEATHER_API_KEY:-}
       - DISCORD_SECRET=${DISCORD_SECRET:-}
       - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
@@ -134,8 +119,8 @@ services:
     ports:
       - "0.0.0.0:8091:8091"
     extra_hosts:
-      - "ubuntu-server:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
-      - "ubuntu-server.local:${OPENCLAW_EXTERNAL_HOST_IP:-192.168.0.11}"
+      - "ubuntu-server:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
+      - "ubuntu-server.local:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
@@ -149,9 +134,6 @@ services:
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
       - THE_BOT_WEB_MOBILE_FCM_ENABLED=${THE_BOT_WEB_MOBILE_FCM_ENABLED:-false}
       - THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=${THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE:-/run/secrets/firebase-service-account.json}
-      - OPENCLAW_DEPLOYMENT_MODE=${OPENCLAW_DEPLOYMENT_MODE:-external}
-      - OPENCLAW_GATEWAY_WS_URL=${OPENCLAW_GATEWAY_WS_URL:-ws://ubuntu-server.local:18889}
-      - THE_BOT_WEB_OPENCLAW_HEALTH_URL=${THE_BOT_WEB_OPENCLAW_HEALTH_URL:-}
     container_name: bot-web
 
   # Hokan the Bot Hermes Manager - Main instance
