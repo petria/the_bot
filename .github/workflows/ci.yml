@@ -286,7 +286,8 @@ jobs:
   deploy:
     name: Deploy to VM
     needs: build-and-push
-    runs-on: ubuntu-latest
+    # The application VMs are on the private LAN; use the online LAN runner.
+    runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
     if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) }}
