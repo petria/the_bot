@@ -4,4 +4,4 @@ services:
       JAVA_TOOL_OPTIONS: >-
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005,allow=192.168.0.55
     ports:
-      - "192.168.0.66:5005:5005"
+      - "${THE_BOT_DEBUG_HOST_IP:-192.168.0.33}:${THE_BOT_DEBUG_HOST_PORT:-5005}:5005"

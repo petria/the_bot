@@ -16,7 +16,7 @@ services:
       - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
-      - "127.0.0.1:8100:8100"
+      - "127.0.0.1:${THE_BOT_ENGINE_HOST_PORT:-8100}:8100"
     extra_hosts:
       - "ubuntu-server:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
       - "ubuntu-server.local:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
@@ -51,7 +51,7 @@ services:
       - WEATHER_API_URL=${WEATHER_API_URL:-http://api.weatherapi.com/v1}
       - DISCORD_SECRET=${DISCORD_SECRET:-}
       - TELEGRAM_SECRET=${TELEGRAM_SECRET:-}
-    container_name: bot-engine
+    container_name: ${THE_BOT_ENGINE_CONTAINER_NAME:-bot-engine}
 
   # Hokan the Bot io container
   bot-io:
@@ -66,7 +66,7 @@ services:
       - ${THE_BOT_MEDIA_STORAGE_HOST_DIR:-${HOKAN_DATA_DIR:-.}/runtime/media}:/runtime/media
       - ${HOKAN_DATA_DIR:-.}/config:/config
     ports:
-      - "127.0.0.1:8090:8090"
+      - "127.0.0.1:${THE_BOT_IO_HOST_PORT:-8090}:8090"
     environment:
       - TZ=Europe/Helsinki
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
@@ -77,7 +77,7 @@ services:
       - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET:-}
       - WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
-    container_name: bot-io
+    container_name: ${THE_BOT_IO_CONTAINER_NAME:-bot-io}
 
   # Hokan the Bot WhatsApp sidecar using wacli
   bot-whatsapp:
@@ -96,7 +96,7 @@ services:
       - BOT_WHATSAPP_PORT=8095
       - BOT_WHATSAPP_SEND_TOKEN=${WHATSAPP_SEND_TOKEN:-}
       - BOT_WHATSAPP_INTERNAL_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
-    container_name: bot-whatsapp
+    container_name: ${THE_BOT_WHATSAPP_CONTAINER_NAME:-bot-whatsapp}
 
   # Hokan the Bot web UI container
   bot-web:
@@ -117,7 +117,7 @@ services:
       - ${HOKAN_DATA_DIR:-.}/secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - "0.0.0.0:8091:8091"
+      - "${THE_BOT_WEB_BIND_ADDRESS:-0.0.0.0}:${THE_BOT_WEB_HOST_PORT:-8091}:8091"
     extra_hosts:
       - "ubuntu-server:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
       - "ubuntu-server.local:${HOKAN_EXTERNAL_HOST_IP:-192.168.0.11}"
@@ -129,12 +129,16 @@ services:
       - THE_BOT_WEB_BOT_IO_BASE_URL=${THE_BOT_WEB_BOT_IO_BASE_URL:-http://bot-io:8090}
       - THE_BOT_WEB_BOT_ENGINE_BASE_URL=${THE_BOT_WEB_BOT_ENGINE_BASE_URL:-http://bot-engine:8100}
       - THE_BOT_WEB_BOT_WHATSAPP_BASE_URL=${THE_BOT_WEB_BOT_WHATSAPP_BASE_URL:-http://bot-whatsapp:8095}
+      - THE_BOT_WEB_BOT_WEB_CONTAINER_NAME=${THE_BOT_WEB_CONTAINER_NAME:-bot-web}
+      - THE_BOT_WEB_BOT_IO_CONTAINER_NAME=${THE_BOT_IO_CONTAINER_NAME:-bot-io}
+      - THE_BOT_WEB_BOT_ENGINE_CONTAINER_NAME=${THE_BOT_ENGINE_CONTAINER_NAME:-bot-engine}
+      - THE_BOT_WEB_BOT_WHATSAPP_CONTAINER_NAME=${THE_BOT_WHATSAPP_CONTAINER_NAME:-bot-whatsapp}
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
       - THE_BOT_WEB_MOBILE_FCM_ENABLED=${THE_BOT_WEB_MOBILE_FCM_ENABLED:-false}
       - THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=${THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE:-/run/secrets/firebase-service-account.json}
-    container_name: bot-web
+    container_name: ${THE_BOT_WEB_CONTAINER_NAME:-bot-web}
 
   # Hokan the Bot Hermes Manager - Main instance
   bot-hermes-manager-main:

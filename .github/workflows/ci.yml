@@ -293,7 +293,8 @@ jobs:
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
-      group: deploy-${{ github.ref_name }}
+      # Main and develop share docker.local after develop migration.
+      group: deploy-docker-local
       cancel-in-progress: false
 
     steps:
@@ -301,6 +302,7 @@ jobs:
         env:
           DEPLOY_BRANCH: ${{ github.ref_name }}
           DEPLOY_TARGET_BRANCH: ${{ vars.DEPLOY_TARGET_BRANCH }}
+          DEPLOY_WORKDIR: ${{ vars.DEPLOY_WORKDIR }}
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
@@ -320,8 +322,34 @@ jobs:
             exit 1
           fi
 
+          if [ "$DEPLOY_BRANCH" = "develop" ]; then
+            case "$VM_HOST" in
+              docker.local|192.168.0.33) ;;
+              *)
+                echo "Refusing develop deploy because VM_HOST=$VM_HOST is not docker.local/192.168.0.33."
+                exit 1
+                ;;
+            esac
+            if [ "$DEPLOY_WORKDIR" != "/home/hokan/dev_the_bot" ]; then
+              echo "Refusing develop deploy because DEPLOY_WORKDIR=$DEPLOY_WORKDIR is not /home/hokan/dev_the_bot."
+              exit 1
+            fi
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Prepare deploy directory
+        uses: appleboy/ssh-action@master
+        env:
+          DEPLOY_WORKDIR: ${{ vars.DEPLOY_WORKDIR || '/home/hokan/the_bot' }}
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            mkdir -p -- "$DEPLOY_WORKDIR"
+            chown "$(id -un):$(id -gn)" "$DEPLOY_WORKDIR"
 
       - name: Copy compose file to VM
         uses: appleboy/scp-action@master
@@ -397,6 +425,17 @@ jobs:
           PGID: ${{ vars.PGID }}
           DEPLOY_WORKDIR: ${{ vars.DEPLOY_WORKDIR }}
           HOKAN_DATA_DIR: ${{ vars.HOKAN_DATA_DIR }}
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
+          THE_BOT_ENGINE_HOST_PORT: ${{ vars.THE_BOT_ENGINE_HOST_PORT }}
+          THE_BOT_IO_HOST_PORT: ${{ vars.THE_BOT_IO_HOST_PORT }}
+          THE_BOT_WEB_HOST_PORT: ${{ vars.THE_BOT_WEB_HOST_PORT }}
+          THE_BOT_WEB_BIND_ADDRESS: ${{ vars.THE_BOT_WEB_BIND_ADDRESS }}
+          THE_BOT_DEBUG_HOST_IP: ${{ vars.THE_BOT_DEBUG_HOST_IP }}
+          THE_BOT_DEBUG_HOST_PORT: ${{ vars.THE_BOT_DEBUG_HOST_PORT }}
+          THE_BOT_ENGINE_CONTAINER_NAME: ${{ vars.THE_BOT_ENGINE_CONTAINER_NAME }}
+          THE_BOT_IO_CONTAINER_NAME: ${{ vars.THE_BOT_IO_CONTAINER_NAME }}
+          THE_BOT_WEB_CONTAINER_NAME: ${{ vars.THE_BOT_WEB_CONTAINER_NAME }}
+          THE_BOT_WHATSAPP_CONTAINER_NAME: ${{ vars.THE_BOT_WHATSAPP_CONTAINER_NAME }}
           HOKAN_BOT_INSTANCE_ID: ${{ vars.HOKAN_BOT_INSTANCE_ID }}
           HOKAN_EXTERNAL_HOST_IP: ${{ vars.HOKAN_EXTERNAL_HOST_IP }}
           WEATHER_API_URL: ${{ vars.WEATHER_API_URL }}
@@ -412,9 +451,15 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           command_timeout: 30m
-          envs: DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,WEB_CHANGED,WHATSAPP_CHANGED,HOKAN_NODE_CONTEXT_SECRET,HERMES_CHAT_BASE_URL,HERMES_MAIN_CHAT_BASE_URL,HERMES_DEVELOP_CHAT_BASE_URL,HERMES_CHAT_API_KEY,HERMES_AI_COMMAND_BASE_URL,HERMES_MAIN_AI_COMMAND_BASE_URL,HERMES_DEVELOP_AI_COMMAND_BASE_URL,HERMES_AI_COMMAND_API_KEY,HERMES_AI_COMMAND_MODEL,HERMES_AI_COMMAND_TIMEOUT_SECONDS,HERMES_AI_COMMAND_API_MODE,HERMES_CHAT_MODEL,HERMES_CHAT_TIMEOUT_SECONDS,HERMES_CHAT_API_MODE,HERMES_BASE_URL,HERMES_API_KEY,HERMES_MODEL,HERMES_TIMEOUT_SECONDS,HERMES_API_MODE,HERMES_MANAGER_MAIN_BASE_URL,HERMES_MANAGER_DEVELOP_BASE_URL,HERMES_MANAGER_TOKEN,WEATHER_API_KEY,YOUTUBE_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,WHATSAPP_WEBHOOK_SECRET,WHATSAPP_SEND_TOKEN,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,HOKAN_BOT_INSTANCE_ID,HOKAN_EXTERNAL_HOST_IP,WEATHER_API_URL,THE_BOT_WEB_PUBLIC_BASE_URL,THE_BOT_MEDIA_STORAGE_HOST_DIR,THE_BOT_INTERNAL_API_TOKEN,THE_BOT_WEB_MOBILE_FCM_ENABLED,FIREBASE_SERVICE_ACCOUNT_JSON_B64,WHATSAPP_WACLI_DIR,WACLI_SYNC_MAX_DB_SIZE
+          envs: DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,WEB_CHANGED,WHATSAPP_CHANGED,HOKAN_NODE_CONTEXT_SECRET,HERMES_CHAT_BASE_URL,HERMES_MAIN_CHAT_BASE_URL,HERMES_DEVELOP_CHAT_BASE_URL,HERMES_CHAT_API_KEY,HERMES_AI_COMMAND_BASE_URL,HERMES_MAIN_AI_COMMAND_BASE_URL,HERMES_DEVELOP_AI_COMMAND_BASE_URL,HERMES_AI_COMMAND_API_KEY,HERMES_AI_COMMAND_MODEL,HERMES_AI_COMMAND_TIMEOUT_SECONDS,HERMES_AI_COMMAND_API_MODE,HERMES_CHAT_MODEL,HERMES_CHAT_TIMEOUT_SECONDS,HERMES_CHAT_API_MODE,HERMES_BASE_URL,HERMES_API_KEY,HERMES_MODEL,HERMES_TIMEOUT_SECONDS,HERMES_API_MODE,HERMES_MANAGER_MAIN_BASE_URL,HERMES_MANAGER_DEVELOP_BASE_URL,HERMES_MANAGER_TOKEN,WEATHER_API_KEY,YOUTUBE_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,WHATSAPP_WEBHOOK_SECRET,WHATSAPP_SEND_TOKEN,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,COMPOSE_PROJECT_NAME,THE_BOT_ENGINE_HOST_PORT,THE_BOT_IO_HOST_PORT,THE_BOT_WEB_HOST_PORT,THE_BOT_WEB_BIND_ADDRESS,THE_BOT_DEBUG_HOST_IP,THE_BOT_DEBUG_HOST_PORT,THE_BOT_ENGINE_CONTAINER_NAME,THE_BOT_IO_CONTAINER_NAME,THE_BOT_WEB_CONTAINER_NAME,THE_BOT_WHATSAPP_CONTAINER_NAME,HOKAN_BOT_INSTANCE_ID,HOKAN_EXTERNAL_HOST_IP,WEATHER_API_URL,THE_BOT_WEB_PUBLIC_BASE_URL,THE_BOT_MEDIA_STORAGE_HOST_DIR,THE_BOT_INTERNAL_API_TOKEN,THE_BOT_WEB_MOBILE_FCM_ENABLED,FIREBASE_SERVICE_ACCOUNT_JSON_B64,WHATSAPP_WACLI_DIR,WACLI_SYNC_MAX_DB_SIZE
           script: |
             cd "${DEPLOY_WORKDIR:-/home/hokan/the_bot}"
+
+            exec 9>/tmp/the-bot-deploy.lock
+            if ! flock -n 9; then
+              echo "Another the_bot deployment is already running on this host."
+              exit 1
+            fi
 
             if [ -f ./docker-maintenance.sh ]; then
               bash ./docker-maintenance.sh --cleanup
@@ -426,6 +471,17 @@ jobs:
                 HOKAN_RUNTIME_PROFILE="PROD"
                 RUNTIME_PROPERTIES_FILE="prod.properties"
                 COMPOSE_ARGS="-f docker-compose.yml"
+                DEFAULT_COMPOSE_PROJECT_NAME="the_bot"
+                DEFAULT_THE_BOT_ENGINE_HOST_PORT="8100"
+                DEFAULT_THE_BOT_IO_HOST_PORT="8090"
+                DEFAULT_THE_BOT_WEB_HOST_PORT="8091"
+                DEFAULT_THE_BOT_WEB_BIND_ADDRESS="0.0.0.0"
+                DEFAULT_THE_BOT_DEBUG_HOST_IP="127.0.0.1"
+                DEFAULT_THE_BOT_DEBUG_HOST_PORT="5005"
+                DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME="bot-engine"
+                DEFAULT_THE_BOT_IO_CONTAINER_NAME="bot-io"
+                DEFAULT_THE_BOT_WEB_CONTAINER_NAME="bot-web"
+                DEFAULT_THE_BOT_WHATSAPP_CONTAINER_NAME="bot-whatsapp"
                 DEFAULT_HOKAN_BOT_INSTANCE_ID="hokan-main"
                 DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL="http://hokan-main.local:8091"
                 DEFAULT_THE_BOT_MEDIA_STORAGE_HOST_DIR="/mnt/hokan/storagebox-sub2/the_bot/main/media"
@@ -436,8 +492,19 @@ jobs:
                 HOKAN_RUNTIME_PROFILE="DEV"
                 RUNTIME_PROPERTIES_FILE="dev.properties"
                 COMPOSE_ARGS="-f docker-compose.yml -f docker-compose.develop-debug.yml"
+                DEFAULT_COMPOSE_PROJECT_NAME="the_bot_develop"
+                DEFAULT_THE_BOT_ENGINE_HOST_PORT="8101"
+                DEFAULT_THE_BOT_IO_HOST_PORT="8093"
+                DEFAULT_THE_BOT_WEB_HOST_PORT="8092"
+                DEFAULT_THE_BOT_WEB_BIND_ADDRESS="192.168.0.33"
+                DEFAULT_THE_BOT_DEBUG_HOST_IP="192.168.0.33"
+                DEFAULT_THE_BOT_DEBUG_HOST_PORT="5005"
+                DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME="bot-develop-engine"
+                DEFAULT_THE_BOT_IO_CONTAINER_NAME="bot-develop-io"
+                DEFAULT_THE_BOT_WEB_CONTAINER_NAME="bot-develop-web"
+                DEFAULT_THE_BOT_WHATSAPP_CONTAINER_NAME="bot-develop-whatsapp"
                 DEFAULT_HOKAN_BOT_INSTANCE_ID="hokan-develop"
-                DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL="http://hokan-develop.local:8091"
+                DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL="https://hokandevbot.airiot.fi"
                 DEFAULT_THE_BOT_MEDIA_STORAGE_HOST_DIR="/mnt/hokan/storagebox-sub2/the_bot/develop/media"
                 DEFAULT_IMAGE_TAG="develop"
                 ;;
@@ -495,6 +562,17 @@ jobs:
               set +a
             fi
 
+            COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$DEFAULT_COMPOSE_PROJECT_NAME}"
+            THE_BOT_ENGINE_HOST_PORT="${THE_BOT_ENGINE_HOST_PORT:-$DEFAULT_THE_BOT_ENGINE_HOST_PORT}"
+            THE_BOT_IO_HOST_PORT="${THE_BOT_IO_HOST_PORT:-$DEFAULT_THE_BOT_IO_HOST_PORT}"
+            THE_BOT_WEB_HOST_PORT="${THE_BOT_WEB_HOST_PORT:-$DEFAULT_THE_BOT_WEB_HOST_PORT}"
+            THE_BOT_WEB_BIND_ADDRESS="${THE_BOT_WEB_BIND_ADDRESS:-$DEFAULT_THE_BOT_WEB_BIND_ADDRESS}"
+            THE_BOT_DEBUG_HOST_IP="${THE_BOT_DEBUG_HOST_IP:-$DEFAULT_THE_BOT_DEBUG_HOST_IP}"
+            THE_BOT_DEBUG_HOST_PORT="${THE_BOT_DEBUG_HOST_PORT:-$DEFAULT_THE_BOT_DEBUG_HOST_PORT}"
+            THE_BOT_ENGINE_CONTAINER_NAME="${THE_BOT_ENGINE_CONTAINER_NAME:-$DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME}"
+            THE_BOT_IO_CONTAINER_NAME="${THE_BOT_IO_CONTAINER_NAME:-$DEFAULT_THE_BOT_IO_CONTAINER_NAME}"
+            THE_BOT_WEB_CONTAINER_NAME="${THE_BOT_WEB_CONTAINER_NAME:-$DEFAULT_THE_BOT_WEB_CONTAINER_NAME}"
+            THE_BOT_WHATSAPP_CONTAINER_NAME="${THE_BOT_WHATSAPP_CONTAINER_NAME:-$DEFAULT_THE_BOT_WHATSAPP_CONTAINER_NAME}"
             HOKAN_DATA_DIR="${CI_HOKAN_DATA_DIR:-${HOKAN_DATA_DIR:-/home/hokan/the_bot}}"
             BOT_CONFIG_FILE="/runtime/$RUNTIME_PROPERTIES_FILE"
             PUID="${CI_PUID:-${PUID:-1002}}"
@@ -601,6 +679,17 @@ jobs:
               echo "PUID=$PUID"
               echo "PGID=$PGID"
               echo "DOCKER_GID=$DOCKER_GID"
+              echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME"
+              echo "THE_BOT_ENGINE_HOST_PORT=$THE_BOT_ENGINE_HOST_PORT"
+              echo "THE_BOT_IO_HOST_PORT=$THE_BOT_IO_HOST_PORT"
+              echo "THE_BOT_WEB_HOST_PORT=$THE_BOT_WEB_HOST_PORT"
+              echo "THE_BOT_WEB_BIND_ADDRESS=$THE_BOT_WEB_BIND_ADDRESS"
+              echo "THE_BOT_DEBUG_HOST_IP=$THE_BOT_DEBUG_HOST_IP"
+              echo "THE_BOT_DEBUG_HOST_PORT=$THE_BOT_DEBUG_HOST_PORT"
+              echo "THE_BOT_ENGINE_CONTAINER_NAME=$THE_BOT_ENGINE_CONTAINER_NAME"
+              echo "THE_BOT_IO_CONTAINER_NAME=$THE_BOT_IO_CONTAINER_NAME"
+              echo "THE_BOT_WEB_CONTAINER_NAME=$THE_BOT_WEB_CONTAINER_NAME"
+              echo "THE_BOT_WHATSAPP_CONTAINER_NAME=$THE_BOT_WHATSAPP_CONTAINER_NAME"
               echo "ENGINE_IMAGE_TAG=$ENGINE_IMAGE_TAG"
               echo "IO_IMAGE_TAG=$IO_IMAGE_TAG"
               echo "WEB_IMAGE_TAG=$WEB_IMAGE_TAG"
@@ -683,26 +772,26 @@ jobs:
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.VM_GH_TOKEN }}
 
             if [ "$WHATSAPP_CHANGED" = "true" ]; then
-              docker compose $COMPOSE_ARGS pull bot-whatsapp
-              docker compose $COMPOSE_ARGS up -d bot-whatsapp
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS pull bot-whatsapp
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d bot-whatsapp
             fi
 
             if [ "$ENGINE_CHANGED" = "true" ]; then
-              docker compose $COMPOSE_ARGS pull bot-engine
-              docker compose $COMPOSE_ARGS up -d bot-engine
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS pull bot-engine
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d bot-engine
             fi
 
             if [ "$IO_CHANGED" = "true" ]; then
-              docker compose $COMPOSE_ARGS pull bot-io
-              docker compose $COMPOSE_ARGS up -d bot-io
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS pull bot-io
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d bot-io
             fi
 
             if [ "$WEB_CHANGED" = "true" ]; then
-              docker compose $COMPOSE_ARGS pull bot-web
+              docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS pull bot-web
             fi
 
             # Always reconcile bot-web after writing .env and its optional FCM secret.
-            docker compose $COMPOSE_ARGS up -d bot-web
+            docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d bot-web
 
             if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ] && [ "$WEB_CHANGED" != "true" ] && [ "$WHATSAPP_CHANGED" != "true" ]; then
               echo "No bot-engine/bot-io/bot-web/bot-whatsapp image changes. Runtime configuration was reconciled."
