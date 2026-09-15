@@ -808,7 +808,7 @@ jobs:
             fi
 
             # Always reconcile bot-web after writing .env and its optional FCM secret.
-            docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d bot-web
+            docker compose -p "$COMPOSE_PROJECT_NAME" $COMPOSE_ARGS up -d --no-deps --force-recreate bot-web
 
             if [ "$ENGINE_CHANGED" != "true" ] && [ "$IO_CHANGED" != "true" ] && [ "$WEB_CHANGED" != "true" ] && [ "$WHATSAPP_CHANGED" != "true" ]; then
               echo "No bot-engine/bot-io/bot-web/bot-whatsapp image changes. Runtime configuration was reconciled."
