@@ -910,12 +910,19 @@ public class ConnectionManager implements CommandLineRunner {
     }
   }
 
+  // Package-private test seam; production keeps the 10 second wait.
+  private long ircReconnectWaitTimeMs = 10000L;
+
+  void setIrcReconnectWaitTimeForTesting(long waitTimeMs) {
+    this.ircReconnectWaitTimeMs = waitTimeMs;
+  }
+
   public void reconnectIrcServer(IrcServerConfig config) {
     log.debug("Reconnecting IRC: {}", config);
     try {
       TheBotConfig theBotConfig = configService.readBotConfig();
 
-      long waitTime = 10000L;
+      long waitTime = ircReconnectWaitTimeMs;
       log.debug("Reconnect wait time: {}", waitTime);
       Thread.sleep(waitTime);
       log.debug("Try reconnect: {}", config);
