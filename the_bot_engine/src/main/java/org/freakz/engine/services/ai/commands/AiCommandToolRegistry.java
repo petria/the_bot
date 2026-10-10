@@ -13,7 +13,7 @@ import org.freakz.engine.data.service.DataValuesService;
 import org.freakz.engine.data.service.UsersService;
 import org.freakz.engine.dto.weather.WeatherAPIResponse;
 import org.freakz.engine.dto.CmpWeatherResponse;
-import org.freakz.engine.services.ai.claw.HokanNodeContextTokenService;
+import org.freakz.engine.services.security.HokanContextTokenService;
 import org.freakz.engine.services.api.ServiceRequest;
 import org.freakz.engine.services.logs.ChatLogAccessService;
 import org.freakz.engine.services.weather.weatherapi.WeatherAPIService;
@@ -45,7 +45,7 @@ public class AiCommandToolRegistry {
   private final UsersService usersService;
   private final DataValuesService dataValuesService;
   private final ChatLogAccessService chatLogAccessService;
-  private final HokanNodeContextTokenService tokenService;
+  private final HokanContextTokenService tokenService;
   private final JsonMapper jsonMapper;
   private final ImageAnalysisToolService imageAnalysisToolService;
 
@@ -54,7 +54,7 @@ public class AiCommandToolRegistry {
       UsersService usersService,
       DataValuesService dataValuesService,
       ChatLogAccessService chatLogAccessService,
-      HokanNodeContextTokenService tokenService,
+      HokanContextTokenService tokenService,
       JsonMapper jsonMapper,
       ImageAnalysisToolService imageAnalysisToolService) {
     this.weatherAPIServiceProvider = weatherAPIServiceProvider;

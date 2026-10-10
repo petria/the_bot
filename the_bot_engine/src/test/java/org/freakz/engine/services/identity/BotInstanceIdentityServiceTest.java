@@ -1,4 +1,4 @@
-package org.freakz.engine.services.ai.claw;
+package org.freakz.engine.services.identity;
 
 import org.freakz.engine.config.ConfigService;
 import org.junit.jupiter.api.Test;
@@ -34,27 +34,12 @@ class BotInstanceIdentityServiceTest {
         .hasMessageContaining("Invalid bot instance identity");
   }
 
-  @Test
-  void buildsInstanceMount() {
-    BotInstanceIdentityService service = new BotInstanceIdentityService(
-        new TestConfigService("hokan-main", "PROD", "/mnt/hokan/"));
-
-    assertThat(service.getInstanceMount()).isEqualTo("/mnt/hokan/hokan-main");
-  }
-
   private static class TestConfigService extends ConfigService {
     private final String instanceId;
     private final String activeProfile;
-    private final String baseMount;
-
     TestConfigService(String instanceId, String activeProfile) {
-      this(instanceId, activeProfile, "/mnt/hokan");
-    }
-
-    TestConfigService(String instanceId, String activeProfile, String baseMount) {
       this.instanceId = instanceId;
       this.activeProfile = activeProfile;
-      this.baseMount = baseMount;
     }
 
     @Override
@@ -66,9 +51,6 @@ class BotInstanceIdentityServiceTest {
     public String getConfigValue(String propertyKey, String envKey, String defaultValue) {
       if ("hokan.bot.instance-id".equals(propertyKey)) {
         return instanceId;
-      }
-      if ("openclaw.external-base-mount".equals(propertyKey)) {
-        return baseMount;
       }
       return defaultValue;
     }

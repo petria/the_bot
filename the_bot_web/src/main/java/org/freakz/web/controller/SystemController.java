@@ -15,7 +15,6 @@ import org.freakz.common.model.system.SystemStatusResponse;
 import org.freakz.common.model.engine.system.HermesSettingsResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesProfile;
-import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.config.TheBotWebProperties;
 import org.freakz.web.system.ContainerStatus;
@@ -66,7 +65,6 @@ public class SystemController {
     components.add(localComponentStatus(checkedAt));
     components.add(remoteComponentStatus("bot-io", properties.getBotIoBaseUrl(), checkedAt));
     components.add(remoteComponentStatus("bot-engine", properties.getBotEngineBaseUrl(), checkedAt));
-    components.add(openClawComponentStatus(checkedAt));
     components.add(hermesComponentStatus(checkedAt));
     components.add(sidecarComponentStatus("bot-whatsapp", properties.getBotWhatsappContainerName(), checkedAt));
     return new SystemStatusResponse(checkedAt, components);
@@ -169,76 +167,6 @@ public class SystemController {
         containerStatus.startedAt(),
         containerStatus.restartCount(),
         containerStatus.error(),
-        error);
-  }
-
-  private SystemComponentStatus openClawComponentStatus(Instant checkedAt) {
-    String mode = openClawDeploymentMode();
-    if ("external".equalsIgnoreCase(mode)) {
-      return externalOpenClawComponentStatus(mode, checkedAt);
-    }
-    return localOpenClawComponentStatus(mode, checkedAt);
-  }
-
-  private SystemComponentStatus localOpenClawComponentStatus(String mode, Instant checkedAt) {
-    OpenClawRuntimeSelection selection = openClawRuntimeSelection();
-    SystemComponentStatus status = sidecarComponentStatus(
-        "bot-openclaw",
-        properties.getBotOpenclawContainerName(),
-        checkedAt);
-    return status.withOpenClawDetails(mode, selection.wsUrl(), null);
-  }
-
-  private SystemComponentStatus externalOpenClawComponentStatus(String mode, Instant checkedAt) {
-    long startedNanos = System.nanoTime();
-    OpenClawRuntimeSelection selection = openClawRuntimeSelection();
-    String healthUrl = null;
-    String status = "UNKNOWN";
-    String healthStatus = null;
-    String error = null;
-    ContainerStatus containerStatus = externalContainerStatus(properties.getBotOpenclawContainerName());
-
-    try {
-      healthUrl = selection.healthUrl();
-      if (healthUrl == null || healthUrl.isBlank()) {
-        throw new IllegalStateException("OpenClaw health URL is not configured");
-      }
-      GatewayHealthResult health = getGatewayHealth(healthUrl, "OpenClaw");
-      status = health.componentStatus();
-      healthStatus = health.healthStatus();
-      error = health.error();
-    } catch (Exception e) {
-      status = "DOWN";
-      error = e.getMessage();
-    }
-
-    long responseTimeMs = Math.max(1, Math.round((System.nanoTime() - startedNanos) / 1_000_000.0));
-    return new SystemComponentStatus(
-        "bot-openclaw",
-        status,
-        "OPENCLAW_GATEWAY",
-        mode,
-        healthUrl,
-        healthStatus,
-        selection.wsUrl(),
-        null,
-        null,
-        null,
-        containerStatus == null || containerStatus.startedAt() == null
-            ? null
-            : Math.max(0, Instant.now().getEpochSecond() - containerStatus.startedAt().getEpochSecond()),
-        containerStatus == null ? null : containerStatus.startedAt(),
-        null,
-        null,
-        responseTimeMs,
-        checkedAt,
-        containerStatus == null ? null : containerStatus.containerName(),
-        containerStatus == null ? null : containerStatus.state(),
-        containerStatus == null ? null : containerStatus.statusText(),
-        containerStatus == null ? null : containerStatus.image(),
-        containerStatus == null ? null : containerStatus.startedAt(),
-        containerStatus == null ? null : containerStatus.restartCount(),
-        containerStatus == null ? null : containerStatus.error(),
         error);
   }
 
@@ -488,78 +416,6 @@ public class SystemController {
     return containerStatus != null && "running".equalsIgnoreCase(containerStatus.state());
   }
 
-  private ContainerStatus externalContainerStatus(String containerName) {
-    ContainerStatus containerStatus = containerStatusProvider.getStatus(containerName);
-    if (containerStatus == null || isContainerDisabled(containerStatus)) {
-      return null;
-    }
-    String state = containerStatus.state();
-    if ("missing".equalsIgnoreCase(state) || isContainerStatusUnavailable(containerStatus)) {
-      return null;
-    }
-    return containerStatus;
-  }
-
-  private String openClawDeploymentMode() {
-    String mode = properties.getOpenclawDeploymentMode();
-    if (mode == null || mode.isBlank()) {
-      return "external";
-    }
-    return mode.trim().toLowerCase();
-  }
-
-  private String openClawHealthUrl() {
-    String configuredHealthUrl = properties.getOpenclawHealthUrl();
-    if (configuredHealthUrl != null && !configuredHealthUrl.isBlank()) {
-      return configuredHealthUrl.trim();
-    }
-    return healthUrlFromGatewayUrl(properties.getOpenclawGatewayWsUrl());
-  }
-
-  private OpenClawRuntimeSelection openClawRuntimeSelection() {
-    try {
-      ResponseEntity<OpenClawSettingsResponse> response = engineClient.getOpenClawSettings();
-      OpenClawSettingsResponse body = response.getBody();
-      if (response.getStatusCode().is2xxSuccessful()
-          && body != null
-          && body.currentWsUrl() != null
-          && !body.currentWsUrl().isBlank()) {
-        String healthUrl = body.currentHealthUrl();
-        if (healthUrl == null || healthUrl.isBlank()) {
-          healthUrl = healthUrlFromGatewayUrl(body.currentWsUrl());
-        }
-        return new OpenClawRuntimeSelection(body.currentWsUrl(), healthUrl);
-      }
-    } catch (RuntimeException ignored) {
-      // Keep System usable even when bot-engine is down.
-    }
-    return new OpenClawRuntimeSelection(properties.getOpenclawGatewayWsUrl(), openClawHealthUrl());
-  }
-
-  private String healthUrlFromGatewayUrl(String gatewayUrl) {
-    if (gatewayUrl == null || gatewayUrl.isBlank()) {
-      return null;
-    }
-    try {
-      URI uri = new URI(gatewayUrl.trim());
-      String scheme = switch (uri.getScheme() == null ? "" : uri.getScheme().toLowerCase()) {
-        case "ws", "http" -> "http";
-        case "wss", "https" -> "https";
-        default -> throw new IllegalArgumentException("Unsupported OpenClaw gateway URL scheme: " + uri.getScheme());
-      };
-      return new URI(
-          scheme,
-          uri.getUserInfo(),
-          uri.getHost(),
-          uri.getPort(),
-          "/health",
-          null,
-          null).toString();
-    } catch (URISyntaxException | IllegalArgumentException e) {
-      throw new IllegalStateException("Invalid OpenClaw gateway URL: " + gatewayUrl, e);
-    }
-  }
-
   private GatewayHealthResult getGatewayHealth(String healthUrl, String componentName) {
     try {
       ResponseEntity<Map> response = restTemplate.getForEntity(healthUrl, Map.class);
@@ -713,6 +569,4 @@ public class SystemController {
       String error) {
   }
 
-  private record OpenClawRuntimeSelection(String wsUrl, String healthUrl) {
-  }
 }

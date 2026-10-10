@@ -1,4 +1,7 @@
-package org.freakz.engine.services.ai.claw;
+package org.freakz.engine.services.logs;
+
+import org.freakz.engine.services.identity.BotInstanceIdentityService;
+import org.freakz.engine.services.security.HokanContextTokenService;
 
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.users.User;
@@ -15,7 +18,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class OpenClawLogAccessServiceTest {
+class ChatLogAccessServiceTest {
 
   @TempDir
   Path tempDir;
@@ -28,8 +31,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
-        new OpenClawLogAccessService.LogReadRequest(token, "current-chat", null, null, null, null, "2026-05-19", 2, true));
+    ChatLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
+        new ChatLogAccessService.LogReadRequest(token, "current-chat", null, null, null, null, "2026-05-19", 2, true));
 
     assertThat(response.found()).isTrue();
     assertThat(response.content()).isEqualTo("two\nthree");
@@ -44,8 +47,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadRequest readOtherChannel =
-        new OpenClawLogAccessService.LogReadRequest(token, "current-chat", "irc", "ircnet", "channel", "other", "2026-05-19", 80, null);
+    ChatLogAccessService.LogReadRequest readOtherChannel =
+        new ChatLogAccessService.LogReadRequest(token, "current-chat", "irc", "ircnet", "channel", "other", "2026-05-19", 80, null);
 
     assertThatThrownBy(() -> bundle.logAccessService().readLogs(readOtherChannel))
         .isInstanceOf(SecurityException.class)
@@ -60,8 +63,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_ALL_PUBLIC_CHANNELS));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
-        new OpenClawLogAccessService.LogReadRequest(token, "all-public-channels", "irc", "ircnet", "channel", "other", "2026-05-19", 80, null));
+    ChatLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
+        new ChatLogAccessService.LogReadRequest(token, "all-public-channels", "irc", "ircnet", "channel", "other", "2026-05-19", 80, null));
 
     assertThat(response.found()).isTrue();
     assertThat(response.content()).isEqualTo("public");
@@ -75,8 +78,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_ALL_PUBLIC_CHANNELS));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
-        new OpenClawLogAccessService.LogReadRequest(
+    ChatLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
+        new ChatLogAccessService.LogReadRequest(
             token, "other_channel", "irc", "ircnet", "channel", "other",
             "2026-05-19", 80, null));
 
@@ -92,8 +95,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadRequest request =
-        new OpenClawLogAccessService.LogReadRequest(
+    ChatLogAccessService.LogReadRequest request =
+        new ChatLogAccessService.LogReadRequest(
             token, "public-channel", "irc", "ircnet", "channel", "other",
             "2026-05-19", 80, null);
 
@@ -110,8 +113,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
-        new OpenClawLogAccessService.LogReadRequest(token, "current-chat", null, null, null, null, "2026-05-19", 80, null));
+    ChatLogAccessService.LogReadResponse response = bundle.logAccessService().readLogs(
+        new ChatLogAccessService.LogReadRequest(token, "current-chat", null, null, null, null, "2026-05-19", 80, null));
 
     assertThat(response.availableFiles()).isEmpty();
   }
@@ -128,8 +131,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
-        new OpenClawLogAccessService.LogSearchRequest(
+    ChatLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
+        new ChatLogAccessService.LogSearchRequest(
             token, "current-chat", null, null, null, null,
             "bor_ed", null, null, List.of("model", "n100"),
             "2026-05-19", "2026-05-19", null, null, null));
@@ -149,8 +152,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogSearchRequest searchOtherChannel =
-        new OpenClawLogAccessService.LogSearchRequest(
+    ChatLogAccessService.LogSearchRequest searchOtherChannel =
+        new ChatLogAccessService.LogSearchRequest(
             token, "current-chat", "irc", "ircnet", "channel", "other",
             null, "secret", null, null, "2026-05-19", "2026-05-19", null, null, null);
 
@@ -169,8 +172,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_ALL_PUBLIC_CHANNELS));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
-        new OpenClawLogAccessService.LogSearchRequest(
+    ChatLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
+        new ChatLogAccessService.LogSearchRequest(
             token, "all-public-channels", "irc", "ircnet", "channel", null,
             null, "keyword", null, null, "2026-05-19", "2026-05-19", null, 10, null));
 
@@ -191,8 +194,8 @@ class OpenClawLogAccessServiceTest {
     ServiceBundle bundle = service(List.of(BotPermission.LOGS_READ_CURRENT_CHAT));
     String token = bundle.tokenService().createToken(request(), "session");
 
-    OpenClawLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
-        new OpenClawLogAccessService.LogSearchRequest(
+    ChatLogAccessService.LogSearchResponse response = bundle.logAccessService().searchLogs(
+        new ChatLogAccessService.LogSearchRequest(
             token, "current-chat", null, null, null, null,
             null, "keyword", null, null, "2026-05-19", "2026-05-19", null, 2, null));
 
@@ -204,9 +207,9 @@ class OpenClawLogAccessServiceTest {
     activePermissions = permissions;
     ConfigService configService = new TestConfigService(tempDir);
     BotInstanceIdentityService identityService = new BotInstanceIdentityService(configService);
-    HokanNodeContextTokenService tokenService =
-        new HokanNodeContextTokenService(configService, new JsonMapper(), identityService);
-    return new ServiceBundle(new OpenClawLogAccessService(configService, tokenService), tokenService);
+    HokanContextTokenService tokenService =
+        new HokanContextTokenService(configService, new JsonMapper(), identityService);
+    return new ServiceBundle(new ChatLogAccessService(configService, tokenService), tokenService);
   }
 
   private EngineRequest request() {
@@ -224,8 +227,8 @@ class OpenClawLogAccessServiceTest {
   private List<String> activePermissions = List.of();
 
   private record ServiceBundle(
-      OpenClawLogAccessService logAccessService,
-      HokanNodeContextTokenService tokenService
+      ChatLogAccessService logAccessService,
+      HokanContextTokenService tokenService
   ) {
   }
 
@@ -250,7 +253,7 @@ class OpenClawLogAccessServiceTest {
     public String getConfigValue(String propertyKey, String envKey, String defaultValue) {
       return switch (propertyKey) {
         case "hokan.bot.instance-id" -> "hokan-develop";
-        case "openclaw.node-context-secret" -> "test-secret";
+        case "hokan.node-context-secret" -> "test-secret";
         default -> defaultValue;
       };
     }

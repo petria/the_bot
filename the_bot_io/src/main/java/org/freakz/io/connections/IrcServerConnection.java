@@ -31,7 +31,9 @@ import org.freakz.common.model.connectionmanager.IrcModeEventResponse;
 import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.kitteh.irc.client.library.Client;
+import org.kitteh.irc.client.library.defaults.feature.DefaultEventManager;
 import org.kitteh.irc.client.library.element.Channel;
+import org.kitteh.irc.client.library.feature.EventManager;
 import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.element.mode.ChannelUserMode;
 import org.kitteh.irc.client.library.element.mode.ChannelMode;
@@ -74,7 +76,7 @@ public class IrcServerConnection extends BotConnection {
   private static final long INCOMING_TOPIC_SOURCE_TIMEOUT_MILLIS = 5_000L;
   private final Map<String, PendingTopicChange> pendingTopicChanges = new ConcurrentHashMap<>();
   private final Map<String, IncomingTopicChange> incomingTopicChanges = new ConcurrentHashMap<>();
-  private Client client;
+  private volatile Client client;
   private ConnectionManager connectionManager;
   private IrcServerConfig config;
   private String botNick;
@@ -962,15 +964,13 @@ public class IrcServerConnection extends BotConnection {
     }
     event.setAttemptReconnect(false);
     this.connectionManager.ircConnectionEnded(this, intentionalStop);
-    this.client.shutdown();
+    close();
   }
 
   @Override
   public void stop() {
     intentionalStop = true;
-    if (client != null) {
-      client.shutdown();
-    }
+    close();
   }
 
   @Override
@@ -1035,27 +1035,81 @@ public class IrcServerConnection extends BotConnection {
     this.botNick = botNick;
     setSelfIdentity(new BotSelfIdentity("irc", botNick, List.of(botNick)));
 
-    client = Client.builder()
-        .user("hokan")
-        .nick(botNick)
-        .realName(firstNonBlank(ircRealName, botNick, "the_bot"))
-        .server()
-        .host(config.getIrcNetwork().getIrcServer().getHost())
-        .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
-        .then()
-        .listeners()
-        .input(line -> {
-          rememberIncomingTopic(line);
-          log.debug("IRC << {}", line);
-        })
-        .output(line -> log.debug("IRC >> {}", line))
-        .exception(e -> log.warn("IRC client exception", e))
-        .then()
-        .build();
+    Client builtClient = null;
+    try {
+      builtClient = Client.builder()
+          .user("hokan")
+          .nick(botNick)
+          .realName(firstNonBlank(ircRealName, botNick, "the_bot"))
+          .server()
+          .host(config.getIrcNetwork().getIrcServer().getHost())
+          .port(config.getIrcNetwork().getIrcServer().getPort(), Client.Builder.Server.SecurityType.INSECURE)
+          .then()
+          .listeners()
+          .input(line -> {
+            rememberIncomingTopic(line);
+            log.debug("IRC << {}", line);
+          })
+          .output(line -> log.debug("IRC >> {}", line))
+          .exception(e -> log.warn("IRC client exception", e))
+          .then()
+          .build();
+      builtClient.getEventManager().registerEventListener(this);
+      builtClient.connect();
+    } catch (RuntimeException e) {
+      // The client may have already started event bus threads; release them so
+      // a failed init does not accumulate threads on every reconnect cycle.
+      releaseClient(builtClient);
+      throw e;
+    }
+    client = builtClient;
 
-    client.getEventManager().registerEventListener(this);
-    client.connect();
+  }
 
+  /**
+   * Releases this connection's IRC client, including the client library's
+   * event bus, so the bus dispatcher threads terminate.
+   *
+   * <p>client-lib 9.x's {@code Client#shutdown()} does not stop the event
+   * manager's MBassador bus, and the bus only stops itself when a
+   * connection-ended event reports {@code canReconnect == false} — a final
+   * field fixed at event creation. Dropped connections always report
+   * reconnectable, so every replaced client used to leak two
+   * {@code MsgDispatcher} threads; after enough reconnect cycles the JVM
+   * exhausts its native thread budget (EAGAIN) and cannot build new clients.
+   *
+   * <p>Idempotent; safe to call from the connection-ended event handler and
+   * from {@link #stop()}.
+   */
+  public synchronized void close() {
+    Client current = client;
+    if (current == null) {
+      return;
+    }
+    client = null;
+    releaseClient(current);
+  }
+
+  private void releaseClient(Client current) {
+    if (current == null) {
+      return;
+    }
+    try {
+      current.shutdown();
+    } catch (Exception e) {
+      log.warn("Failed to shutdown IRC client", e);
+    }
+    EventManager eventManager = current.getEventManager();
+    if (eventManager instanceof DefaultEventManager defaultManager) {
+      try {
+        // onShutdown() stops the MBassador bus (and its dispatcher threads)
+        // when the given ended event reports that reconnection is impossible.
+        defaultManager.onShutdown(
+            new ClientConnectionClosedEvent(current, false, null, "closed by the_bot"));
+      } catch (Exception e) {
+        log.warn("Failed to stop IRC client event bus", e);
+      }
+    }
   }
 
   private String firstNonBlank(String... values) {

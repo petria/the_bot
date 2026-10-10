@@ -17,8 +17,6 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
@@ -190,16 +188,6 @@ public class RestEngineClient {
   public ResponseEntity<AiCommandConfigResponse> reloadAiCommands() {
     String url = baseUrl + "/internal/ai-commands/reload";
     return restTemplate.exchange(url, HttpMethod.POST, null, AiCommandConfigResponse.class);
-  }
-
-  public ResponseEntity<OpenClawSettingsResponse> getOpenClawSettings() {
-    String url = baseUrl + "/internal/system/openclaw";
-    return restTemplate.getForEntity(url, OpenClawSettingsResponse.class);
-  }
-
-  public ResponseEntity<OpenClawSettingsResponse> updateOpenClawSettings(OpenClawSettingsRequest request) {
-    String url = baseUrl + "/internal/system/openclaw";
-    return restTemplate.postForEntity(url, request, OpenClawSettingsResponse.class);
   }
 
   public ResponseEntity<HermesSettingsResponse> getHermesSettings() {

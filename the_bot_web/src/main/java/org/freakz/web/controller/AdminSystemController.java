@@ -12,8 +12,6 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsRequest;
-import org.freakz.common.model.engine.system.OpenClawSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,24 +35,6 @@ public class AdminSystemController {
 
   public AdminSystemController(RestEngineClient engineClient) {
     this.engineClient = engineClient;
-  }
-
-  @GetMapping("/openclaw")
-  public OpenClawSettingsResponse getOpenClawSettings() {
-    ResponseEntity<OpenClawSettingsResponse> response = engineClient.getOpenClawSettings();
-    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-      throw new IllegalStateException("Could not load OpenClaw settings from bot-engine");
-    }
-    return response.getBody();
-  }
-
-  @PostMapping("/openclaw")
-  public OpenClawSettingsResponse updateOpenClawSettings(@RequestBody OpenClawSettingsRequest request) {
-    ResponseEntity<OpenClawSettingsResponse> response = engineClient.updateOpenClawSettings(request);
-    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-      throw new IllegalStateException("Could not update OpenClaw settings in bot-engine");
-    }
-    return response.getBody();
   }
 
   @GetMapping("/hermes")

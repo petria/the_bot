@@ -16,6 +16,7 @@ const LOCAL_RUNNER_OPTIONS = [
   { value: 'ollama', label: 'Ollama' },
   { value: 'lmstudio', label: 'LM Studio' },
   { value: 'vllm', label: 'vLLM' },
+  { value: 'llamacpp', label: 'llama.cpp' },
 ];
 
 const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
@@ -380,7 +381,7 @@ function BackendCard({
             disabled={disabledProvider}
             onChange={(value) => onChange({
               provider: value || backend.provider,
-              baseUrl: local ? defaultRunnerUrl(value || backend.provider) : null,
+              baseUrl: local ? backend.baseUrl || defaultRunnerUrl(value || backend.provider) : null,
               reasoningDisabled: nextBackendProviderDisablesReasoning(value || backend.provider),
             })}
           />
@@ -435,13 +436,14 @@ function BackendCard({
               onChange={(apiKey) => onChange({ apiKey, clearApiKey: false })}
               onClear={(clearApiKey) => onChange({ clearApiKey, apiKey: '' })}
             />
-            <Switch
-              label="Disable reasoning"
-              description="For Ollama thinking models, sends reasoning_effort=none through Hermes."
-              checked={Boolean(backend.reasoningDisabled)}
-              disabled={backend.provider !== 'ollama'}
-              onChange={(event) => onChange({ reasoningDisabled: event.currentTarget.checked })}
-            />
+            {backend.provider === 'ollama' ? (
+              <Switch
+                label="Disable reasoning"
+                description="For Ollama thinking models, sends reasoning_effort=none through Hermes."
+                checked={Boolean(backend.reasoningDisabled)}
+                onChange={(event) => onChange({ reasoningDisabled: event.currentTarget.checked })}
+              />
+            ) : null}
           </Group>
         ) : null}
         <Group grow>
@@ -535,6 +537,8 @@ function localLabel(id: string) {
 
 function defaultRunnerUrl(provider: string) {
   switch (provider) {
+    case 'llamacpp':
+      return 'http://localhost:8080/v1';
     case 'lmstudio':
       return 'http://localhost:1234/v1';
     case 'vllm':

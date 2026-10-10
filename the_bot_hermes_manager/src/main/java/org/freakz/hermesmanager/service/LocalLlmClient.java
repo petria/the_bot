@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClientException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public class LocalLlmClient {
@@ -23,11 +24,14 @@ public class LocalLlmClient {
   public static final String OLLAMA = "ollama";
   public static final String LM_STUDIO = "lmstudio";
   public static final String VLLM = "vllm";
+  public static final String LLAMA_CPP = "llamacpp";
 
   private final RestTemplate restTemplate;
+  private final JsonMapper jsonMapper;
 
-  public LocalLlmClient(RestTemplate restTemplate) {
+  public LocalLlmClient(RestTemplate restTemplate, JsonMapper jsonMapper) {
     this.restTemplate = restTemplate;
+    this.jsonMapper = jsonMapper;
   }
 
   public HermesFallbackModelsResponse discover(String provider, URI baseUrl, String apiKey) {
@@ -116,7 +120,13 @@ public class LocalLlmClient {
     if (apiKey != null && !apiKey.isBlank()) {
       headers.setBearerAuth(apiKey);
     }
-    return new HttpEntity<>(body, headers);
+    if (body != null) {
+      // Buffer JSON so servers that reject chunked requests receive a known byte length.
+      byte[] json = jsonMapper.writeValueAsBytes(body);
+      headers.setContentLength(json.length);
+      return new HttpEntity<>(json, headers);
+    }
+    return new HttpEntity<>(null, headers);
   }
 
   private Map<String, HermesFallbackModel> ollamaMetadata(URI baseUrl) {
@@ -180,14 +190,14 @@ public class LocalLlmClient {
 
   public static String normalizeProvider(String provider) {
     String normalized = provider == null ? "" : provider.trim().toLowerCase();
-    if (!OLLAMA.equals(normalized) && !LM_STUDIO.equals(normalized) && !VLLM.equals(normalized)) {
-      throw new IllegalArgumentException("local provider must be ollama, lmstudio, or vllm");
+    if (!isLocal(normalized)) {
+      throw new IllegalArgumentException("local provider must be ollama, lmstudio, vllm, or llamacpp");
     }
     return normalized;
   }
 
   public static boolean isLocal(String provider) {
-    return OLLAMA.equals(provider) || LM_STUDIO.equals(provider) || VLLM.equals(provider);
+    return OLLAMA.equals(provider) || LM_STUDIO.equals(provider) || VLLM.equals(provider) || LLAMA_CPP.equals(provider);
   }
 
   public static String displayName(String provider) {
@@ -195,6 +205,7 @@ public class LocalLlmClient {
       case OLLAMA -> "Ollama";
       case LM_STUDIO -> "LM Studio";
       case VLLM -> "vLLM";
+      case LLAMA_CPP -> "llama.cpp";
       default -> "Local LLM";
     };
   }
