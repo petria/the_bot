@@ -2,7 +2,7 @@ package org.freakz.common.model.engine.system;
 
 /**
  * A logical Hermes profile that owns its provider configuration directly.
- * Supported providers: {@code openai}, {@code ollama}, {@code lmstudio}, {@code vllm}.
+ * Supported providers: {@code openai}, {@code ollama}, {@code lmstudio}, {@code vllm}, {@code llamacpp}.
  * <p>
  * Each profile id (chat, ai-command) is the logical route target.
  */
@@ -11,7 +11,7 @@ public record HermesProfile(
         String id,
         /** Human-readable label shown in the UI. */
         String label,
-        /** Provider: openai, ollama, lmstudio, or vllm. Required. */
+        /** Provider: openai, ollama, lmstudio, vllm, or llamacpp. Required. */
         String provider,
         /** Base URL for the API endpoint. Required for local providers; nullable for openai. */
         String baseUrl,
@@ -138,9 +138,10 @@ public record HermesProfile(
     if (!"openai".equals(prov)
         && !"ollama".equals(prov)
         && !"lmstudio".equals(prov)
-        && !"vllm".equals(prov)) {
+        && !"vllm".equals(prov)
+        && !"llamacpp".equals(prov)) {
       throw new IllegalArgumentException(
-          "provider must be openai, ollama, lmstudio, or vllm, got: " + provider);
+          "provider must be openai, ollama, lmstudio, vllm, or llamacpp, got: " + provider);
     }
     // Provider-specific validation
     if ("openai".equals(prov)) {

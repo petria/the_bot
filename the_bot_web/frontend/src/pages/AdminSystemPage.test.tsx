@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import * as systemApi from '../api/adminSystem';
@@ -6,6 +6,34 @@ import { renderPage } from '../test/pageTestUtils';
 import { AdminSystemPage } from './AdminSystemPage';
 
 describe('AdminSystemPage', () => {
+  it('selects llama.cpp, discovers models and saves without Ollama reasoning controls', async () => {
+    const config: systemApi.HermesBackendConfigResponse = {
+      systemMode: 'enabled',
+      backends: [{
+        id: 'local-0', label: 'Local', provider: 'ollama', baseUrl: 'http://192.168.0.60:8081/v1', model: 'swift-model',
+        apiMode: 'chat-completions', timeoutSeconds: 30, contextWindow: 65536, healthy: true,
+        toolCapable: true, detail: null, lastValidatedAt: null, validationStatus: 'OK',
+        apiKeyConfigured: false, reasoningDisabled: true,
+      }],
+      routes: [], profiles: [], fallback: null, globalOverride: null,
+    };
+    vi.spyOn(systemApi, 'getHermesBackendConfig').mockResolvedValue(config);
+    const discover = vi.spyOn(systemApi, 'getHermesFallbackModels').mockResolvedValue({ models: ['swift-model'], items: [] });
+    const save = vi.spyOn(systemApi, 'updateHermesBackendConfig').mockImplementation(async (value) => value);
+    renderPage(<AdminSystemPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('textbox', { name: 'Provider' }));
+    await user.keyboard('{ArrowDown}');
+    await user.click(await screen.findByText('llama.cpp', { selector: '[role="option"] span' }));
+    expect(screen.queryByRole('switch', { name: /Disable reasoning/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'OpenAI-compatible base URL' })).toHaveValue('http://192.168.0.60:8081/v1');
+    await user.click(screen.getByRole('button', { name: 'Load local models' }));
+    await waitFor(() => expect(discover).toHaveBeenCalledWith('llamacpp', 'http://192.168.0.60:8081/v1', undefined, 'local-0'));
+    await user.click(screen.getByRole('button', { name: 'Save and apply' }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({
+      backends: [expect.objectContaining({ provider: 'llamacpp', model: 'swift-model', reasoningDisabled: false })],
+    })));
+  });
   it('renders configured AI backends and routes', async () => {
     vi.spyOn(systemApi, 'getHermesBackendConfig').mockResolvedValue({
       systemMode: 'enabled',

@@ -1118,7 +1118,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private String normalizeLocalProvider(String value) {
     String provider = normalizeProvider(value);
     if (OPENAI.equals(provider)) {
-      throw new IllegalArgumentException("local backend provider must be ollama, lmstudio, or vllm");
+      throw new IllegalArgumentException("local backend provider must be ollama, lmstudio, vllm, or llamacpp");
     }
     return provider;
   }

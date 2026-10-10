@@ -38,6 +38,37 @@ class HermesFallbackServiceTest {
   Path tempDir;
 
   @Test
+  void llamaCppBackendPersistsAndGeneratesCompatibleProfiles() throws Exception {
+    createProfiles("chat", "ai-command");
+    RestTemplate template = healthyRestTemplate();
+    LocalLlmClient client = localClient();
+    HermesGatewayService gateway = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(template, gateway, client, propertiesWithKey());
+    service.run(new DefaultApplicationArguments());
+    HermesBackendUpdate backend = new HermesBackendUpdate(
+        "local-0", "llama.cpp", "llamacpp", "http://llama.local:8081/v1", "swift-model",
+        "chat-completions", 120, 65536, "secret-key", false, true);
+    service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
+        "enabled", List.of(openAiBackend("gpt-5.6-luna"), backend),
+        List.of(new HermesRouteUpdate("chat", "Chat", "local-0"),
+            new HermesRouteUpdate("ai-command", "Commands", "local-0"))));
+    HermesFallbackService reloaded = service(template, gateway, client, propertiesWithKey());
+    var response = reloaded.getBackendConfig();
+    assertThat(response.backends().stream().filter(item -> "local-0".equals(item.id())).findFirst().orElseThrow())
+        .satisfies(item -> {
+          assertThat(item.provider()).isEqualTo("llamacpp");
+          assertThat(item.reasoningDisabled()).isFalse();
+          assertThat(item.apiKeyConfigured()).isTrue();
+        });
+    assertThat(response.profiles()).allSatisfy(profile -> assertThat(profile.provider()).isEqualTo("llamacpp"));
+    String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
+    assertThat(yaml).contains("provider: \"custom\"", "chat_completions", "swift-model", "http://llama.local:8081/v1", "secret-key")
+        .doesNotContain("reasoning_effort", "extra_body");
+    verify(client).validateToolCall("llamacpp", URI.create("http://llama.local:8081/v1"), "swift-model", "secret-key", false);
+    verify(client).validateChat("llamacpp", URI.create("http://llama.local:8081/v1"), "swift-model", "secret-key", false);
+  }
+
+  @Test
   void defaultConfigUsesFixedOpenAiAndLocalBackends() throws Exception {
     createProfiles("chat", "ai-command");
     RestTemplate restTemplate = healthyRestTemplate();
