@@ -39,7 +39,7 @@ describe('AdminSystemPage', () => {
       systemMode: 'enabled',
       backends: [
         {
-          id: 'openai', label: 'OpenAI', provider: 'openai', baseUrl: null, model: 'gpt-5.6-luna',
+          id: 'openai', label: 'OpenAI', provider: 'openai', baseUrl: null, model: 'gpt-6.1-sol',
           apiMode: 'responses', timeoutSeconds: 30, contextWindow: 100000, healthy: true,
           toolCapable: true, detail: null, lastValidatedAt: null, validationStatus: 'OK',
           apiKeyConfigured: true, reasoningDisabled: false,
@@ -53,7 +53,7 @@ describe('AdminSystemPage', () => {
       ],
       routes: [{
         id: 'chat', label: 'Chat', backendId: 'openai', provider: 'openai', baseUrl: null,
-        model: 'gpt-5.6-luna', apiMode: 'responses', timeoutSeconds: 30, contextWindow: 100000,
+        model: 'gpt-6.1-sol', apiMode: 'responses', timeoutSeconds: 30, contextWindow: 100000,
         healthy: true, toolCapable: true, detail: null,
       }],
       profiles: [], fallback: null, globalOverride: null,
@@ -66,10 +66,13 @@ describe('AdminSystemPage', () => {
     expect(screen.getByText('Route selection')).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole('textbox', { name: 'Model' })[0]);
-    expect(screen.getByText('gpt-5.6-luna')).toBeInTheDocument();
-    expect(screen.getByText('gpt-5.6-terra')).toBeInTheDocument();
-    expect(screen.getByText('gpt-5.6-sol')).toBeInTheDocument();
+    const modelInput = screen.getAllByRole('textbox', { name: 'Model' })[0];
+    expect(modelInput).toHaveValue('gpt-6.1-sol');
+    await user.click(modelInput);
+    const models = await screen.findAllByText(/^gpt-6/);
+    expect(models.map((model) => model.textContent)).toEqual([
+      'gpt-6-luna', 'gpt-6-sol', 'gpt-6-astra', 'gpt-6.1-sol',
+    ]);
     expect(screen.queryByText('gpt-5.5')).not.toBeInTheDocument();
   });
 
@@ -92,7 +95,7 @@ describe('AdminSystemPage', () => {
 
     renderPage(<AdminSystemPage />);
 
-    expect(await screen.findByText('Saved OpenAI model "gpt-5.5" is not supported. Choose one of the available gpt-5.6 models.')).toBeInTheDocument();
-    expect(screen.getByText('The saved OpenAI model is no longer supported. Select gpt-5.6-luna, gpt-5.6-terra, or gpt-5.6-sol before saving route changes.')).toBeInTheDocument();
+    expect(await screen.findByText('Saved OpenAI model "gpt-5.5" is not supported. Choose one of the available GPT-6 models.')).toBeInTheDocument();
+    expect(screen.getByText('The saved OpenAI model is no longer supported. Select gpt-6-luna, gpt-6-sol, gpt-6-astra, or gpt-6.1-sol before saving route changes.')).toBeInTheDocument();
   });
 });
