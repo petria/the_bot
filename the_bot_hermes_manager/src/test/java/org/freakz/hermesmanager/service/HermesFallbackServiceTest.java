@@ -49,7 +49,7 @@ class HermesFallbackServiceTest {
         "local-0", "llama.cpp", "llamacpp", "http://llama.local:8081/v1", "swift-model",
         "chat-completions", 120, 65536, "secret-key", false, true);
     service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
-        "enabled", List.of(openAiBackend("gpt-5.6-luna"), backend),
+        "enabled", List.of(openAiBackend("gpt-6.1-sol"), backend),
         List.of(new HermesRouteUpdate("chat", "Chat", "local-0"),
             new HermesRouteUpdate("ai-command", "Commands", "local-0"))));
     HermesFallbackService reloaded = service(template, gateway, client, propertiesWithKey());
@@ -83,7 +83,7 @@ class HermesFallbackServiceTest {
         .filter(backend -> "openai".equals(backend.id()))
         .findFirst()
         .orElseThrow()
-        .model()).isEqualTo("gpt-5.6-luna");
+        .model()).isEqualTo("gpt-6.1-sol");
     assertThat(response.routes()).extracting("id").containsExactly("chat", "ai-command");
     assertThat(response.routes()).allMatch(route -> "openai".equals(route.backendId()));
   }
@@ -100,9 +100,9 @@ class HermesFallbackServiceTest {
         null,
         null));
 
-    assertThat(response.models()).containsExactly("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol");
+    assertThat(response.models()).containsExactly("gpt-6-luna", "gpt-6-sol", "gpt-6-astra", "gpt-6.1-sol");
     assertThat(response.items()).extracting(HermesFallbackModel::id)
-        .containsExactly("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol");
+        .containsExactly("gpt-6-luna", "gpt-6-sol", "gpt-6-astra", "gpt-6.1-sol");
     assertThat(response.items()).allSatisfy(model -> {
       assertThat(model.suitability()).isEqualTo("tool-capable");
       assertThat(model.toolCapable()).isTrue();
@@ -116,7 +116,7 @@ class HermesFallbackServiceTest {
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
     service.run(new DefaultApplicationArguments());
 
-    for (String model : List.of("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol")) {
+    for (String model : List.of("gpt-6-luna", "gpt-6-sol", "gpt-6-astra", "gpt-6.1-sol")) {
       HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
           "enabled",
           List.of(openAiBackend(model), localBackend(null)),
@@ -146,13 +146,13 @@ class HermesFallbackServiceTest {
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai")))))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Unsupported OpenAI model: gpt-5.5")
-        .hasMessageContaining("gpt-5.6-luna, gpt-5.6-terra, gpt-5.6-sol");
+        .hasMessageContaining("gpt-6-luna, gpt-6-sol, gpt-6-astra, gpt-6.1-sol");
 
     assertThat(service.getBackendConfig().backends().stream()
         .filter(backend -> "openai".equals(backend.id()))
         .findFirst()
         .orElseThrow()
-        .model()).isEqualTo("gpt-5.6-luna");
+        .model()).isEqualTo("gpt-6.1-sol");
   }
 
   @Test
@@ -185,7 +185,7 @@ class HermesFallbackServiceTest {
 
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend(null)),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend(null)),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "local"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
@@ -199,7 +199,7 @@ class HermesFallbackServiceTest {
         .filter(backend -> "openai".equals(backend.id()))
         .findFirst()
         .orElseThrow()
-        .model()).isEqualTo("gpt-5.6-luna");
+        .model()).isEqualTo("gpt-6.1-sol");
     verify(gatewayService, atLeastOnce()).restart("chat");
     verify(gatewayService, atLeastOnce()).restart("ai-command");
   }
@@ -212,7 +212,7 @@ class HermesFallbackServiceTest {
 
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "off",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend(null)),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend(null)),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "openai"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local"))));
@@ -236,7 +236,7 @@ class HermesFallbackServiceTest {
 
     assertThatThrownBy(() -> service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend("bad-model")),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend("bad-model")),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "local"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local")))))
@@ -245,7 +245,7 @@ class HermesFallbackServiceTest {
             .contains("backend=local-0", "model=bad-model", "Read timed out"));
 
     assertThat(service.getBackendConfig().routes()).allMatch(route -> "openai".equals(route.backendId()));
-    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-5.6-luna");
+    assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-6.1-sol");
   }
 
   @Test
@@ -260,7 +260,7 @@ class HermesFallbackServiceTest {
 
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend("bad-model")),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend("bad-model")),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "openai"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
@@ -283,7 +283,7 @@ class HermesFallbackServiceTest {
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
         List.of(
-            openAiBackend("gpt-5.6-luna"),
+            openAiBackend("gpt-6.1-sol"),
             localBackend("local-0", "qwen3.5:27b", null),
             localBackend("local-1", "qwen3.5:27b", "secret-key")),
         List.of(
@@ -319,7 +319,7 @@ class HermesFallbackServiceTest {
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
         List.of(
-            openAiBackend("gpt-5.6-luna"),
+            openAiBackend("gpt-6.1-sol"),
             localBackend("local-0", "qwen3.5:27b", null),
             localBackend("local-1", "bad-model", null)),
         List.of(
@@ -338,7 +338,7 @@ class HermesFallbackServiceTest {
 
     assertThatThrownBy(() -> service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna")),
+        List.of(openAiBackend("gpt-6.1-sol")),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "openai"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai")))))
@@ -356,7 +356,7 @@ class HermesFallbackServiceTest {
 
     HermesBackendConfigResponse response = service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend("qwen3.5:27b", "secret-key")),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend("qwen3.5:27b", "secret-key")),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "local"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local"))));
@@ -396,7 +396,7 @@ class HermesFallbackServiceTest {
 
     service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend("qwen3.5:27b", "secret-key")),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend("qwen3.5:27b", "secret-key")),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "openai"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local"))));
@@ -428,7 +428,7 @@ class HermesFallbackServiceTest {
 
     service.updateBackendConfig(new HermesBackendConfigUpdateRequest(
         "enabled",
-        List.of(openAiBackend("gpt-5.6-luna"), localBackend("local-0", "qwen3.5:27b", null)),
+        List.of(openAiBackend("gpt-6.1-sol"), localBackend("local-0", "qwen3.5:27b", null)),
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "local-0"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai"))));
@@ -487,7 +487,7 @@ class HermesFallbackServiceTest {
       Files.createDirectories(profileDir);
       Files.writeString(profileDir.resolve("config.yaml"), """
           model:
-            default: gpt-5.6-luna
+            default: gpt-6.1-sol
             provider: openai-codex
           fallback_providers:
             - provider: custom

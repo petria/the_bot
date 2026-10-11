@@ -20,9 +20,10 @@ const LOCAL_RUNNER_OPTIONS = [
 ];
 
 const OPENAI_MODEL_ITEMS: HermesFallbackModel[] = [
-  { id: 'gpt-5.6-luna', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
-  { id: 'gpt-5.6-terra', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
-  { id: 'gpt-5.6-sol', suitability: 'tool-capable', label: 'OpenAI model', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-6-luna', suitability: 'tool-capable', label: 'GPT-6 Luna', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-6-sol', suitability: 'tool-capable', label: 'GPT-6 Sol', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-6-astra', suitability: 'tool-capable', label: 'GPT-6 Astra', toolCapable: true, detail: 'Supported OpenAI model' },
+  { id: 'gpt-6.1-sol', suitability: 'tool-capable', label: 'GPT-6.1 Sol', toolCapable: true, detail: 'Default OpenAI model' },
 ];
 
 const OPENAI_MODEL_OPTIONS = OPENAI_MODEL_ITEMS.map((model) => model.id);
@@ -114,7 +115,7 @@ export function AdminSystemPage() {
       ) : null}
       {hasInvalidOpenAiModel ? (
         <Alert color="yellow" variant="light" icon={<AlertCircle size={18} />}>
-          The saved OpenAI model is no longer supported. Select gpt-5.6-luna, gpt-5.6-terra, or gpt-5.6-sol before saving route changes.
+          The saved OpenAI model is no longer supported. Select gpt-6-luna, gpt-6-sol, gpt-6-astra, or gpt-6.1-sol before saving route changes.
         </Alert>
       ) : null}
 
@@ -417,7 +418,7 @@ function BackendCard({
         </Group>
         {unsupportedOpenAiModel ? (
           <Text c="red" size="sm">
-            Saved OpenAI model "{backend.model}" is not supported. Choose one of the available gpt-5.6 models.
+            Saved OpenAI model "{backend.model}" is not supported. Choose one of the available GPT-6 models.
           </Text>
         ) : null}
         {local ? (

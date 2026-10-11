@@ -59,8 +59,8 @@ public class HermesFallbackService implements ApplicationRunner {
   private static final String RESPONSES = "responses";
   private static final int DEFAULT_TIMEOUT_SECONDS = 120;
   private static final int MIN_CONTEXT_WINDOW = 65536;
-  private static final List<String> OPENAI_MODELS = List.of("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol");
-  private static final String DEFAULT_OPENAI_MODEL = "gpt-5.6-luna";
+  private static final List<String> OPENAI_MODELS = List.of("gpt-6-luna", "gpt-6-sol", "gpt-6-astra", "gpt-6.1-sol");
+  private static final String DEFAULT_OPENAI_MODEL = "gpt-6.1-sol";
 
   private final ReentrantLock updateLock = new ReentrantLock();
   private final HermesManagerProperties properties;
