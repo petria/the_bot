@@ -208,6 +208,7 @@ public class BotEngine {
     boolean implicitPublicAiChat =
         !request.isPrivateChannel() && !explicitCommand && shouldHandlePublicAiChat(request);
     boolean implicitAiChat = implicitPrivateAiChat || implicitPublicAiChat;
+    boolean commandChannelAllowed = !explicitCommand || commandChannelAllowed(request);
 
     String wholeLine = null;
     if (doWholeLineTriggerCheck) {
@@ -224,13 +225,39 @@ public class BotEngine {
       // Implicit public/private AI chats are asynchronous just like explicit !hokan
       // commands, so keep the processing indicator active until the reply arrives.
       replyMessage = parseAndExecute(request, user, true);
-    } else if (explicitCommand) {
+    } else if (explicitCommand && commandChannelAllowed) {
       replyMessage = parseAndExecute(request, user, true);
     }
     if (wholeLine != null) {
       replyMessage += " WL: " + wholeLine;
     }
     return UserAndReply.builder().user(user).replyMessage(replyMessage).build();
+  }
+
+  /**
+   * Explicit chat commands run only in channels this instance has configured and that have not
+   * opted out of commands. Non-chat callers (web CLI, console, mobile) and private chats are
+   * always allowed because they carry aliases that never resolve to a configured channel.
+   */
+  private boolean commandChannelAllowed(EngineRequest request) {
+    if (request.getFromConnectionId() < 0) {
+      return true;
+    }
+    if (request.isPrivateChannel()) {
+      return true;
+    }
+    Channel channel = configuredChannelResolver.findByEchoToAlias(
+        request.getBotConfig(), request.getEchoToAlias());
+    if (channel == null) {
+      log.debug("Skipping command for unconfigured channel: network={} alias={} channelId={}",
+          request.getNetwork(), request.getEchoToAlias(), request.getFromChannelId());
+      return false;
+    }
+    if (Boolean.FALSE.equals(channel.getCommandsEnabled())) {
+      log.debug("Skipping command for channel with commands disabled: alias={}", request.getEchoToAlias());
+      return false;
+    }
+    return true;
   }
 
   public String handleWholeLineTriggers(EngineRequest request) {

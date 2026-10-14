@@ -129,6 +129,7 @@ export function ConnectionsPage() {
                   echoToAliases: [],
                   echoIrcActivity: false,
                   joinOnStart: false,
+                  commandsEnabled: true,
                   publicAiEnabled: false,
                   allowAnonymousAiCommands: false,
                   resolveUrls: false,

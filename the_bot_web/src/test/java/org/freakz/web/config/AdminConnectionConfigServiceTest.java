@@ -163,7 +163,8 @@ class AdminConnectionConfigServiceTest {
         original.echoToAliases(), original.joinOnStart(), original.publicAiEnabled(),
         original.allowAnonymousAiCommands(), original.resolveUrls(), original.alertMessages(),
         original.captureResolvedUrls(), original.captureImages(), original.captureImageToAliases(),
-        original.manageOperators(), original.echoIrcActivity(), true, "guarded topic", true, "+st");
+        original.manageOperators(), original.echoIrcActivity(), true, "guarded topic", true, "+st",
+        original.commandsEnabled());
 
     service.saveConfig(new AdminConnectionConfigPayload(
         payload.botConfig(),
@@ -225,6 +226,48 @@ class AdminConnectionConfigServiceTest {
         .contains("\"alertMessages\" : true")
         .contains("\"captureResolvedUrls\" : true")
         .contains("\"echoIrcActivity\" : true");
+  }
+
+  @Test
+  void readsCommandsEnabledAsEnabledWhenConfigOmitsIt() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+
+    assertThat(firstIrcChannel(service).commandsEnabled()).isTrue();
+
+    service.saveConfig(service.readConfig().config());
+    assertThat(Files.readString(files.runtimeConfigFile())).contains("\"commandsEnabled\" : true");
+  }
+
+  @Test
+  void savesCommandsDisabledPerChannel() throws Exception {
+    TestFiles files = writeConfig();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile());
+
+    disableCommandsInFirstIrcChannel(service);
+
+    assertThat(Files.readString(files.runtimeConfigFile())).contains("\"commandsEnabled\" : false");
+    assertThat(firstIrcChannel(service).commandsEnabled()).isFalse();
+  }
+
+  @Test
+  void liveChannelSettingsUpdateKeepsCommandsDisabled() throws Exception {
+    TestFiles files = writeConfig();
+    RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();
+    RecordingEngineClient engineClient = new RecordingEngineClient();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile(), serverConfigClient, engineClient);
+    disableCommandsInFirstIrcChannel(service);
+
+    service.saveAndApplyChannelSettings(
+        "IRC_CONNECTION",
+        "IRCDEV",
+        "IRC-HOKANDEV2",
+        new LiveChannelSettingsDto(true, true, true, true, true));
+
+    assertThat(firstIrcChannel(service).commandsEnabled()).isFalse();
+    assertThat(Files.readString(files.runtimeConfigFile()))
+        .contains("\"commandsEnabled\" : false")
+        .contains("\"publicAiEnabled\" : true");
   }
 
   @Test
@@ -364,6 +407,48 @@ class AdminConnectionConfigServiceTest {
         .contains("\"echoToAlias\" : \"IRC-OBSERVED\"");
     assertThat(service.hasConfiguredChannel("IRC_CONNECTION", "IRCDEV", "IRC-OBSERVED"))
         .isTrue();
+    assertThat(saved).contains("\"commandsEnabled\" : true");
+  }
+
+  private ChannelDto firstIrcChannel(AdminConnectionConfigService service) throws Exception {
+    return service.readConfig().config().ircServerConfigs().getFirst().channelList().getFirst();
+  }
+
+  private void disableCommandsInFirstIrcChannel(AdminConnectionConfigService service) throws Exception {
+    AdminConnectionConfigPayload payload = service.readConfig().config();
+    IrcServerConfigDto irc = payload.ircServerConfigs().getFirst();
+    ChannelDto channel = irc.channelList().getFirst();
+    ChannelDto silentChannel = new ChannelDto(
+        channel.id(),
+        channel.description(),
+        channel.name(),
+        channel.type(),
+        channel.echoToAlias(),
+        channel.echoToAliases(),
+        channel.joinOnStart(),
+        channel.publicAiEnabled(),
+        channel.allowAnonymousAiCommands(),
+        channel.resolveUrls(),
+        channel.alertMessages(),
+        channel.captureResolvedUrls(),
+        channel.captureImages(),
+        channel.captureImageToAliases(),
+        channel.manageOperators(),
+        channel.echoIrcActivity(),
+        channel.manageTopic(),
+        channel.topic(),
+        channel.manageMode(),
+        channel.modes(),
+        false);
+
+    service.saveConfig(new AdminConnectionConfigPayload(
+        payload.botConfig(),
+        List.of(new IrcServerConfigDto(
+            irc.name(), irc.connectStartup(), irc.networkName(), irc.host(), irc.port(),
+            List.of(silentChannel))),
+        payload.discordConfig(),
+        payload.telegramConfig(),
+        payload.whatsappConfig()));
   }
 
   private AdminConnectionConfigService serviceFor(Path bootstrapFile) {

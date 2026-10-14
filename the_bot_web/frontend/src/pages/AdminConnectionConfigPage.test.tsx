@@ -18,6 +18,7 @@ describe('AdminConnectionConfigPage', () => {
             allowAnonymousAiCommands: false, resolveUrls: false, alertMessages: false,
             captureResolvedUrls: false, captureImages: false, captureImageToAliases: [], manageOperators: false,
             manageTopic: true, topic: 'Guarded topic', manageMode: true, modes: '+st',
+            commandsEnabled: true,
           }],
         }],
         discordConfig: null, telegramConfig: null, whatsappConfig: null,
@@ -39,10 +40,62 @@ describe('AdminConnectionConfigPage', () => {
     expect(screen.getByRole('switch', { name: /Manage channel modes/ })).toBeChecked();
     expect(screen.getByDisplayValue('+st')).toBeInTheDocument();
     expect(screen.getByText(/Current IRC modes: \+st/)).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Respond to commands/ })).toBeChecked();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Discord' }));
     expect(screen.queryByText('Manage topic')).not.toBeInTheDocument();
   });
+
+  it('shows commands disabled for a channel shared with another bot instance', async () => {
+    vi.spyOn(configApi, 'getAdminConnectionConfig').mockResolvedValue(configWithChannel({ commandsEnabled: false }));
+
+    renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
+
+    expect(await screen.findByRole('switch', { name: /Respond to commands/ })).not.toBeChecked();
+  });
+
+  it('saves commands enabled when the toggle is turned back on', async () => {
+    const save = vi.spyOn(configApi, 'saveAdminConnectionConfig').mockResolvedValue(configWithChannel({ commandsEnabled: false }));
+    vi.spyOn(configApi, 'getAdminConnectionConfig').mockResolvedValue(configWithChannel({ commandsEnabled: false }));
+
+    renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
+
+    const toggle = await screen.findByRole('switch', { name: /Respond to commands/ });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    const savedChannel = save.mock.calls[0]?.[0]?.ircServerConfigs?.[0]?.channelList?.[0];
+    expect(savedChannel).toMatchObject({
+      echoToAlias: 'IRC-TEST',
+      commandsEnabled: true,
+    });
+  });
+
+  function configWithChannel(channelPatch: Partial<configApi.AdminConfigChannel>): configApi.AdminConnectionConfigResponse {
+    const channel: configApi.AdminConfigChannel = {
+      id: 'test', description: 'Test', name: '#test', type: 'IrcPublic', echoToAlias: 'IRC-TEST',
+      echoToAliases: [], echoIrcActivity: false, joinOnStart: true, commandsEnabled: true,
+      publicAiEnabled: false, allowAnonymousAiCommands: false, resolveUrls: false,
+      alertMessages: false, captureResolvedUrls: false, captureImages: false,
+      captureImageToAliases: [], manageOperators: false, manageTopic: false, topic: null,
+      manageMode: false, modes: null,
+      ...channelPatch,
+    };
+    return {
+      profile: 'DEV', configFile: '/runtime/DEV.json', lastModifiedAt: '2026-08-06T10:00:00Z',
+      config: {
+        botConfig: { botName: 'Hokan', ircRealName: 'the_bot' },
+        ircServerConfigs: [{
+          name: 'Test IRC', connectStartup: true, networkName: 'IRCNet', host: 'irc.test', port: 6667,
+          channelList: [channel],
+        }],
+        discordConfig: null, telegramConfig: null, whatsappConfig: null,
+      },
+      topicStates: [], modeStates: [],
+    };
+  }
 
   it('shows WhatsApp authentication controls and QR link', async () => {
     vi.spyOn(configApi, 'getAdminConnectionConfig').mockResolvedValue({
