@@ -10,6 +10,7 @@ import org.freakz.common.model.feed.Message;
 import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.common.config.TheBotProperties;
+import org.javacord.api.entity.channel.ServerChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.event.message.MessageCreateEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
@@ -291,12 +292,14 @@ public class EventPublisherService implements EventPublisher {
       BotConnection connection, MessageCreateEvent event, String echoToAlias) {
     log.debug("Publish DISCORD event: {}", event);
     long id = event.getChannel().getId();
+    boolean isPrivate = !event.getServer().isPresent();
+    String senderId = event.getMessageAuthor().asUser()
+        .map(author -> author.getIdAsString())
+        .orElseGet(() -> event.getChannel().getIdAsString());
 
-    String channelStr = event.getChannel().toString();
-    int idx1 = channelStr.indexOf("name: ");
-    String replyTo = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]", "");
+    String replyTo = discordReplyTarget(event, echoToAlias, senderId);
 
-    log.debug("replyTo: '{}'", replyTo);
+    log.debug("replyTo: '{}' isPrivate: {}", replyTo, isPrivate);
 
     Message msg =
         Message.builder()
@@ -304,7 +307,7 @@ public class EventPublisherService implements EventPublisher {
             .messageSource(MessageSource.DISCORD_MESSAGE)
             .time(LocalDateTime.now())
             .sender(event.getMessageAuthor().getName())
-            .target(channelStr)
+            .target(replyTo)
             .message(event.getMessageContent())
             .build();
 
@@ -320,28 +323,25 @@ public class EventPublisherService implements EventPublisher {
     } else {
       logMessage = event.getMessageContent();
     }
-    long userId = event.getMessageAuthor().asUser().get().getId();
     String replyToMessageId = event.getMessage().getMessageReference()
         .flatMap(reference -> reference.getMessageId().map(String::valueOf))
         .orElse(null);
     String messageThreadId = event.getMessage().isThreadMessage()
         ? String.valueOf(event.getChannel().getId())
         : null;
-    ChatIdentity identity = buildChatIdentity(connection, replyTo, String.valueOf(userId), event.getMessageAuthor().getName(), false);
+    ChatIdentity identity = buildChatIdentity(connection, replyTo, senderId, event.getMessageAuthor().getName(), isPrivate);
     logMessageForIdentity(identity, event.getMessageAuthor().getName(), logMessage);
 
     /*
     Attachment (file name: image.png, url: https://cdn.discordapp.com/attachments/1033431599708123278/1083648316207808584/image.png)
      */
-    boolean isPrivate = !event.getServer().isPresent();
-
     publishToEngineAsync(
         connection,
         connection.stripLeadingMentionBeforeCommand(msg.getMessage()),
         msg.getSender(),
         replyTo,
         id,
-        String.valueOf(userId),
+        senderId,
         echoToAlias,
         isPrivate,
         replyToMessageId,
@@ -349,6 +349,22 @@ public class EventPublisherService implements EventPublisher {
         null,
         connection.isBotMentioned(msg.getMessage()));
     return new org.freakz.common.model.users.User();
+  }
+
+  /**
+   * A server message is answered in the channel with its name. A direct message has no channel name,
+   * so it is answered through the private alias that DiscordServerConnection maps back to the user
+   * who sent it.
+   */
+  static String discordReplyTarget(MessageCreateEvent event, String echoToAlias, String senderId) {
+    if (event.getServer().isPresent()) {
+      return event.getChannel().asServerChannel()
+          .map(ServerChannel::getName)
+          .orElseGet(() -> event.getChannel().getIdAsString());
+    }
+    return echoToAlias == null || echoToAlias.isBlank()
+        ? "PRIVATE-DISCORD-" + senderId
+        : echoToAlias;
   }
 
   private org.freakz.common.model.users.User publishWhatsAppEvent(
