@@ -141,6 +141,117 @@ class BotEngineCommandInvocationStatsTest {
   }
 
   @Test
+  void publicAiChannelStaysSilentForQuestionsItIsNotAddressedTo() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    String reply = botEngine.handleEngineRequest(
+        publicRequest("what is the capital of Finland?"), true).getReplyMessage();
+
+    assertThat(reply).isNull();
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isZero();
+  }
+
+  @Test
+  void publicAiChannelStaysSilentWhenTheBotIsOnlyTalkedAbout() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    UrlResolutionService urlResolutionService = mock(UrlResolutionService.class);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        urlResolutionService);
+
+    String reply = botEngine.handleEngineRequest(
+        publicRequest("did anyone ask HokanDEV about that already?"), true).getReplyMessage();
+
+    assertThat(reply).isNull();
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isZero();
+  }
+
+  @Test
+  void typedMentionOfTheBotTriggersPublicAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        mock(UrlResolutionService.class));
+
+    botEngine.handleEngineRequest(publicRequest("@HokanDEV what is the capital of Finland?"), true);
+
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isEqualTo(1);
+  }
+
+  @Test
+  void botNameInFrontOfTheMessageTriggersPublicAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        mock(UrlResolutionService.class));
+
+    botEngine.handleEngineRequest(publicRequest("HokanDEV, what is the capital of Finland?"), true);
+
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isEqualTo(1);
+  }
+
+  @Test
+  void botNameColonAddressStillRunsTheAiCommand() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        mock(UrlResolutionService.class));
+
+    botEngine.handleEngineRequest(publicRequest("HokanDEV: what is the capital of Finland?"), true);
+
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isEqualTo(1);
+  }
+
+  @Test
+  void botNameAsTheFirstWordTriggersPublicAiChat() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        mock(UrlResolutionService.class));
+
+    botEngine.handleEngineRequest(publicRequest("HokanDEV what is the capital of Finland?"), true);
+
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isEqualTo(1);
+  }
+
+  @Test
+  void platformMentionFlagTriggersPublicAiChatWithoutTheNameInText() throws Exception {
+    CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
+    BotEngine botEngine = botEngine(
+        statsService,
+        emptyAiRegistry(),
+        mock(HermesAiCommandService.class),
+        publicAiConfig(),
+        mock(UrlResolutionService.class));
+
+    botEngine.handleEngineRequest(publicRequest("<@1099326189174259782> what is up?", true), true);
+
+    assertThat(statsService.getCommandInvocationCount("main::hokan")).isEqualTo(1);
+  }
+
+  @Test
   void dynamicAiQuestionReturnsUsageWithoutCallingHermes() throws Exception {
     CommandInvocationStatsService statsService = new CommandInvocationStatsService((io.micrometer.core.instrument.MeterRegistry) null);
     AiCommandDefinition dynping = aiCommand("dynping", "!dynping <text>", "Test dynamic command.");
@@ -263,6 +374,10 @@ class BotEngineCommandInvocationStatsTest {
   }
 
   private EngineRequest publicRequest(String command) {
+    return publicRequest(command, false);
+  }
+
+  private EngineRequest publicRequest(String command, boolean botMentioned) {
     return EngineRequest.builder()
         .command(command)
         .network("IRCNet")
@@ -271,6 +386,7 @@ class BotEngineCommandInvocationStatsTest {
         .replyTo("#test")
         .echoToAlias("IRC-TEST")
         .fromConnectionId(1)
+        .botMentioned(botMentioned)
         .build();
   }
 

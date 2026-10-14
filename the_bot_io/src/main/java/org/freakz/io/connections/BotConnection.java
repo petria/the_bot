@@ -81,6 +81,17 @@ public class BotConnection {
     return selfIdentity != null && selfIdentity.matches(message);
   }
 
+  /**
+   * Drops mentions of this bot that stand in front of a command so that "@Hokan !ping" runs "!ping".
+   * Messages without such a prefix are returned unchanged.
+   */
+  public String stripLeadingMentionBeforeCommand(String message) {
+    if (message == null || message.isBlank()) {
+      return message;
+    }
+    return selfIdentity == null ? message : selfIdentity.stripLeadingMentionBeforeCommand(message);
+  }
+
   public void sendMessageTo(Message message) {
     log.error("sendMessageTo(Message message) not implemented: " + this.getClass());
   }

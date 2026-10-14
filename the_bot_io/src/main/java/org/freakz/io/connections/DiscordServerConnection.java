@@ -10,6 +10,7 @@ import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
+import org.javacord.api.entity.channel.ServerChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
@@ -349,11 +350,11 @@ public class DiscordServerConnection extends BotConnection {
       throw new RuntimeException(e);
     }
 
-    String channelStr = event.getChannel().toString();
-    // "ServerTextChannel (id: 1033431599708123278, name: hokandev)"
-    int idx1 = channelStr.indexOf("name: ");
-    String channelName = channelStr.substring(idx1 + 6, channelStr.length() - 1).replaceAll("\\)|]", "");
-    log.debug("replyTo: '{}'", channelName);
+    // A direct message channel has no name, so it is identified by the private alias instead.
+    String channelName = event.getChannel().asServerChannel()
+        .map(ServerChannel::getName)
+        .orElseGet(() -> "PRIVATE-DISCORD-" + event.getMessageAuthor().getIdAsString());
+    log.debug("Discord channel: '{}' private: {}", channelName, !event.getServer().isPresent());
 
     if (messageAuthor.asUser().isPresent()) {
       if (!event.getMessage().getAttachments().isEmpty()) {
