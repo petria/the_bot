@@ -248,7 +248,8 @@ public class AdminConnectionConfigService {
             false,
             null,
             false,
-            null))
+            null,
+            false))
         .toList();
   }
 
@@ -367,7 +368,8 @@ public class AdminConnectionConfigService {
           item.path("manageTopic").asBoolean(false),
           text(item, "topic"),
           item.path("manageMode").asBoolean(false),
-          text(item, "modes")));
+          text(item, "modes"),
+          item.path("commandsEnabled").asBoolean(true)));
     }
     return channels;
   }
@@ -516,7 +518,8 @@ public class AdminConnectionConfigService {
         source.manageTopic(),
         clean(source.topic()),
         source.manageMode(),
-        normalizeModes(source.modes()));
+        normalizeModes(source.modes()),
+        source.commandsEnabled());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -717,7 +720,8 @@ public class AdminConnectionConfigService {
         channel.manageTopic(),
         channel.topic(),
         channel.manageMode(),
-        channel.modes());
+        channel.modes(),
+        channel.commandsEnabled());
   }
 
   private LiveChannelSettingsDto settingsFrom(ChannelDto channel) {
@@ -836,7 +840,8 @@ public class AdminConnectionConfigService {
             channel.manageTopic(),
             clean(channel.topic()),
             channel.manageMode(),
-            normalizeModes(channel.modes())))
+            normalizeModes(channel.modes()),
+            channel.commandsEnabled()))
         .toList();
   }
 
@@ -962,6 +967,7 @@ public class AdminConnectionConfigService {
       putNullable(item, "topic", channel.topic());
       item.put("manageMode", channel.manageMode());
       putNullable(item, "modes", channel.modes());
+      item.put("commandsEnabled", !Boolean.FALSE.equals(channel.commandsEnabled()));
       ArrayNode captureAliases = jsonMapper.createArrayNode();
       channel.captureImageToAliases().forEach(captureAliases::add);
       item.set("captureImageToAliases", captureAliases);
@@ -1170,7 +1176,8 @@ public class AdminConnectionConfigService {
       boolean manageTopic,
       String topic,
       boolean manageMode,
-      String modes) {
+      String modes,
+      Boolean commandsEnabled) {
 
     public ChannelDto(
         String id,
@@ -1189,7 +1196,7 @@ public class AdminConnectionConfigService {
         List<String> captureImageToAliases) {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
-          captureResolvedUrls, captureImages, captureImageToAliases, false, false, false, null, false, null);
+          captureResolvedUrls, captureImages, captureImageToAliases, false, false, false, null, false, null, true);
     }
 
     public ChannelDto(
@@ -1212,7 +1219,7 @@ public class AdminConnectionConfigService {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
           captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
-          echoIrcActivity, false, null, false, null);
+          echoIrcActivity, false, null, false, null, true);
     }
 
     public ChannelDto(
@@ -1237,7 +1244,7 @@ public class AdminConnectionConfigService {
       this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart,
           publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages,
           captureResolvedUrls, captureImages, captureImageToAliases, manageOperators,
-          echoIrcActivity, manageTopic, topic, false, null);
+          echoIrcActivity, manageTopic, topic, false, null, true);
     }
 
     public ChannelDto(
@@ -1272,7 +1279,8 @@ public class AdminConnectionConfigService {
           false,
           null,
           false,
-          null);
+          null,
+          true);
     }
   }
 }

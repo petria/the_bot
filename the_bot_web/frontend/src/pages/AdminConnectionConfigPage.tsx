@@ -50,6 +50,7 @@ const emptyChannel: AdminConfigChannel = {
   echoToAliases: [],
   echoIrcActivity: false,
   joinOnStart: false,
+  commandsEnabled: true,
   publicAiEnabled: false,
   allowAnonymousAiCommands: false,
   resolveUrls: false,
@@ -690,6 +691,12 @@ function ChannelsEditor({
               label="Join on start"
               checked={channel.joinOnStart}
               onChange={(event) => updateChannel(channels, index, { joinOnStart: event.currentTarget.checked }, onChange)}
+            />
+            <Switch
+              label="Respond to commands"
+              description="Turn off when another bot instance answers commands in this shared channel."
+              checked={channel.commandsEnabled}
+              onChange={(event) => updateChannel(channels, index, { commandsEnabled: event.currentTarget.checked }, onChange)}
             />
             <Switch
               label="Public AI"

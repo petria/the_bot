@@ -22,6 +22,7 @@ export type AdminConfigChannel = {
   echoToAliases: string[] | null;
   echoIrcActivity: boolean;
   joinOnStart: boolean;
+  commandsEnabled: boolean;
   publicAiEnabled: boolean;
   allowAnonymousAiCommands: boolean;
   resolveUrls: boolean;
