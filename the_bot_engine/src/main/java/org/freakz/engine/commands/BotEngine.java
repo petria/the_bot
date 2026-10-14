@@ -201,8 +201,7 @@ public class BotEngine {
     privateChatAlertService.notifyUnknownPrivateChatIfNeeded(request, user);
 
     String originalCommand = request.getCommand();
-    boolean explicitCommand =
-        originalCommand.startsWith("!") || originalCommand.startsWith(this.botName);
+    boolean explicitCommand = originalCommand.startsWith("!") || isNamePrefixedCommand(originalCommand);
     boolean implicitPrivateAiChat =
         request.isPrivateChannel() && !explicitCommand;
     boolean implicitPublicAiChat =
@@ -282,23 +281,41 @@ public class BotEngine {
     }
 
     String messageWithoutUrls = UrlExtractor.removeUrls(message);
-    if (request.isBotMentioned() || containsBotMention(messageWithoutUrls)) {
+    if (request.isBotMentioned()) {
       return true;
     }
-    return messageWithoutUrls.contains("?") && !isAddressedToAnotherUser(messageWithoutUrls);
+    return isBotNamedInPublicChannel(messageWithoutUrls);
   }
 
-  private boolean containsBotMention(String message) {
+  /**
+   * Public channels only get an answer when the bot itself is addressed: an "@Hokan" mention or the
+   * name standing in front of the message. Chat that merely talks about the bot, and questions
+   * nobody directed at it, stay unanswered.
+   */
+  private boolean isBotNamedInPublicChannel(String message) {
     if (message == null || message.isBlank() || botName == null || botName.isBlank()) {
       return false;
     }
 
-    String messageLower = message.toLowerCase();
-    String botNameLower = botName.toLowerCase();
+    String messageLower = message.toLowerCase(Locale.ROOT);
+    String botNameLower = botName.toLowerCase(Locale.ROOT);
+    boolean named = messageLower.contains("@" + botNameLower) || messageLower.startsWith(botNameLower);
+    return named && !isAddressedToAnotherUser(message);
+  }
 
-    return messageLower.contains(botNameLower)
-        || messageLower.contains(botNameLower + ":")
-        || messageLower.contains("@" + botNameLower);
+  /**
+   * Only "Hokan: do something" is the bot-name command form. Anything else that starts with the
+   * name ("Hokan, what is ...", "Hokan what is ...") is somebody talking to the bot, so it keeps
+   * flowing to the AI chat path instead of being read as an unknown command and dropped.
+   */
+  private boolean isNamePrefixedCommand(String message) {
+    if (botName == null || botName.isBlank() || !message.startsWith(botName)) {
+      return false;
+    }
+    if (message.length() == botName.length()) {
+      return true;
+    }
+    return message.charAt(botName.length()) == ':';
   }
 
   private boolean isAddressedToAnotherUser(String message) {
