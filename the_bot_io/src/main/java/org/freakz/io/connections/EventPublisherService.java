@@ -274,7 +274,7 @@ public class EventPublisherService implements EventPublisher {
 
     return publishToEngine(
         connection,
-        msg.getMessage(),
+        connection.stripLeadingMentionBeforeCommand(msg.getMessage()),
         update.getMessage().getFrom().getUserName(),
         msg.getTarget(),
         null,
@@ -284,7 +284,7 @@ public class EventPublisherService implements EventPublisher {
         replyToMessageId,
         messageThreadId,
         null,
-        false);
+        connection.isBotMentioned(msg.getMessage()));
   }
 
   private org.freakz.common.model.users.User publishDiscordEvent(
@@ -337,7 +337,7 @@ public class EventPublisherService implements EventPublisher {
 
     publishToEngineAsync(
         connection,
-        msg.getMessage(),
+        connection.stripLeadingMentionBeforeCommand(msg.getMessage()),
         msg.getSender(),
         replyTo,
         id,
@@ -347,7 +347,7 @@ public class EventPublisherService implements EventPublisher {
         replyToMessageId,
         messageThreadId,
         null,
-        false);
+        connection.isBotMentioned(msg.getMessage()));
     return new org.freakz.common.model.users.User();
   }
 
@@ -364,7 +364,7 @@ public class EventPublisherService implements EventPublisher {
 
     publishToEngineAsync(
         connection,
-        event.getText(),
+        connection.stripLeadingMentionBeforeCommand(event.getText()),
         sender,
         replyTo,
         null,
@@ -374,7 +374,8 @@ public class EventPublisherService implements EventPublisher {
         event.getReplyToMessageId(),
         null,
         event.getReplyToSenderJid(),
-        event.getMentionedJids().stream().anyMatch(connection::isBotMentioned));
+        event.getMentionedJids().stream().anyMatch(connection::isBotMentioned)
+            || connection.isBotMentioned(event.getText()));
     return new org.freakz.common.model.users.User();
   }
 
