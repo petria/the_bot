@@ -17,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -43,7 +42,8 @@ public class WaterPointIndexService {
   private final Duration requestTimeout;
   private final int regionParallelism;
   private final ExecutorService discoveryExecutor;
-  private final Cache<String, Optional<String>> chartUrlCache;
+  private final Cache<String, String> chartUrlCache;
+  private final Cache<String, Boolean> chartMissCache;
   private volatile IndexSnapshot snapshot = new IndexSnapshot(List.of(), Instant.MIN);
   private CompletableFuture<List<WaterPoint>> refreshInFlight;
 
@@ -70,6 +70,10 @@ public class WaterPointIndexService {
         .maximumSize(4096)
         .expireAfterWrite(indexCacheTtl.compareTo(Duration.ofHours(6)) < 0
             ? indexCacheTtl : Duration.ofHours(6))
+        .build();
+    this.chartMissCache = Caffeine.newBuilder()
+        .maximumSize(4096)
+        .expireAfterWrite(Duration.ofMinutes(10))
         .build();
   }
 
@@ -221,29 +225,58 @@ public class WaterPointIndexService {
   }
 
   public String resolveTemperatureChartUrl(WaterPoint point) throws Exception {
-    Optional<String> cached = chartUrlCache.getIfPresent(point.pageUrl());
+    String cached = chartUrlCache.getIfPresent(point.pageUrl());
     if (cached != null) {
-      return cached.orElse(null);
+      return cached;
+    }
+    if (chartMissCache.getIfPresent(point.pageUrl()) != null) {
+      return null;
     }
 
     long started = System.nanoTime();
     Document station = get(point.pageUrl());
+    String chartUrl = extractTemperatureChartUrl(station, point.pageUrl());
+    if (chartUrl != null) {
+      chartUrlCache.put(point.pageUrl(), chartUrl);
+      log.debug("Water chart lookup completed in {} ms: point={}", elapsedMillis(started), point.name());
+      return chartUrl;
+    }
+    chartMissCache.put(point.pageUrl(), Boolean.TRUE);
+    log.debug("Water chart lookup completed in {} ms: point={} chart=none", elapsedMillis(started), point.name());
+    return null;
+  }
+
+  /** Finds the observed-water-temperature chart image on a station page, ignoring cache-busting query strings. */
+  static String extractTemperatureChartUrl(Document station, String pageUrl) {
     Element heading = station.select("b").stream()
         .filter(element -> normalize(element.text()).equals(normalize("Jokiveden lämpötila")))
         .findFirst().orElse(null);
-    if (heading != null) {
-      Element parent = heading.parent();
-      Element image = parent == null ? null : parent.select("img[src$=twlyhyt.png]").first();
-      if (image != null) {
-        String chartUrl = absolute(point.pageUrl(), image.attr("src"));
-        chartUrlCache.put(point.pageUrl(), Optional.of(chartUrl));
-        log.debug("Water chart lookup completed in {} ms: point={}", elapsedMillis(started), point.name());
-        return chartUrl;
-      }
+    if (heading == null) {
+      return null;
     }
-    chartUrlCache.put(point.pageUrl(), Optional.empty());
-    log.debug("Water chart lookup completed in {} ms: point={} chart=none", elapsedMillis(started), point.name());
-    return null;
+    Element parent = heading.parent();
+    if (parent == null) {
+      return null;
+    }
+    return parent.select("img[src]").stream()
+        .map(image -> image.attr("src").trim())
+        .filter(WaterPointIndexService::isChartImageSrc)
+        .findFirst()
+        .map(src -> absolute(pageUrl, src))
+        .orElse(null);
+  }
+
+  private static boolean isChartImageSrc(String src) {
+    String path = src;
+    int queryStart = path.indexOf('?');
+    if (queryStart >= 0) {
+      path = path.substring(0, queryStart);
+    }
+    int fragmentStart = path.indexOf('#');
+    if (fragmentStart >= 0) {
+      path = path.substring(0, fragmentStart);
+    }
+    return path.toLowerCase(Locale.ROOT).endsWith("twlyhyt.png");
   }
 
   private Document get(String url) throws Exception {
@@ -264,7 +297,7 @@ public class WaterPointIndexService {
     discoveryExecutor.shutdownNow();
   }
 
-  private String absolute(String base, String relative) {
+  private static String absolute(String base, String relative) {
     return java.net.URI.create(base).resolve(relative).toString();
   }
 

@@ -20,12 +20,24 @@ class WaterTemperatureCommandServiceTest {
   }
 
   @Test
-  void rejectsNonNumericOrUnsafeTemperature() {
+  void acceptsNumericStringTemperatures() {
     WaterTemperatureCommandService service = service();
 
     assertThat(service.formatTemperature("Äetsä", "{\"status\":\"OK\",\"temperatureC\":\"20.5\"}"))
+        .isEqualTo("Äetsä, 20.5°C");
+    assertThat(service.formatTemperature("Äetsä", "{\"status\":\"OK\",\"temperatureC\":\"20,5\"}"))
+        .isEqualTo("Äetsä, 20.5°C");
+  }
+
+  @Test
+  void rejectsNonNumericOrUnsafeTemperature() {
+    WaterTemperatureCommandService service = service();
+
+    assertThat(service.formatTemperature("Äetsä", "{\"status\":\"OK\",\"temperatureC\":\"warm\"}"))
         .isEqualTo("Äetsä: N/A");
     assertThat(service.formatTemperature("Äetsä", "{\"status\":\"OK\",\"temperatureC\":99}"))
+        .isEqualTo("Äetsä: N/A");
+    assertThat(service.formatTemperature("Äetsä", "{\"status\":\"N/A\"}"))
         .isEqualTo("Äetsä: N/A");
   }
 
