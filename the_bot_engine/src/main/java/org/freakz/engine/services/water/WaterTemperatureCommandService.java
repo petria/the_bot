@@ -98,17 +98,37 @@ public class WaterTemperatureCommandService {
         json = json.substring(start, end + 1);
       }
       JsonNode node = jsonMapper.readTree(json);
-      if (!"OK".equalsIgnoreCase(node.path("status").asString("")) || !node.path("temperatureC").isNumber()) {
+      Double temperature = readTemperature(node.path("temperatureC"));
+      if (!"OK".equalsIgnoreCase(node.path("status").asString("")) || temperature == null) {
         return pointName + ": N/A";
       }
-      double temperature = node.path("temperatureC").asDouble(Double.NaN);
-      if (!Double.isFinite(temperature) || temperature < -10 || temperature > 45) {
+      if (temperature < -10 || temperature > 45) {
         return pointName + ": N/A";
       }
       return String.format(Locale.ROOT, "%s, %.1f°C", pointName, temperature);
     } catch (Exception error) {
       return pointName + ": N/A";
     }
+  }
+
+  private Double readTemperature(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return null;
+    }
+    if (node.isNumber()) {
+      double value = node.asDouble(Double.NaN);
+      return Double.isFinite(value) ? value : null;
+    }
+    if (node.isString()) {
+      String text = node.asString("").trim().replace(',', '.');
+      try {
+        double value = Double.parseDouble(text);
+        return Double.isFinite(value) ? value : null;
+      } catch (NumberFormatException error) {
+        return null;
+      }
+    }
+    return null;
   }
 
   private String formatReplyForTarget(EngineRequest request, String reply) {
