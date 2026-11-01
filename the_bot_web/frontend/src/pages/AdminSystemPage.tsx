@@ -167,7 +167,7 @@ export function AdminSystemPage() {
 
           <Card withBorder radius="sm">
             <Stack gap="md">
-              <Group justify="space-between" align="flex-end">
+              <Group justify="space-between" align="flex-end" className="system-field-row">
                 <Select
                   label="Model list source"
                   data={config.backends.map((backend) => ({ value: backend.id, label: backend.label }))}
@@ -212,7 +212,7 @@ export function AdminSystemPage() {
                   {config.systemMode === 'off' ? 'AI off' : 'AI enabled'}
                 </Badge>
               </Group>
-              <Group grow align="flex-start">
+              <Group grow align="flex-start" className="system-field-row">
                 {config.routes.map((route) => (
                   <Select
                     key={route.id}
@@ -223,7 +223,7 @@ export function AdminSystemPage() {
                   />
                 ))}
               </Group>
-              <Group justify="flex-end">
+              <Group justify="flex-end" className="system-actions">
                 <Button
                   leftSection={<Save size={18} />}
                   loading={saveMutation.isPending}
@@ -374,7 +374,7 @@ function BackendCard({
             </Button>
           </Group>
         ) : null}
-        <Group grow align="flex-start">
+        <Group grow align="flex-start" className="system-field-row">
           <Select
             label="Provider"
             data={local ? LOCAL_RUNNER_OPTIONS : [{ value: 'openai', label: 'OpenAI' }]}
@@ -422,7 +422,7 @@ function BackendCard({
           </Text>
         ) : null}
         {local ? (
-          <Group grow align="flex-start">
+          <Group grow align="flex-start" className="system-field-row">
             <NumberInput
               label="Context window"
               min={65536}
@@ -447,7 +447,7 @@ function BackendCard({
             ) : null}
           </Group>
         ) : null}
-        <Group grow>
+        <Group grow className="system-info-row">
           <InfoLine label="API mode" value={backend.apiMode || '-'} />
           <InfoLine label="Tools" value={statusText(backend.toolCapable)} />
           <InfoLine label="Validation" value={backend.validationStatus || '-'} />
@@ -472,7 +472,7 @@ function CredentialFields({
   onClear: (clear: boolean) => void;
 }) {
   return (
-    <Group grow align="flex-end">
+    <Group grow align="flex-end" className="system-field-row">
       <TextInput
         label={configured ? 'API key (configured)' : 'API key'}
         type="password"

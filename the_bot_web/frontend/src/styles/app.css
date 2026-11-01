@@ -177,6 +177,12 @@ body,
   min-width: 0;
 }
 
+.system-field-row,
+.system-info-row,
+.system-actions {
+  min-width: 0;
+}
+
 .system-card-title {
   min-width: 0;
 }
@@ -296,6 +302,39 @@ body,
 
   .live-channel-panel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .system-field-row > * {
+    width: 100%;
+  }
+
+  .system-field-row input,
+  .system-field-row .mantine-Input-input {
+    font-size: 1rem;
+    min-height: 44px;
+  }
+
+  .system-field-row .mantine-NumberInput-handler {
+    min-width: 44px;
+  }
+
+  .system-info-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--mantine-spacing-xs);
+  }
+
+  .system-actions {
+    justify-content: stretch;
+  }
+
+  .system-actions .mantine-Button-root {
+    width: 100%;
   }
 
   .live-channel-users-list {
