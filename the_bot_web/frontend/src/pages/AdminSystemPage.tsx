@@ -159,6 +159,7 @@ export function AdminSystemPage() {
 
           <Button
             variant="light"
+            className="system-actions"
             leftSection={<Plus size={18} />}
             onClick={addLocalBackend}
           >
@@ -167,7 +168,7 @@ export function AdminSystemPage() {
 
           <Card withBorder radius="sm">
             <Stack gap="md">
-              <Group justify="space-between" align="flex-end" className="system-field-row">
+              <Group grow align="flex-end" className="system-field-row">
                 <Select
                   label="Model list source"
                   data={config.backends.map((backend) => ({ value: backend.id, label: backend.label }))}
@@ -176,6 +177,7 @@ export function AdminSystemPage() {
                 />
                 <Button
                   variant="light"
+                  className="system-fixed"
                   leftSection={<RefreshCw size={18} />}
                   loading={modelMutation.isPending}
                   disabled={!selectedModelBackend || selectedModelBackend.provider === 'openai' || !selectedModelBackend.baseUrl}

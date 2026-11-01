@@ -108,6 +108,9 @@ describe('AdminSystemPage', () => {
     expect(fieldRows.length).toBeGreaterThanOrEqual(5);
     expect(container.querySelector('.system-info-row')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save and apply' }).closest('.system-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add local backend' }).closest('.system-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load local models' }).closest('.system-fixed')).toBeInTheDocument();
+    expect(screen.getByText('Model list source').closest('.system-field-row')).toBeInTheDocument();
     const routeRow = screen.getByText('Chat').closest('.system-field-row');
     expect(routeRow).toBeInTheDocument();
   });
