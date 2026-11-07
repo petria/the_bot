@@ -13,7 +13,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
 
-class BotClient(context: Context) {
+class BotClient(private val context: Context) {
     private val prefs = EncryptedSharedPreferences.create(
         context, "bot-mobile-tokens", MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
@@ -28,8 +28,8 @@ class BotClient(context: Context) {
         .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
         .build().create(BotApi::class.java)
 
-    suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))) }
-    suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear() }
+    suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))); WaterWatchWorker.start(context) }
+    suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear(); runCatching { WaterWatchWorker.clear(context) } }
     suspend fun currentUser() = authenticated { api.me() }
     suspend fun registerCurrentDevice() {
         val token = FirebaseMessaging.getInstance().token.await()

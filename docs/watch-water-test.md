@@ -19,7 +19,7 @@ must align phone/watch application IDs and signing certificates.
    adb pair WATCH_IP:PAIRING_PORT
    adb connect WATCH_IP:DEBUG_PORT
    adb devices -l
-   adb -s WATCH_IP:DEBUG_PORT install -r the_bot_android/wear/build/outputs/apk/debug/wear-debug.apk
+   adb -s WATCH_IP:DEBUG_PORT install -r the_bot_android/wear/build/outputs/apk/dev/debug/wear-dev-debug.apk
    ```
 
    Pairing and debugging ports can differ. Enter the pairing code interactively.
@@ -55,7 +55,7 @@ and pass/fail for each item. Capture logs and a screenshot using the device sele
 ```sh
 adb -s WATCH_IP:DEBUG_PORT logcat -d -s BotWaterTest:I AndroidRuntime:E > water-test-log.txt
 adb -s WATCH_IP:DEBUG_PORT exec-out screencap -p > water-test-face.png
-sha256sum the_bot_android/wear/build/outputs/apk/debug/wear-debug.apk
+sha256sum the_bot_android/wear/build/outputs/apk/dev/debug/wear-dev-debug.apk
 ```
 
 Logs include requested complication type, instance ID, reading, and refresh request time.

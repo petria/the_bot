@@ -26,8 +26,8 @@ It uses simulated readings only; it does not need Firebase or the phone app.
 See [the device test procedure](../docs/watch-water-test.md). Build with installed Gradle 8.11.1:
 
 ```sh
-gradle -p the_bot_android :wear:testDebugUnitTest :wear:lintDebug :wear:assembleDebug
+gradle -p the_bot_android :wear:testDevDebugUnitTest :wear:lintDevDebug :wear:assembleDevDebug
 ```
 
-The APK is `the_bot_android/wear/build/outputs/apk/debug/wear-debug.apk`.
+The APK is `the_bot_android/wear/build/outputs/apk/dev/debug/wear-dev-debug.apk`.
 CI publishes it and the test/lint reports in the `bot-water-test` artifact.

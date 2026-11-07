@@ -37,3 +37,47 @@ model used by the web UI and bot-engine.
 For a real FCM app build, provide the matching non-committed
 `app/src/dev/google-services.json` or `app/src/prod/google-services.json`.
 The Gradle script applies the Google Services plugin only when one is present.
+
+## Live water temperature
+
+Enable **Manage System → Water temperature to watch** on the desired bot instance.
+The engine reads the following deployment environment variables (CI uses matching
+GitHub environment variables and writes them to Compose .env):
+
+- `THE_BOT_WATER_WATCH_STATION`: station name, default Merikoski.
+- `THE_BOT_WATER_WATCH_USERNAME`: existing bot username; required for delivery.
+- `THE_BOT_WATER_WATCH_INTERVAL_MINUTES`: poll interval, default 60, minimum 5.
+
+Develop is configured for Merikoski / petria / 30 minutes. The scheduler checks the
+toggle every 30 seconds and polls immediately after enabling or engine restart.
+It reuses the existing SYKE chart/vision lookup, saves the last successful reading
+in runtime overrides, and retains its original retrieval time on lookup failure.
+Readings expire after three polling intervals. Retrieval time is not measurement time.
+Disabling publishes an unavailable state. Firebase delivery is data-only and silent.
+Only the latest water update per user is retained in the mobile notification store.
+
+Build phone and watch APKs together with the same signing key and flavor:
+
+```sh
+gradle -p the_bot_android :app:assembleDevDebug :wear:assembleDevDebug
+```
+
+Install `app/build/outputs/apk/dev/debug/app-dev-debug.apk` on the paired phone and
+`wear/build/outputs/apk/dev/debug/wear-dev-debug.apk` on the watch. Both use
+`org.freakz.botclient.dev`; prod uses `org.freakz.botclient`. Debug signing keys from
+separate computers/CI runs may differ: use the two APKs from the same build.
+The previous `org.freakz.botclient.water.test` APK can remain installed for comparison.
+Select **Water temperature (live)** from the new watch app for the face's right circle.
+It starts unavailable, never with a simulated temperature.
+
+Log into the phone app as the recipient user. The phone forwards the latest state
+through persistent Wear OS DataItems on startup/login, on silent FCM delivery, and
+through hourly background recovery work. WorkManager and normal-priority FCM may be
+delayed by Android battery management; this is not a real-time delivery guarantee.
+DataItems synchronize when the watch reconnects. The watch rejects older updates,
+loads an existing DataItem when its provider starts, and marks expired data unavailable.
+Logout clears the watch state. Test providers continue to use separate simulated data.
+
+Acceptance: verify a real Merikoski value, silent background phone reception,
+phone/watch reconnect, watch reboot, toggle Off, expiry and recovery. Unit/build
+checks alone do not establish that full delivery chain on a physical paired phone.

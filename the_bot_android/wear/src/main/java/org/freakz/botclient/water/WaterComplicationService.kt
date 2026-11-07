@@ -10,10 +10,13 @@ import androidx.wear.watchface.complications.datasource.SuspendingComplicationDa
 
 open class WaterComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-        val value = WaterReading.load(this)
+        val value = reading()
         Log.i("BotWaterTest", "${javaClass.simpleName} request id=${request.complicationInstanceId} type=${request.complicationType} value=$value")
         return createData(request.complicationType, value)
     }
+
+    protected open fun reading(): Float? = WaterReading.load(this)
+    protected open fun tapIntent() = Intent(this, WaterTestActivity::class.java)
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? = createData(type, WaterReading.DEFAULT)
 
@@ -25,7 +28,7 @@ open class WaterComplicationService : SuspendingComplicationDataSourceService() 
             if (value == null) "Test water temperature unavailable" else "Test water temperature $value degrees Celsius"
         ).build()
         val icon = MonochromaticImage.Builder(Icon.createWithResource(this, R.drawable.ic_water)).build()
-        val tap = PendingIntent.getActivity(this, 0, Intent(this, WaterTestActivity::class.java),
+        val tap = PendingIntent.getActivity(this, 0, tapIntent(),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val short = ShortTextComplicationData.Builder(text, description)
             .setMonochromaticImage(icon).setTapAction(tap).build()

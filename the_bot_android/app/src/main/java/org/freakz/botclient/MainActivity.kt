@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BotClient(this).isLoggedIn()) WaterWatchWorker.start(this)
         setContent { BotApp(BotClient(this)) }
     }
 }
@@ -47,17 +48,17 @@ private fun LoginScreen(client: BotClient, onLoggedIn: () -> Unit) {
 @Composable
 private fun MainScreen(client: BotClient, onLogout: () -> Unit) {
     val scope = rememberCoroutineScope(); var selected by remember { mutableStateOf("Inbox") }; var notifications by remember { mutableStateOf<List<NotificationItem>>(emptyList()) }; var command by remember { mutableStateOf("") }; var reply by remember { mutableStateOf("") }; var commandError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) { runCatching { client.registerCurrentDevice(); notifications = client.notifications() } }
+    LaunchedEffect(Unit) { runCatching { client.registerCurrentDevice(); notifications = client.notifications().filter { it.type != "WATER_WATCH" } } }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("The Bot", style = MaterialTheme.typography.headlineMedium)
         Text("Bot instance: ${BuildConfig.BOT_WEB_BASE_URL}")
-        Button({ selected = "Inbox"; scope.launch { notifications = client.notifications() } }) { Text("Inbox") }
+        Button({ selected = "Inbox"; scope.launch { notifications = client.notifications().filter { it.type != "WATER_WATCH" } } }) { Text("Inbox") }
         Button({ selected = "Console" }) { Text("Console") }
         Button({ selected = "Profile" }) { Text("Profile") }
         Button({ selected = "Channels" }) { Text("Channels") }
         Button({ scope.launch { client.logout(); onLogout() } }) { Text("Logout") }
         when (selected) {
-            "Inbox" -> LazyColumn { items(notifications) { item -> Text("${item.title}: ${item.body}", Modifier.padding(vertical = 8.dp)); Button({ scope.launch { client.markRead(item.eventId); notifications = client.notifications() } }) { Text("Mark read") } } }
+            "Inbox" -> LazyColumn { items(notifications) { item -> Text("${item.title}: ${item.body}", Modifier.padding(vertical = 8.dp)); Button({ scope.launch { client.markRead(item.eventId); notifications = client.notifications().filter { it.type != "WATER_WATCH" } } }) { Text("Mark read") } } }
             "Console" -> { OutlinedTextField(command, { command = it; commandError = null }, label = { Text("Command") }, modifier = Modifier.fillMaxWidth()); Button({ scope.launch { commandError = null; runCatching { client.command(command).reply.orEmpty() }.onSuccess { reply = it }.onFailure { commandError = it.message ?: it::class.simpleName ?: "Command failed" } } }) { Text("Run") }; commandError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; Text(reply) }
             "Profile" -> Text("Profile and notification rules are managed by bot-web.")
             "Channels" -> Text("Channel access follows the permissions assigned to your bot user.")
