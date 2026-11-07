@@ -38,7 +38,7 @@ public class WatchWaterPoller {
     this.station=station; this.username=username; this.interval=Math.max(5, minutes)*60;
   }
 
-  @Scheduled(fixedDelay = 30000, initialDelay = 30000)
+  @Scheduled(fixedDelay = 30000, initialDelay = 30000, scheduler = "watchWaterScheduler")
   public synchronized void poll() {
     try {
       boolean enabled = settings.getSettings().waterTemperatureToWatch();
