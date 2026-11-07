@@ -76,6 +76,45 @@ describe('AdminSystemPage', () => {
     expect(screen.queryByText('gpt-5.5')).not.toBeInTheDocument();
   });
 
+  it('marks backend field rows, info rows and save actions for mobile stacking', async () => {
+    vi.spyOn(systemApi, 'getHermesBackendConfig').mockResolvedValue({
+      systemMode: 'enabled',
+      backends: [
+        {
+          id: 'openai', label: 'OpenAI', provider: 'openai', baseUrl: null, model: 'gpt-6.1-sol',
+          apiMode: 'responses', timeoutSeconds: 30, contextWindow: 100000, healthy: true,
+          toolCapable: true, detail: null, lastValidatedAt: null, validationStatus: 'OK',
+          apiKeyConfigured: true, reasoningDisabled: false,
+        },
+        {
+          id: 'local-0', label: 'Local', provider: 'ollama', baseUrl: 'http://ollama:11434', model: 'qwen',
+          apiMode: 'chat-completions', timeoutSeconds: 30, contextWindow: 8192, healthy: true,
+          toolCapable: true, detail: null, lastValidatedAt: null, validationStatus: 'OK',
+          apiKeyConfigured: false, reasoningDisabled: true,
+        },
+      ],
+      routes: [{
+        id: 'chat', label: 'Chat', backendId: 'openai', provider: 'openai', baseUrl: null,
+        model: 'gpt-6.1-sol', apiMode: 'responses', timeoutSeconds: 30, contextWindow: 100000,
+        healthy: true, toolCapable: true, detail: null,
+      }],
+      profiles: [], fallback: null, globalOverride: null,
+    });
+
+    const { container } = renderPage(<AdminSystemPage />);
+    await screen.findByText('OpenAI backend');
+
+    const fieldRows = container.querySelectorAll('.system-field-row');
+    expect(fieldRows.length).toBeGreaterThanOrEqual(5);
+    expect(container.querySelector('.system-info-row')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save and apply' }).closest('.system-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add local backend' }).closest('.system-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Load local models' }).closest('.system-fixed')).toBeInTheDocument();
+    expect(screen.getByText('Model list source').closest('.system-field-row')).toBeInTheDocument();
+    const routeRow = screen.getByText('Chat').closest('.system-field-row');
+    expect(routeRow).toBeInTheDocument();
+  });
+
   it('shows an unsupported saved OpenAI model as invalid', async () => {
     vi.spyOn(systemApi, 'getHermesBackendConfig').mockResolvedValue({
       systemMode: 'enabled',

@@ -96,6 +96,7 @@ const settings: LiveChannelSettings = {
   resolveUrls: true,
   captureResolvedUrls: false,
   captureImages: false,
+  showCapturedUrl: false,
 };
 
 const topic: LiveChannelTopic = {
@@ -371,6 +372,25 @@ describe('LiveChannelsPage', () => {
       { ...settings, publicAiEnabled: false },
     ));
     expect(await screen.findByText('OK')).toBeInTheDocument();
+  });
+
+  it('shows and saves captured URLs only under media capture', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Channel settings for IRC-TEST' }));
+    await screen.findByLabelText('Capture media');
+    expect(screen.queryByRole('switch', { name: /Show captured URL/ })).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('Capture media'));
+    expect(screen.getByRole('switch', { name: /Show captured URL/ })).not.toBeChecked();
+    await user.click(screen.getByRole('switch', { name: /Show captured URL/ }));
+    await user.click(screen.getByLabelText('Capture media'));
+    expect(screen.queryByRole('switch', { name: /Show captured URL/ })).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('Capture media'));
+    expect(screen.getByRole('switch', { name: /Show captured URL/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Save and apply' }));
+    await waitFor(() => expect(liveApi.saveAndApplyLiveChannelSettings).toHaveBeenCalledWith(
+      'IRC-TEST', { ...settings, captureImages: true, showCapturedUrl: true },
+    ));
   });
 
   it('connects to SSE, appends events once, and reports stream failures', async () => {

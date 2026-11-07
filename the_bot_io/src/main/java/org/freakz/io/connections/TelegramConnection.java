@@ -1,5 +1,6 @@
 package org.freakz.io.connections;
 
+import org.apache.http.client.config.RequestConfig;
 import org.freakz.common.model.botconfig.Channel;
 import org.freakz.common.chat.BotSelfIdentity;
 import org.freakz.common.model.botconfig.TelegramConfig;
@@ -10,6 +11,7 @@ import org.freakz.common.model.users.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -24,9 +26,11 @@ import org.telegram.telegrambots.meta.api.objects.Video;
 import org.telegram.telegrambots.meta.api.objects.VideoNote;
 import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import org.telegram.telegrambots.meta.generics.BotSession;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,10 +69,7 @@ public class TelegramConnection extends BotConnection {
   @Override
   public void sendMessageTo(Message message) {
     log.debug("Send messageTo: {}", message);
-    SendMessage sendMessage = new SendMessage();
-    sendMessage.setChatId(resolveChatId(message));
-    sendMessage.setText(message.getMessage());
-    setTelegramThreadMetadata(sendMessage, message);
+    SendMessage sendMessage = createTextMessage(message);
     try {
       this.bot.execute(sendMessage);
     } catch (TelegramApiException e) {
@@ -105,6 +106,15 @@ public class TelegramConnection extends BotConnection {
     } catch (TelegramApiException e) {
       log.debug("Telegram typing indicator failed: {}", e.getMessage());
     }
+  }
+
+  SendMessage createTextMessage(Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(resolveChatId(message));
+    sendMessage.setText(message.getMessage());
+    sendMessage.setDisableWebPagePreview(message.isSuppressLinkPreviews());
+    setTelegramThreadMetadata(sendMessage, message);
+    return sendMessage;
   }
 
   private String resolveChatId(Message message) {
@@ -183,7 +193,7 @@ public class TelegramConnection extends BotConnection {
     private final ConnectionManager connectionManager;
 
     public HokanTelegram(ConnectionManager connectionManager, String botToken, BotConnection connection, EventPublisher eventPublisher, MediaCaptureService mediaCaptureService, String botName, TelegramConfig config) {
-      super(botToken);
+      super(telegramOptions(), botToken);
       this.botName = config.getTelegramName();
       this.commandBotName = botName;
       this.publisher = eventPublisher;
@@ -199,20 +209,58 @@ public class TelegramConnection extends BotConnection {
       registerConfiguredChannels();
     }
 
+    private static DefaultBotOptions telegramOptions() {
+      DefaultBotOptions options = new DefaultBotOptions();
+      options.setGetUpdatesTimeout(10);
+      options.setRequestConfig(RequestConfig.custom()
+          .setConnectTimeout(5_000)
+          .setConnectionRequestTimeout(5_000)
+          .setSocketTimeout(15_000)
+          .build());
+      return options;
+    }
+
     private String resolveFileUrl(String fileId) {
-
-      try {
-        GetFile getFile = new GetFile();
-        getFile.setFileId(fileId);
-        org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
-        String fileUrl = file.getFileUrl(config.getToken());
-        log.debug("fileUrl: {}", fileUrl);
-        return fileUrl;
-      } catch (TelegramApiException e) {
-        e.printStackTrace();
-        return null;
+      final int attempts = 3;
+      for (int attempt = 1; attempt <= attempts; attempt++) {
+        try {
+          GetFile getFile = new GetFile();
+          getFile.setFileId(fileId);
+          org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
+          log.debug("Telegram getFile succeeded fileId={} attempt={}", fileId, attempt);
+          return file.getFileUrl(config.getToken());
+        } catch (TelegramApiException e) {
+          Throwable cause = e;
+          while (cause.getCause() != null) {
+            cause = cause.getCause();
+          }
+          log.warn("Telegram getFile failed fileId={} attempt={}/{} errorType={}",
+              fileId, attempt, attempts, cause.getClass().getSimpleName());
+          if (attempt == attempts || !isTransientFileFailure(e)) {
+            break;
+          }
+          try {
+            Thread.sleep(attempt * 1_000L);
+          } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+        }
       }
+      return null;
+    }
 
+    private boolean isTransientFileFailure(TelegramApiException failure) {
+      if (failure instanceof TelegramApiRequestException response
+          && response.getErrorCode() != null && response.getErrorCode() >= 500) {
+        return true;
+      }
+      for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+        if (cause instanceof IOException) {
+          return true;
+        }
+      }
+      return false;
     }
 
     @Override
@@ -264,16 +312,59 @@ public class TelegramConnection extends BotConnection {
       if (media == null) {
         return;
       }
+      Channel sourceChannel = resolveConfiguredChannel(update);
+      if (sourceChannel == null || !Boolean.TRUE.equals(sourceChannel.getCaptureImages())) {
+        return;
+      }
+      boolean hasTargets = sourceChannel.getCaptureImageToAliases() != null
+          && sourceChannel.getCaptureImageToAliases().stream().anyMatch(alias -> alias != null && !alias.isBlank());
+      if (!Boolean.TRUE.equals(sourceChannel.getShowCapturedUrl()) && !hasTargets) {
+        return;
+      }
+      log.info("Telegram media received chatId={} messageId={} fileId={}",
+          message.getChatId(), message.getMessageId(), media.fileId());
+      String downloadUrl = resolveFileUrl(media.fileId());
+      if (downloadUrl == null) {
+        log.warn("Telegram media capture aborted after getFile failure chatId={} messageId={}",
+            message.getChatId(), message.getMessageId());
+        notifyCaptureFailure(sourceChannel, message);
+        return;
+      }
       mediaCaptureService.captureAndSend(
           connectionManager,
-          resolveConfiguredChannel(update),
+          sourceChannel,
           connection,
           "Telegram",
           resolveActorName(update),
           message.getCaption(),
-          resolveFileUrl(media.fileId()),
+          downloadUrl,
           media.contentType(),
-          media.fileName());
+          media.fileName(),
+          java.util.Map.of(),
+          new MediaCaptureService.ReplyContext(String.valueOf(message.getChatId()),
+              String.valueOf(message.getMessageId()),
+              message.getMessageThreadId() == null ? null : String.valueOf(message.getMessageThreadId()),
+              null));
+    }
+
+    private void notifyCaptureFailure(Channel sourceChannel,
+        org.telegram.telegrambots.meta.api.objects.Message original) {
+      if (!Boolean.TRUE.equals(sourceChannel.getShowCapturedUrl())) {
+        return;
+      }
+      try {
+        connection.sendMessageTo(Message.builder()
+            .id(String.valueOf(original.getChatId()))
+            .target(sourceChannel.getName())
+            .message("Couldn't save this attachment. Please try again.")
+            .replyToMessageId(String.valueOf(original.getMessageId()))
+            .messageThreadId(original.getMessageThreadId() == null ? null : String.valueOf(original.getMessageThreadId()))
+            .suppressLinkPreviews(true)
+            .build());
+      } catch (RuntimeException e) {
+        log.warn("Unable to notify Telegram capture failure chatId={} messageId={}",
+            original.getChatId(), original.getMessageId());
+      }
     }
 
     private TelegramMedia resolveTelegramMedia(org.telegram.telegrambots.meta.api.objects.Message message) {

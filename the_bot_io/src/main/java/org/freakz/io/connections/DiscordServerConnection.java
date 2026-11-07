@@ -12,6 +12,7 @@ import org.javacord.api.entity.channel.Channel;
 import org.javacord.api.entity.channel.PrivateChannel;
 import org.javacord.api.entity.channel.ServerChannel;
 import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.channel.ServerThreadChannel;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.message.MessageBuilder;
@@ -229,6 +230,11 @@ public class DiscordServerConnection extends BotConnection {
         sendDiscordMessage(serverTextChannel.get(), outgoingMessage, message);
         return;
       }
+      Optional<ServerThreadChannel> threadChannel = channel.asServerThreadChannel();
+      if (threadChannel.isPresent()) {
+        sendDiscordMessage(threadChannel.get(), outgoingMessage, message);
+        return;
+      }
       Optional<PrivateChannel> privateChannel = channel.asPrivateChannel();
       if (privateChannel.isPresent()) {
         sendDiscordMessage(privateChannel.get(), outgoingMessage, message);
@@ -241,7 +247,7 @@ public class DiscordServerConnection extends BotConnection {
 
   }
 
-  private void sendDiscordMessage(org.javacord.api.entity.message.Messageable target, String text, Message message) {
+  void sendDiscordMessage(org.javacord.api.entity.message.Messageable target, String text, Message message) {
     String replyId = message.getReplyToMessageId();
     if (replyId != null && !replyId.isBlank()) {
       try {
@@ -270,7 +276,8 @@ public class DiscordServerConnection extends BotConnection {
   }
 
   private Optional<Channel> resolveChannel(Message message) {
-    Set<Channel> channels = api.getChannels();
+    Set<Channel> channels = new java.util.HashSet<>(api.getChannels());
+    channels.addAll(api.getServerThreadChannels());
     for (Channel ch : channels) {
       String chId = "" + ch.getId();
       if (chId.equals(message.getId())) {
@@ -369,7 +376,10 @@ public class DiscordServerConnection extends BotConnection {
                 event.getMessage().getContent(),
                 attachment.getUrl().toString(),
                 null,
-                attachment.getFileName());
+                attachment.getFileName(),
+                java.util.Map.of(),
+                new MediaCaptureService.ReplyContext(event.getChannel().getIdAsString(),
+                    event.getMessage().getIdAsString(), null, null));
           }
         }
       }

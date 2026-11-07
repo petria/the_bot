@@ -17,6 +17,7 @@ public class Message {
   private String replyToMessageId;
   private String messageThreadId;
   private String replyToSenderId;
+  private boolean suppressLinkPreviews;
 
   public Message() {
   }
@@ -124,17 +125,25 @@ public class Message {
     this.replyToSenderId = replyToSenderId;
   }
 
+  public boolean isSuppressLinkPreviews() {
+    return suppressLinkPreviews;
+  }
+
+  public void setSuppressLinkPreviews(boolean suppressLinkPreviews) {
+    this.suppressLinkPreviews = suppressLinkPreviews;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Message message1 = (Message) o;
-    return timestamp == message1.timestamp && requestTimestamp == message1.requestTimestamp && Objects.equals(id, message1.id) && Objects.equals(messageSource, message1.messageSource) && Objects.equals(time, message1.time) && Objects.equals(sender, message1.sender) && Objects.equals(target, message1.target) && Objects.equals(message, message1.message) && Objects.equals(replyToMessageId, message1.replyToMessageId) && Objects.equals(messageThreadId, message1.messageThreadId) && Objects.equals(replyToSenderId, message1.replyToSenderId);
+    return suppressLinkPreviews == message1.suppressLinkPreviews && timestamp == message1.timestamp && requestTimestamp == message1.requestTimestamp && Objects.equals(id, message1.id) && Objects.equals(messageSource, message1.messageSource) && Objects.equals(time, message1.time) && Objects.equals(sender, message1.sender) && Objects.equals(target, message1.target) && Objects.equals(message, message1.message) && Objects.equals(replyToMessageId, message1.replyToMessageId) && Objects.equals(messageThreadId, message1.messageThreadId) && Objects.equals(replyToSenderId, message1.replyToSenderId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, messageSource, timestamp, requestTimestamp, time, sender, target, message, replyToMessageId, messageThreadId, replyToSenderId);
+    return Objects.hash(id, messageSource, timestamp, requestTimestamp, time, sender, target, message, replyToMessageId, messageThreadId, replyToSenderId, suppressLinkPreviews);
   }
 
   @Override
@@ -165,6 +174,7 @@ public class Message {
     private String replyToMessageId;
     private String messageThreadId;
     private String replyToSenderId;
+    private boolean suppressLinkPreviews;
 
     public Builder id(String id) {
       this.id = id;
@@ -221,11 +231,17 @@ public class Message {
       return this;
     }
 
+    public Builder suppressLinkPreviews(boolean suppressLinkPreviews) {
+      this.suppressLinkPreviews = suppressLinkPreviews;
+      return this;
+    }
+
     public Message build() {
       Message result = new Message(id, messageSource, timestamp, requestTimestamp, time, sender, target, message);
       result.setReplyToMessageId(replyToMessageId);
       result.setMessageThreadId(messageThreadId);
       result.setReplyToSenderId(replyToSenderId);
+      result.setSuppressLinkPreviews(suppressLinkPreviews);
       return result;
     }
   }

@@ -159,6 +159,23 @@ class SendHandlerTest(unittest.TestCase):
         self.assertIn("--reply-to-sender", captured["command"])
         self.assertIn("358449125874@s.whatsapp.net", captured["command"])
 
+    def test_captured_url_reply_disables_preview_without_media_upload(self):
+        handler = handler_with_wacli({})
+        captured = {}
+        handler.read_json_payload = lambda: {
+            "to": "120363@g.us", "message": "https://bot.test/m/abc12",
+            "replyTo": "original-id", "replyToSender": "sender@s.whatsapp.net",
+            "suppressLinkPreviews": True,
+        }
+        handler.run_wacli = lambda command, to: captured.update(command=command)
+        handler.handle_send()
+        command = captured["command"]
+        self.assertIn("--no-preview", command)
+        self.assertIn("--reply-to", command)
+        self.assertIn("--reply-to-sender", command)
+        self.assertEqual("text", command[command.index("send") + 1])
+        self.assertEqual("https://bot.test/m/abc12", command[command.index("--message") + 1])
+
     def test_send_text_leaves_bot_sender_resolution_to_wacli(self):
         handler = handler_with_wacli({
             "stdout": '{"sent":true}',
@@ -179,6 +196,7 @@ class SendHandlerTest(unittest.TestCase):
 
         self.assertIn("--reply-to", captured["command"])
         self.assertNotIn("--reply-to-sender", captured["command"])
+        self.assertNotIn("--no-preview", captured["command"])
 
 
 class AuthenticationHandlerTest(unittest.TestCase):

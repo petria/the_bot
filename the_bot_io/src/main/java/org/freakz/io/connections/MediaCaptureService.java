@@ -9,11 +9,14 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import org.freakz.common.media.MediaStore;
 import org.freakz.common.media.MediaStoreCreated;
 import org.freakz.common.media.MediaStoreSource;
 import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.slf4j.Logger;
@@ -66,6 +69,25 @@ public class MediaCaptureService {
       String contentType,
       String fileName,
       Map<String, String> requestHeaders) {
+    captureAndSend(connectionManager, sourceChannel, connection, sourceProtocol, sender, caption,
+        imageUrl, contentType, fileName, requestHeaders, null);
+  }
+
+  public record ReplyContext(String channelId, String messageId, String threadId, String senderId) {
+  }
+
+  public void captureAndSend(
+      ConnectionManager connectionManager,
+      Channel sourceChannel,
+      BotConnection connection,
+      String sourceProtocol,
+      String sender,
+      String caption,
+      String imageUrl,
+      String contentType,
+      String fileName,
+      Map<String, String> requestHeaders,
+      ReplyContext replyContext) {
     if (connectionManager == null) {
       log.debug("Media capture skipped because connection manager is unavailable sourceProtocol={} sender={}", sourceProtocol, sender);
       return;
@@ -78,8 +100,14 @@ public class MediaCaptureService {
       log.debug("Media capture skipped because capture is disabled sourceAlias={} sourceProtocol={}", sourceChannel.getEchoToAlias(), sourceProtocol);
       return;
     }
-    List<String> targetAliases = sourceChannel.getCaptureImageToAliases();
-    if (targetAliases == null || targetAliases.isEmpty()) {
+    boolean replyToSource = Boolean.TRUE.equals(sourceChannel.getShowCapturedUrl());
+    TreeSet<String> targetAliases = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    List<String> configuredAliases = sourceChannel.getCaptureImageToAliases();
+    if (configuredAliases != null) {
+      configuredAliases.stream().filter(alias -> alias != null && !alias.isBlank())
+          .map(String::trim).forEach(targetAliases::add);
+    }
+    if (targetAliases.isEmpty() && !replyToSource) {
       log.debug("Capture media enabled for {} but no capture targets configured", sourceChannel.getEchoToAlias());
       return;
     }
@@ -111,13 +139,26 @@ public class MediaCaptureService {
               sourceChannel.getName(),
               sender));
       String publicUrl = publicMediaUrl(settings, created);
-      String message = formatMessage(sender, caption, publicUrl, MediaStore.mediaTypeLabel(effectiveContentType));
+      if (replyToSource) {
+        try {
+          if (connection == null) {
+            throw new IllegalStateException("Source connection is unavailable");
+          }
+          connection.sendMessageTo(capturedLinkMessage(connection, sourceChannel.getId(),
+              sourceChannel.getName(), sender, publicUrl, replyContext));
+          if (sourceChannel.getEchoToAlias() != null) {
+            targetAliases.remove(sourceChannel.getEchoToAlias().trim());
+          }
+        } catch (Exception e) {
+          log.warn("Unable to send captured media link to source {}: {}", sourceChannel.getEchoToAlias(), e.getMessage());
+        }
+      }
       for (String alias : targetAliases) {
         if (alias == null || alias.isBlank()) {
           continue;
         }
         try {
-          connectionManager.sendMessageByEchoToAlias(message, alias.trim());
+          connectionManager.sendCapturedMediaLinkByEchoToAlias(sender, publicUrl, alias.trim());
         } catch (Exception e) {
           log.warn("Unable to send captured image link to {}: {}", alias, e.getMessage());
         }
@@ -185,17 +226,28 @@ public class MediaCaptureService {
     }
   }
 
-  private String formatMessage(String sender, String caption, String publicUrl, String mediaType) {
-    StringBuilder message = new StringBuilder();
-    if (sender != null && !sender.isBlank()) {
-      message.append(sender.trim()).append(": ");
+  static Message capturedLinkMessage(BotConnection connection, String channelId, String channelName,
+      String sender, String publicUrl, ReplyContext replyContext) {
+    boolean irc = connection.getType() == BotConnectionType.IRC_CONNECTION;
+    String text = publicUrl;
+    if (irc && sender != null && !sender.isBlank()) {
+      text = sender.trim() + " " + publicUrl;
+    } else if (connection.getType() == BotConnectionType.DISCORD_CONNECTION) {
+      // Discord's angle-bracket links remain clickable without creating a media embed.
+      text = "<" + publicUrl + ">";
     }
-    if (caption != null && !caption.isBlank()) {
-      message.append(caption.trim()).append(" ");
+    Message.Builder reply = Message.builder()
+        .id(replyContext != null && replyContext.channelId() != null ? replyContext.channelId() : channelId)
+        .target(channelName)
+        .messageSource(MessageSource.NONE)
+        .message(text)
+        .suppressLinkPreviews(true);
+    if (!irc && replyContext != null) {
+      reply.replyToMessageId(replyContext.messageId())
+          .messageThreadId(replyContext.threadId())
+          .replyToSenderId(replyContext.senderId());
     }
-    String label = mediaType == null || mediaType.isBlank() ? "media" : mediaType.trim();
-    message.append("[").append(label).append(": ").append(publicUrl).append("]");
-    return message.toString();
+    return reply.build();
   }
 
   private String publicMediaUrl(MediaStorageSettingsResponse settings, MediaStoreCreated created) {

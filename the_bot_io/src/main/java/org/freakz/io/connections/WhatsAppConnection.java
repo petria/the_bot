@@ -80,13 +80,17 @@ public class WhatsAppConnection extends BotConnection {
       throw new IllegalArgumentException("Missing WhatsApp message target");
     }
     if (isBlank(message.getReplyToMessageId())) {
-      sendText(to, message.getMessage());
+      if (message.isSuppressLinkPreviews()) {
+        sendText(to, message.getMessage(), null, null, true);
+      } else {
+        sendText(to, message.getMessage());
+      }
     } else {
       try {
-        sendText(to, message.getMessage(), message.getReplyToMessageId(), message.getReplyToSenderId());
+        sendText(to, message.getMessage(), message.getReplyToMessageId(), message.getReplyToSenderId(), message.isSuppressLinkPreviews());
       } catch (RuntimeException e) {
         log.warn("WhatsApp quoted reply failed for message {}; sending to group: {}", message.getReplyToMessageId(), e.getMessage());
-        sendText(to, message.getMessage());
+        sendText(to, message.getMessage(), null, null, message.isSuppressLinkPreviews());
       }
     }
   }
@@ -120,16 +124,17 @@ public class WhatsAppConnection extends BotConnection {
   }
 
   protected void sendText(String to, String text) {
-    sendText(to, text, null, null);
+    sendText(to, text, null, null, false);
   }
 
-  private void sendText(String to, String text, String replyToMessageId, String replyToSenderId) {
+  private void sendText(String to, String text, String replyToMessageId, String replyToSenderId, boolean suppressLinkPreviews) {
     String sendBaseUrl = firstNonBlank(config == null ? null : config.getSendBaseUrl(), "http://bot-whatsapp:8095");
     String url = sendBaseUrl.replaceFirst("/+$", "") + "/send";
 
-    Map<String, String> request = new HashMap<>();
+    Map<String, Object> request = new HashMap<>();
     request.put("to", to);
     request.put("message", text);
+    request.put("suppressLinkPreviews", suppressLinkPreviews);
     if (!isBlank(replyToMessageId)) {
       request.put("replyTo", replyToMessageId);
     }
@@ -261,7 +266,9 @@ public class WhatsAppConnection extends BotConnection {
           resolveMediaDownloadUrl(event),
           event.getMediaContentType(),
           event.getMediaFileName(),
-          mediaDownloadHeaders());
+          mediaDownloadHeaders(),
+          new MediaCaptureService.ReplyContext(event.getChatJid(), event.getMessageId(), null,
+              event.effectiveSenderJid()));
     }
   }
 

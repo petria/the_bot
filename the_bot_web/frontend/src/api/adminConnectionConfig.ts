@@ -29,6 +29,7 @@ export type AdminConfigChannel = {
   alertMessages: boolean;
   captureResolvedUrls: boolean;
   captureImages: boolean;
+  showCapturedUrl: boolean;
   captureImageToAliases: string[] | null;
   manageOperators: boolean;
   manageTopic: boolean;

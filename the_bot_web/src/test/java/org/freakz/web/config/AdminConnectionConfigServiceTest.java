@@ -346,6 +346,30 @@ class AdminConnectionConfigServiceTest {
   }
 
   @Test
+  void capturedUrlSettingDefaultsOffAndSurvivesSaveApplyAndUnrelatedEdits() throws Exception {
+    TestFiles files = writeConfig();
+    RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();
+    RecordingEngineClient engineClient = new RecordingEngineClient();
+    AdminConnectionConfigService service = serviceFor(files.bootstrapFile(), serverConfigClient, engineClient);
+    assertThat(service.readChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2").showCapturedUrl()).isFalse();
+
+    service.saveAndApplyChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2",
+        new LiveChannelSettingsDto(false, false, false, false, true, true));
+    assertThat(serverConfigClient.channelApplyCount).isEqualTo(1);
+    assertThat(engineClient.reloadCount).isEqualTo(1);
+    assertThat(service.readChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2").showCapturedUrl()).isTrue();
+    assertThat(Files.readString(files.runtimeConfigFile())).contains("\"showCapturedUrl\" : true");
+
+    service.saveConfig(service.readConfig().config());
+    assertThat(service.readChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2").showCapturedUrl()).isTrue();
+    service.saveAndApplyChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2",
+        new LiveChannelSettingsDto(true, false, false, false, false, true));
+    var saved = service.readChannelSettings("IRC_CONNECTION", "IRCDEV", "IRC-HOKANDEV2");
+    assertThat(saved.captureImages()).isFalse();
+    assertThat(saved.showCapturedUrl()).isTrue();
+  }
+
+  @Test
   void saveAndApplyUsesFullApplyForStructuralConnectionChanges() throws Exception {
     TestFiles files = writeConfig();
     RecordingServerConfigClient serverConfigClient = new RecordingServerConfigClient();

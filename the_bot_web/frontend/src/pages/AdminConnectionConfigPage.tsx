@@ -57,6 +57,7 @@ const emptyChannel: AdminConfigChannel = {
   alertMessages: false,
   captureResolvedUrls: false,
   captureImages: false,
+  showCapturedUrl: false,
   captureImageToAliases: [],
   manageOperators: false,
   manageTopic: false,
@@ -783,6 +784,14 @@ function ChannelsEditor({
                   checked={channel.captureImages}
                   onChange={(event) => updateChannel(channels, index, { captureImages: event.currentTarget.checked }, onChange)}
                 />
+                {channel.captureImages ? (
+                  <Switch
+                    label="Show captured URL"
+                    description="Post a link to stored media back to this channel."
+                    checked={channel.showCapturedUrl ?? false}
+                    onChange={(event) => updateChannel(channels, index, { showCapturedUrl: event.currentTarget.checked }, onChange)}
+                  />
+                ) : null}
                 {channel.captureImages ? (
                   <TextInput
                     label="Capture media to aliases"

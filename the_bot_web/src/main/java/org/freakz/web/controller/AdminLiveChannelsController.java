@@ -155,7 +155,8 @@ public class AdminLiveChannelsController {
             request.allowAnonymousAiCommands(),
             request.resolveUrls(),
             request.captureResolvedUrls(),
-            request.captureImages()));
+            request.captureImages(),
+            request.showCapturedUrl()));
   }
 
   @GetMapping("/topic")
@@ -453,7 +454,12 @@ public class AdminLiveChannelsController {
       boolean allowAnonymousAiCommands,
       boolean resolveUrls,
       boolean captureResolvedUrls,
-      boolean captureImages) {
+      boolean captureImages,
+      boolean showCapturedUrl) {
+    public LiveChannelSettingsUpdateRequest(String echoToAlias, boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands, boolean resolveUrls, boolean captureResolvedUrls, boolean captureImages) {
+      this(echoToAlias, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, captureResolvedUrls, captureImages, false);
+    }
   }
 
   public record IrcOperatorModeUpdateRequest(String echoToAlias, List<String> nicks, boolean operator) {

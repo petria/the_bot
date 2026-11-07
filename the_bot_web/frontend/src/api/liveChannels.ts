@@ -40,6 +40,7 @@ export type LiveChannelSettings = {
   resolveUrls: boolean;
   captureResolvedUrls: boolean;
   captureImages: boolean;
+  showCapturedUrl: boolean;
 };
 
 export type LiveChannelSettingsApplyResponse = {
