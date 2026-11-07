@@ -21,6 +21,7 @@ public class Channel {
   private Boolean captureResolvedUrls;
   private Boolean captureImages;
   private List<String> captureImageToAliases;
+  private Boolean showCapturedUrl;
   private Boolean manageOperators;
   private Boolean echoIrcActivity;
   private Boolean manageTopic;
@@ -83,6 +84,13 @@ public class Channel {
   }
 
   public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls, Boolean alertMessages, Boolean captureResolvedUrls, Boolean captureImages, List<String> captureImageToAliases, Boolean manageOperators, Boolean echoIrcActivity, Boolean manageTopic, String topic, Boolean manageMode, String modes, Boolean commandsEnabled) {
+    this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled,
+        allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages,
+        captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic, manageMode, modes,
+        commandsEnabled, null);
+  }
+
+  public Channel(String id, String description, String name, String type, String echoToAlias, List<String> echoToAliases, boolean joinOnStart, Boolean publicAiEnabled, Boolean allowAnonymousAiCommands, Boolean resolveUrls, Boolean alertMessages, Boolean captureResolvedUrls, Boolean captureImages, List<String> captureImageToAliases, Boolean manageOperators, Boolean echoIrcActivity, Boolean manageTopic, String topic, Boolean manageMode, String modes, Boolean commandsEnabled, Boolean showCapturedUrl) {
     this.id = id;
     this.description = description;
     this.name = name;
@@ -104,6 +112,7 @@ public class Channel {
     this.manageMode = manageMode;
     this.modes = modes;
     this.commandsEnabled = commandsEnabled;
+    this.showCapturedUrl = showCapturedUrl;
   }
 
   public static Builder builder() {
@@ -206,6 +215,14 @@ public class Channel {
     this.captureResolvedUrls = captureResolvedUrls;
   }
 
+  public Boolean getShowCapturedUrl() {
+    return showCapturedUrl;
+  }
+
+  public void setShowCapturedUrl(Boolean showCapturedUrl) {
+    this.showCapturedUrl = showCapturedUrl;
+  }
+
   public Boolean getCaptureImages() {
     return captureImages;
   }
@@ -283,12 +300,12 @@ public class Channel {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     Channel channel = (Channel) o;
-    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(alertMessages, channel.alertMessages) && Objects.equals(captureResolvedUrls, channel.captureResolvedUrls) && Objects.equals(captureImages, channel.captureImages) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases) && Objects.equals(captureImageToAliases, channel.captureImageToAliases) && Objects.equals(manageOperators, channel.manageOperators) && Objects.equals(echoIrcActivity, channel.echoIrcActivity) && Objects.equals(manageTopic, channel.manageTopic) && Objects.equals(topic, channel.topic) && Objects.equals(manageMode, channel.manageMode) && Objects.equals(modes, channel.modes) && Objects.equals(commandsEnabled, channel.commandsEnabled);
+    return joinOnStart == channel.joinOnStart && Objects.equals(publicAiEnabled, channel.publicAiEnabled) && Objects.equals(allowAnonymousAiCommands, channel.allowAnonymousAiCommands) && Objects.equals(resolveUrls, channel.resolveUrls) && Objects.equals(alertMessages, channel.alertMessages) && Objects.equals(captureResolvedUrls, channel.captureResolvedUrls) && Objects.equals(showCapturedUrl, channel.showCapturedUrl) && Objects.equals(captureImages, channel.captureImages) && Objects.equals(id, channel.id) && Objects.equals(description, channel.description) && Objects.equals(name, channel.name) && Objects.equals(type, channel.type) && Objects.equals(echoToAlias, channel.echoToAlias) && Objects.equals(echoToAliases, channel.echoToAliases) && Objects.equals(captureImageToAliases, channel.captureImageToAliases) && Objects.equals(manageOperators, channel.manageOperators) && Objects.equals(echoIrcActivity, channel.echoIrcActivity) && Objects.equals(manageTopic, channel.manageTopic) && Objects.equals(topic, channel.topic) && Objects.equals(manageMode, channel.manageMode) && Objects.equals(modes, channel.modes) && Objects.equals(commandsEnabled, channel.commandsEnabled);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic, manageMode, modes, commandsEnabled);
+    return Objects.hash(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic, manageMode, modes, commandsEnabled, showCapturedUrl);
   }
 
   @Override
@@ -306,6 +323,7 @@ public class Channel {
         ", resolveUrls=" + resolveUrls +
         ", alertMessages=" + alertMessages +
         ", captureResolvedUrls=" + captureResolvedUrls +
+        ", showCapturedUrl=" + showCapturedUrl +
         ", captureImages=" + captureImages +
         ", captureImageToAliases=" + captureImageToAliases +
         ", manageOperators=" + manageOperators +
@@ -331,6 +349,7 @@ public class Channel {
     private Boolean resolveUrls;
     private Boolean alertMessages;
     private Boolean captureResolvedUrls;
+    private Boolean showCapturedUrl;
     private Boolean captureImages;
     private List<String> captureImageToAliases;
     private Boolean manageOperators;
@@ -401,6 +420,11 @@ public class Channel {
       return this;
     }
 
+    public Builder showCapturedUrl(Boolean showCapturedUrl) {
+      this.showCapturedUrl = showCapturedUrl;
+      return this;
+    }
+
     public Builder captureImages(Boolean captureImages) {
       this.captureImages = captureImages;
       return this;
@@ -447,7 +471,7 @@ public class Channel {
     }
 
     public Channel build() {
-      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic, manageMode, modes, commandsEnabled);
+      return new Channel(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled, allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages, captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic, manageMode, modes, commandsEnabled, showCapturedUrl);
     }
   }
 }

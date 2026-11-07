@@ -369,7 +369,8 @@ public class AdminConnectionConfigService {
           text(item, "topic"),
           item.path("manageMode").asBoolean(false),
           text(item, "modes"),
-          item.path("commandsEnabled").asBoolean(true)));
+          item.path("commandsEnabled").asBoolean(true),
+          item.path("showCapturedUrl").asBoolean(false)));
     }
     return channels;
   }
@@ -519,7 +520,8 @@ public class AdminConnectionConfigService {
         clean(source.topic()),
         source.manageMode(),
         normalizeModes(source.modes()),
-        source.commandsEnabled());
+        source.commandsEnabled(),
+        source.showCapturedUrl());
   }
 
   private List<ChannelDto> appendChannel(List<ChannelDto> channels, ChannelDto channel) {
@@ -721,7 +723,8 @@ public class AdminConnectionConfigService {
         channel.topic(),
         channel.manageMode(),
         channel.modes(),
-        channel.commandsEnabled());
+        channel.commandsEnabled(),
+        settings.showCapturedUrl());
   }
 
   private LiveChannelSettingsDto settingsFrom(ChannelDto channel) {
@@ -730,7 +733,8 @@ public class AdminConnectionConfigService {
         channel.allowAnonymousAiCommands(),
         channel.resolveUrls(),
         channel.captureResolvedUrls(),
-        channel.captureImages());
+        channel.captureImages(),
+        Boolean.TRUE.equals(channel.showCapturedUrl()));
   }
 
   private boolean isConnectionType(String actual, String expected) {
@@ -841,7 +845,8 @@ public class AdminConnectionConfigService {
             clean(channel.topic()),
             channel.manageMode(),
             normalizeModes(channel.modes()),
-            channel.commandsEnabled()))
+            channel.commandsEnabled(),
+            channel.showCapturedUrl()))
         .toList();
   }
 
@@ -961,6 +966,7 @@ public class AdminConnectionConfigService {
       item.put("alertMessages", channel.alertMessages());
       item.put("captureResolvedUrls", channel.captureResolvedUrls());
       item.put("captureImages", channel.captureImages());
+      item.put("showCapturedUrl", Boolean.TRUE.equals(channel.showCapturedUrl()));
       item.put("manageOperators", channel.manageOperators());
       item.put("echoIrcActivity", channel.echoIrcActivity());
       item.put("manageTopic", channel.manageTopic());
@@ -1114,7 +1120,12 @@ public class AdminConnectionConfigService {
       boolean allowAnonymousAiCommands,
       boolean resolveUrls,
       boolean captureResolvedUrls,
-      boolean captureImages) {
+      boolean captureImages,
+      boolean showCapturedUrl) {
+    public LiveChannelSettingsDto(boolean publicAiEnabled, boolean allowAnonymousAiCommands,
+        boolean resolveUrls, boolean captureResolvedUrls, boolean captureImages) {
+      this(publicAiEnabled, allowAnonymousAiCommands, resolveUrls, captureResolvedUrls, captureImages, false);
+    }
   }
 
   public record LiveChannelSettingsApplyResponse(
@@ -1177,7 +1188,20 @@ public class AdminConnectionConfigService {
       String topic,
       boolean manageMode,
       String modes,
-      Boolean commandsEnabled) {
+      Boolean commandsEnabled,
+      Boolean showCapturedUrl) {
+
+    public ChannelDto(String id, String description, String name, String type, String echoToAlias,
+        List<String> echoToAliases, boolean joinOnStart, boolean publicAiEnabled,
+        boolean allowAnonymousAiCommands, boolean resolveUrls, boolean alertMessages,
+        boolean captureResolvedUrls, boolean captureImages, List<String> captureImageToAliases,
+        boolean manageOperators, boolean echoIrcActivity, boolean manageTopic, String topic,
+        boolean manageMode, String modes, Boolean commandsEnabled) {
+      this(id, description, name, type, echoToAlias, echoToAliases, joinOnStart, publicAiEnabled,
+          allowAnonymousAiCommands, resolveUrls, alertMessages, captureResolvedUrls, captureImages,
+          captureImageToAliases, manageOperators, echoIrcActivity, manageTopic, topic,
+          manageMode, modes, commandsEnabled, false);
+    }
 
     public ChannelDto(
         String id,

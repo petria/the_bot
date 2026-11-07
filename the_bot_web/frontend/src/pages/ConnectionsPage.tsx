@@ -136,6 +136,7 @@ export function ConnectionsPage() {
                   alertMessages: false,
                   captureResolvedUrls: false,
                   captureImages: false,
+                  showCapturedUrl: false,
                   captureImageToAliases: [],
                   manageOperators: false,
                   manageTopic: false,

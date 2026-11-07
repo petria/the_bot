@@ -9,11 +9,14 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import org.freakz.common.media.MediaStore;
 import org.freakz.common.media.MediaStoreCreated;
 import org.freakz.common.media.MediaStoreSource;
 import org.freakz.common.model.botconfig.Channel;
+import org.freakz.common.model.feed.Message;
+import org.freakz.common.model.feed.MessageSource;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.slf4j.Logger;
@@ -78,8 +81,14 @@ public class MediaCaptureService {
       log.debug("Media capture skipped because capture is disabled sourceAlias={} sourceProtocol={}", sourceChannel.getEchoToAlias(), sourceProtocol);
       return;
     }
-    List<String> targetAliases = sourceChannel.getCaptureImageToAliases();
-    if (targetAliases == null || targetAliases.isEmpty()) {
+    boolean replyToSource = Boolean.TRUE.equals(sourceChannel.getShowCapturedUrl());
+    TreeSet<String> targetAliases = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    List<String> configuredAliases = sourceChannel.getCaptureImageToAliases();
+    if (configuredAliases != null) {
+      configuredAliases.stream().filter(alias -> alias != null && !alias.isBlank())
+          .map(String::trim).forEach(targetAliases::add);
+    }
+    if (targetAliases.isEmpty() && !replyToSource) {
       log.debug("Capture media enabled for {} but no capture targets configured", sourceChannel.getEchoToAlias());
       return;
     }
@@ -112,6 +121,24 @@ public class MediaCaptureService {
               sender));
       String publicUrl = publicMediaUrl(settings, created);
       String message = formatMessage(sender, caption, publicUrl, MediaStore.mediaTypeLabel(effectiveContentType));
+      if (replyToSource) {
+        try {
+          if (connection == null) {
+            throw new IllegalStateException("Source connection is unavailable");
+          }
+          connection.sendMessageTo(Message.builder()
+              .id(sourceChannel.getId())
+              .target(sourceChannel.getName())
+              .messageSource(MessageSource.NONE)
+              .message(message)
+              .build());
+          if (sourceChannel.getEchoToAlias() != null) {
+            targetAliases.remove(sourceChannel.getEchoToAlias().trim());
+          }
+        } catch (Exception e) {
+          log.warn("Unable to send captured media link to source {}: {}", sourceChannel.getEchoToAlias(), e.getMessage());
+        }
+      }
       for (String alias : targetAliases) {
         if (alias == null || alias.isBlank()) {
           continue;

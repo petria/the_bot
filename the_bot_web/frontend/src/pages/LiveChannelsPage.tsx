@@ -604,6 +604,19 @@ function LiveChannelTab({ channel }: { channel: OpenChannel }) {
                           saveSettingsMutation.reset,
                         )}
                       />
+                      {settingsDraft.captureImages ? (
+                        <Switch
+                          label="Show captured URL"
+                          description="Post a link to stored media back to this channel."
+                          checked={settingsDraft.showCapturedUrl ?? false}
+                          disabled={saveSettingsMutation.isPending}
+                          onChange={(event) => updateSettingsDraft(
+                            setSettingsDraft,
+                            { showCapturedUrl: event.currentTarget.checked },
+                            saveSettingsMutation.reset,
+                          )}
+                        />
+                      ) : null}
                     </SimpleGrid>
                     <Group justify="flex-end">
                       <Button

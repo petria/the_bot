@@ -16,7 +16,7 @@ describe('AdminConnectionConfigPage', () => {
             id: 'test', description: 'Test', name: '#test', type: 'IrcPublic', echoToAlias: 'IRC-TEST',
             echoToAliases: [], echoIrcActivity: false, joinOnStart: true, publicAiEnabled: true,
             allowAnonymousAiCommands: false, resolveUrls: false, alertMessages: false,
-            captureResolvedUrls: false, captureImages: false, captureImageToAliases: [], manageOperators: false,
+            captureResolvedUrls: false, captureImages: false, showCapturedUrl: false, captureImageToAliases: [], manageOperators: false,
             manageTopic: true, topic: 'Guarded topic', manageMode: true, modes: '+st',
             commandsEnabled: true,
           }],
@@ -73,12 +73,36 @@ describe('AdminConnectionConfigPage', () => {
     });
   });
 
+  it('saves the captured URL toggle and preserves it while media capture is disabled', async () => {
+    const response = configWithChannel({ captureImages: false });
+    response.config.telegramConfig = { telegramName: 'Test', connectStartup: true,
+      channelList: response.config.ircServerConfigs![0].channelList };
+    response.config.ircServerConfigs = [];
+    vi.spyOn(configApi, 'getAdminConnectionConfig').mockResolvedValue(response);
+    const save = vi.spyOn(configApi, 'saveAdminConnectionConfig').mockResolvedValue(response);
+    renderPage(<AdminConnectionConfigPage />, ['/admin/config']);
+    fireEvent.click(await screen.findByRole('tab', { name: 'Telegram' }));
+    expect(screen.queryByRole('switch', { name: /Show captured URL/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Capture media' }));
+    expect(screen.getByRole('switch', { name: /Show captured URL/ })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('switch', { name: /Show captured URL/ }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Capture media' }));
+    expect(screen.queryByRole('switch', { name: /Show captured URL/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Capture media' }));
+    expect(screen.getByRole('switch', { name: /Show captured URL/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0].telegramConfig?.channelList?.[0]).toMatchObject({
+      captureImages: true, showCapturedUrl: true,
+    });
+  });
+
   function configWithChannel(channelPatch: Partial<configApi.AdminConfigChannel>): configApi.AdminConnectionConfigResponse {
     const channel: configApi.AdminConfigChannel = {
       id: 'test', description: 'Test', name: '#test', type: 'IrcPublic', echoToAlias: 'IRC-TEST',
       echoToAliases: [], echoIrcActivity: false, joinOnStart: true, commandsEnabled: true,
       publicAiEnabled: false, allowAnonymousAiCommands: false, resolveUrls: false,
-      alertMessages: false, captureResolvedUrls: false, captureImages: false,
+      alertMessages: false, captureResolvedUrls: false, captureImages: false, showCapturedUrl: false,
       captureImageToAliases: [], manageOperators: false, manageTopic: false, topic: null,
       manageMode: false, modes: null,
       ...channelPatch,
