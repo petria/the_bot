@@ -64,8 +64,10 @@ gradle -p the_bot_android :app:assembleDevDebug :wear:assembleDevDebug
 
 Install `app/build/outputs/apk/dev/debug/app-dev-debug.apk` on the paired phone and
 `wear/build/outputs/apk/dev/debug/wear-dev-debug.apk` on the watch. Both use
-`org.freakz.botclient.dev`; prod uses `org.freakz.botclient`. Debug signing keys from
-separate computers/CI runs may differ: use the two APKs from the same build.
+`org.freakz.botclient.dev`; prod uses `org.freakz.botclient`. CI restores the persistent debug key from the repository secret
+`BOT_ANDROID_DEBUG_KEYSTORE_B64` for push/dispatch builds. The same key is used by
+this workstation. Pull-request builds use an ephemeral key; install push-build
+artifacts on regular devices so future updates preserve app data.
 The previous `org.freakz.botclient.water.test` APK can remain installed for comparison.
 Select **Water temperature (live)** from the new watch app for the face's right circle.
 It starts unavailable, never with a simulated temperature.

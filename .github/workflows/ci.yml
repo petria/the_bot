@@ -26,6 +26,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Restore persistent Android debug signing key
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          BOT_ANDROID_DEBUG_KEYSTORE_B64: ${{ secrets.BOT_ANDROID_DEBUG_KEYSTORE_B64 }}
+        run: |
+          test -n "$BOT_ANDROID_DEBUG_KEYSTORE_B64" || {
+            echo "Missing BOT_ANDROID_DEBUG_KEYSTORE_B64 repository secret."
+            exit 1
+          }
+          mkdir -p "$HOME/.android"
+          printf '%s' "$BOT_ANDROID_DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
       - name: Test, lint and assemble watch complication
         run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :wear:testDevDebugUnitTest :wear:lintDevDebug :wear:assembleDevDebug --no-daemon
       - name: Upload watch test APK and reports
