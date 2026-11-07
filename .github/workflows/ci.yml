@@ -26,6 +26,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Test, lint and assemble watch complication
+        run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :wear:testDebugUnitTest :wear:lintDebug :wear:assembleDebug --no-daemon
+      - name: Upload watch test APK and reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-water-test
+          path: |
+            the_bot_android/wear/build/outputs/apk/debug/*.apk
+            the_bot_android/wear/build/reports/
       - name: Install development Firebase configuration
         if: ${{ github.event_name == 'push' && github.ref_name == 'develop' }}
         env:

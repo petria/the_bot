@@ -17,4 +17,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "the_bot_android"
-include(":app")
+include(":app", ":wear")
