@@ -1,5 +1,7 @@
 package org.freakz.web.controller;
 
+import org.freakz.common.model.engine.system.SystemSettings;
+
 import java.security.Principal;
 
 import org.freakz.common.model.engine.system.HermesSettingsRequest;
@@ -35,6 +37,28 @@ public class AdminSystemController {
 
   public AdminSystemController(RestEngineClient engineClient) {
     this.engineClient = engineClient;
+  }
+
+  @GetMapping("/settings")
+  public SystemSettings getSystemSettings() {
+    var response = engineClient.getSystemSettings();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load system settings from bot-engine");
+    }
+    return response.getBody();
+  }
+
+  @PutMapping("/settings")
+  public SystemSettings updateSystemSettings(
+      @RequestBody SystemSettings request) {
+    if (request.waterTemperatureToWatch() == null) {
+      throw new IllegalArgumentException("Water temperature to watch must be true or false");
+    }
+    var response = engineClient.updateSystemSettings(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not save system settings in bot-engine");
+    }
+    return response.getBody();
   }
 
   @GetMapping("/hermes")
