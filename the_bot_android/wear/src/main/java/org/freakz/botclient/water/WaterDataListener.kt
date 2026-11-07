@@ -18,7 +18,9 @@ class WaterDataListener : WearableListenerService() {
             try {
                 val data = JSONObject(payload)
                 val prefs = context.getSharedPreferences("live-water", MODE_PRIVATE)
-                val previous = JSONObject(prefs.getString("water", "{}")!!)
+                val previousPayload = prefs.getString("water", "{}")!!
+                if (previousPayload == payload) return
+                val previous = JSONObject(previousPayload)
                 if (data.optLong("updatedAt") < previous.optLong("updatedAt")) return
                 prefs.edit().putString("water", payload).apply()
                 ComplicationDataSourceUpdateRequester.create(context, ComponentName(context, LiveWaterService::class.java)).requestUpdateAll()
