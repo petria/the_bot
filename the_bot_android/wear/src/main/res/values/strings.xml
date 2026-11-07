@@ -4,4 +4,5 @@
     <string name="test_heading">Simulated water</string>
     <string name="current_value">Current: %1$s</string>
     <string name="unavailable">Unavailable</string>
+    <string name="text_provider_name">Water temperature (text)</string>
 </resources>

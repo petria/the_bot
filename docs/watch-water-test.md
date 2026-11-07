@@ -66,3 +66,15 @@ After testing, disable wireless debugging. To remove the test, select another
 complication provider and uninstall **Bot Water Test** from the watch.
 Live SYKE retrieval, push delivery, phone synchronization and their recovery tests
 are a subsequent integration stage.
+
+## Text-only comparison
+
+On the first physical test, the right circle requested RANGED_VALUE with 4.2°C,
+but displayed only the droplet and gauge. Version 0.2 adds **Water temperature (text)**,
+which advertises only SHORT_TEXT, alongside the original provider. Select this new
+provider in the same slot and repeat the value/update checks above. Both providers
+share the saved test reading and receive refresh requests from the test screen.
+If the new provider is absent in that slot, the slot may not support SHORT_TEXT;
+try another slot to distinguish a face restriction from a provider failure.
+If present, verify the numeric temperature visually; supplying SHORT_TEXT alone
+does not prove this face renders it. Logs identify which provider/type was requested.

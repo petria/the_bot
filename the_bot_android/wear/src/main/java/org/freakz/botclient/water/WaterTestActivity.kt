@@ -28,8 +28,10 @@ class WaterTestActivity : Activity() {
                 setOnClickListener {
                     WaterReading.save(this@WaterTestActivity, reading)
                     updateLabel()
-                    ComplicationDataSourceUpdateRequester.create(this@WaterTestActivity,
-                        ComponentName(this@WaterTestActivity, WaterComplicationService::class.java)).requestUpdateAll()
+                    listOf(WaterComplicationService::class.java, WaterTextComplicationService::class.java).forEach { provider ->
+                        ComplicationDataSourceUpdateRequester.create(this@WaterTestActivity,
+                            ComponentName(this@WaterTestActivity, provider)).requestUpdateAll()
+                    }
                     Log.i("BotWaterTest", "Selected $reading; refresh requested at ${System.currentTimeMillis()}")
                 }
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))

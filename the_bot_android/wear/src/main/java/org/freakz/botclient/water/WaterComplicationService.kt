@@ -8,16 +8,16 @@ import androidx.wear.watchface.complications.data.*
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
 
-class WaterComplicationService : SuspendingComplicationDataSourceService() {
+open class WaterComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
         val value = WaterReading.load(this)
-        Log.i("BotWaterTest", "Request id=${request.complicationInstanceId} type=${request.complicationType} value=$value")
+        Log.i("BotWaterTest", "${javaClass.simpleName} request id=${request.complicationInstanceId} type=${request.complicationType} value=$value")
         return createData(request.complicationType, value)
     }
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? = createData(type, WaterReading.DEFAULT)
 
-    internal fun createData(type: ComplicationType, reading: Float?): ComplicationData? {
+    internal open fun createData(type: ComplicationType, reading: Float?): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT && type != ComplicationType.RANGED_VALUE) return null
         val value = WaterReading.valid(reading)
         val text = PlainComplicationText.Builder(WaterReading.text(value)).build()

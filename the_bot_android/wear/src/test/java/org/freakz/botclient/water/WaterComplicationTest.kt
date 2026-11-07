@@ -17,6 +17,19 @@ import java.util.Locale
 class WaterComplicationTest {
     private val service = Robolectric.buildService(WaterComplicationService::class.java).create().get()
 
+    @Test fun textOnlyProviderCannotNegotiateGaugeRendering() {
+        val textService = Robolectric.buildService(WaterTextComplicationService::class.java).create().get()
+        val component = android.content.ComponentName(textService, WaterTextComplicationService::class.java)
+        val info = textService.packageManager.getServiceInfo(component, android.content.pm.PackageManager.GET_META_DATA)
+        assertEquals("SHORT_TEXT", info.metaData.getString("android.support.wearable.complications.SUPPORTED_TYPES"))
+        val data = textService.getPreviewData(ComplicationType.SHORT_TEXT) as ShortTextComplicationData
+        assertEquals("4.2°C", data.text.getTextAt(textService.resources, Instant.EPOCH).toString())
+        assertNotNull(data.tapAction)
+        assertNull(textService.getPreviewData(ComplicationType.RANGED_VALUE))
+        assertNull(textService.createData(ComplicationType.RANGED_VALUE, 4.2f))
+        assertTrue(textService.createData(ComplicationType.SHORT_TEXT, null) is NoDataComplicationData)
+    }
+
     @Test fun formatsIndependentlyOfPhoneLocale() {
         val original = Locale.getDefault()
         try {
