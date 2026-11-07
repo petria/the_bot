@@ -65,10 +65,7 @@ public class TelegramConnection extends BotConnection {
   @Override
   public void sendMessageTo(Message message) {
     log.debug("Send messageTo: {}", message);
-    SendMessage sendMessage = new SendMessage();
-    sendMessage.setChatId(resolveChatId(message));
-    sendMessage.setText(message.getMessage());
-    setTelegramThreadMetadata(sendMessage, message);
+    SendMessage sendMessage = createTextMessage(message);
     try {
       this.bot.execute(sendMessage);
     } catch (TelegramApiException e) {
@@ -105,6 +102,15 @@ public class TelegramConnection extends BotConnection {
     } catch (TelegramApiException e) {
       log.debug("Telegram typing indicator failed: {}", e.getMessage());
     }
+  }
+
+  SendMessage createTextMessage(Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(resolveChatId(message));
+    sendMessage.setText(message.getMessage());
+    sendMessage.setDisableWebPagePreview(message.isSuppressLinkPreviews());
+    setTelegramThreadMetadata(sendMessage, message);
+    return sendMessage;
   }
 
   private String resolveChatId(Message message) {
@@ -273,7 +279,12 @@ public class TelegramConnection extends BotConnection {
           message.getCaption(),
           resolveFileUrl(media.fileId()),
           media.contentType(),
-          media.fileName());
+          media.fileName(),
+          java.util.Map.of(),
+          new MediaCaptureService.ReplyContext(String.valueOf(message.getChatId()),
+              String.valueOf(message.getMessageId()),
+              message.getMessageThreadId() == null ? null : String.valueOf(message.getMessageThreadId()),
+              null));
     }
 
     private TelegramMedia resolveTelegramMedia(org.telegram.telegrambots.meta.api.objects.Message message) {

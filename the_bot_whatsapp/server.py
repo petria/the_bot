@@ -363,6 +363,8 @@ class Handler(BaseHTTPRequestHandler):
             command.extend(["--reply-to", reply_to])
         if reply_to_sender:
             command.extend(["--reply-to-sender", reply_to_sender])
+        if payload.get("suppressLinkPreviews") is True:
+            command.append("--no-preview")
         self.run_wacli(command, to)
 
     def handle_presence(self):

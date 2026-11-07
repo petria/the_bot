@@ -22,6 +22,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConnectionManagerTest {
 
   @Test
+  void capturedLinksUseTargetProtocolAndDoNotForwardForeignReplyIds() throws Exception {
+    ConnectionManager manager = new ConnectionManager();
+    java.util.ArrayList<Message> sent = new java.util.ArrayList<>();
+    for (BotConnectionType type : List.of(BotConnectionType.IRC_CONNECTION, BotConnectionType.TELEGRAM_CONNECTION)) {
+      BotConnection connection = new BotConnection(type) {
+        @Override public void sendMessageTo(Message message) { sent.add(message); }
+      };
+      String alias = type.name();
+      manager.updateJoinedChannelsMap(type, connection,
+          new BotConnectionChannel("target-id", alias, type.name(), "test", "target-name"));
+      manager.sendCapturedMediaLinkByEchoToAlias("Alice", "https://bot.test/m/abc12", alias);
+    }
+    assertThat(sent).hasSize(2);
+    assertThat(sent.get(0).getMessage()).isEqualTo("Alice https://bot.test/m/abc12");
+    assertThat(sent.get(1).getMessage()).isEqualTo("https://bot.test/m/abc12");
+    for (Message message : sent) {
+      assertThat(message.getId()).isEqualTo("target-id");
+      assertThat(message.getReplyToMessageId()).isNull();
+      assertThat(message.getMessageThreadId()).isNull();
+      assertThat(message.isSuppressLinkPreviews()).isTrue();
+    }
+  }
+
+  @Test
   void tracksKnownChannelsAndUsersByNormalizedEchoAlias() {
     ConnectionManager connectionManager = new ConnectionManager();
     BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {

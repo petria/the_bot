@@ -962,6 +962,16 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
 
+  public void sendCapturedMediaLinkByEchoToAlias(String sender, String publicUrl, String echoToAlias)
+      throws InvalidEchoToAliasException {
+    Dual target = findChannelByEchoToAlias(echoToAlias);
+    if (target == null) {
+      throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
+    }
+    target.connection.sendMessageTo(MediaCaptureService.capturedLinkMessage(target.connection,
+        target.channel.getId(), target.channel.getName(), sender, publicUrl, null));
+  }
+
   public void sendMessageByEchoToAlias(String messageText, String echoToAlias) throws InvalidEchoToAliasException {
     long startedAt = System.currentTimeMillis();
     log.debug(
