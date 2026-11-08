@@ -962,14 +962,43 @@ public class ConnectionManager implements CommandLineRunner {
   }
 
 
-  public void sendCapturedMediaLinkByEchoToAlias(String sender, String publicUrl, String echoToAlias)
+  public void sendCapturedMediaLinkByEchoToAlias(String sourceProtocol, String sender, String senderId,
+      String mediaType, String publicUrl, String echoToAlias)
       throws InvalidEchoToAliasException {
     Dual target = findChannelByEchoToAlias(echoToAlias);
     if (target == null) {
       throw new InvalidEchoToAliasException("No channel found with echoToAlias: " + echoToAlias);
     }
+    String name = resolveCapturedMediaName(target.connection, sourceProtocol, sender, senderId);
     target.connection.sendMessageTo(MediaCaptureService.capturedLinkMessage(target.connection,
-        target.channel.getId(), target.channel.getName(), sender, publicUrl, null));
+        target.channel.getId(), target.channel.getName(), name, mediaType, publicUrl, null));
+  }
+
+  String resolveCapturedMediaName(BotConnection target, String sourceProtocol, String sender, String senderId) {
+    String protocol = switch (sourceProtocol == null ? "" : sourceProtocol.toLowerCase()) {
+      case "irc" -> "IRC_CONNECTION";
+      case "discord" -> "DISCORD_CONNECTION";
+      case "telegram" -> "TELEGRAM_CONNECTION";
+      case "whatsapp" -> "WHATSAPP_CONNECTION";
+      default -> "";
+    };
+    User matched = readConfiguredUsers().stream().filter(user -> {
+      if (user == null) return false;
+      if (org.freakz.common.users.UserChatIdentityUtil.matches(user, protocol, null, senderId, sender, sender)) return true;
+      return switch (protocol) {
+        case "TELEGRAM_CONNECTION" -> configuredValueMatchesObserved(user.getTelegramId(), senderId);
+        case "DISCORD_CONNECTION" -> configuredValueMatchesObserved(user.getDiscordId(), senderId);
+        case "WHATSAPP_CONNECTION" -> configuredValueMatchesObserved(user.getWhatsappId(), senderId);
+        default -> false;
+      };
+    }).findFirst().orElse(null);
+    if (target != null && target.getType() == BotConnectionType.IRC_CONNECTION
+        && matched != null && matched.getIrcNick() != null && !matched.getIrcNick().isBlank()) {
+      return matched.getIrcNick().trim();
+    }
+    if (sender != null && !sender.isBlank()) return sender.trim();
+    return matched != null && matched.getUsername() != null && !matched.getUsername().isBlank()
+        ? matched.getUsername().trim() : "unknown";
   }
 
   public void sendMessageByEchoToAlias(String messageText, String echoToAlias) throws InvalidEchoToAliasException {

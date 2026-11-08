@@ -145,7 +145,9 @@ public class MediaCaptureService {
             throw new IllegalStateException("Source connection is unavailable");
           }
           connection.sendMessageTo(capturedLinkMessage(connection, sourceChannel.getId(),
-              sourceChannel.getName(), sender, publicUrl, replyContext));
+              sourceChannel.getName(), connectionManager.resolveCapturedMediaName(connection, sourceProtocol,
+                  sender, replyContext == null ? null : replyContext.senderId()),
+              MediaStore.mediaTypeLabel(effectiveContentType), publicUrl, replyContext));
           if (sourceChannel.getEchoToAlias() != null) {
             targetAliases.remove(sourceChannel.getEchoToAlias().trim());
           }
@@ -158,7 +160,9 @@ public class MediaCaptureService {
           continue;
         }
         try {
-          connectionManager.sendCapturedMediaLinkByEchoToAlias(sender, publicUrl, alias.trim());
+          connectionManager.sendCapturedMediaLinkByEchoToAlias(sourceProtocol, sender,
+              replyContext == null ? null : replyContext.senderId(),
+              MediaStore.mediaTypeLabel(effectiveContentType), publicUrl, alias.trim());
         } catch (Exception e) {
           log.warn("Unable to send captured image link to {}: {}", alias, e.getMessage());
         }
@@ -227,15 +231,9 @@ public class MediaCaptureService {
   }
 
   static Message capturedLinkMessage(BotConnection connection, String channelId, String channelName,
-      String sender, String publicUrl, ReplyContext replyContext) {
-    boolean irc = connection.getType() == BotConnectionType.IRC_CONNECTION;
-    String text = publicUrl;
-    if (irc && sender != null && !sender.isBlank()) {
-      text = sender.trim() + " " + publicUrl;
-    } else if (connection.getType() == BotConnectionType.DISCORD_CONNECTION) {
-      // Discord's angle-bracket links remain clickable without creating a media embed.
-      text = "<" + publicUrl + ">";
-    }
+      String sender, String mediaType, String publicUrl, ReplyContext replyContext) {
+    boolean irc = connection != null && connection.getType() == BotConnectionType.IRC_CONNECTION;
+    String text = "[ " + sender + " :: " + mediaType + " :: " + publicUrl + " ]";
     Message.Builder reply = Message.builder()
         .id(replyContext != null && replyContext.channelId() != null ? replyContext.channelId() : channelId)
         .target(channelName)

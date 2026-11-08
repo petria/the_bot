@@ -379,7 +379,7 @@ public class DiscordServerConnection extends BotConnection {
                 attachment.getFileName(),
                 java.util.Map.of(),
                 new MediaCaptureService.ReplyContext(event.getChannel().getIdAsString(),
-                    event.getMessage().getIdAsString(), null, null));
+                    event.getMessage().getIdAsString(), null, event.getMessageAuthor().getIdAsString()));
           }
         }
       }
