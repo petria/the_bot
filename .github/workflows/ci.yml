@@ -95,7 +95,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '26'
-          distribution: 'temurin'
+          # Use Azul's CDN to avoid GitHub Release asset outages during JDK setup.
+          distribution: 'zulu'
           cache: maven
 
       - name: Set up Node.js
@@ -244,7 +245,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '26'
-          distribution: 'temurin'
+          # Use Azul's CDN to avoid GitHub Release asset outages during JDK setup.
+          distribution: 'zulu'
           cache: maven
 
       - name: Build with Maven
