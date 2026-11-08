@@ -71,6 +71,30 @@ public class WatchWaterPoller {
           LoggerFactory.getLogger(getClass()).warn("Watch water refresh failed; retaining prior reading: {}", e.getMessage());
         }
       }
+      deliver(enabled, user);
+      wasEnabled=enabled;
+    } catch (Exception e) {
+      LoggerFactory.getLogger(getClass()).warn("Watch water poll/delivery failed: {}", e.getMessage());
+    }
+  }
+
+  public synchronized String refreshNow(String requester) throws Exception {
+    if (!username.equals(requester) || username.isBlank())
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+    if (!settings.getSettings().waterTemperatureToWatch())
+      throw new IllegalStateException("Water temperature to watch is disabled");
+    User user = users.findAll().stream().filter(User.class::isInstance).map(User.class::cast)
+        .filter(u -> username.equals(u.getUsername())).findFirst().orElseThrow();
+    EngineRequest request = new EngineRequest();
+    request.setUser(user); request.setNetwork("BOT_INTERNAL"); request.setFromSender(username); request.setCommand("water");
+    var reading = water.refreshReading(request, station);
+    lastTemperature = reading.temperatureC(); retrievedAt = reading.retrievedAt();
+    next = Instant.now().plusSeconds(interval); wasEnabled = true;
+    return deliver(true, user);
+  }
+
+  private String deliver(boolean enabled, User user) throws Exception {
+      Instant now = Instant.now();
       long expires = retrievedAt == null ? 0 : retrievedAt.plusSeconds(interval*3).toEpochMilli();
       var body=mapper.createObjectNode();
       body.put("station", station); body.put("enabled", enabled);
@@ -81,11 +105,8 @@ public class WatchWaterPoller {
       cache.setEnvValue("water.watch.last-reading", mapper.writeValueAsString(body), user);
       mobile.publishMobileNotification(new MobileNotificationEvent(UUID.randomUUID().toString(),username,
           "WATER_WATCH","Water temperature",mapper.writeValueAsString(body),null,null,null,now));
-      wasEnabled=enabled;
       LoggerFactory.getLogger(getClass()).info("Watch water state delivered: user={} station={} enabled={} temperatureC={} retrievedAt={}",
           username, station, enabled, lastTemperature, retrievedAt);
-    } catch (Exception e) {
-      LoggerFactory.getLogger(getClass()).warn("Watch water poll/delivery failed: {}", e.getMessage());
-    }
+      return mapper.writeValueAsString(body);
   }
 }

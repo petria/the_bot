@@ -34,6 +34,15 @@ public class WaterTemperatureReadingService {
   @Cacheable(cacheNames = "waterTemperatures", cacheManager = "waterTemperatureCacheManager",
       key = "#point.pageUrl()", sync = true)
   public WaterTemperatureReading read(WaterPointIndexService.WaterPoint point, EngineRequest request) throws Exception {
+    return fetch(point, request);
+  }
+
+  @org.springframework.cache.annotation.CachePut(cacheNames = "waterTemperatures", cacheManager = "waterTemperatureCacheManager", key = "#point.pageUrl()")
+  public WaterTemperatureReading refresh(WaterPointIndexService.WaterPoint point, EngineRequest request) throws Exception {
+    return fetch(point, request);
+  }
+
+  private WaterTemperatureReading fetch(WaterPointIndexService.WaterPoint point, EngineRequest request) throws Exception {
     String url = index.resolveTemperatureChartUrl(point);
     if (url == null || url.isBlank()) throw new IllegalStateException("Water chart unavailable");
     var image = images.loadFreshWaterSiteImage(url);

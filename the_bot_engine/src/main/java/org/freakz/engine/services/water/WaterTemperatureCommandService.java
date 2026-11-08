@@ -29,6 +29,12 @@ public class WaterTemperatureCommandService {
     return readings.read(resolution.point(), request);
   }
 
+  public WaterTemperatureReading refreshReading(EngineRequest request, String location) throws Exception {
+    var resolution = index.resolve(location);
+    if (!resolution.found()) throw new IllegalArgumentException("Water station not resolved");
+    return readings.refresh(resolution.point(), request);
+  }
+
   public String lookupText(EngineRequest request, String location) {
     String requested = location == null ? "" : location.trim();
     String display = requested;

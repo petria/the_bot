@@ -54,6 +54,23 @@ class WaterTemperatureCacheTest {
     verify(images, times(1)).loadFreshWaterSiteImage("chart");
   }
 
+  @Test void forcedRefreshBypassesAndReplacesCachedReading() throws Exception {
+    var original = readings.read(merikoski, new EngineRequest());
+    when(vision.analyzeImage(any(), anyString(), anyString())).thenReturn("{\"status\":\"OK\",\"temperatureC\":5.1}");
+    var refreshed = command.refreshReading(new EngineRequest(), "Merikoski");
+    assertThat(refreshed.temperatureC()).isEqualTo(5.1);
+    assertThat(refreshed).isNotSameAs(original);
+    assertThat(readings.read(merikoski, new EngineRequest())).isSameAs(refreshed);
+    verify(vision, times(2)).analyzeImage(any(), anyString(), anyString());
+  }
+
+  @Test void failedForcedRefreshPreservesCachedReading() throws Exception {
+    var original = readings.read(merikoski, new EngineRequest());
+    when(vision.analyzeImage(any(), anyString(), anyString())).thenThrow(new IllegalStateException("offline"));
+    assertThatThrownBy(() -> command.refreshReading(new EngineRequest(), "Merikoski")).isInstanceOf(IllegalStateException.class);
+    assertThat(readings.read(merikoski, new EngineRequest())).isSameAs(original);
+  }
+
   @Test void expiresAfterSixtyMinutesAndHitsDoNotExtendLifetime() throws Exception {
     var first = readings.read(merikoski, new EngineRequest());
     ticker.set(Duration.ofMinutes(59).toNanos());

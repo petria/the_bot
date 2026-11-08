@@ -20,6 +20,7 @@ interface BotApi {
     @POST("/api/mobile/auth/login") suspend fun login(@Body request: LoginRequest): TokenPair
     @POST("/api/mobile/auth/refresh") suspend fun refresh(@Body request: RefreshRequest): TokenPair
     @POST("/api/mobile/auth/logout") suspend fun logout(@Body request: RefreshRequest)
+    @POST("/api/mobile/water/refresh") suspend fun refreshWater(): kotlinx.serialization.json.JsonObject
     @GET("/api/mobile/me") suspend fun me(): MobileMe
     @POST("/api/mobile/devices") suspend fun registerDevice(@Body request: DeviceRequest)
     @GET("/api/mobile/notifications") suspend fun notifications(): List<NotificationItem>
