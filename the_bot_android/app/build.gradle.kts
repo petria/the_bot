@@ -37,7 +37,7 @@ android {
         create("dev") {
             dimension = "instance"
             applicationIdSuffix = ".dev"
-            buildConfigField("String", "BOT_WEB_BASE_URL", "\"https://hokandevbot.airiot.fi\"")
+            buildConfigField("String", "BOT_WEB_BASE_URL", "\"https://hokanthebot.airiot.fi\"")
         }
         create("prod") {
             dimension = "instance"
