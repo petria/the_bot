@@ -75,6 +75,14 @@ jobs:
           printf '%s' "$FIREBASE_PROD_GOOGLE_SERVICES_JSON_B64" | base64 --decode > the_bot_android/app/src/prod/google-services.json
       - name: Assemble matching Android client
         run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :app:assemble${ANDROID_VARIANT}Debug --no-daemon
+      - name: Verify phone and watch use the persistent signing key
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          expected=$(keytool -exportcert -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | sha256sum | cut -d' ' -f1)
+          for apk in the_bot_android/app/build/outputs/apk/$ANDROID_FLAVOR/debug/*.apk the_bot_android/wear/build/outputs/apk/$ANDROID_FLAVOR/debug/*.apk; do
+            actual=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            test "$expected" = "$actual" || { echo "APK signing key mismatch: $apk"; exit 1; }
+          done
       - name: Upload matching phone APK
         uses: actions/upload-artifact@v4
         with:
