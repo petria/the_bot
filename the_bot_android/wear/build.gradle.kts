@@ -12,6 +12,13 @@ android {
         versionCode = 3
         versionName = "0.3"
     }
+    signingConfigs.getByName("debug") {
+        storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+    }
+
     flavorDimensions += "instance"
     productFlavors {
         create("dev") { dimension = "instance"; applicationIdSuffix = ".dev" }
