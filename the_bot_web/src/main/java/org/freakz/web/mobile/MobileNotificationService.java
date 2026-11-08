@@ -69,6 +69,7 @@ public class MobileNotificationService {
         event.eventId(), event.username(), event.type(), event.title(), event.body(),
         event.connectionType(), event.channelAlias(), event.command(),
         event.occurredAt() == null ? Instant.now() : event.occurredAt(), false);
+    if ("WATER_WATCH".equals(record.type())) notifications.removeIf(item -> item.username().equals(record.username()) && "WATER_WATCH".equals(item.type()));
     notifications.add(record);
     trimUser(event.username());
     save();
@@ -104,7 +105,7 @@ public class MobileNotificationService {
   }
 
   private void trimUser(String username) {
-    List<NotificationRecord> own = notifications.stream().filter(item -> username.equals(item.username()))
+    List<NotificationRecord> own = notifications.stream().filter(item -> username.equals(item.username()) && !"WATER_WATCH".equals(item.type()))
         .sorted(Comparator.comparing(NotificationRecord::occurredAt).reversed()).toList();
     if (own.size() <= MAX_PER_USER) return;
     notifications.removeAll(own.subList(MAX_PER_USER, own.size()));
@@ -114,12 +115,15 @@ public class MobileNotificationService {
     if (!fcmEnabled || firebaseMessaging == null) return;
     for (DeviceRecord device : devices(record.username())) {
       try {
-        Message message = Message.builder()
-            .setToken(device.fcmToken())
-            .setNotification(Notification.builder().setTitle(record.title()).setBody(record.body()).build())
-            .putData("eventId", record.eventId())
-            .putData("type", record.type())
-            .build();
+        Message.Builder builder = Message.builder().setToken(device.fcmToken())
+            .putData("eventId", record.eventId()).putData("type", record.type());
+        if ("WATER_WATCH".equals(record.type())) {
+          builder.putData("water", record.body()).setAndroidConfig(com.google.firebase.messaging.AndroidConfig.builder()
+              .setCollapseKey("water-watch").setTtl(3600000).build());
+        } else {
+          builder.setNotification(Notification.builder().setTitle(record.title()).setBody(record.body()).build());
+        }
+        Message message = builder.build();
         firebaseMessaging.send(message);
       } catch (Exception e) {
         // A stale token must not prevent inbox persistence or another device delivery.

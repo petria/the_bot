@@ -13,6 +13,7 @@ import { AdminCollectedUrlsPage } from './pages/AdminCollectedUrlsPage';
 import { AdminConnectionConfigPage } from './pages/AdminConnectionConfigPage';
 import { AdminMediaContentPage } from './pages/AdminMediaContentPage';
 import { AdminMediaStoragePage } from './pages/AdminMediaStoragePage';
+import { AdminManageSystemPage } from './pages/AdminManageSystemPage';
 import { AdminSystemPage } from './pages/AdminSystemPage';
 import { CommandsPage } from './pages/CommandsPage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
@@ -50,6 +51,7 @@ const adminNavItems = [
   { label: 'Manage AI Routes', path: '/admin/system', icon: Settings },
   { label: 'Manage Connections', path: '/admin/config', icon: SlidersHorizontal },
   { label: 'Manage Media Storage', path: '/admin/media-storage', icon: Images },
+  { label: 'Manage System', path: '/admin/manage-system', icon: Server },
   { label: 'Manage Users', path: '/admin/users', icon: ShieldUser },
   { label: 'Media Content', path: '/admin/media-content', icon: FolderOpen },
   { label: 'Send', path: '/send', icon: Send },
@@ -189,6 +191,7 @@ function AuthenticatedApp() {
             <Route path="/send" element={<RequireWebAdmin allowed={webAdmin}><SendPage /></RequireWebAdmin>} />
             <Route path="/connections" element={<RequireWebUser allowed={webUser}><ConnectionsPage /></RequireWebUser>} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin/manage-system" element={<RequireWebAdmin allowed={webAdmin}><AdminManageSystemPage /></RequireWebAdmin>} />
             <Route path="/admin/users" element={<RequireWebAdmin allowed={webAdmin}><AdminUsersPage /></RequireWebAdmin>} />
             <Route path="/admin/config" element={<RequireWebAdmin allowed={webAdmin}><AdminConnectionConfigPage /></RequireWebAdmin>} />
             <Route path="/admin/media-storage" element={<RequireWebAdmin allowed={webAdmin}><AdminMediaStoragePage /></RequireWebAdmin>} />

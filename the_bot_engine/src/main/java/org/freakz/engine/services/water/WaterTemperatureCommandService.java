@@ -49,6 +49,11 @@ public class WaterTemperatureCommandService {
 
   @Async
   public void ask(EngineRequest request, String requestedLocation) {
+    String response = lookupText(request, requestedLocation);
+    botEngine.sendReplyMessage(request, formatReplyForTarget(request, response));
+  }
+
+  public String lookupText(EngineRequest request, String requestedLocation) {
     String requested = requestedLocation == null ? "" : requestedLocation.trim();
     long started = System.nanoTime();
     String response;
@@ -81,8 +86,8 @@ public class WaterTemperatureCommandService {
       log.warn("Water temperature lookup failed for '{}': {}", requested, error.getMessage());
       response = requested + ": N/A";
     }
-    botEngine.sendReplyMessage(request, formatReplyForTarget(request, response));
-    log.debug("Water command completed in {} ms: location={} response={}", elapsedMillis(started), requested, response);
+    log.debug("Water lookup completed in {} ms: location={} response={}", elapsedMillis(started), requested, response);
+    return response;
   }
 
   private long elapsedMillis(long started) {

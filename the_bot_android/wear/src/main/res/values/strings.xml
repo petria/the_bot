@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Bot Water Test</string>
+    <string name="provider_name">Water temperature (test)</string>
+    <string name="test_heading">Simulated water</string>
+    <string name="current_value">Current: %1$s</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="text_provider_name">Water temperature (text)</string>
+</resources>

@@ -10,6 +10,10 @@ import com.google.firebase.messaging.RemoteMessage
 
 class BotFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
+        if (message.data["type"] == "WATER_WATCH") {
+            WaterWatchWorker.start(this)
+            return
+        }
         val channelId = "bot-events"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(

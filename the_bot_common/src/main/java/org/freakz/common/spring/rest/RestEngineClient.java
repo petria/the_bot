@@ -1,5 +1,7 @@
 package org.freakz.common.spring.rest;
 
+import org.freakz.common.model.engine.system.SystemSettings;
+
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.aicommand.AiCommandConfigResponse;
@@ -48,6 +50,17 @@ import java.time.Duration;
 
 @Component
 public class RestEngineClient {
+
+  public ResponseEntity<SystemSettings> getSystemSettings() {
+    return restTemplate.getForEntity(baseUrl + "/internal/system/settings", SystemSettings.class);
+  }
+
+  public ResponseEntity<SystemSettings> updateSystemSettings(
+      SystemSettings request) {
+    return restTemplate.exchange(baseUrl + "/internal/system/settings", HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(request), SystemSettings.class);
+  }
+
 
   private static final Logger log = LoggerFactory.getLogger(RestEngineClient.class);
   private final RestTemplate restTemplate;

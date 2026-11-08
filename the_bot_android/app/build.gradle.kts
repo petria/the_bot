@@ -28,8 +28,8 @@ android {
         applicationId = "org.freakz.botclient"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.1"
     }
 
     flavorDimensions += "instance"
@@ -53,6 +53,8 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation(platform("androidx.compose:compose-bom:2025.01.00"))
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.compose.material3:material3")

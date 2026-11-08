@@ -18,3 +18,16 @@ This project is not a Maven module. Build it with the Android Gradle toolchain:
 ./gradlew :app:assembleDevDebug
 ./gradlew :app:assembleProdRelease
 ```
+
+## Watch complication compatibility test
+
+The independent `:wear` module installs **Bot Water Test** (`org.freakz.botclient.water.test`).
+It uses simulated readings only; it does not need Firebase or the phone app.
+See [the device test procedure](../docs/watch-water-test.md). Build with installed Gradle 8.11.1:
+
+```sh
+gradle -p the_bot_android :wear:testDevDebugUnitTest :wear:lintDevDebug :wear:assembleDevDebug
+```
+
+The APK is `the_bot_android/wear/build/outputs/apk/dev/debug/wear-dev-debug.apk`.
+CI publishes it and the test/lint reports in the `bot-water-test` artifact.
