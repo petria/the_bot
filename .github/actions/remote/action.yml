@@ -1,0 +1,49 @@
+name: Native SSH deployment
+description: Run a script or copy a deployment file using installed OpenSSH.
+inputs:
+  host:
+    required: true
+    description: SSH host
+  username:
+    required: true
+    description: SSH user
+  key:
+    required: true
+    description: SSH private key
+  envs:
+    default: ''
+    description: Comma-separated environment names to forward
+  script:
+    default: ''
+    description: Remote Bash script
+  source:
+    default: ''
+    description: Local file to copy instead of running a script
+  target:
+    default: ''
+    description: Remote destination directory
+  strip_components:
+    default: '0'
+    description: Leading source path components to remove
+  overwrite:
+    default: 'true'
+    description: Copy replaces the destination file
+  command_timeout:
+    default: 10m
+    description: Maximum remote execution duration
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        REMOTE_HOST: ${{ inputs.host }}
+        REMOTE_USER: ${{ inputs.username }}
+        REMOTE_KEY: ${{ inputs.key }}
+        REMOTE_ENVS: ${{ inputs.envs }}
+        REMOTE_SCRIPT: ${{ inputs.script }}
+        REMOTE_SOURCE: ${{ inputs.source }}
+        REMOTE_TARGET: ${{ inputs.target }}
+        REMOTE_STRIP: ${{ inputs.strip_components }}
+        REMOTE_OVERWRITE: ${{ inputs.overwrite }}
+        REMOTE_TIMEOUT: ${{ inputs.command_timeout }}
+      run: python3 "$GITHUB_ACTION_PATH/remote.py"
