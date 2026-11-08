@@ -83,3 +83,15 @@ Logout clears the watch state. Test providers continue to use separate simulated
 Acceptance: verify a real Merikoski value, silent background phone reception,
 phone/watch reconnect, watch reboot, toggle Off, expiry and recovery. Unit/build
 checks alone do not establish that full delivery chain on a physical paired phone.
+
+## Branch-specific Android CI
+
+The Android job builds matching `devDebug` phone/watch APKs for develop and
+`prodDebug` APKs for main. Main's APKs use `org.freakz.botclient` and the production
+bot URL; develop uses `org.freakz.botclient.dev` and the development URL.
+Configure `FIREBASE_PROD_GOOGLE_SERVICES_JSON_B64` in the production GitHub environment
+with the downloaded Firebase Android configuration for `org.freakz.botclient`.
+Develop uses `FIREBASE_DEV_GOOGLE_SERVICES_JSON_B64` for `org.freakz.botclient.dev`.
+The production secret must contain actual production app metadata, not a renamed
+development app configuration. Android build failure does not establish a failure
+of the separately running backend deployment jobs.
