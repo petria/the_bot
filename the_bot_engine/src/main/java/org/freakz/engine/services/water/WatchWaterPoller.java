@@ -63,9 +63,13 @@ public class WatchWaterPoller {
         EngineRequest request = new EngineRequest();
         request.setUser(user); request.setNetwork("BOT_INTERNAL"); request.setFromSender(username);
         request.setCommand("water");
-        String text=water.lookupText(request, station);
-        var match=java.util.regex.Pattern.compile(", (-?\\d+(?:\\.\\d+)?)°C$").matcher(text);
-        if (match.find()) { lastTemperature=Double.valueOf(match.group(1)); retrievedAt=now; }
+        try {
+          var reading = water.lookupReading(request, station);
+          lastTemperature = reading.temperatureC();
+          retrievedAt = reading.retrievedAt();
+        } catch (Exception e) {
+          LoggerFactory.getLogger(getClass()).warn("Watch water refresh failed; retaining prior reading: {}", e.getMessage());
+        }
       }
       long expires = retrievedAt == null ? 0 : retrievedAt.plusSeconds(interval*3).toEpochMilli();
       var body=mapper.createObjectNode();

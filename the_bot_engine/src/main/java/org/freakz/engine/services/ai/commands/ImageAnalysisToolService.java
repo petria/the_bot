@@ -95,6 +95,15 @@ public class ImageAnalysisToolService {
   }
 
   public ImageData loadWaterSiteImage(String sourceUrl) throws Exception {
+    return loadWaterSiteImage(sourceUrl, false);
+  }
+
+  /** A new processed reading must use newly downloaded chart bytes. */
+  public ImageData loadFreshWaterSiteImage(String sourceUrl) throws Exception {
+    return loadWaterSiteImage(sourceUrl, true);
+  }
+
+  private ImageData loadWaterSiteImage(String sourceUrl, boolean fresh) throws Exception {
     String normalizedUrl = sourceUrl == null ? "" : sourceUrl.trim();
     if (!normalizedUrl.startsWith("https://wwwi2.ymparisto.fi/")) {
       throw new IllegalArgumentException("water image URL is not allowed");
@@ -104,7 +113,7 @@ public class ImageAnalysisToolService {
       throw new IllegalArgumentException("water image URL is not allowed");
     }
     ImageData cached = waterCache.getIfPresent(normalizedUrl);
-    if (cached != null) {
+    if (!fresh && cached != null) {
       return cached;
     }
     ImageData image = download(requested, WaterSiteTls.context());

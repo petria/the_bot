@@ -95,7 +95,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '26'
-          distribution: 'temurin'
+          # Use Azul's CDN to avoid GitHub Release asset outages during JDK setup.
+          distribution: 'zulu'
           cache: maven
 
       - name: Set up Node.js
@@ -244,7 +245,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: '26'
-          distribution: 'temurin'
+          # Use Azul's CDN to avoid GitHub Release asset outages during JDK setup.
+          distribution: 'zulu'
           cache: maven
 
       - name: Build with Maven
@@ -370,8 +372,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Check native SSH deployment adapter
+        run: python3 -m unittest discover -s .github/actions/remote -v
+
       - name: Prepare deploy directory
-        uses: appleboy/ssh-action@master
+        uses: ./.github/actions/remote
         env:
           DEPLOY_WORKDIR: ${{ vars.DEPLOY_WORKDIR || github.ref_name == 'develop' && '/home/hokan/dev_the_bot' || '/home/hokan/the_bot' }}
         with:
@@ -384,7 +389,7 @@ jobs:
             chown "$(id -un):$(id -gn)" "$DEPLOY_WORKDIR"
 
       - name: Copy compose file to VM
-        uses: appleboy/scp-action@master
+        uses: ./.github/actions/remote
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
@@ -395,7 +400,7 @@ jobs:
 
       - name: Copy develop debug compose file to VM
         if: ${{ github.ref_name == 'develop' }}
-        uses: appleboy/scp-action@master
+        uses: ./.github/actions/remote
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
@@ -405,7 +410,7 @@ jobs:
           overwrite: true
 
       - name: Copy Docker maintenance script to VM
-        uses: appleboy/scp-action@master
+        uses: ./.github/actions/remote
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
@@ -416,7 +421,7 @@ jobs:
           overwrite: true
 
       - name: Deploy changed services to VM
-        uses: appleboy/ssh-action@master
+        uses: ./.github/actions/remote
         env:
           DEPLOY_SHA: ${{ github.sha }}
           DEPLOY_BRANCH: ${{ github.ref_name }}

@@ -81,7 +81,7 @@ class MediaCaptureServiceTest {
     MediaStore store = new MediaStore(storage, mapper);
     var records = store.listActive();
     assertThat(records).hasSize(1);
-    assertThat(reply.getMessage()).isEqualTo("https://bot.test/m/" + records.getFirst().shortCode());
+    assertThat(reply.getMessage()).isEqualTo("[ Alice :: image :: https://bot.test/m/" + records.getFirst().shortCode() + " ]");
     assertThat(Files.readAllBytes(store.readPublicByShortCode(records.getFirst().shortCode()).orElseThrow().file()))
         .containsExactly(body);
     assertThat(manager.aliases).isEmpty();
@@ -172,22 +172,22 @@ class MediaCaptureServiceTest {
   }
 
   @Test
-  void ircSourceUsesSenderAndBareUrlWithoutThreadMetadata() {
+  void ircSourceUsesRequestedFormatAndNoThreadMetadata() {
     Message message = MediaCaptureService.capturedLinkMessage(new BotConnection(BotConnectionType.IRC_CONNECTION),
-        "irc-id", "#test", "Alice", "https://bot.test/m/abc12",
+        "irc-id", "#test", "Alice", "image", "https://bot.test/m/abc12",
         new MediaCaptureService.ReplyContext("irc-id", "42", "7", "sender-id"));
-    assertThat(message.getMessage()).isEqualTo("Alice https://bot.test/m/abc12");
+    assertThat(message.getMessage()).isEqualTo("[ Alice :: image :: https://bot.test/m/abc12 ]");
     assertThat(message.getReplyToMessageId()).isNull();
     assertThat(message.getMessageThreadId()).isNull();
   }
 
   @Test
-  void discordLinkSuppressesEmbedsAndTargetsOriginalThreadChannel() {
+  void discordLinkUsesRequestedFormatAndTargetsOriginalThreadChannel() {
     Message message = MediaCaptureService.capturedLinkMessage(new BotConnection(BotConnectionType.DISCORD_CONNECTION),
-        "parent-channel", "test", "Alice", "https://bot.test/m/abc12",
+        "parent-channel", "test", "Alice", "video", "https://bot.test/m/abc12",
         new MediaCaptureService.ReplyContext("thread-channel", "42", null, "sender-id"));
     assertThat(message.getId()).isEqualTo("thread-channel");
-    assertThat(message.getMessage()).isEqualTo("<https://bot.test/m/abc12>");
+    assertThat(message.getMessage()).isEqualTo("[ Alice :: video :: https://bot.test/m/abc12 ]");
     assertThat(message.getReplyToMessageId()).isEqualTo("42");
     assertThat(message.isSuppressLinkPreviews()).isTrue();
   }
@@ -216,7 +216,8 @@ class MediaCaptureServiceTest {
   private static class RecordingManager extends ConnectionManager {
     private final List<String> aliases = new ArrayList<>();
     private String failAlias;
-    @Override public void sendCapturedMediaLinkByEchoToAlias(String sender, String publicUrl, String alias) {
+    @Override public void sendCapturedMediaLinkByEchoToAlias(String sourceProtocol, String sender, String senderId,
+        String mediaType, String publicUrl, String alias) {
       if (alias.equals(failAlias)) throw new IllegalStateException("Forward send failed");
       aliases.add(alias);
     }

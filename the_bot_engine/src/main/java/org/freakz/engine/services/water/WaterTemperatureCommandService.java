@@ -3,137 +3,49 @@ package org.freakz.engine.services.water;
 import org.freakz.common.chat.ChatIdentityUtil;
 import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.engine.commands.BotEngine;
-import org.freakz.engine.services.ai.commands.HermesAiCommandService;
-import org.freakz.engine.services.ai.commands.ImageAnalysisToolService;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
-
 import java.util.Locale;
 
 @Service
 public class WaterTemperatureCommandService {
-
-  private static final Logger log = LoggerFactory.getLogger(WaterTemperatureCommandService.class);
-  private static final String VISION_PROMPT = """
-      Read the current measured river water temperature from the attached SYKE chart.
-      Use only the observed blue temperature line. Ignore the cyan dashed forecast-start line,
-      forecast bands, labels, and forecast values. Read the rightmost observed blue point before
-      the forecast marker. Return JSON only, exactly one of:
-      {"status":"OK","temperatureC":20.5}
-      {"status":"N/A"}
-      temperatureC must be a JSON number in degrees Celsius, with no unit text.
-      """;
-
-  private final WaterPointIndexService pointIndexService;
-  private final ImageAnalysisToolService imageAnalysisToolService;
-  private final HermesAiCommandService hermesAiCommandService;
-  private final JsonMapper jsonMapper;
+  private final WaterPointIndexService index;
+  private final WaterTemperatureReadingService readings;
   private final BotEngine botEngine;
 
-  public WaterTemperatureCommandService(
-      WaterPointIndexService pointIndexService,
-      ImageAnalysisToolService imageAnalysisToolService,
-      HermesAiCommandService hermesAiCommandService,
-      JsonMapper jsonMapper,
-      BotEngine botEngine) {
-    this.pointIndexService = pointIndexService;
-    this.imageAnalysisToolService = imageAnalysisToolService;
-    this.hermesAiCommandService = hermesAiCommandService;
-    this.jsonMapper = jsonMapper;
-    this.botEngine = botEngine;
+  public WaterTemperatureCommandService(WaterPointIndexService index, WaterTemperatureReadingService readings, BotEngine botEngine) {
+    this.index = index; this.readings = readings; this.botEngine = botEngine;
   }
 
   @Async
-  public void ask(EngineRequest request, String requestedLocation) {
-    String response = lookupText(request, requestedLocation);
-    botEngine.sendReplyMessage(request, formatReplyForTarget(request, response));
+  public void ask(EngineRequest request, String location) {
+    botEngine.sendReplyMessage(request, formatReplyForTarget(request, lookupText(request, location)));
   }
 
-  public String lookupText(EngineRequest request, String requestedLocation) {
-    String requested = requestedLocation == null ? "" : requestedLocation.trim();
-    long started = System.nanoTime();
-    String response;
+  public WaterTemperatureReading lookupReading(EngineRequest request, String location) throws Exception {
+    var resolution = index.resolve(location == null ? "" : location.trim());
+    if (!resolution.found()) throw new IllegalArgumentException("Water station not resolved");
+    return readings.read(resolution.point(), request);
+  }
+
+  public String lookupText(EngineRequest request, String location) {
+    String requested = location == null ? "" : location.trim();
+    String display = requested;
     try {
-      long stageStarted = System.nanoTime();
-      WaterPointIndexService.Resolution resolution = pointIndexService.resolve(requested);
-      log.debug("Water station resolve took {} ms: location={}", elapsedMillis(stageStarted), requested);
+      var resolution = index.resolve(requested);
       if (!resolution.found()) {
-        response = resolution.ambiguous()
-            ? requested + ": N/A (matches: " + resolution.matches().stream()
-                .limit(4).map(WaterPointIndexService.WaterPoint::name).reduce((a, b) -> a + ", " + b).orElse("") + ")"
+        return resolution.ambiguous() ? requested + ": N/A (matches: " + resolution.matches().stream()
+            .limit(4).map(WaterPointIndexService.WaterPoint::name).reduce((a,b) -> a + ", " + b).orElse("") + ")"
             : requested + ": N/A";
-      } else {
-        stageStarted = System.nanoTime();
-        String chartUrl = pointIndexService.resolveTemperatureChartUrl(resolution.point());
-        log.debug("Water chart lookup took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
-        if (chartUrl == null || chartUrl.isBlank()) {
-          response = resolution.displayName() + ": N/A";
-        } else {
-          stageStarted = System.nanoTime();
-          ImageAnalysisToolService.ImageData image = imageAnalysisToolService.loadWaterSiteImage(chartUrl);
-          log.debug("Water chart download took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
-          stageStarted = System.nanoTime();
-          String modelResponse = hermesAiCommandService.analyzeImage(request, VISION_PROMPT, image.dataUrl());
-          log.debug("Water Hermes vision request took {} ms: point={}", elapsedMillis(stageStarted), resolution.displayName());
-          response = formatTemperature(resolution.displayName(), modelResponse);
-        }
       }
+      display = resolution.displayName();
+      var result = readings.read(resolution.point(), request);
+      return String.format(Locale.ROOT, "%s, %.1f°C", display, result.temperatureC());
     } catch (Exception error) {
-      log.warn("Water temperature lookup failed for '{}': {}", requested, error.getMessage());
-      response = requested + ": N/A";
+      LoggerFactory.getLogger(getClass()).warn("Water lookup failed for '{}': {}", requested, error.getMessage());
+      return display + ": N/A";
     }
-    log.debug("Water lookup completed in {} ms: location={} response={}", elapsedMillis(started), requested, response);
-    return response;
-  }
-
-  private long elapsedMillis(long started) {
-    return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
-  }
-
-  String formatTemperature(String pointName, String modelResponse) {
-    try {
-      String json = modelResponse == null ? "" : modelResponse.trim();
-      int start = json.indexOf('{');
-      int end = json.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        json = json.substring(start, end + 1);
-      }
-      JsonNode node = jsonMapper.readTree(json);
-      Double temperature = readTemperature(node.path("temperatureC"));
-      if (!"OK".equalsIgnoreCase(node.path("status").asString("")) || temperature == null) {
-        return pointName + ": N/A";
-      }
-      if (temperature < -10 || temperature > 45) {
-        return pointName + ": N/A";
-      }
-      return String.format(Locale.ROOT, "%s, %.1f°C", pointName, temperature);
-    } catch (Exception error) {
-      return pointName + ": N/A";
-    }
-  }
-
-  private Double readTemperature(JsonNode node) {
-    if (node == null || node.isMissingNode() || node.isNull()) {
-      return null;
-    }
-    if (node.isNumber()) {
-      double value = node.asDouble(Double.NaN);
-      return Double.isFinite(value) ? value : null;
-    }
-    if (node.isString()) {
-      String text = node.asString("").trim().replace(',', '.');
-      try {
-        double value = Double.parseDouble(text);
-        return Double.isFinite(value) ? value : null;
-      } catch (NumberFormatException error) {
-        return null;
-      }
-    }
-    return null;
   }
 
   private String formatReplyForTarget(EngineRequest request, String reply) {

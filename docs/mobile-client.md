@@ -95,3 +95,16 @@ Develop uses `FIREBASE_DEV_GOOGLE_SERVICES_JSON_B64` for `org.freakz.botclient.d
 The production secret must contain actual production app metadata, not a renamed
 development app configuration. Android build failure does not establish a failure
 of the separately running backend deployment jobs.
+
+## Shared processed water cache
+
+Bot-engine uses Spring caching with Caffeine to retain successful processed water
+readings for 60 minutes after creation. Chat commands and watch polls share entries
+by resolved station page URL; a hit skips chart downloads and Hermes vision.
+Concurrent requests for the same station share a lookup. A miss downloads a fresh
+chart image, processes it and stores the temperature with its retrieval timestamp.
+Failures are not cached. Entries are bounded to 1,024 stations, are local to each
+engine process and are lost on restart. Cache hits do not extend their lifetime.
+Watch updates preserve the original reading timestamp and 90-minute expiry under
+the current 30-minute delivery interval; receiving a cached update does not make
+its temperature newer. Watch fallback state remains persisted separately.

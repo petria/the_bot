@@ -344,7 +344,7 @@ public class TelegramConnection extends BotConnection {
           new MediaCaptureService.ReplyContext(String.valueOf(message.getChatId()),
               String.valueOf(message.getMessageId()),
               message.getMessageThreadId() == null ? null : String.valueOf(message.getMessageThreadId()),
-              null));
+              message.getFrom() == null ? null : String.valueOf(message.getFrom().getId())));
     }
 
     private void notifyCaptureFailure(Channel sourceChannel,

@@ -23,14 +23,16 @@ class WatchWaterPollerTest {
     when(settings.getSettings()).thenReturn(new SystemSettings(true));
     doReturn(List.of(User.builder().username("petria").name("Petri").build())).when(users).findAll();
     when(cache.getKeyValueOrDefault(anyString(),anyString())).thenReturn("{}");
-    when(water.lookupText(any(),eq("Merikoski"))).thenReturn("Merikoski, 4.2°C");
+    var fetched = java.time.Instant.now().minusSeconds(1800);
+    when(water.lookupReading(any(),eq("Merikoski"))).thenReturn(new WaterTemperatureReading("Merikoski", "url", 4.2, fetched));
     var poller=new WatchWaterPoller(settings,water,mobile,users,mapper,cache,"Merikoski","petria",30);
     poller.poll(); poller.poll();
-    verify(water,times(1)).lookupText(any(),eq("Merikoski"));
+    verify(water,times(1)).lookupReading(any(),eq("Merikoski"));
     var event=ArgumentCaptor.forClass(MobileNotificationEvent.class);
     verify(mobile).publishMobileNotification(event.capture());
     var data=mapper.readTree(event.getValue().body());
     assertThat(data.path("temperatureC").asDouble()).isEqualTo(4.2);
+    assertThat(data.path("retrievedAt").asLong()).isEqualTo(fetched.toEpochMilli());
     assertThat(data.path("expiresAt").asLong()-data.path("retrievedAt").asLong()).isEqualTo(90*60*1000);
     assertThat(event.getValue().username()).isEqualTo("petria");
     when(settings.getSettings()).thenReturn(new SystemSettings(false));
@@ -49,7 +51,7 @@ class WatchWaterPollerTest {
     doReturn(List.of(User.builder().username("petria").build())).when(users).findAll();
     long retrieved=System.currentTimeMillis()-60000;
     when(cache.getKeyValueOrDefault(anyString(),anyString())).thenReturn("{\"station\":\"Merikoski\",\"username\":\"petria\",\"temperatureC\":0.0,\"retrievedAt\":"+retrieved+"}");
-    when(water.lookupText(any(),anyString())).thenReturn("Merikoski: N/A");
+    when(water.lookupReading(any(),anyString())).thenThrow(new IllegalStateException("N/A"));
     new WatchWaterPoller(settings,water,mobile,users,JsonMapper.builder().build(),cache,"Merikoski","petria",30).poll();
     var event=ArgumentCaptor.forClass(MobileNotificationEvent.class);
     verify(mobile).publishMobileNotification(event.capture());

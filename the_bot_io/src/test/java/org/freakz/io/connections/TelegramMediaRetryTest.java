@@ -38,7 +38,7 @@ class TelegramMediaRetryTest {
     assertThat(bot.fileCalls).isEqualTo(2);
     assertThat(capture.calls).isEqualTo(1);
     assertThat(capture.url).endsWith("/photos/test.jpg");
-    assertThat(capture.replyContext).isEqualTo(new MediaCaptureService.ReplyContext("-123", "42", "7", null));
+    assertThat(capture.replyContext).isEqualTo(new MediaCaptureService.ReplyContext("-123", "42", "7", "123"));
     assertThat(replies).isEmpty();
   }
 

@@ -49,7 +49,13 @@ done
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed" >&2; exit 1; }
 
 LOCK_FILE="${DOCKER_MAINTENANCE_LOCK_FILE:-/tmp/the-bot-docker-maintenance.lock}"
-exec 9>"$LOCK_FILE"
+# Keep one shared inode across root-run timers and unprivileged CI. Opening an
+# existing root-owned /tmp file with O_CREAT/O_TRUNC is blocked by protected_regular.
+# Linux flock can take an exclusive lock on a read-only descriptor.
+if [[ ! -e "$LOCK_FILE" ]]; then
+  (umask 022; set -o noclobber; : > "$LOCK_FILE") 2>/dev/null || true
+fi
+exec 9<"$LOCK_FILE"
 if ! flock -n 9; then
   echo "Docker maintenance is already running: $LOCK_FILE"
   exit 0

@@ -32,17 +32,40 @@ class ConnectionManagerTest {
       String alias = type.name();
       manager.updateJoinedChannelsMap(type, connection,
           new BotConnectionChannel("target-id", alias, type.name(), "test", "target-name"));
-      manager.sendCapturedMediaLinkByEchoToAlias("Alice", "https://bot.test/m/abc12", alias);
+      manager.sendCapturedMediaLinkByEchoToAlias("Discord", "Alice", "discord-user-id",
+          "image", "https://bot.test/m/abc12", alias);
     }
     assertThat(sent).hasSize(2);
-    assertThat(sent.get(0).getMessage()).isEqualTo("Alice https://bot.test/m/abc12");
-    assertThat(sent.get(1).getMessage()).isEqualTo("https://bot.test/m/abc12");
+    assertThat(sent.get(0).getMessage()).isEqualTo("[ Alice :: image :: https://bot.test/m/abc12 ]");
+    assertThat(sent.get(1).getMessage()).isEqualTo("[ Alice :: image :: https://bot.test/m/abc12 ]");
     for (Message message : sent) {
       assertThat(message.getId()).isEqualTo("target-id");
       assertThat(message.getReplyToMessageId()).isNull();
       assertThat(message.getMessageThreadId()).isNull();
       assertThat(message.isSuppressLinkPreviews()).isTrue();
     }
+  }
+
+  @Test
+  void capturedMediaUsesConfiguredIrcNickWhenForwardingToIrc() throws Exception {
+    ConnectionManager manager = new ConnectionManager();
+    User user = new User();
+    user.setUsername("petria");
+    user.setTelegramId("telegram-123");
+    user.setIrcNick("Pete");
+    manager.setConfiguredUsersForTesting(List.of(user));
+    java.util.ArrayList<Message> sent = new java.util.ArrayList<>();
+    BotConnection connection = new BotConnection(BotConnectionType.IRC_CONNECTION) {
+      @Override public void sendMessageTo(Message message) { sent.add(message); }
+    };
+    manager.updateJoinedChannelsMap(BotConnectionType.IRC_CONNECTION, connection,
+        new BotConnectionChannel("id", "IRC-TARGET", "IRC", "test", "#target"));
+
+    manager.sendCapturedMediaLinkByEchoToAlias("Telegram", "Alice", "telegram-123",
+        "audio", "https://bot.test/m/abc12", "IRC-TARGET");
+
+    assertThat(sent).singleElement().extracting(Message::getMessage)
+        .isEqualTo("[ Pete :: audio :: https://bot.test/m/abc12 ]");
   }
 
   @Test
