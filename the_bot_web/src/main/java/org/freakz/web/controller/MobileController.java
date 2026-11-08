@@ -49,6 +49,11 @@ public class MobileController {
     if (request != null) auth.logout(request.refreshToken());
   }
 
+  @PostMapping(value="/water/refresh", produces="application/json")
+  public String refreshWater(@AuthenticationPrincipal BotUserPrincipal principal) {
+    return engineClient.refreshWatchWater(principal.getUsername()).getBody();
+  }
+
   @GetMapping("/me")
   public MobileMe me(@AuthenticationPrincipal BotUserPrincipal principal) {
     return new MobileMe(principal.getUsername(), principal.getName(), principal.getPermissions());

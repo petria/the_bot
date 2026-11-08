@@ -108,3 +108,15 @@ engine process and are lost on restart. Cache hits do not extend their lifetime.
 Watch updates preserve the original reading timestamp and 90-minute expiry under
 the current 30-minute delivery interval; receiving a cached update does not make
 its temperature newer. Watch fallback state remains persisted separately.
+
+### Refresh water from the watch
+
+Tap the live water complication, then **Update now**. The watch sends a Data Layer
+message to its paired phone. The signed-in phone calls main's authenticated
+`POST /api/mobile/water/refresh` endpoint. The engine authorizes the configured
+watch recipient, downloads the chart and runs vision again, replacing the
+60-minute temperature cache on success. It persists and publishes the updated
+water event. The phone also sends the endpoint response directly to the watch
+as an urgent Data Item, so the requesting watch does not depend on FCM delivery.
+The details screen and complication refresh when the reading arrives. Errors
+leave the previous measurement and its original retrieval time intact.

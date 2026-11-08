@@ -51,6 +51,10 @@ import java.time.Duration;
 @Component
 public class RestEngineClient {
 
+  public ResponseEntity<String> refreshWatchWater(String username) {
+    return longRunningRestTemplate.postForEntity(baseUrl + "/internal/system/settings/water-refresh", username, String.class);
+  }
+
   public ResponseEntity<SystemSettings> getSystemSettings() {
     return restTemplate.getForEntity(baseUrl + "/internal/system/settings", SystemSettings.class);
   }

@@ -13,6 +13,31 @@ import static org.assertj.core.api.Assertions.*;
 import java.util.List;
 
 class WatchWaterPollerTest {
+  @Test void forcedRefreshAuthorizesUserAndPublishesFreshReading() throws Exception {
+    var settings=mock(WatchWaterSettingsService.class);
+    var water=mock(WaterTemperatureCommandService.class);
+    var mobile=mock(RestBotWebSystemClient.class);
+    var users=mock(UsersService.class);
+    var cache=mock(EnvValuesService.class);
+    var mapper=JsonMapper.builder().build();
+    when(settings.getSettings()).thenReturn(new SystemSettings(true));
+    doReturn(List.of(User.builder().username("petria").build())).when(users).findAll();
+    var fetched=java.time.Instant.now();
+    when(water.refreshReading(any(),eq("Merikoski"))).thenReturn(new WaterTemperatureReading("Merikoski", "url", 5.1, fetched));
+    var poller=new WatchWaterPoller(settings,water,mobile,users,mapper,cache,"Merikoski","petria",30);
+    assertThatThrownBy(() -> poller.refreshNow("another-user")).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    verifyNoInteractions(water, mobile);
+    var response=mapper.readTree(poller.refreshNow("petria"));
+    assertThat(response.path("temperatureC").asDouble()).isEqualTo(5.1);
+    assertThat(response.path("retrievedAt").asLong()).isEqualTo(fetched.toEpochMilli());
+    verify(mobile).publishMobileNotification(any());
+    poller.poll();
+    verify(water).refreshReading(any(), eq("Merikoski"));
+    verifyNoMoreInteractions(water);
+    when(settings.getSettings()).thenReturn(new SystemSettings(false));
+    assertThatThrownBy(() -> poller.refreshNow("petria")).isInstanceOf(IllegalStateException.class);
+  }
+
   @Test void pollsOnceThenHonorsIntervalAndSendsDisabledState() throws Exception {
     var settings=mock(WatchWaterSettingsService.class);
     var water=mock(WaterTemperatureCommandService.class);

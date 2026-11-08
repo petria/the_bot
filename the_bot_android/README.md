@@ -4,7 +4,8 @@ Independent Kotlin/Compose client for one configured `bot-web` instance.
 
 ## Build targets
 
-The `dev` and `prod` flavors use separate application IDs and base URLs. Set
+The `dev` and `prod` flavors keep separate application IDs for side-by-side
+installation, and both use the main bot-web instance as their backend. Set
 `THE_BOT_WEB_BASE_URL` in `app/build.gradle.kts` or override it in CI. The app
 only calls bot-web; it never connects directly to bot-engine or bot-io.
 

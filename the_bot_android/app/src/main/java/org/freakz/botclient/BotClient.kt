@@ -24,12 +24,13 @@ class BotClient(private val context: Context) {
     }
     private val api = Retrofit.Builder()
         .baseUrl(BuildConfig.BOT_WEB_BASE_URL.trimEnd('/') + "/")
-        .client(OkHttpClient.Builder().addInterceptor(authInterceptor).build())
+        .client(OkHttpClient.Builder().readTimeout(120, java.util.concurrent.TimeUnit.SECONDS).addInterceptor(authInterceptor).build())
         .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
         .build().create(BotApi::class.java)
 
     suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))); WaterWatchWorker.start(context) }
     suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear(); runCatching { WaterWatchWorker.clear(context) } }
+    suspend fun refreshWater() = authenticated { api.refreshWater() }
     suspend fun currentUser() = authenticated { api.me() }
     suspend fun registerCurrentDevice() {
         val token = FirebaseMessaging.getInstance().token.await()

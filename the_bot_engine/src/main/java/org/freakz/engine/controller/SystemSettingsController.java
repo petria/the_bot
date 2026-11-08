@@ -12,6 +12,12 @@ public class SystemSettingsController {
   private final WatchWaterSettingsService settings;
   public SystemSettingsController(WatchWaterSettingsService settings) { this.settings = settings; }
 
+  @org.springframework.beans.factory.annotation.Autowired
+  private org.freakz.engine.services.water.WatchWaterPoller water;
+
+  @PostMapping(value="/water-refresh", produces="application/json")
+  public String refresh(@RequestBody String username) throws Exception { return water.refreshNow(username); }
+
   @GetMapping
   public SystemSettings getSettings() { return settings.getSettings(); }
 

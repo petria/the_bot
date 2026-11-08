@@ -5,6 +5,7 @@ import androidx.work.*
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class WaterWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -12,9 +13,9 @@ class WaterWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val client = BotClient(applicationContext)
         if (!client.isLoggedIn()) return Result.success()
         val latest = client.notifications().filter { it.type == "WATER_WATCH" }.maxByOrNull { it.occurredAt }
-        val payload = latest?.body ?: "{\"enabled\":false,\"updatedAt\":${System.currentTimeMillis()}}"
+        val payload = JSONObject(latest?.body ?: "{}").put("updatedAt", System.currentTimeMillis()).toString()
         val request = PutDataMapRequest.create("/water/latest").apply { dataMap.putString("water", payload) }
-        Wearable.getDataClient(applicationContext).putDataItem(request.asPutDataRequest()).await()
+        Wearable.getDataClient(applicationContext).putDataItem(request.asPutDataRequest().setUrgent()).await()
         Result.success()
     } catch (e: Exception) { Result.retry() }
     }
