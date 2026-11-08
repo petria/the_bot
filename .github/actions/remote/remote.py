@@ -1,5 +1,6 @@
 """Small adapter for this repository's deployment inputs; no downloaded binaries."""
 import io
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -55,12 +56,16 @@ def main():
         key = Path(directory, 'identity')
         key.write_text(env['REMOTE_KEY'].rstrip() + '\n')
         key.chmod(0o600)
-        known = Path(directory, 'known_hosts')
-        # Match existing first-contact deployment behavior without changing user SSH files.
-        scan = subprocess.run(['ssh-keyscan', '-T', '15', '-H', host], capture_output=True, timeout=30, check=True)
-        if not scan.stdout.strip():
-            raise ValueError('SSH host key scan returned no keys')
-        known.write_bytes(scan.stdout)
+        # One probe per job avoids sshd's unauthenticated-connection penalties.
+        cache_dir = Path(env.get('RUNNER_TEMP', directory))
+        known = cache_dir / ('bot-ci-known-hosts-' + hashlib.sha256(host.encode()).hexdigest())
+        if not known.exists() or not known.read_bytes().strip():
+            scan = subprocess.run(['ssh-keyscan', '-t', 'ed25519', '-T', '15', '-H', host],
+                                  capture_output=True, timeout=30, check=True)
+            if not scan.stdout.strip():
+                raise ValueError('SSH host key scan returned no keys')
+            known.write_bytes(scan.stdout)
+            known.chmod(0o600)
         ssh = ['ssh', '-i', str(key), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
                '-o', 'ConnectTimeout=30', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4',
                '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=' + str(known), '-l', user, host]

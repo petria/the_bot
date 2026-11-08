@@ -6,6 +6,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import remote
 
 
@@ -43,6 +44,19 @@ class RemoteTests(unittest.TestCase):
                     remote.file_archive('docker-compose.yml', 1)
             finally:
                 os.chdir(old)
+
+    def test_host_scan_is_reused_across_deployment_steps(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = {'REMOTE_HOST': 'docker.local', 'REMOTE_USER': 'hokan', 'REMOTE_KEY': 'test key',
+                   'REMOTE_SCRIPT': 'true', 'RUNNER_TEMP': directory}
+            with patch.dict(os.environ, env, clear=True), patch.object(remote.subprocess, 'run') as run:
+                run.return_value = subprocess.CompletedProcess([], 0, stdout=b'host ssh-ed25519 test-key\n')
+                for _ in range(5):
+                    remote.main()
+                scans = [call for call in run.call_args_list if call.args[0][0] == 'ssh-keyscan']
+                self.assertEqual(len(scans), 1)
+                self.assertIn('ed25519', scans[0].args[0])
+                self.assertEqual(sum(call.args[0][0] == 'ssh' for call in run.call_args_list), 5)
 
     def test_timeout_and_environment_name_validation(self):
         self.assertEqual(remote.timeout_seconds('30m'), 1800)
