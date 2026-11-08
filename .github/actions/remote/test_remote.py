@@ -1,4 +1,5 @@
 import io
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -57,6 +58,29 @@ class RemoteTests(unittest.TestCase):
                 self.assertEqual(len(scans), 1)
                 self.assertIn('ed25519', scans[0].args[0])
                 self.assertEqual(sum(call.args[0][0] == 'ssh' for call in run.call_args_list), 5)
+
+    def test_maintenance_uses_existing_readonly_lock_without_truncation(self):
+        script = Path(__file__).resolve().parents[3] / 'scripts/docker-maintenance.sh'
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            docker = root / 'docker'
+            docker.write_text('#!/bin/sh\nif [ "$1" = info ]; then echo /tmp; fi\n')
+            docker.chmod(0o755)
+            lock = root / 'maintenance.lock'
+            lock.write_text('existing lock inode')
+            lock.chmod(0o444)
+            inode = lock.stat().st_ino
+            env = dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'],
+                       DOCKER_MAINTENANCE_LOCK_FILE=str(lock))
+            result = subprocess.run(['bash', str(script), '--report'], env=env, capture_output=True, check=True)
+            self.assertIn(b'Docker root:', result.stdout)
+            self.assertEqual(lock.stat().st_ino, inode)
+            self.assertEqual(lock.read_text(), 'existing lock inode')
+            with lock.open('rb') as held:
+                fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                result = subprocess.run(['bash', str(script), '--report'], env=env, capture_output=True, check=True)
+                self.assertIn(b'already running', result.stdout)
+                self.assertNotIn(b'Docker root:', result.stdout)
 
     def test_timeout_and_environment_name_validation(self):
         self.assertEqual(remote.timeout_seconds('30m'), 1800)
