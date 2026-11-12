@@ -56,6 +56,7 @@ const emptyPasswordChange: PasswordChangeRequest = {
 
 const emptyNotifyRule: UserNotifyRuleInput = {
   enabled: true,
+  autoReplyEnabled: false,
   sourceEchoToAlias: '',
   sourceDisplayName: '',
   patternType: 'PRESET_MENTION',
@@ -211,6 +212,7 @@ export function ProfilePage() {
     setEditingNotifyRuleId(rule.id);
     setNotifyForm({
       enabled: rule.enabled,
+      autoReplyEnabled: rule.autoReplyEnabled ?? false,
       sourceEchoToAlias: rule.sourceEchoToAlias,
       sourceDisplayName: rule.sourceDisplayName ?? '',
       patternType: rule.patternType,
@@ -425,6 +427,12 @@ export function ProfilePage() {
             </Group>
           </Stack>
 
+          <Switch
+            label="Enable auto reply"
+            description="Include an AI suggested reply for you in the notification."
+            checked={notifyForm.autoReplyEnabled ?? false}
+            onChange={(event) => setNotifyField('autoReplyEnabled', event.currentTarget.checked)}
+          />
           {notifyValidationError && (
             <Alert color="red" variant="light">{notifyValidationError}</Alert>
           )}

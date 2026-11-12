@@ -25,6 +25,37 @@ import static org.mockito.Mockito.when;
 
 class UserNotifyRuleServiceTest {
 
+  @Test void suggestionIsPersistedCoalescedAndIncludedInDelivery() throws Exception {
+    Fixture fixture=fixture();
+    var drafts=mock(NotificationDraftService.class);
+    org.springframework.test.util.ReflectionTestUtils.setField(fixture.service, "drafts", drafts);
+    var pending=new java.util.concurrent.CompletableFuture<String>();
+    when(drafts.capture(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyString())).thenReturn("context");
+    when(drafts.generate("context")).thenReturn(pending);
+    var rule=rule(UserNotifyRule.PATTERN_TYPE_PRESET_MENTION,null); rule.setAutoReplyEnabled(true);
+    fixture.service.create("pete",rule);
+    var reloaded=new UserNotifyRuleStore(tempDir.resolve("user-notify-rules.json"),JsonMapper.builder().build());
+    org.assertj.core.api.Assertions.assertThat(reloaded.findByUsername("pete").getFirst().isAutoReplyEnabled()).isTrue();
+    fixture.service.processInboundMessage(request("_Pete_: hey","friend"));
+    fixture.service.processInboundMessage(request("_Pete_: again","friend"));
+    verify(drafts).generate("context");
+    org.mockito.Mockito.verifyNoInteractions(fixture.connectionManagerService);
+    pending.complete("Thanks, I'll take a look.");
+    verify(fixture.connectionManagerService,org.mockito.Mockito.timeout(2000)).sendMessageToKnownUser(
+        eq("pete"),contains("Suggested reply: Thanks, I'll take a look."),eq(true),eq(true),eq("WHATSAPP_CONNECTION"),isNull());
+  }
+
+  @Test void generationFailureStillSendsOriginalNotification() {
+    Fixture fixture=fixture(); var drafts=mock(NotificationDraftService.class);
+    org.springframework.test.util.ReflectionTestUtils.setField(fixture.service,"drafts",drafts);
+    when(drafts.generate(org.mockito.ArgumentMatchers.any())).thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+    var rule=rule(UserNotifyRule.PATTERN_TYPE_PRESET_MENTION,null); rule.setAutoReplyEnabled(true);
+    fixture.service.create("pete",rule);
+    fixture.service.processInboundMessage(request("_Pete_: hey","friend"));
+    verify(fixture.connectionManagerService,org.mockito.Mockito.timeout(2000)).sendMessageToKnownUser(eq("pete"),
+        eq("Notify match in IRCNet / #lowlife from friend: _Pete_: hey"),eq(true),eq(true),eq("WHATSAPP_CONNECTION"),isNull());
+  }
+
   @TempDir
   Path tempDir;
 
@@ -33,6 +64,7 @@ class UserNotifyRuleServiceTest {
     Fixture fixture = fixture();
     fixture.service.create("pete", rule(UserNotifyRule.PATTERN_TYPE_PRESET_MENTION, null));
 
+    org.assertj.core.api.Assertions.assertThat(fixture.service.list("pete").getRules().getFirst().isAutoReplyEnabled()).isFalse();
     fixture.service.processInboundMessage(request("_Pete_: hey", "friend"));
 
     verify(fixture.connectionManagerService).sendMessageToKnownUser(

@@ -120,3 +120,19 @@ water event. The phone also sends the endpoint response directly to the watch
 as an urgent Data Item, so the requesting watch does not depend on FCM delivery.
 The details screen and complication refresh when the reading arrives. Errors
 leave the previous measurement and its original retrieval time intact.
+
+### AI reply suggestions for notification rules
+
+In Profile, each notification rule has an **Enable auto reply** switch (off by
+ default). It includes a private **Suggested reply:** draft for the notified
+user, using the triggering message and up to 40 earlier messages from the same
+channel in the preceding 30 minutes (12,000 characters of context maximum).
+The draft uses the configured AI backend and does not post to the source
+channel. Existing rules remain off until explicitly enabled.
+
+Draft generation runs outside incoming message handling, with a bounded queue,
+a 30-second deadline including queue time, and one in-flight notification per
+rule. If AI is disabled, unavailable, times out, returns an unusable answer, or
+the queue is full, the original notification is delivered without a draft.
+Successful private delivery updates the existing cooldown and publishes the
+same notification body to the Android inbox/push path.

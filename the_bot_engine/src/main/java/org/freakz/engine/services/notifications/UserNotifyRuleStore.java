@@ -219,7 +219,7 @@ class UserNotifyRuleStore {
   }
 
   private UserNotifyRule copyRule(UserNotifyRule source) {
-    return new UserNotifyRule(
+    UserNotifyRule copy = new UserNotifyRule(
         source.getId(),
         source.getUsername(),
         source.isEnabled(),
@@ -231,5 +231,7 @@ class UserNotifyRuleStore {
         source.getCooldownSeconds(),
         source.getCreatedAt(),
         source.getUpdatedAt());
+    copy.setAutoReplyEnabled(source.isAutoReplyEnabled());
+    return copy;
   }
 }
