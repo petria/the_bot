@@ -40,6 +40,7 @@ public class SecurityConfig {
                 PathPatternRequestMatcher.pathPattern("/logout"),
                 PathPatternRequestMatcher.pathPattern("/api/web/cli/**"),
                 PathPatternRequestMatcher.pathPattern("/api/mobile/**"),
+                PathPatternRequestMatcher.pathPattern("/api/irssi/**"),
                 PathPatternRequestMatcher.pathPattern("/internal/mobile/**"))
         )
         .authorizeHttpRequests(authorize -> authorize
@@ -52,6 +53,7 @@ public class SecurityConfig {
             .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/cli/login").permitAll()
             .requestMatchers("/api/mobile/auth/**").permitAll()
+            .requestMatchers("/api/irssi/**").permitAll()
             .requestMatchers("/internal/mobile/**").permitAll()
             .requestMatchers("/api/mobile/**").authenticated()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
@@ -80,6 +82,14 @@ public class SecurityConfig {
         .addFilterBefore(mobileBearerAuthenticationFilter,
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     return http.build();
+  }
+
+  @Bean
+  public org.springframework.boot.web.servlet.FilterRegistrationBean<MobileBearerAuthenticationFilter> mobileBearerRegistration(
+      MobileBearerAuthenticationFilter filter) {
+    var registration = new org.springframework.boot.web.servlet.FilterRegistrationBean<>(filter);
+    registration.setEnabled(false); // Run once inside Spring Security, after its context initialization.
+    return registration;
   }
 
   private void relativeRedirect(HttpServletResponse response, String location) {

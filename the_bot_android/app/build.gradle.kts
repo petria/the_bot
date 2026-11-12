@@ -60,6 +60,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation(platform("androidx.compose:compose-bom:2025.01.00"))

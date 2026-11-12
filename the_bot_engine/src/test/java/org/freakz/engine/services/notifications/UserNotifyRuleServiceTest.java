@@ -36,13 +36,22 @@ class UserNotifyRuleServiceTest {
     fixture.service.create("pete",rule);
     var reloaded=new UserNotifyRuleStore(tempDir.resolve("user-notify-rules.json"),JsonMapper.builder().build());
     org.assertj.core.api.Assertions.assertThat(reloaded.findByUsername("pete").getFirst().isAutoReplyEnabled()).isTrue();
-    fixture.service.processInboundMessage(request("_Pete_: hey","friend"));
+    var source=request("_Pete_: hey","friend");
+    fixture.service.processInboundMessage(source);
+    source.setReplyTo("#wrong"); source.setNetwork("wrong"); source.setChatProtocol("discord");
     fixture.service.processInboundMessage(request("_Pete_: again","friend"));
     verify(drafts).generate("context");
     org.mockito.Mockito.verifyNoInteractions(fixture.connectionManagerService);
     pending.complete("Thanks, I'll take a look.");
     verify(fixture.connectionManagerService,org.mockito.Mockito.timeout(2000)).sendMessageToKnownUser(
         eq("pete"),contains("Suggested reply: Thanks, I'll take a look."),eq(true),eq(true),eq("WHATSAPP_CONNECTION"),isNull());
+    var captured=org.mockito.ArgumentCaptor.forClass(org.freakz.common.model.mobile.ReplyDraft.class);
+    verify(fixture.publisher,org.mockito.Mockito.timeout(2000)).publishRuleMatch(eq("pete"),eq("Bot notification"),
+        contains("Suggested reply:"),org.mockito.ArgumentMatchers.any(),captured.capture());
+    org.assertj.core.api.Assertions.assertThat(captured.getValue().channel()).isEqualTo("#lowlife");
+    org.assertj.core.api.Assertions.assertThat(captured.getValue().network()).isEqualTo("IRCNet");
+    org.assertj.core.api.Assertions.assertThat(captured.getValue().sender()).isEqualTo("friend");
+    org.assertj.core.api.Assertions.assertThat(captured.getValue().sourceMessage()).isEqualTo("_Pete_: hey");
   }
 
   @Test void generationFailureStillSendsOriginalNotification() {
@@ -191,7 +200,8 @@ class UserNotifyRuleServiceTest {
     UserNotifyRuleStore store = new UserNotifyRuleStore(
         tempDir.resolve("user-notify-rules.json"),
         JsonMapper.builder().build());
-    return new Fixture(new UserNotifyRuleService(store, usersService, connectionManagerService), connectionManagerService);
+    var publisher=mock(MobileNotificationPublisher.class);
+    return new Fixture(new UserNotifyRuleService(store, usersService, connectionManagerService, publisher), connectionManagerService, publisher);
   }
 
   private User ownerWithoutLegacyIrcNick() {
@@ -236,7 +246,7 @@ class UserNotifyRuleServiceTest {
 
   private record Fixture(
       UserNotifyRuleService service,
-      ConnectionManagerService connectionManagerService) {
+      ConnectionManagerService connectionManagerService, MobileNotificationPublisher publisher) {
   }
 
   private record StaticUsersService(List<DataNodeBase> users) implements UsersService {

@@ -43,6 +43,11 @@ public class MobileNotificationPublisher {
   }
 
   public void publishRuleMatch(String username, String title, String body, EngineRequest request) {
+    publishRuleMatch(username, title, body, request, null);
+  }
+
+  public void publishRuleMatch(String username, String title, String body, EngineRequest request,
+      org.freakz.common.model.mobile.ReplyDraft draft) {
     if (username == null || username.isBlank() || body == null || body.isBlank()) {
       return;
     }
@@ -55,7 +60,7 @@ public class MobileNotificationPublisher {
         request == null ? null : request.getChatProtocol(),
         request == null ? null : request.getEchoToAlias(),
         null,
-        Instant.now()));
+        Instant.now(), draft));
   }
 
   private void publish(MobileNotificationEvent event) {

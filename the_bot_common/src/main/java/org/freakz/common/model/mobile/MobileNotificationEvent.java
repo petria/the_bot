@@ -12,5 +12,10 @@ public record MobileNotificationEvent(
     String connectionType,
     String channelAlias,
     String command,
-    Instant occurredAt) {
+    Instant occurredAt,
+    ReplyDraft replyDraft) {
+  public MobileNotificationEvent(String eventId, String username, String type, String title, String body,
+      String connectionType, String channelAlias, String command, Instant occurredAt) {
+    this(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, null);
+  }
 }

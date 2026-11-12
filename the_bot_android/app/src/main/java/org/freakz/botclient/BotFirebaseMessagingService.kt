@@ -23,8 +23,14 @@ class BotFirebaseMessagingService : FirebaseMessagingService() {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(message.notification?.title ?: "The Bot")
             .setContentText(message.notification?.body ?: "New bot event")
+            .setContentIntent(android.app.PendingIntent.getActivity(this, message.data["eventId"]?.hashCode() ?: 0,
+                android.content.Intent(this, MainActivity::class.java).putExtra("eventId", message.data["eventId"])
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE))
             .setAutoCancel(true)
             .build()
-        NotificationManagerCompat.from(this).notify(message.data["eventId"]?.hashCode() ?: System.currentTimeMillis().toInt(), notification)
+        if (Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        try { NotificationManagerCompat.from(this).notify(message.data["eventId"]?.hashCode() ?: System.currentTimeMillis().toInt(), notification) } catch (_: SecurityException) { /* Permission can be revoked while delivering. Inbox remains available. */ }
     }
 }
