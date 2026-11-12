@@ -36,6 +36,8 @@ public class UserNotifyRuleService {
   private final UsersService usersService;
   private final ConnectionManagerService connectionManagerService;
   private final MobileNotificationPublisher mobileNotificationPublisher;
+  @Autowired private NotificationDraftService drafts;
+  private final java.util.Set<String> inFlight = ConcurrentHashMap.newKeySet();
   private final Map<String, Long> lastSentByRuleId = new ConcurrentHashMap<>();
 
   @Autowired
@@ -127,29 +129,36 @@ public class UserNotifyRuleService {
       return;
     }
 
-    SendMessageToKnownUserResponse response = connectionManagerService.sendMessageToKnownUser(
-        rule.getUsername(),
-        notificationMessage(rule, request, message),
-        true,
-        true,
-        rule.getDestinationConnectionType(),
-        null);
-    if (response == null || !"OK".equals(response.getStatus())) {
-      log.warn(
-          "User notify rule {} matched but delivery failed for user {}: {}",
-          rule.getId(),
-          rule.getUsername(),
-          response == null ? "no response" : response.getMessage());
-      return;
-    }
-    lastSentByRuleId.put(rule.getId(), System.currentTimeMillis());
-    if (mobileNotificationPublisher != null) {
-      mobileNotificationPublisher.publishRuleMatch(
-          rule.getUsername(),
-          "Bot notification",
-          notificationMessage(rule, request, message),
-          request);
-    }
+    if (!inFlight.add(rule.getId())) return;
+    if (cooldownActive(rule)) { inFlight.remove(rule.getId()); return; }
+    String original = notificationMessage(rule, request, message);
+    if (rule.isAutoReplyEnabled() && drafts != null) {
+      try {
+        String input = drafts.capture(owner, request, message);
+        drafts.generate(input).handleAsync((draft, error) -> {
+          String body = original;
+          if (error == null && draft != null && !draft.isBlank()) body += "\nSuggested reply: " + abbreviate(draft.strip(), 500);
+          deliver(rule, request, body);
+          return null;
+        });
+      } catch (RuntimeException error) { deliver(rule, request, original); }
+    } else deliver(rule, request, original);
+  }
+
+  private void deliver(UserNotifyRule rule, EngineRequest request, String body) {
+    try {
+      SendMessageToKnownUserResponse response = connectionManagerService.sendMessageToKnownUser(
+          rule.getUsername(), body, true, true, rule.getDestinationConnectionType(), null);
+      if (response == null || !"OK".equals(response.getStatus())) {
+        log.warn("Notify delivery failed for rule {}", rule.getId());
+        return;
+      }
+      lastSentByRuleId.put(rule.getId(), System.currentTimeMillis());
+      if (mobileNotificationPublisher != null)
+        mobileNotificationPublisher.publishRuleMatch(rule.getUsername(), "Bot notification", body, request);
+    } catch (RuntimeException error) {
+      log.warn("Notify delivery failed for rule {}: {}", rule.getId(), error.getMessage());
+    } finally { inFlight.remove(rule.getId()); }
   }
 
   private boolean matches(UserNotifyRule rule, User owner, String message) {

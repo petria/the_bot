@@ -32,6 +32,36 @@ import static org.mockito.Mockito.verify;
 class HermesAiServiceTest {
 
   @Test
+  void notificationDraftUsesIsolatedRequestsAcrossAllConfiguredApiModesWithoutSendingChat() throws Exception {
+    var server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+    var body = new java.util.concurrent.atomic.AtomicReference<tools.jackson.databind.JsonNode>();
+    var sessions = new java.util.ArrayList<String>();
+    var mapper = new JsonMapper();
+    server.createContext("/", exchange -> {
+      body.set(mapper.readTree(new String(exchange.getRequestBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)));
+      sessions.add(exchange.getRequestHeaders().getFirst("X-Hermes-Session-Id"));
+      byte[] response = "{\"choices\":[{\"message\":{\"content\":\"Kiitos tiedosta.\"}}]}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "application/json");
+      exchange.sendResponseHeaders(200,response.length);
+      exchange.getResponseBody().write(response); exchange.close();
+    });
+    server.start();
+    try {
+      var settings=mock(HermesSettingsService.class);
+      when(settings.aiEnabled()).thenReturn(true);
+      var bot=mock(org.freakz.engine.commands.BotEngine.class);
+      var service=new HermesAiService(settings,mapper,bot,mock(AiCommandToolRegistry.class),mock(HermesPromptContextService.class),WebClient.builder(),mock(AiStructuredResponseAlertService.class));
+      for (String mode : List.of("responses", "chat-completions", "runs")) {
+        when(settings.resolveSettings()).thenReturn(new HermesSettings("http://127.0.0.1:" + server.getAddress().getPort(), "", "model", 120, mode));
+        assertThat(service.draftNotificationReply("Triggering message: Pete: thanks")).isEqualTo("Kiitos tiedosta.");
+        assertThat(body.get().toString()).contains("notified user", "untrusted quoted data", "Triggering message");
+      }
+      assertThat(sessions).doesNotHaveDuplicates().allMatch(value -> value.startsWith("notify-"));
+      org.mockito.Mockito.verifyNoInteractions(bot);
+    } finally { server.stop(0); }
+  }
+
+  @Test
   void buildsDmSessionIdFromSenderIdentity() {
     HermesAiService service = newService();
 

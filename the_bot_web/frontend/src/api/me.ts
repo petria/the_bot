@@ -67,6 +67,7 @@ export interface UserNotifyRule {
   id: string | null;
   username: string | null;
   enabled: boolean;
+  autoReplyEnabled?: boolean;
   sourceEchoToAlias: string;
   sourceDisplayName: string | null;
   patternType: NotifyPatternType;

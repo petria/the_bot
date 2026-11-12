@@ -163,6 +163,7 @@ jobs:
           fi
 
   build-and-push:
+    if: ${{ github.event_name == 'pull_request' || contains(fromJSON('["main","develop"]'), github.ref_name) }}
     needs: quality
     runs-on: ubuntu-latest
     permissions:
@@ -261,7 +262,7 @@ jobs:
         run: mvn -B package --file pom.xml -Dmaven.test.skip=true
 
       - name: Log in to the GitHub Container Registry
-        if: ${{ github.event_name == 'push' && (steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true' || steps.changes.outputs.web == 'true' || steps.changes.outputs.whatsapp == 'true' || steps.changes.outputs.hermes_manager == 'true') }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (steps.changes.outputs.engine == 'true' || steps.changes.outputs.io == 'true' || steps.changes.outputs.web == 'true' || steps.changes.outputs.whatsapp == 'true' || steps.changes.outputs.hermes_manager == 'true') }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -269,7 +270,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push bot-engine image
-        if: ${{ github.event_name == 'push' && steps.changes.outputs.engine == 'true' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.changes.outputs.engine == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_engine
@@ -280,7 +281,7 @@ jobs:
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_ENGINE) || format('{0}:develop', env.IMAGE_ENGINE) }}
 
       - name: Build and push bot-io image
-        if: ${{ github.event_name == 'push' && steps.changes.outputs.io == 'true' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.changes.outputs.io == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_io
@@ -291,7 +292,7 @@ jobs:
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_IO) || format('{0}:develop', env.IMAGE_IO) }}
 
       - name: Build and push bot-web image
-        if: ${{ github.event_name == 'push' && steps.changes.outputs.web == 'true' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.changes.outputs.web == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_web
@@ -302,7 +303,7 @@ jobs:
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_WEB) || format('{0}:develop', env.IMAGE_WEB) }}
 
       - name: Build and push bot-whatsapp image
-        if: ${{ github.event_name == 'push' && steps.changes.outputs.whatsapp == 'true' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.changes.outputs.whatsapp == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_whatsapp
@@ -313,7 +314,7 @@ jobs:
             ${{ github.ref_name == 'main' && format('{0}:latest', env.IMAGE_WHATSAPP) || format('{0}:develop', env.IMAGE_WHATSAPP) }}
 
       - name: Build and push Hermes manager image
-        if: ${{ github.event_name == 'push' && steps.changes.outputs.hermes_manager == 'true' }}
+        if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.changes.outputs.hermes_manager == 'true' }}
         uses: docker/build-push-action@v5
         with:
           context: ./the_bot_hermes_manager
@@ -330,7 +331,7 @@ jobs:
     runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && contains(fromJSON('["main","develop"]'), github.ref_name) }}
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
@@ -869,7 +870,7 @@ jobs:
     runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
-    if: ${{ always() && github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.result == 'success' && (needs.deploy-hermes-gateway.result == 'success' || needs.deploy-hermes-gateway.result == 'skipped') && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
+    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.result == 'success' && (needs.deploy-hermes-gateway.result == 'success' || needs.deploy-hermes-gateway.result == 'skipped') && needs.build-and-push.outputs.hermes_manager_changed == 'true' && vars.HERMES_MANAGER_DEPLOY_ENABLED == 'true' }}
     environment:
       name: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
     concurrency:
@@ -948,7 +949,7 @@ jobs:
     runs-on: [self-hosted, linux, shared-ai]
     permissions:
       contents: read
-    if: ${{ github.event_name == 'push' && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_gateway_changed == 'true' && vars.HERMES_GATEWAY_DEPLOY_ENABLED == 'true' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && contains(fromJSON('["main","develop"]'), github.ref_name) && needs.build-and-push.outputs.hermes_gateway_changed == 'true' && vars.HERMES_GATEWAY_DEPLOY_ENABLED == 'true' }}
     environment:
       name: hermes-gateway
     concurrency:

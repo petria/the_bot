@@ -10,6 +10,7 @@ public class UserNotifyRule {
   private String id;
   private String username;
   private boolean enabled = true;
+  private boolean autoReplyEnabled;
   private String sourceEchoToAlias;
   private String sourceDisplayName;
   private String patternType = PATTERN_TYPE_PRESET_MENTION;
@@ -46,6 +47,10 @@ public class UserNotifyRule {
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
+
+  public boolean isAutoReplyEnabled() { return autoReplyEnabled; }
+
+  public void setAutoReplyEnabled(boolean enabled) { this.autoReplyEnabled = enabled; }
 
   public String getId() {
     return id;
