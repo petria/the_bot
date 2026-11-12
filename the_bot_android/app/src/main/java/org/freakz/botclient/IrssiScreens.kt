@@ -7,6 +7,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,6 +70,12 @@ fun IrssiPairingScreen(client: BotClient, modifier: Modifier = Modifier) {
         pairing?.let {
             Text("Run the helper's pair command on the Irssi host. This code expires at ${it.expiresAt}.")
             SelectionContainer { Text(it.code) }
+            val clipboard = LocalClipboardManager.current
+            var copied by remember(it.code) { mutableStateOf(false) }
+            OutlinedButton(onClick = {
+                clipboard.setText(AnnotatedString(it.code))
+                copied = true
+            }) { Text(if (copied) "Copied" else "Copy pairing code") }
         }
         agents.forEach { agent ->
             Text("${agent.name}: ${agent.expectedNick} (${if (agent.online) "online" else "offline"})")
