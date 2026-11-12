@@ -35,12 +35,12 @@ public class NotificationDraftService {
     long now = System.currentTimeMillis();
     var snapshot = channels.eventsAfter(request.getEchoToAlias(), 0).events();
     long triggerId = snapshot.stream().filter(e -> e.direction() == LiveChannelDirection.INBOUND
-        && e.requestId() == request.getTimestamp() && java.util.Objects.equals(e.message(), trigger)
+        && e.requestId() == request.getTimestamp() && (e.message() != null && trigger.equals(e.message().trim()))
         && java.util.Objects.equals(e.sender(), request.getFromSender())).mapToLong(e -> e.id()).max().orElse(Long.MAX_VALUE);
     var previous = snapshot.stream().filter(e -> e.id() < triggerId)
         .filter(e -> e.createdAt() >= now - TimeUnit.MINUTES.toMillis(30) && e.createdAt() <= now)
         .filter(e -> !(e.direction() == LiveChannelDirection.INBOUND && e.requestId() == request.getTimestamp()
-            && java.util.Objects.equals(e.message(), trigger) && java.util.Objects.equals(e.sender(), request.getFromSender())))
+            && (e.message() != null && trigger.equals(e.message().trim())) && java.util.Objects.equals(e.sender(), request.getFromSender())))
         .toList();
     StringBuilder context = new StringBuilder();
     for (int i = Math.max(0, previous.size() - 40); i < previous.size(); i++) {

@@ -18,11 +18,11 @@ class NotificationDraftServiceTest {
     var events = new LiveChannelEventService();
     for (int i=0; i<50; i++) events.recordInbound(message("IRC", "line-" + i, i));
     events.recordInbound(message("OTHER", "secret-other-channel", 51));
-    var trigger = message("IRC", "Pete: question", 52);
+    var trigger = message("IRC", "  Pete: question  ", 52);
     events.recordInbound(trigger);
     events.recordInbound(message("IRC", "future-message", 53));
     try (var service = new DraftCloseable(mock(HermesAiService.class), events)) {
-      String input=service.value.capture(User.builder().username("pete").build(), trigger, trigger.getMessage());
+      String input=service.value.capture(User.builder().username("pete").build(), trigger, trigger.getMessage().trim());
       assertThat(input).contains("line-49", "line-10", "Pete: question").doesNotContain("line-9\n", "secret-other-channel", "future-message");
       assertThat(input.indexOf("Pete: question")).isEqualTo(input.lastIndexOf("Pete: question"));
     }
