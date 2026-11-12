@@ -68,7 +68,7 @@ public class MobileNotificationService {
     NotificationRecord record = new NotificationRecord(
         event.eventId(), event.username(), event.type(), event.title(), event.body(),
         event.connectionType(), event.channelAlias(), event.command(),
-        event.occurredAt() == null ? Instant.now() : event.occurredAt(), false);
+        event.occurredAt() == null ? Instant.now() : event.occurredAt(), false, event.replyDraft());
     if ("WATER_WATCH".equals(record.type())) notifications.removeIf(item -> item.username().equals(record.username()) && "WATER_WATCH".equals(item.type()));
     notifications.add(record);
     trimUser(event.username());
@@ -170,9 +170,13 @@ public class MobileNotificationService {
                              String platform, Instant createdAt, Instant lastSeenAt, boolean revoked) {}
   public record NotificationRecord(String eventId, String username, String type, String title, String body,
                                    String connectionType, String channelAlias, String command,
-                                   Instant occurredAt, boolean read) {
+                                   Instant occurredAt, boolean read, org.freakz.common.model.mobile.ReplyDraft replyDraft) {
+    public NotificationRecord(String eventId, String username, String type, String title, String body,
+        String connectionType, String channelAlias, String command, Instant occurredAt, boolean read) {
+      this(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, read, null);
+    }
     NotificationRecord withRead(boolean value) {
-      return new NotificationRecord(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, value);
+      return new NotificationRecord(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, value, replyDraft);
     }
   }
   private record State(List<NotificationRecord> notifications, List<DeviceRecord> devices) {}

@@ -74,7 +74,7 @@ jobs:
           mkdir -p the_bot_android/app/src/prod
           printf '%s' "$FIREBASE_PROD_GOOGLE_SERVICES_JSON_B64" | base64 --decode > the_bot_android/app/src/prod/google-services.json
       - name: Assemble matching Android client
-        run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :app:assemble${ANDROID_VARIANT}Debug --no-daemon
+        run: gradle -Dorg.gradle.java.home="$JAVA_HOME" -p the_bot_android :app:test${ANDROID_VARIANT}DebugUnitTest :app:lint${ANDROID_VARIANT}Debug :app:assemble${ANDROID_VARIANT}Debug --no-daemon
       - name: Verify phone and watch use the persistent signing key
         if: ${{ github.event_name != 'pull_request' }}
         run: |
@@ -121,6 +121,11 @@ jobs:
         run: |
           npm ci
           npm run test:ci
+
+      - name: Test Irssi approval integration
+        run: |
+          python3 -I integrations/irssi/test_irssi_agent.py
+          perl integrations/irssi/test_bot_notify.pl
 
       - name: Run backend tests and generate JaCoCo reports
         id: backend_tests

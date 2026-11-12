@@ -30,11 +30,18 @@ class BotClient(private val context: Context) {
 
     suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))); WaterWatchWorker.start(context) }
     suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear(); runCatching { WaterWatchWorker.clear(context) } }
+    suspend fun irssiPairing() = authenticated { api.irssiPairing() }
+    suspend fun irssiAgents() = authenticated { api.irssiAgents() }
+    suspend fun revokeIrssi(id: String) = authenticated { api.revokeIrssi(id) }
+    suspend fun irssiAvailability(id: String) = authenticated { api.irssiAvailability(id) }
+    suspend fun irssiJobs(id: String) = authenticated { api.irssiJobs(id) }
+    suspend fun sendIrssi(id: String, text: String, retry: Boolean) = authenticated { api.sendIrssi(id, IrssiSend(text, retry)) }
+    suspend fun irssiJob(id: String) = authenticated { api.irssiJob(id) }
     suspend fun refreshWater() = authenticated { api.refreshWater() }
     suspend fun currentUser() = authenticated { api.me() }
     suspend fun registerCurrentDevice() {
         val token = FirebaseMessaging.getInstance().token.await()
-        api.registerDevice(DeviceRequest(token, "Android"))
+        authenticated { api.registerDevice(DeviceRequest(token, "Android")) }
     }
     suspend fun notifications() = authenticated { api.notifications() }
     suspend fun command(command: String) = authenticated { api.command(CommandRequest(command)) }

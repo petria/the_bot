@@ -136,3 +136,18 @@ rule. If AI is disabled, unavailable, times out, returns an unusable answer, or
 the queue is full, the original notification is delivered without a draft.
 Successful private delivery updates the existing cooldown and publishes the
 same notification body to the Android inbox/push path.
+
+### Send a reviewed IRC draft through Irssi
+
+IRC rule notifications now carry an optional structured `replyDraft`. In the
+Android inbox, **Review reply** opens its original network, channel, sender and
+message together with an editable draft. **Send via Irssi** submits the approved
+text to main's user-scoped queue. The paired Irssi session must be online under
+the configured profile nick and joined to the source channel. Existing plain
+notifications remain readable and have no sending action.
+
+The phone's **Irssi** screen creates a single-use pairing code and lists or
+revokes agents. See [Irssi installation and operation](../integrations/irssi/README.md)
+for `petria@new.airiot.fi`, agent credentials, routing, expiry and recovery rules.
+Sending requires an explicit Android approval; generation alone never submits
+a channel message. Uncertain sends require checking the channel before retry.

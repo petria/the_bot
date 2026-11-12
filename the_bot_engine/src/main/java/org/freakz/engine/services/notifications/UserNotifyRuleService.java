@@ -131,21 +131,36 @@ public class UserNotifyRuleService {
 
     if (!inFlight.add(rule.getId())) return;
     if (cooldownActive(rule)) { inFlight.remove(rule.getId()); return; }
-    String original = notificationMessage(rule, request, message);
+    EngineRequest notificationRequest = EngineRequest.builder().network(request.getNetwork())
+        .chatProtocol(request.getChatProtocol()).replyTo(request.getReplyTo()).echoToAlias(request.getEchoToAlias())
+        .fromSender(request.getFromSender()).fromSenderId(request.getFromSenderId()).timestamp(request.getTimestamp())
+        .command(message).build();
+    String expectedNick = owner.getIrcNick();
+    String original = notificationMessage(rule, notificationRequest, message);
     if (rule.isAutoReplyEnabled() && drafts != null) {
       try {
-        String input = drafts.capture(owner, request, message);
+        String input = drafts.capture(owner, notificationRequest, message);
         drafts.generate(input).handleAsync((draft, error) -> {
           String body = original;
           if (error == null && draft != null && !draft.isBlank()) body += "\nSuggested reply: " + abbreviate(draft.strip(), 500);
-          deliver(rule, request, body);
+          org.freakz.common.model.mobile.ReplyDraft replyDraft = null;
+          if (error == null && draft != null && !draft.isBlank() && "irc".equalsIgnoreCase(notificationRequest.getChatProtocol())) {
+            replyDraft = new org.freakz.common.model.mobile.ReplyDraft(java.util.UUID.randomUUID().toString(),
+                notificationRequest.getNetwork(), notificationRequest.getReplyTo(), notificationRequest.getFromSender(), message,
+                abbreviate(draft.strip(), 500), expectedNick);
+          }
+          deliver(rule, notificationRequest, body, replyDraft);
           return null;
         });
-      } catch (RuntimeException error) { deliver(rule, request, original); }
-    } else deliver(rule, request, original);
+      } catch (RuntimeException error) { deliver(rule, notificationRequest, original); }
+    } else deliver(rule, notificationRequest, original);
   }
 
   private void deliver(UserNotifyRule rule, EngineRequest request, String body) {
+    deliver(rule, request, body, null);
+  }
+
+  private void deliver(UserNotifyRule rule, EngineRequest request, String body, org.freakz.common.model.mobile.ReplyDraft draft) {
     try {
       SendMessageToKnownUserResponse response = connectionManagerService.sendMessageToKnownUser(
           rule.getUsername(), body, true, true, rule.getDestinationConnectionType(), null);
@@ -155,7 +170,7 @@ public class UserNotifyRuleService {
       }
       lastSentByRuleId.put(rule.getId(), System.currentTimeMillis());
       if (mobileNotificationPublisher != null)
-        mobileNotificationPublisher.publishRuleMatch(rule.getUsername(), "Bot notification", body, request);
+        mobileNotificationPublisher.publishRuleMatch(rule.getUsername(), "Bot notification", body, request, draft);
     } catch (RuntimeException error) {
       log.warn("Notify delivery failed for rule {}: {}", rule.getId(), error.getMessage());
     } finally { inFlight.remove(rule.getId()); }
