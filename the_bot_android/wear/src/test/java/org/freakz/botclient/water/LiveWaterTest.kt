@@ -30,4 +30,18 @@ class LiveWaterTest {
         assertTrue(service.onComplicationRequest(request) is NoDataComplicationData)
         assertNull(service.createData(ComplicationType.RANGED_VALUE, 4.2f))
     }
+
+    @Test fun wakeWithoutReadingAsksPhoneOncePerInterval() = runBlocking {
+        val service = Robolectric.buildService(LiveWaterService::class.java).create().get()
+        val request = ComplicationRequest(1, ComplicationType.SHORT_TEXT, false)
+        assertTrue(service.onComplicationRequest(request) is NoDataComplicationData)
+        val prefs = service.getSharedPreferences("live-water", Context.MODE_PRIVATE)
+        val stamped = prefs.getLong("lastAutoRefreshAt", 0L)
+        assertTrue("empty complication must stamp an auto refresh request", stamped > 0)
+        service.onComplicationRequest(request)
+        assertEquals("refreshes within the interval must be debounced",
+            stamped, prefs.getLong("lastAutoRefreshAt", 0L))
+        assertTrue(LiveWaterService.shouldAutoRefresh(stamped, stamped + LiveWaterService.AUTO_REFRESH_INTERVAL_MS))
+        assertFalse(LiveWaterService.shouldAutoRefresh(stamped, stamped + 1))
+    }
 }
