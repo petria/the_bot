@@ -69,6 +69,7 @@ private fun MainScreen(client: BotClient, notificationId: String?, onLogout: () 
         Button({ selected = "Console"; opened = null }) { Text("Console") }
         Button({ selected = "Profile"; opened = null }) { Text("Profile") }
         Button({ selected = "Channels"; opened = null }) { Text("Channels") }
+        Button({ selected = "Watch"; opened = null }) { Text("Watch") }
         Button({ scope.launch { client.logout(); onLogout() } }) { Text("Logout") }
         if (opened?.replyDraft != null) {
             IrssiDraftScreen(client, opened!!, { opened = null }, Modifier.weight(1f))
@@ -78,6 +79,16 @@ private fun MainScreen(client: BotClient, notificationId: String?, onLogout: () 
             "Console" -> { OutlinedTextField(command, { command = it; commandError = null }, label = { Text("Command") }, modifier = Modifier.fillMaxWidth()); Button({ scope.launch { commandError = null; runCatching { client.command(command).reply.orEmpty() }.onSuccess { reply = it }.onFailure { commandError = it.message ?: it::class.simpleName ?: "Command failed" } } }) { Text("Run") }; commandError?.let { Text(it, color = MaterialTheme.colorScheme.error) }; Text(reply) }
             "Profile" -> Text("Profile and notification rules are managed by bot-web.")
             "Channels" -> Text("Channel access follows the permissions assigned to your bot user.")
+            "Watch" -> {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                var sync by remember { mutableStateOf(WatchLinkStore(ctx).lastSyncAt()) }
+                var request by remember { mutableStateOf(WatchLinkStore(ctx).lastRequestAt()) }
+                Column(Modifier.padding(top = 12.dp)) {
+                    Text("Water update sent to watch: " + WatchLinkStatus.render(sync, System.currentTimeMillis()), Modifier.padding(vertical = 4.dp))
+                    Text("Refresh requested by watch: " + WatchLinkStatus.render(request, System.currentTimeMillis()), Modifier.padding(vertical = 4.dp))
+                    Button({ sync = WatchLinkStore(ctx).lastSyncAt(); request = WatchLinkStore(ctx).lastRequestAt() }) { Text("Refresh") }
+                }
+            }
         }
     }
 }

@@ -16,6 +16,7 @@ class WaterWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val payload = JSONObject(latest?.body ?: "{}").put("updatedAt", System.currentTimeMillis()).toString()
         val request = PutDataMapRequest.create("/water/latest").apply { dataMap.putString("water", payload) }
         Wearable.getDataClient(applicationContext).putDataItem(request.asPutDataRequest().setUrgent()).await()
+        WatchLinkStore(applicationContext).recordSync()
         Result.success()
     } catch (e: Exception) { Result.retry() }
     }
@@ -36,6 +37,7 @@ class WaterWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 dataMap.putString("water", "{\"enabled\":false,\"updatedAt\":${System.currentTimeMillis()}}")
             }
             Wearable.getDataClient(context).putDataItem(request.asPutDataRequest()).await()
+            WatchLinkStore(context).recordSync()
         }
     }
 }

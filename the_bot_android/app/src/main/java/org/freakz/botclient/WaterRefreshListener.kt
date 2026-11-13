@@ -8,6 +8,7 @@ import kotlinx.coroutines.tasks.await
 class WaterRefreshListener : WearableListenerService() {
     override fun onMessageReceived(event: MessageEvent) {
         if (event.path != "/water/refresh") return
+        WatchLinkStore(this).recordRequest()
         WorkManager.getInstance(this).enqueueUniqueWork("water-forced-refresh", ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<ForcedWaterWorker>()
                 .setInputData(workDataOf("node" to event.sourceNodeId)).build())
@@ -23,6 +24,7 @@ class ForcedWaterWorker(context: Context, params: WorkerParameters) : CoroutineW
             val payload = client.refreshWater().toString()
             val request = PutDataMapRequest.create("/water/latest").apply { dataMap.putString("water", payload) }
             Wearable.getDataClient(applicationContext).putDataItem(request.asPutDataRequest().setUrgent()).await()
+            WatchLinkStore(applicationContext).recordSync()
             "Updated"
         } catch (error: Exception) { "Refresh failed. Check phone connection and login, then try again." }
         runCatching { Wearable.getMessageClient(applicationContext).sendMessage(node, "/water/refresh-result", status.toByteArray()).await() }
