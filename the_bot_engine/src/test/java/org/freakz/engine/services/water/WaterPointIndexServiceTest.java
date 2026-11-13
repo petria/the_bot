@@ -3,6 +3,7 @@ package org.freakz.engine.services.water;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -64,5 +65,21 @@ class WaterPointIndexServiceTest {
 
     assertThat(WaterPointIndexService.extractTemperatureChartUrl(otherImages, PAGE_URL)).isNull();
     assertThat(WaterPointIndexService.extractTemperatureChartUrl(noHeading, PAGE_URL)).isNull();
+  }
+
+  @Test
+  void partialIndexCrawlNeverReplacesKnownGoodIndex() {
+    List<WaterPointIndexService.WaterPoint> full =
+        java.util.stream.IntStream.range(0, 937)
+            .mapToObj(i -> new WaterPointIndexService.WaterPoint("station" + i, "https://example/" + i))
+            .toList();
+    List<WaterPointIndexService.WaterPoint> partial = full.subList(0, 172);
+    // Regression for 13.11.2026: SYKE region timeouts produced a 172-point crawl that
+    // replaced the full index and dropped Merikoski, breaking watch water delivery.
+    assertThat(WaterPointIndexService.shouldReplaceSnapshot(partial, full)).isFalse();
+    assertThat(WaterPointIndexService.shouldReplaceSnapshot(full, full)).isTrue();
+    assertThat(WaterPointIndexService.shouldReplaceSnapshot(partial, List.of())).isTrue();
+    assertThat(WaterPointIndexService.shouldReplaceSnapshot(full.subList(0, 500), full)).isTrue();
+    assertThat(WaterPointIndexService.shouldReplaceSnapshot(full.subList(0, 468), full)).isFalse();
   }
 }

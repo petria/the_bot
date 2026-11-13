@@ -40,6 +40,7 @@ public class WaterPointIndexService {
   private final Duration indexCacheTtl;
   private final Duration refreshInterval;
   private final Duration requestTimeout;
+  private final Duration indexRequestTimeout;
   private final int regionParallelism;
   private final ExecutorService discoveryExecutor;
   private final Cache<String, String> chartUrlCache;
@@ -48,7 +49,7 @@ public class WaterPointIndexService {
   private CompletableFuture<List<WaterPoint>> refreshInFlight;
 
   public WaterPointIndexService() {
-    this(Duration.ofHours(24), Duration.ofHours(6), Duration.ofSeconds(5), 8);
+    this(Duration.ofHours(24), Duration.ofHours(6), Duration.ofSeconds(5), Duration.ofSeconds(15), 8);
   }
 
   @Autowired
@@ -56,10 +57,12 @@ public class WaterPointIndexService {
       @Value("${the.bot.water.index-cache-ttl:24h}") Duration indexCacheTtl,
       @Value("${the.bot.water.index-refresh-interval:6h}") Duration refreshInterval,
       @Value("${the.bot.water.request-timeout:5s}") Duration requestTimeout,
+      @Value("${the.bot.water.index-request-timeout:15s}") Duration indexRequestTimeout,
       @Value("${the.bot.water.region-parallelism:8}") int regionParallelism) {
     this.indexCacheTtl = indexCacheTtl;
     this.refreshInterval = refreshInterval;
     this.requestTimeout = requestTimeout;
+    this.indexRequestTimeout = indexRequestTimeout;
     this.regionParallelism = Math.max(1, regionParallelism);
     this.discoveryExecutor = Executors.newFixedThreadPool(this.regionParallelism, runnable -> {
       Thread thread = new Thread(runnable, "water-index-discovery");
@@ -147,9 +150,12 @@ public class WaterPointIndexService {
           refreshInFlight = null;
         }
       }
-      if (error == null && result != null && !result.isEmpty()) {
+      if (error == null && result != null && !result.isEmpty() && shouldReplaceSnapshot(result, snapshot.points())) {
         snapshot = new IndexSnapshot(result, Instant.now());
         log.info("Water station index refreshed: points={}", result.size());
+      } else if (error == null && result != null && !result.isEmpty()) {
+        log.warn("Water station index refresh rejected as degraded: candidate={} kept={}",
+            result.size(), snapshot.points().size());
       } else if (error != null) {
         log.warn("Water station index refresh failed: {}", error.getMessage());
       }
@@ -157,10 +163,15 @@ public class WaterPointIndexService {
     return future;
   }
 
+  /** A partial crawl (SYKE region timeouts) must not replace a fuller known-good index. */
+  static boolean shouldReplaceSnapshot(List<WaterPoint> candidate, List<WaterPoint> current) {
+    return current.isEmpty() || candidate.size() * 2 >= current.size();
+  }
+
   private List<WaterPoint> discover() {
     long started = System.nanoTime();
     try {
-      Document root = get(ROOT_URL);
+      Document root = get(ROOT_URL, indexRequestTimeout);
       Map<String, String> regions = new LinkedHashMap<>();
       for (Element option : root.select("select[name=forma] option[value]")) {
         String value = option.attr("value").trim();
@@ -197,7 +208,7 @@ public class WaterPointIndexService {
 
   private List<WaterPoint> discoverRegion(String regionUrl) {
     try {
-      Document region = get(regionUrl);
+      Document region = get(regionUrl, indexRequestTimeout);
       String regionBase = regionUrl.endsWith("/") ? regionUrl : regionUrl + "/";
       Map<String, WaterPoint> points = new LinkedHashMap<>();
       for (Element link : region.select("a[href]")) {
@@ -280,9 +291,13 @@ public class WaterPointIndexService {
   }
 
   private Document get(String url) throws Exception {
+      return get(url, requestTimeout);
+  }
+
+  private Document get(String url, Duration timeout) throws Exception {
       return Jsoup.connect(url)
           .userAgent("HokanTheBot water temperature command")
-          .timeout((int) requestTimeout.toMillis())
+          .timeout((int) timeout.toMillis())
           .sslContext(WaterSiteTls.context())
           .followRedirects(true)
           .get();
