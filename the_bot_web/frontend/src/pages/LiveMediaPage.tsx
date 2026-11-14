@@ -109,7 +109,7 @@ export function LiveMediaPage() {
 
       <Card withBorder radius="sm">
         <Stack gap="md">
-          <Group grow align="flex-end">
+          <Group grow align="flex-end" className="field-row">
             <TextInput
               label="Filter"
               placeholder="Title, file, URL, sender, channel"

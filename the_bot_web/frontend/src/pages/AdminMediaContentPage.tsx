@@ -83,7 +83,7 @@ export function AdminMediaContentPage() {
 
       <Card withBorder radius="sm">
         <Stack gap="md">
-          <Group grow align="flex-end">
+          <Group grow align="flex-end" className="field-row">
             <TextInput
               label="Filter"
               placeholder="Filename, sender, channel, network"

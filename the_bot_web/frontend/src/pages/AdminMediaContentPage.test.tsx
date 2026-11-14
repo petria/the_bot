@@ -42,4 +42,18 @@ describe('AdminMediaContentPage', () => {
     expect(await screen.findByText('document.pdf')).toBeInTheDocument();
     expect(await screen.findByText('document')).toBeInTheDocument();
   });
+
+  it('stacks the filter field and type control into a mobile field row', async () => {
+    vi.spyOn(mediaApi, 'getMediaContent').mockResolvedValue({
+      enabled: true, storageDir: '/media', publicUrlPrefix: '/media', detail: null, items: [],
+    });
+    const { container } = renderPage(<AdminMediaContentPage />);
+
+    await screen.findByText('Media Content');
+    const fieldRow = container.querySelector('.field-row');
+    expect(fieldRow).not.toBeNull();
+    expect(fieldRow?.querySelector('.mantine-SegmentedControl-root')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Filter' }).closest('.field-row')).toBe(fieldRow);
+  });
+
 });

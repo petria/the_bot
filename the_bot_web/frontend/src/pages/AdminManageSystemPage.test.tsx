@@ -57,4 +57,15 @@ describe('Manage System', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
     expect(screen.queryByText('System settings saved.')).not.toBeInTheDocument();
   });
+
+  it('stacks the save action into a full-width mobile field row', async () => {
+    vi.spyOn(api, 'getSystemSettings').mockResolvedValue({ waterTemperatureToWatch: false });
+    const { container } = renderPage(<AdminManageSystemPage />);
+
+    const save = await screen.findByRole('button', { name: 'Save' });
+    expect(save.closest('.field-row')).toBeInTheDocument();
+    expect(save.closest('.stack-fixed')).toBeInTheDocument();
+    expect(container.querySelector('.field-row .mantine-Button-root')).toBeInTheDocument();
+  });
+
 });

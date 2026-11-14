@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import * as storageApi from '../api/adminMediaStorage';
@@ -23,4 +23,21 @@ describe('AdminMediaStoragePage', () => {
 
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ storageDir: '/mnt/storagebox/media' }));
   });
+
+  it('stacks the size and retention fields into a mobile field row', async () => {
+    vi.spyOn(storageApi, 'getMediaStorageSettings').mockResolvedValue({
+      enabled: true, storageDir: '/media', publicUrlPrefix: '/m', maxFileSizeMb: 25,
+      retentionDays: 30, directoryExists: true, writable: true, detail: null,
+    });
+    const { container } = renderPage(<AdminMediaStoragePage />);
+
+    const fieldRow = await waitFor(() => {
+      const row = container.querySelector('.field-row');
+      expect(row).not.toBeNull();
+      return row as HTMLElement;
+    });
+    expect(fieldRow.querySelectorAll('.mantine-NumberInput-root')).toHaveLength(2);
+    expect(screen.getByLabelText('Max file size').closest('.field-row')).toBe(fieldRow);
+  });
+
 });

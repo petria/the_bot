@@ -49,4 +49,19 @@ describe('LiveMediaPage', () => {
     expect(await screen.findByText('document.pdf')).toBeInTheDocument();
     expect(await screen.findByText('document')).toBeInTheDocument();
   });
+
+  it('stacks the filter fields into a mobile field row', async () => {
+    vi.spyOn(liveMediaApi, 'getLiveMedia').mockResolvedValue({
+      enabled: true, storageDir: '/media', publicUrlPrefix: '/media', detail: null, items: [],
+    });
+    const { container } = renderPage(<LiveMediaPage />);
+
+    await screen.findByText('Live Media');
+    const fieldRow = container.querySelector('.field-row');
+    expect(fieldRow).not.toBeNull();
+    expect(fieldRow?.querySelectorAll('.mantine-TextInput-root')).toHaveLength(1);
+    expect(fieldRow?.querySelectorAll('.mantine-Select-root')).toHaveLength(2);
+    expect(screen.getByRole('textbox', { name: 'Filter' }).closest('.field-row')).toBe(fieldRow);
+  });
+
 });

@@ -23,4 +23,18 @@ describe('AdminCollectedUrlsPage', () => {
     expect(await screen.findByText('Example video')).toBeInTheDocument();
     expect(await screen.findAllByText('YouTube')).not.toHaveLength(0);
   });
+
+  it('stacks the filter fields into a mobile field row', async () => {
+    vi.spyOn(urlsApi, 'getCollectedUrls').mockResolvedValue({
+      enabled: true, storageDir: '/media', detail: null, items: [],
+    });
+    const { container } = renderPage(<AdminCollectedUrlsPage />);
+
+    await screen.findByText('Collected URLs');
+    const fieldRow = container.querySelector('.field-row');
+    expect(fieldRow).not.toBeNull();
+    expect(fieldRow?.querySelector('.mantine-TextInput-root')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Provider' }).closest('.field-row')).toBe(fieldRow);
+  });
+
 });

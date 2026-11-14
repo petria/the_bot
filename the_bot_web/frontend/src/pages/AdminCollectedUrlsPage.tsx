@@ -88,7 +88,7 @@ export function AdminCollectedUrlsPage() {
 
       <Card withBorder radius="sm">
         <Stack gap="md">
-          <Group grow align="flex-end">
+          <Group grow align="flex-end" className="field-row">
             <TextInput
               label="Filter"
               placeholder="Title, URL, sender, channel, network"

@@ -19,12 +19,12 @@ export function AdminManageSystemPage() {
   const changed = !!settings && !!query.data && settings.waterTemperatureToWatch !== query.data.waterTemperatureToWatch;
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="flex-start">
+      <Group justify="space-between" align="flex-start" className="field-row">
         <div>
           <Title order={2}>Manage System</Title>
           <Text c="dimmed">Configure system features for this bot instance.</Text>
         </div>
-        <Button leftSection={<Save size={18} />} loading={save.isPending}
+        <Button className="stack-fixed" leftSection={<Save size={18} />} loading={save.isPending}
           disabled={!changed || query.isError || save.isPending} onClick={() => settings && save.mutate(settings)}>Save</Button>
       </Group>
       {query.isLoading && <Loader />}

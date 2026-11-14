@@ -214,7 +214,7 @@ function SystemComponentCard({ component }: { component: SystemComponentStatus }
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
-    <Group justify="space-between" gap="sm" wrap="nowrap" className="system-info-line">
+    <Group justify="space-between" gap="sm" wrap="nowrap" className="info-row system-info-line">
       <Text size="xs" c="dimmed" fw={600}>{label}</Text>
       <Text size="sm" ta="right" className="system-info-value">{value}</Text>
     </Group>

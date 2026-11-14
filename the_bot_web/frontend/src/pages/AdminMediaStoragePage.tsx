@@ -96,7 +96,7 @@ export function AdminMediaStoragePage() {
             onChange={(event) => updateSettings({ storageDir: event.currentTarget.value })}
           />
 
-          <Group grow align="flex-start">
+          <Group grow align="flex-start" className="field-row">
             <NumberInput
               label="Max file size"
               description="Megabytes"
