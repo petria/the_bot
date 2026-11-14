@@ -119,7 +119,7 @@ export function CreateObservedUserModal({
             setUsername(event.currentTarget.value);
           }}
         />
-        <Group align="flex-end" gap="sm" wrap="nowrap">
+        <Group align="flex-end" gap="sm" wrap="nowrap" className="field-row">
           <PasswordInput
             label="Initial password"
             autoComplete="new-password"
@@ -133,6 +133,7 @@ export function CreateObservedUserModal({
           />
           <Button
             variant="default"
+            className="stack-fixed"
             leftSection={<KeyRound size={16} />}
             onClick={handleGeneratePassword}
           >
@@ -165,7 +166,7 @@ export function CreateObservedUserModal({
           </Alert>
         )}
 
-        <Group justify="flex-end">
+        <Group justify="flex-end" className="action-row">
           <Button variant="subtle" onClick={handleClose}>Cancel</Button>
           <Button
             leftSection={<UserPlus size={18} />}

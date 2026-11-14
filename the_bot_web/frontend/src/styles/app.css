@@ -408,6 +408,11 @@ body,
     overflow-x: auto;
   }
 
+  /* Tab strip chrome stays compact so tabs keep their own height budget. */
+  .mantine-Tabs-tab .mantine-Button-root {
+    min-height: 0;
+  }
+
   .data-table {
     display: none;
   }

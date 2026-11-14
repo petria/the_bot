@@ -132,6 +132,7 @@ describe('app.css mobile utilities', () => {
     expect(selectorsFor(mobileRules, 'flex-wrap: nowrap')).toContain('.mantine-Tabs-list');
     expect(selectorsFor(mobileRules, 'overflow-x: auto')).toContain('.mantine-Tabs-list');
     expect(selectorsFor(mobileRules, 'min-width: 0')).toContain('.mantine-Tabs-root');
+    expect(selectorsFor(mobileRules, 'min-height: 0')).toContain('.mantine-Tabs-tab .mantine-Button-root');
     expect(selectorsFor(mobileRules, 'display: none')).toContain('.data-table');
     expect(selectorsFor(mobileRules, 'display: flex')).toContain('.data-cards');
   });
