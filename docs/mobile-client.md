@@ -151,3 +151,20 @@ revokes agents. See [Irssi installation and operation](../integrations/irssi/REA
 for `petria@new.airiot.fi`, agent credentials, routing, expiry and recovery rules.
 Sending requires an explicit Android approval; generation alone never submits
 a channel message. Uncertain sends require checking the channel before retry.
+
+## WebUi section with bot-controlled instance links
+
+The phone app has a **WebUi** section (visible after login) that lists the main
+and develop bot Web UI links and opens them in the device's default browser.
+The URLs are not hardcoded in the APK: they come from bot configuration through
+the authenticated `GET /api/mobile/webui-links` endpoint, backed by
+runtime settings keys `webui.url.main` and `webui.url.develop` edited on
+**Manage System → WebUI links** in the bot web admin. Seeded defaults are
+`https://hokanthebot.airiot.fi` (main) and `https://hokandevbot.airiot.fi`
+(develop); an instance whose own `the.bot.webPublicBaseUrl` is an `https` URL
+uses it as the default for its own slot. Clearing a field on the admin page
+restores the default. Each instance stores its own copy, so main and develop
+are configured independently, and both flavors currently talk to the main
+instance, so links are fetched from whichever instance the flavor points at.
+An "Open" button is offered only for absolute `http`/`https` URLs; the link is
+marked "this instance" when it matches the build's base URL.

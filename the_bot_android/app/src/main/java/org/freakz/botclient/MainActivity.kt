@@ -70,6 +70,7 @@ private fun MainScreen(client: BotClient, notificationId: String?, onLogout: () 
         Button({ selected = "Profile"; opened = null }) { Text("Profile") }
         Button({ selected = "Channels"; opened = null }) { Text("Channels") }
         Button({ selected = "Watch"; opened = null }) { Text("Watch") }
+        Button({ selected = "WebUi"; opened = null }) { Text("WebUi") }
         Button({ scope.launch { client.logout(); onLogout() } }) { Text("Logout") }
         if (opened?.replyDraft != null) {
             IrssiDraftScreen(client, opened!!, { opened = null }, Modifier.weight(1f))
@@ -89,6 +90,7 @@ private fun MainScreen(client: BotClient, notificationId: String?, onLogout: () 
                     Button({ sync = WatchLinkStore(ctx).lastSyncAt(); request = WatchLinkStore(ctx).lastRequestAt() }) { Text("Refresh") }
                 }
             }
+            "WebUi" -> WebUiLinksScreen(client, Modifier.weight(1f))
         }
     }
 }

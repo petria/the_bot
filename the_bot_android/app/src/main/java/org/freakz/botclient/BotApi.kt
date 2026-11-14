@@ -17,6 +17,8 @@ import retrofit2.http.Path
 @Serializable data class CommandResponse(val reply: String? = null)
 
 @Serializable data class ReplyDraft(val id: String, val network: String, val channel: String, val sender: String, val sourceMessage: String, val text: String, val expectedNick: String? = null)
+@Serializable data class WebUiLink(val url: String, val configured: Boolean)
+@Serializable data class WebUiLinks(val main: WebUiLink, val develop: WebUiLink)
 @Serializable data class IrssiAvailability(val available: Boolean)
 @Serializable data class IrssiSend(val text: String, val retry: Boolean = false)
 @Serializable data class IrssiJob(val id: String, val status: String, val detail: String? = null)
@@ -35,6 +37,7 @@ interface BotApi {
     @POST("/api/mobile/auth/refresh") suspend fun refresh(@Body request: RefreshRequest): TokenPair
     @POST("/api/mobile/auth/logout") suspend fun logout(@Body request: RefreshRequest)
     @POST("/api/mobile/water/refresh") suspend fun refreshWater(): kotlinx.serialization.json.JsonObject
+    @GET("/api/mobile/webui-links") suspend fun webUiLinks(): WebUiLinks
     @GET("/api/mobile/me") suspend fun me(): MobileMe
     @POST("/api/mobile/devices") suspend fun registerDevice(@Body request: DeviceRequest)
     @GET("/api/mobile/notifications") suspend fun notifications(): List<NotificationItem>

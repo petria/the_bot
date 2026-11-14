@@ -14,6 +14,8 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
+import org.freakz.common.model.engine.system.WebUiLinksSettings;
+import org.freakz.common.model.engine.system.WebUiLinksUpdateRequest;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -145,6 +147,24 @@ public class AdminSystemController {
     ResponseEntity<MediaStorageSettingsResponse> response = engineClient.updateMediaStorageSettings(request);
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
       throw new IllegalStateException("Could not update media storage settings");
+    }
+    return response.getBody();
+  }
+
+  @GetMapping("/webui-links")
+  public WebUiLinksSettings getWebUiLinks() {
+    ResponseEntity<WebUiLinksSettings> response = engineClient.getWebUiLinks();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not load Web UI links from bot-engine");
+    }
+    return response.getBody();
+  }
+
+  @PutMapping("/webui-links")
+  public WebUiLinksSettings updateWebUiLinks(@RequestBody WebUiLinksUpdateRequest request) {
+    ResponseEntity<WebUiLinksSettings> response = engineClient.updateWebUiLinks(request);
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new IllegalStateException("Could not save Web UI links in bot-engine");
     }
     return response.getBody();
   }

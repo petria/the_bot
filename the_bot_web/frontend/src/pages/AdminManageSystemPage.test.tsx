@@ -1,12 +1,24 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import * as meApi from '../api/me';
 import * as api from '../api/adminSystemSettings';
+import * as linksApi from '../api/adminWebUiLinks';
 import { renderPage } from '../test/pageTestUtils';
 import { AdminManageSystemPage } from './AdminManageSystemPage';
 
+const defaultLinks = {
+  main: { url: 'https://hokanthebot.airiot.fi', configured: false },
+  develop: { url: 'https://hokandevbot.airiot.fi', configured: false },
+};
+
 describe('Manage System', () => {
+  beforeEach(() => {
+    vi.spyOn(meApi, 'getMe').mockResolvedValue({ id: 1, username: 'tester', name: null,
+      email: null, ircNick: null, telegramId: null, discordId: null, whatsappId: null,
+      homeChannel: null, roles: [], permissions: ['web.admin'] });
+    vi.spyOn(linksApi, 'getWebUiLinks').mockResolvedValue(defaultLinks);
+  });
   it.each([true, false])('protects navigation and direct route for admin=%s', async (admin) => {
     vi.spyOn(meApi, 'getMe').mockResolvedValue({ id: 1, username: 'tester', name: null,
       email: null, ircNick: null, telegramId: null, discordId: null, whatsappId: null,
@@ -68,4 +80,51 @@ describe('Manage System', () => {
     expect(container.querySelector('.field-row .mantine-Button-root')).toBeInTheDocument();
   });
 
+  it('renders loaded WebUI links with default and custom badges', async () => {
+    vi.spyOn(api, 'getSystemSettings').mockResolvedValue({ waterTemperatureToWatch: false });
+    vi.spyOn(linksApi, 'getWebUiLinks').mockResolvedValue({
+      main: { url: 'https://hokanthebot.airiot.fi', configured: false },
+      develop: { url: 'https://custom-dev.example', configured: true },
+    });
+    renderPage(<AdminManageSystemPage />);
+
+    const main = await screen.findByLabelText(/Main instance URL/);
+    expect(main).toHaveValue('https://hokanthebot.airiot.fi');
+    expect(screen.getByLabelText(/Develop instance URL/)).toHaveValue('https://custom-dev.example');
+    expect(screen.getByText('default')).toBeInTheDocument();
+    expect(screen.getByText('custom')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save links' })).toBeDisabled();
+  });
+
+  it('enables Save links only after an edit and sends both URLs', async () => {
+    vi.spyOn(api, 'getSystemSettings').mockResolvedValue({ waterTemperatureToWatch: false });
+    const save = vi.spyOn(linksApi, 'saveWebUiLinks').mockResolvedValue({
+      main: { url: 'https://new-main.example', configured: true },
+      develop: { url: 'https://hokandevbot.airiot.fi', configured: false },
+    });
+    renderPage(<AdminManageSystemPage />);
+
+    const main = await screen.findByLabelText(/Main instance URL/);
+    const saveLinks = screen.getByRole('button', { name: 'Save links' });
+    expect(saveLinks).toBeDisabled();
+    fireEvent.change(main, { target: { value: 'https://new-main.example' } });
+    expect(saveLinks).toBeEnabled();
+    fireEvent.click(saveLinks);
+    await waitFor(() => expect(save).toHaveBeenCalledWith({
+      mainUrl: 'https://new-main.example', developUrl: 'https://hokandevbot.airiot.fi',
+    }));
+    expect(await screen.findByText('WebUI links saved.')).toBeInTheDocument();
+    expect(saveLinks).toBeDisabled();
+  });
+
+  it('surfaces the engine rejection reason when saving WebUI links', async () => {
+    vi.spyOn(api, 'getSystemSettings').mockResolvedValue({ waterTemperatureToWatch: false });
+    vi.spyOn(linksApi, 'saveWebUiLinks').mockRejectedValue(new Error('Main instance URL must be an absolute http or https URL'));
+    renderPage(<AdminManageSystemPage />);
+
+    fireEvent.change(await screen.findByLabelText(/Main instance URL/), { target: { value: 'javascript:alert(1)' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save links' }));
+    expect(await screen.findByText('Main instance URL must be an absolute http or https URL')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Main instance URL/)).toHaveValue('javascript:alert(1)');
+  });
 });
