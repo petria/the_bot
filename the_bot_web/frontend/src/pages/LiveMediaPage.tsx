@@ -146,7 +146,7 @@ export function LiveMediaPage() {
             <Badge variant="light" color="gray">{items.length.toLocaleString('fi-FI')} accessible</Badge>
           </Group>
 
-          <Table.ScrollContainer minWidth={1080}>
+          <Table.ScrollContainer minWidth={1080} className="data-table">
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -175,39 +175,23 @@ export function LiveMediaPage() {
                     <Table.Td>{formatDateTime(item.createdAt)}</Table.Td>
                     <Table.Td>{formatDateTime(item.expiresAt)}</Table.Td>
                     <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        {itemHref(item) ? (
-                          <Tooltip label="Open">
-                            <ActionIcon
-                              component="a"
-                              href={itemHref(item)}
-                              target="_blank"
-                              rel="noreferrer"
-                              variant="light"
-                              aria-label="Open item"
-                            >
-                              <ExternalLink size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        ) : null}
-                        {copyValue(item) ? (
-                          <Tooltip label={copiedKey === itemKey(item) ? 'Copied' : 'Copy link'}>
-                            <ActionIcon
-                              variant="light"
-                              aria-label="Copy link"
-                              onClick={() => copyItem(item)}
-                            >
-                              <Copy size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        ) : null}
-                      </Group>
+                      <ItemActions
+                        item={item}
+                        copied={copiedKey === itemKey(item)}
+                        onCopy={() => copyItem(item)}
+                      />
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+
+          <MediaCards
+            items={visibleItems}
+            copiedKey={copiedKey}
+            onCopy={copyItem}
+          />
         </Stack>
       </Card>
     </Stack>
@@ -288,6 +272,111 @@ function SourceCell({ item }: { item: LiveMediaItem }) {
       <Text>{item.sourceChannelAlias || item.sourceChannelName || '-'}</Text>
       <Text size="xs" c="dimmed">{[item.sourceProtocol, item.sourceNetwork].filter(Boolean).join(' / ') || '-'}</Text>
     </Stack>
+  );
+}
+
+function MediaCards({
+  items,
+  copiedKey,
+  onCopy,
+}: {
+  items: LiveMediaItem[];
+  copiedKey: string | null;
+  onCopy: (item: LiveMediaItem) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <Stack gap="sm" className="data-cards">
+        <Card withBorder radius="sm">
+          <Text c="dimmed">No live media found.</Text>
+        </Card>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="sm" className="data-cards">
+      {items.map((item) => (
+        <Card withBorder radius="sm" key={`${item.type}:${item.id}`}>
+          <Stack gap="xs">
+            <TypeCell item={item} />
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>Content</Text>
+              <ContentCell item={item} />
+            </Stack>
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>Source</Text>
+              <SourceCell item={item} />
+            </Stack>
+            <InfoLine label="Sender" value={item.sourceSender || '-'} />
+            <InfoLine label="Created" value={formatDateTime(item.createdAt)} />
+            <InfoLine label="Expires" value={formatDateTime(item.expiresAt)} />
+            <ItemActions
+              item={item}
+              touch
+              copied={copiedKey === itemKey(item)}
+              onCopy={() => onCopy(item)}
+            />
+          </Stack>
+        </Card>
+      ))}
+    </Stack>
+  );
+}
+
+function ItemActions({
+  item,
+  copied,
+  onCopy,
+  touch,
+}: {
+  item: LiveMediaItem;
+  copied: boolean;
+  onCopy: () => void;
+  touch?: boolean;
+}) {
+  const href = itemHref(item);
+  const value = copyValue(item);
+
+  return (
+    <Group gap="xs" wrap="nowrap" className={touch ? 'action-row' : undefined}>
+      {href ? (
+        <Tooltip label="Open">
+          <ActionIcon
+            component="a"
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            variant="light"
+            size={touch ? 'lg' : undefined}
+            aria-label="Open item"
+          >
+            <ExternalLink size={touch ? 20 : 16} />
+          </ActionIcon>
+        </Tooltip>
+      ) : null}
+      {value ? (
+        <Tooltip label={copied ? 'Copied' : 'Copy link'}>
+          <ActionIcon
+            variant="light"
+            size={touch ? 'lg' : undefined}
+            aria-label="Copy link"
+            onClick={onCopy}
+          >
+            <Copy size={touch ? 20 : 16} />
+          </ActionIcon>
+        </Tooltip>
+      ) : null}
+    </Group>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <Group justify="space-between" gap="sm" wrap="nowrap" className="info-row">
+      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
+      <Text size="sm" ta="right" className="info-value">{value || '-'}</Text>
+    </Group>
   );
 }
 

@@ -111,7 +111,7 @@ export function AdminCollectedUrlsPage() {
             {urlsQuery.data?.storageDir ? <Text size="sm" c="dimmed">{urlsQuery.data.storageDir}</Text> : null}
           </Group>
 
-          <Table.ScrollContainer minWidth={1050}>
+          <Table.ScrollContainer minWidth={1050} className="data-table">
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -140,35 +140,23 @@ export function AdminCollectedUrlsPage() {
                     <Table.Td>{formatDateTime(item.createdAt)}</Table.Td>
                     <Table.Td>{formatDateTime(item.expiresAt)}</Table.Td>
                     <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Tooltip label="Open original">
-                          <ActionIcon
-                            component="a"
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            variant="light"
-                            aria-label="Open original URL"
-                          >
-                            <ExternalLink size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label={copiedId === item.id ? 'Copied' : 'Copy original URL'}>
-                          <ActionIcon
-                            variant="light"
-                            aria-label="Copy original URL"
-                            onClick={() => copyUrl(item)}
-                          >
-                            <Copy size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
+                      <UrlActions
+                        item={item}
+                        copied={copiedId === item.id}
+                        onCopy={() => copyUrl(item)}
+                      />
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+
+          <CollectedUrlCards
+            items={visibleItems}
+            copiedId={copiedId}
+            onCopy={copyUrl}
+          />
         </Stack>
       </Card>
     </Stack>
@@ -211,6 +199,105 @@ function SourceCell({ item }: { item: CollectedUrlItem }) {
       <Text>{item.sourceChannelAlias || item.sourceChannelName || '-'}</Text>
       <Text size="xs" c="dimmed">{[item.sourceProtocol, item.sourceNetwork].filter(Boolean).join(' / ') || '-'}</Text>
     </Stack>
+  );
+}
+
+function CollectedUrlCards({
+  items,
+  copiedId,
+  onCopy,
+}: {
+  items: CollectedUrlItem[];
+  copiedId: string | null;
+  onCopy: (item: CollectedUrlItem) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <Stack gap="sm" className="data-cards">
+        <Card withBorder radius="sm">
+          <Text c="dimmed">No collected URLs found.</Text>
+        </Card>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="sm" className="data-cards">
+      {items.map((item) => (
+        <Card withBorder radius="sm" key={item.id}>
+          <Stack gap="xs">
+            <ProviderCell item={item} />
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>Title</Text>
+              <TitleCell item={item} />
+            </Stack>
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>Source</Text>
+              <SourceCell item={item} />
+            </Stack>
+            <InfoLine label="Sender" value={item.sourceSender || '-'} />
+            <InfoLine label="Created" value={formatDateTime(item.createdAt)} />
+            <InfoLine label="Expires" value={formatDateTime(item.expiresAt)} />
+            <InfoLine label="URL" value={item.url} />
+            <UrlActions
+              item={item}
+              touch
+              copied={copiedId === item.id}
+              onCopy={() => onCopy(item)}
+            />
+          </Stack>
+        </Card>
+      ))}
+    </Stack>
+  );
+}
+
+function UrlActions({
+  item,
+  copied,
+  onCopy,
+  touch,
+}: {
+  item: CollectedUrlItem;
+  copied: boolean;
+  onCopy: () => void;
+  touch?: boolean;
+}) {
+  return (
+    <Group gap="xs" wrap="nowrap" className={touch ? 'action-row' : undefined}>
+      <Tooltip label="Open original">
+        <ActionIcon
+          component="a"
+          href={item.url}
+          target="_blank"
+          rel="noreferrer"
+          variant="light"
+          size={touch ? 'lg' : undefined}
+          aria-label="Open original URL"
+        >
+          <ExternalLink size={touch ? 20 : 16} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={copied ? 'Copied' : 'Copy original URL'}>
+        <ActionIcon
+          variant="light"
+          size={touch ? 'lg' : undefined}
+          aria-label="Copy original URL"
+          onClick={onCopy}
+        >
+          <Copy size={touch ? 20 : 16} />
+        </ActionIcon>
+      </Tooltip>
+    </Group>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <Group justify="space-between" gap="sm" wrap="nowrap" className="info-row">
+      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
+      <Text size="sm" ta="right" className="info-value">{value || '-'}</Text>
+    </Group>
   );
 }
 

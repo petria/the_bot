@@ -110,7 +110,7 @@ export function AdminMediaContentPage() {
             {mediaQuery.data?.storageDir ? <Text size="sm" c="dimmed">{mediaQuery.data.storageDir}</Text> : null}
           </Group>
 
-          <Table.ScrollContainer minWidth={980}>
+          <Table.ScrollContainer minWidth={980} className="data-table">
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -141,35 +141,23 @@ export function AdminMediaContentPage() {
                     <Table.Td>{formatDateTime(item.createdAt)}</Table.Td>
                     <Table.Td>{formatDateTime(item.expiresAt)}</Table.Td>
                     <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        <Tooltip label="Open">
-                          <ActionIcon
-                            component="a"
-                            href={shortPath(item)}
-                            target="_blank"
-                            rel="noreferrer"
-                            variant="light"
-                            aria-label="Open media"
-                          >
-                            <ExternalLink size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label={copiedCode === item.shortCode ? 'Copied' : 'Copy link'}>
-                          <ActionIcon
-                            variant="light"
-                            aria-label="Copy media link"
-                            onClick={() => copyLink(item)}
-                          >
-                            <Copy size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
+                      <MediaActions
+                        item={item}
+                        copied={copiedCode === item.shortCode}
+                        onCopy={() => copyLink(item)}
+                      />
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           </Table.ScrollContainer>
+
+          <MediaContentCards
+            items={visibleItems}
+            copiedCode={copiedCode}
+            onCopy={copyLink}
+          />
         </Stack>
       </Card>
     </Stack>
@@ -224,6 +212,105 @@ function SourceCell({ item }: { item: MediaContentItem }) {
       <Text>{item.sourceChannelAlias || item.sourceChannelName || '-'}</Text>
       <Text size="xs" c="dimmed">{[item.sourceProtocol, item.sourceNetwork].filter(Boolean).join(' / ') || '-'}</Text>
     </Stack>
+  );
+}
+
+function MediaContentCards({
+  items,
+  copiedCode,
+  onCopy,
+}: {
+  items: MediaContentItem[];
+  copiedCode: string | null;
+  onCopy: (item: MediaContentItem) => void;
+}) {
+  if (items.length === 0) {
+    return (
+      <Stack gap="sm" className="data-cards">
+        <Card withBorder radius="sm">
+          <Text c="dimmed">No media content found.</Text>
+        </Card>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="sm" className="data-cards">
+      {items.map((item) => (
+        <Card withBorder radius="sm" key={item.id}>
+          <Stack gap="xs">
+            <MediaTypeCell item={item} />
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>File</Text>
+              <FileCell item={item} />
+            </Stack>
+            <Stack gap={2} className="info-row">
+              <Text size="xs" c="dimmed" fw={600}>Source</Text>
+              <SourceCell item={item} />
+            </Stack>
+            <InfoLine label="Sender" value={item.sourceSender || '-'} />
+            <InfoLine label="Size" value={formatBytes(item.sizeBytes)} />
+            <InfoLine label="Created" value={formatDateTime(item.createdAt)} />
+            <InfoLine label="Expires" value={formatDateTime(item.expiresAt)} />
+            <MediaActions
+              item={item}
+              touch
+              copied={copiedCode === item.shortCode}
+              onCopy={() => onCopy(item)}
+            />
+          </Stack>
+        </Card>
+      ))}
+    </Stack>
+  );
+}
+
+function MediaActions({
+  item,
+  copied,
+  onCopy,
+  touch,
+}: {
+  item: MediaContentItem;
+  copied: boolean;
+  onCopy: () => void;
+  touch?: boolean;
+}) {
+  return (
+    <Group gap="xs" wrap="nowrap" className={touch ? 'action-row' : undefined}>
+      <Tooltip label="Open">
+        <ActionIcon
+          component="a"
+          href={shortPath(item)}
+          target="_blank"
+          rel="noreferrer"
+          variant="light"
+          size={touch ? 'lg' : undefined}
+          aria-label="Open media"
+        >
+          <ExternalLink size={touch ? 20 : 16} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={copied ? 'Copied' : 'Copy link'}>
+        <ActionIcon
+          variant="light"
+          size={touch ? 'lg' : undefined}
+          aria-label="Copy media link"
+          onClick={onCopy}
+        >
+          <Copy size={touch ? 20 : 16} />
+        </ActionIcon>
+      </Tooltip>
+    </Group>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <Group justify="space-between" gap="sm" wrap="nowrap" className="info-row">
+      <Text size="xs" c="dimmed" fw={600}>{label}</Text>
+      <Text size="sm" ta="right" className="info-value">{value || '-'}</Text>
+    </Group>
   );
 }
 
