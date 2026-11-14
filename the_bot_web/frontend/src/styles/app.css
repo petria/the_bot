@@ -177,8 +177,11 @@ body,
   min-width: 0;
 }
 
+.field-row,
 .system-field-row,
+.info-row,
 .system-info-row,
+.action-row,
 .system-actions {
   min-width: 0;
 }
@@ -254,6 +257,16 @@ body,
   white-space: nowrap;
 }
 
+/* Cards replace the wide data tables below the sm breakpoint. */
+.data-cards {
+  display: none;
+}
+
+/* Mantine sizes modals from the `size` prop; keep them inside the viewport everywhere. */
+.mantine-Modal-content {
+  max-width: calc(100vw - 16px);
+}
+
 @media (max-width: 48em) {
   .app-header h3 {
     font-size: 1rem;
@@ -265,6 +278,7 @@ body,
 
   .profile-grid > * {
     width: 100%;
+    max-width: 100% !important;
   }
 
   .known-users-table {
@@ -304,46 +318,102 @@ body,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .field-row,
   .system-field-row {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .field-row > *,
   .system-field-row > * {
     width: 100%;
     max-width: 100% !important;
   }
 
+  .field-row > .stack-fixed,
+  .system-field-row > .stack-fixed,
+  .field-row > .system-fixed,
   .system-field-row > .system-fixed {
     flex-grow: 0;
   }
 
+  .field-row .mantine-Button-root,
   .system-field-row .mantine-Button-root {
     width: 100%;
   }
 
-  .system-field-row input,
-  .system-field-row .mantine-Input-input {
-    font-size: 1rem;
-    min-height: 44px;
-  }
-
-  .system-field-row .mantine-NumberInput-handler {
-    min-width: 44px;
-  }
-
+  .info-row,
   .system-info-row {
     flex-direction: column;
     align-items: stretch;
     gap: var(--mantine-spacing-xs);
   }
 
+  .info-row > .info-value,
+  .info-row > .system-info-value,
+  .system-info-row > .info-value,
+  .system-info-row > .system-info-value {
+    text-align: left;
+  }
+
+  .action-row,
   .system-actions {
     justify-content: stretch;
   }
 
-  .system-actions .mantine-Button-root {
+  .action-row .mantine-Button-root,
+  .system-actions .mantine-Button-root,
+  .action-row .mantine-ActionIcon-root,
+  .system-actions .mantine-ActionIcon-root {
     width: 100%;
+  }
+
+  .field-row .mantine-SegmentedControl-root,
+  .action-row .mantine-SegmentedControl-root {
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .field-row .mantine-SegmentedControl-label,
+  .action-row .mantine-SegmentedControl-label {
+    font-size: 0.8125rem;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  .mantine-Input-input,
+  .mantine-NumberInput-input,
+  .mantine-Button-root,
+  .mantine-ActionIcon-root {
+    min-height: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  .mantine-Input-input,
+  .mantine-NumberInput-input {
+    font-size: 1rem;
+  }
+
+  .mantine-NumberInput-handler {
+    min-width: 44px;
+  }
+
+  .mantine-Tabs-root {
+    min-width: 0;
+  }
+
+  .mantine-Tabs-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .data-table {
+    display: none;
+  }
+
+  .data-cards {
+    display: flex;
   }
 
   .live-channel-users-list {
