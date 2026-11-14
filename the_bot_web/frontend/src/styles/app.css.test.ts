@@ -74,6 +74,13 @@ describe('app.css mobile utilities', () => {
       '.system-field-row > *',
       '.profile-grid > *',
     ]));
+
+    // Text's `ta` prop is an inline style, so a plain text-align would lose.
+    expect(selectorsFor(mobileRules, 'text-align: left !important')).toEqual(expect.arrayContaining([
+      '.info-row > .info-value',
+      '.info-row > .system-info-value',
+      '.system-info-row > .system-info-value',
+    ]));
   });
 
   it('keeps fixed children and full-width actions available under both class names', () => {
@@ -110,6 +117,11 @@ describe('app.css mobile utilities', () => {
       '.mantine-Button-root',
       '.mantine-ActionIcon-root',
       'textarea',
+      '.app-header .mantine-Burger-root',
+      '.app-header .home-button',
+      '.app-header .mantine-UnstyledButton-root',
+      '.mantine-Modal-close',
+      '.mantine-Drawer-close',
     ]) {
       expect(touchTargets).toContain(selector);
     }
@@ -121,7 +133,17 @@ describe('app.css mobile utilities', () => {
       'textarea',
     ]));
 
-    expect(selectorsFor(mobileRules, 'min-width: 44px')).toContain('.mantine-NumberInput-handler');
+    // Mantine names the stepper parts `-controls` (the pair) and `-control`
+    // (each half); an unknown class here means the steppers went back to 24px.
+    const wide = selectorsFor(mobileRules, 'min-width: 44px');
+    for (const selector of [
+      '.mantine-NumberInput-controls',
+      '.mantine-NumberInput-control',
+      '.mantine-Modal-close',
+    ]) {
+      expect(wide).toContain(selector);
+    }
+    expect(selectorsFor(mobileRules, 'min-height: 22px')).toContain('.mantine-NumberInput-control');
 
     expect(desktop).not.toMatch(/min-height:\s*44px/);
     expect(desktop).not.toMatch(/min-width:\s*44px/);

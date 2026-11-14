@@ -272,6 +272,20 @@ body,
     font-size: 1rem;
   }
 
+  /* The 56px header bar has room for thumb-sized targets, so the burger, the
+     home button and the user menu all reach the 44px minimum. */
+  .app-header .mantine-Burger-root,
+  .app-header .home-button,
+  .app-header .mantine-UnstyledButton-root {
+    min-height: 44px;
+  }
+
+  .app-header .home-button,
+  .app-header .mantine-UnstyledButton-root {
+    display: flex;
+    align-items: center;
+  }
+
   .profile-grid {
     flex-direction: column;
   }
@@ -349,11 +363,13 @@ body,
     gap: var(--mantine-spacing-xs);
   }
 
+  /* Mantine renders Text's `ta` prop as an inline style, so stacking the row
+     leaves the value hanging right unless the override is authoritative. */
   .info-row > .info-value,
   .info-row > .system-info-value,
   .system-info-row > .info-value,
   .system-info-row > .system-info-value {
-    text-align: left;
+    text-align: left !important;
   }
 
   .action-row,
@@ -395,7 +411,21 @@ body,
     font-size: 1rem;
   }
 
-  .mantine-NumberInput-handler {
+  /* Mantine stacks the stepper halves inside the field, so each one gets the
+     full 44px width and half the field height rather than a 24px-wide strip. */
+  .mantine-NumberInput-controls {
+    min-width: 44px;
+  }
+
+  .mantine-NumberInput-control {
+    min-height: 22px;
+    min-width: 44px;
+  }
+
+  /* Modal and drawer close buttons are primary targets, not decoration. */
+  .mantine-Modal-close,
+  .mantine-Drawer-close {
+    min-height: 44px;
     min-width: 44px;
   }
 
