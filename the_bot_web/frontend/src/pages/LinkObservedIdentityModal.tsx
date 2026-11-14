@@ -147,7 +147,7 @@ export function LinkObservedIdentityModal({
           </Alert>
         )}
 
-        <Group justify="flex-end">
+        <Group justify="flex-end" className="action-row">
           <Button variant="subtle" onClick={handleClose}>Cancel</Button>
           {conflict && !allowMove ? (
             <Button color="yellow" loading={linkMutation.isPending} onClick={() => handleLink(true)}>

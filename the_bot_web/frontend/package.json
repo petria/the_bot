@@ -9,7 +9,9 @@
     "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=coverage/junit.xml",
     "test:watch": "vitest",
     "build": "npm test && tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mock-api": "node scripts/mock-web-api.mjs",
+    "mobile-shots": "node scripts/mobile-shots.mjs"
   },
   "dependencies": {
     "@mantine/core": "^8.3.8",
@@ -30,6 +32,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^29.1.1",
+    "playwright": "1.64.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
     "vitest": "^4.1.10"

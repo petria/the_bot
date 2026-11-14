@@ -6,6 +6,7 @@ import org.freakz.common.model.engine.EngineRequest;
 import org.freakz.common.model.engine.EngineResponse;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
+import org.freakz.common.model.engine.system.WebUiLinksSettings;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.freakz.web.security.BotUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -91,6 +92,15 @@ public class MobileController {
   @GetMapping("/connections")
   public Object connections(@AuthenticationPrincipal BotUserPrincipal principal) {
     return connectionsController.getConnectionMap(principal).getBody();
+  }
+
+  @GetMapping("/webui-links")
+  public WebUiLinksSettings webUiLinks(@AuthenticationPrincipal BotUserPrincipal principal) {
+    var response = engineClient.getWebUiLinks();
+    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "bot-engine did not return Web UI links");
+    }
+    return response.getBody();
   }
 
   @GetMapping("/notify-rules")

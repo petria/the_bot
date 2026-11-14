@@ -19,6 +19,8 @@ import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
 import org.freakz.common.model.engine.system.HermesBackendConfigUpdateRequest;
 import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.model.engine.system.MediaStorageUpdateRequest;
+import org.freakz.common.model.engine.system.WebUiLinksSettings;
+import org.freakz.common.model.engine.system.WebUiLinksUpdateRequest;
 import org.freakz.common.model.engine.notify.UserNotifyRule;
 import org.freakz.common.model.engine.notify.UserNotifyRuleListResponse;
 import org.freakz.common.model.connectionmanager.IrcOperatorReconcileResponse;
@@ -63,6 +65,15 @@ public class RestEngineClient {
       SystemSettings request) {
     return restTemplate.exchange(baseUrl + "/internal/system/settings", HttpMethod.PUT,
         new org.springframework.http.HttpEntity<>(request), SystemSettings.class);
+  }
+
+  public ResponseEntity<WebUiLinksSettings> getWebUiLinks() {
+    return restTemplate.getForEntity(baseUrl + "/internal/system/webui-links", WebUiLinksSettings.class);
+  }
+
+  public ResponseEntity<WebUiLinksSettings> updateWebUiLinks(WebUiLinksUpdateRequest request) {
+    return restTemplate.exchange(baseUrl + "/internal/system/webui-links", HttpMethod.PUT,
+        new org.springframework.http.HttpEntity<>(request), WebUiLinksSettings.class);
   }
 
 

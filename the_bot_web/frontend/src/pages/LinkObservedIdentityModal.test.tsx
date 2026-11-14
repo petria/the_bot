@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { AdminUser } from '../api/adminUsers';
 import type { KnownUserTarget } from '../api/knownUsers';
@@ -27,4 +27,14 @@ describe('LinkObservedIdentityModal', () => {
     expect(screen.getByText(/Petri Discord/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /link/i })).toBeInTheDocument();
   });
+
+  it('stacks the modal actions for phone use', () => {
+    renderPage(<LinkObservedIdentityModal opened target={target} user={user} onClose={() => undefined} />);
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: /^link$/i }).closest('.action-row')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /^cancel$/i }).closest('.action-row')).toBeInTheDocument();
+    expect(document.querySelector('.action-row .mantine-Button-root')).toBeInTheDocument();
+  });
+
 });

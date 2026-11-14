@@ -112,7 +112,7 @@ export function AdminAiCommandsPage() {
           <Text c="dimmed">Runtime Hermes-backed commands stored in ai-commands.json.</Text>
           {aiCommandsQuery.data?.path ? <Text size="sm" c="dimmed">{aiCommandsQuery.data.path}</Text> : null}
         </div>
-        <Group gap="sm">
+        <Group gap="sm" className="action-row">
           <Button variant="light" leftSection={<Plus size={18} />} onClick={addCommand}>
             Add command
           </Button>
@@ -155,7 +155,7 @@ export function AdminAiCommandsPage() {
                 </ActionIcon>
               </Group>
 
-              <Group grow align="flex-start">
+              <Group grow align="flex-start" className="field-row">
                 <TextInput
                   label="Command name"
                   value={command.name}

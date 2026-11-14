@@ -38,6 +38,7 @@ class BotClient(private val context: Context) {
     suspend fun sendIrssi(id: String, text: String, retry: Boolean) = authenticated { api.sendIrssi(id, IrssiSend(text, retry)) }
     suspend fun irssiJob(id: String) = authenticated { api.irssiJob(id) }
     suspend fun refreshWater() = authenticated { api.refreshWater() }
+    suspend fun webUiLinks() = authenticated { api.webUiLinks() }
     suspend fun currentUser() = authenticated { api.me() }
     suspend fun registerCurrentDevice() {
         val token = FirebaseMessaging.getInstance().token.await()

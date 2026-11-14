@@ -460,7 +460,7 @@ function UserEditorModal({
         {validationError && <Alert color="red" variant="light">{validationError}</Alert>}
         {mutationError && <AdminUsersError error={mutationError} />}
 
-        <Group justify="flex-end">
+        <Group justify="flex-end" className="action-row">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
           <Button loading={isPending} onClick={handleSave}>
             {isCreate ? 'Create user' : 'Save user'}
@@ -517,7 +517,7 @@ function PasswordResetModal({
         />
         {validationError && <Alert color="red" variant="light">{validationError}</Alert>}
         {mutation.error && <AdminUsersError error={mutation.error} />}
-        <Group justify="flex-end">
+        <Group justify="flex-end" className="action-row">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
           <Button leftSection={<KeyRound size={18} />} loading={mutation.isPending} onClick={handleSave}>
             Reset password
@@ -544,7 +544,7 @@ function DeleteUserModal({
           Delete user <strong>{user?.username}</strong>?
         </Text>
         {mutation.error && <AdminUsersError error={mutation.error} />}
-        <Group justify="flex-end">
+        <Group justify="flex-end" className="action-row">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
           <Button
             color="red"
