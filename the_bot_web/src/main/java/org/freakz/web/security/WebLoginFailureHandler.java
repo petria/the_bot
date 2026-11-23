@@ -34,14 +34,14 @@ public class WebLoginFailureHandler implements AuthenticationFailureHandler {
       HttpServletRequest request,
       HttpServletResponse response,
       AuthenticationException exception) throws IOException, ServletException {
-    reportFailedLogin(request);
+    reportFailedLogin(request, request.getParameter(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY));
     delegate.onAuthenticationFailure(request, response, exception);
   }
 
-  private void reportFailedLogin(HttpServletRequest request) {
+  void reportFailedLogin(HttpServletRequest request, String username) {
     try {
       WebLoginFailedEvent event = new WebLoginFailedEvent(
-          blankToUnknown(request.getParameter(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY)),
+          blankToUnknown(abbreviate(username, 128)),
           clientAddress(request),
           abbreviate(request.getHeader("User-Agent"), MAX_USER_AGENT_LENGTH),
           Instant.now());
@@ -52,11 +52,8 @@ public class WebLoginFailureHandler implements AuthenticationFailureHandler {
   }
 
   private String clientAddress(HttpServletRequest request) {
-    String forwardedFor = firstNonBlank(request.getHeader("X-Forwarded-For"));
-    if (!forwardedFor.isBlank()) {
-      return forwardedFor.split(",", 2)[0].trim();
-    }
-    return firstNonBlank(request.getHeader("X-Real-IP"), request.getRemoteAddr(), "unknown");
+    return firstNonBlank((String) request.getAttribute(RequestRateLimitFilter.CLIENT_ADDRESS),
+        request.getRemoteAddr(), "unknown");
   }
 
   private String blankToUnknown(String value) {

@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -194,7 +196,7 @@ public class HermesFallbackService implements ApplicationRunner {
     try {
       StoredConfig config = sanitizeConfig(request);
       validateConfig(config);
-      applyHermesConfiguration(config);
+      applyHermesConfiguration(config, request != null && Boolean.TRUE.equals(request.purgeState()));
       return response(config);
     } catch (HermesValidationException | IllegalArgumentException e) {
       throw e;
@@ -689,28 +691,95 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private void applyHermesConfiguration(StoredConfig config) throws IOException {
+    applyHermesConfiguration(config, false);
+  }
+
+  private void applyHermesConfiguration(StoredConfig config, boolean purgeState) throws IOException {
     Map<Path, byte[]> backups = new LinkedHashMap<>();
-    List<String> changedProfiles = new ArrayList<>();
+    Set<String> changedProfiles = new LinkedHashSet<>();
+    Set<String> quiesced = new LinkedHashSet<>();
+    Map<Path, Path> runtimeBackups = new LinkedHashMap<>();
     try {
+      if (purgeState) {
+        for (StoredRoute route : config.routes()) {
+          String profile = route.id();
+          quiesced.add(profile);
+          gatewayService.stop(profile);
+          backupRuntimeState(profile, runtimeBackups);
+        }
+      }
       for (StoredRoute route : config.routes()) {
         updateProfileConfig(route.id(), backendById(config, route.backendId()), backups, changedProfiles, true);
       }
+      changedProfiles.addAll(quiesced);
       for (String profile : changedProfiles) {
-        gatewayService.restart(profile);
+        if (quiesced.contains(profile)) {
+          gatewayService.start(profile);
+        } else {
+          gatewayService.restart(profile);
+        }
         waitForProfileHealth(profile);
       }
       writeConfig(config);
     } catch (Exception e) {
-      rollbackProfiles(backups, changedProfiles, e);
+      for (String profile : quiesced) {
+        try {
+          gatewayService.stop(profile);
+        } catch (RuntimeException stopError) {
+          e.addSuppressed(stopError);
+          // Avoid restoring state files while a gateway could still be using them.
+          Path directory = profileDirectory(profile);
+          runtimeBackups.keySet().removeIf(path -> path.getParent().equals(directory));
+        }
+      }
+      restoreRuntimeState(runtimeBackups, e);
+      changedProfiles.addAll(quiesced);
+      rollbackProfiles(backups, changedProfiles, quiesced, e);
       throw e;
     }
+  }
+
+  private static final List<String> RUNTIME_FILES = List.of(
+      "state.db", "state.db-shm", "state.db-wal", "response_store.db",
+      "response_store.db-shm", "response_store.db-wal", "sessions");
+
+  private Path profileDirectory(String profile) {
+    return properties.dataDir().resolve("profiles").resolve(profile);
+  }
+
+  private void backupRuntimeState(String profile, Map<Path, Path> backups) throws IOException {
+    Path directory = profileDirectory(profile);
+    Path root = directory.resolve("state-backup");
+    Files.createDirectories(root);
+    Path backup = Files.createTempDirectory(root, Instant.now().toEpochMilli() + "-");
+    for (String name : RUNTIME_FILES) {
+      Path source = directory.resolve(name);
+      Path destination = backup.resolve(name);
+      if (Files.exists(source, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+        Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE);
+        backups.put(source, destination);
+      }
+    }
+  }
+
+  private void restoreRuntimeState(Map<Path, Path> backups, Exception failure) {
+    backups.forEach((source, backup) -> {
+      try {
+        if (Files.exists(source, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+          Files.move(source, backup.resolveSibling("new-" + backup.getFileName()), StandardCopyOption.ATOMIC_MOVE);
+        }
+        Files.move(backup, source, StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException e) {
+        failure.addSuppressed(e);
+      }
+    });
   }
 
   private void updateProfileConfig(
       String profile,
       StoredBackend backend,
       Map<Path, byte[]> backups,
-      List<String> changedProfiles,
+      Set<String> changedProfiles,
       boolean required) throws IOException {
     Optional<Path> optionalPath = findProfileConfigIfPresent(profile);
     if (optionalPath.isEmpty()) {
@@ -933,7 +1002,7 @@ public class HermesFallbackService implements ApplicationRunner {
     }
     for (int attempt = 0; attempt < 30; attempt++) {
       try {
-        restTemplate.getForEntity("http://127.0.0.1:" + port + "/health", String.class);
+        restTemplate.getForEntity("http://" + properties.gatewayHealthHost() + ":" + port + "/health", String.class);
         return;
       } catch (Exception e) {
         try {
@@ -947,7 +1016,8 @@ public class HermesFallbackService implements ApplicationRunner {
     throw new IllegalStateException("Hermes profile " + profile + " did not become healthy");
   }
 
-  private void rollbackProfiles(Map<Path, byte[]> backups, List<String> changedProfiles, Exception failure) {
+  private void rollbackProfiles(Map<Path, byte[]> backups, Set<String> changedProfiles,
+      Set<String> quiesced, Exception failure) {
     backups.forEach((path, bytes) -> {
       try {
         if (bytes == null) {
@@ -961,7 +1031,11 @@ public class HermesFallbackService implements ApplicationRunner {
     });
     for (String profile : changedProfiles) {
       try {
-        gatewayService.restart(profile);
+        if (quiesced.contains(profile)) {
+          gatewayService.start(profile);
+        } else {
+          gatewayService.restart(profile);
+        }
       } catch (Exception e) {
         failure.addSuppressed(e);
       }

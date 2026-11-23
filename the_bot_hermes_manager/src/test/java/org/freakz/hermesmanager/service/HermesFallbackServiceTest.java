@@ -436,6 +436,31 @@ class HermesFallbackServiceTest {
   }
 
   @Test
+  void explicitlyRequestedPurgeBacksUpRuntimeStateAndRollsBackFailure() throws Exception {
+    createProfiles("chat", "ai-command");
+    Path profile = tempDir.resolve("profiles/chat");
+    Path state = profile.resolve("state.db");
+    Files.writeString(state, "fixture state");
+    HermesGatewayService gateway = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(healthyRestTemplate(), gateway, localClient(), properties());
+    service.run(new DefaultApplicationArguments());
+    var request = new HermesBackendConfigUpdateRequest(null, null, null, null, null, null, null, true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("fixture supervisor failure"))
+        .doNothing().when(gateway).start("chat");
+
+    assertThatThrownBy(() -> service.updateBackendConfig(request))
+        .hasMessage("Could not apply Hermes backend configuration");
+    assertThat(Files.readString(state)).isEqualTo("fixture state");
+
+    service.updateBackendConfig(request);
+    assertThat(state).doesNotExist();
+    try (var files = Files.walk(profile.resolve("state-backup"))) {
+      assertThat(files.filter(path -> path.getFileName().toString().equals("state.db")).toList())
+          .singleElement().satisfies(path -> assertThat(Files.readString(path)).isEqualTo("fixture state"));
+    }
+  }
+
+  @Test
   void localBackendContextWindowWritesPerModelOverride() throws Exception {
     createProfiles("chat", "ai-command");
     HermesFallbackService service = service(healthyRestTemplate(), mock(HermesGatewayService.class), localClient(), properties());
@@ -576,7 +601,7 @@ class HermesFallbackServiceTest {
   private HermesManagerProperties properties() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
@@ -589,7 +614,7 @@ class HermesFallbackServiceTest {
   private HermesManagerProperties propertiesWithKey() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
@@ -602,7 +627,7 @@ class HermesFallbackServiceTest {
   private HermesManagerProperties propertiesWithAiCommandPort() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",

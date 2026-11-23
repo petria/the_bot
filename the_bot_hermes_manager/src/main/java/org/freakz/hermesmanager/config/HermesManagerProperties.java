@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "hermes.manager")
 public record HermesManagerProperties(
     Path dataDir,
-    String containerName,
+    String gatewayHealthHost,
     List<String> profiles,
     String profilePorts,
     String defaultBaseUrl,

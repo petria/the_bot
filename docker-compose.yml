@@ -27,6 +27,8 @@ services:
       - THE_BOT_WEB_PUBLIC_BASE_URL=${THE_BOT_WEB_PUBLIC_BASE_URL:-http://localhost:8091}
       - THE_BOT_REST_BOT_WEB_BASE_URL=${THE_BOT_REST_BOT_WEB_BASE_URL:-http://bot-web:8091}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
+      - THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS=${THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS:-}
+      - THE_BOT_NOTIFICATION_SIGNING_KEY=${THE_BOT_NOTIFICATION_SIGNING_KEY:-}
       - THE_BOT_WATER_WATCH_STATION=${THE_BOT_WATER_WATCH_STATION:-Merikoski}
       - THE_BOT_WATER_WATCH_USERNAME=${THE_BOT_WATER_WATCH_USERNAME:-}
       - THE_BOT_WATER_WATCH_INTERVAL_MINUTES=${THE_BOT_WATER_WATCH_INTERVAL_MINUTES:-60}
@@ -139,6 +141,9 @@ services:
       - THE_BOT_WEB_DOCKER_STATUS_ENABLED=${THE_BOT_WEB_DOCKER_STATUS_ENABLED:-true}
       - THE_BOT_WEB_DOCKER_HOST=${THE_BOT_WEB_DOCKER_HOST:-unix:///var/run/docker.sock}
       - THE_BOT_INTERNAL_API_TOKEN=${THE_BOT_INTERNAL_API_TOKEN:?THE_BOT_INTERNAL_API_TOKEN must be configured}
+      - THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES=${THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:-}
+      - THE_BOT_WEB_CSP_REPORT_ONLY=${THE_BOT_WEB_CSP_REPORT_ONLY:-true}
+      - THE_BOT_NOTIFICATION_SIGNING_KEY=${THE_BOT_NOTIFICATION_SIGNING_KEY:-}
       - THE_BOT_WEB_MOBILE_FCM_ENABLED=${THE_BOT_WEB_MOBILE_FCM_ENABLED:-false}
       - THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=${THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE:-/run/secrets/firebase-service-account.json}
     container_name: ${THE_BOT_WEB_CONTAINER_NAME:-bot-web}
@@ -150,18 +155,20 @@ services:
     container_name: bot-hermes-manager-main
     restart: unless-stopped
     user: "${PUID:-1002}:${PGID:-1002}"
-    group_add:
-      - "${DOCKER_GID:-989}"
-    network_mode: host
+    ports:
+      - "127.0.0.1:8651:8651"
+      - "${HERMES_MANAGER_BIND_ADDRESS:-192.168.0.11}:8651:8651"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${HERMES_MANAGER_MAIN_STATE_DIR:-/home/hokan/bot-hermes/data-main}:/hermes-data
       - ${HERMES_MAIN_PROFILES_DIR:-/home/hokan/bot-hermes/main/data/profiles}:/hermes-data/profiles
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
-      - SERVER_PORT=${HERMES_MANAGER_MAIN_SERVER_PORT:-8651}
+      - SERVER_PORT=8651
       - HERMES_MANAGER_DATA_DIR=/hermes-data
-      - HERMES_CONTAINER_NAME=${HERMES_MAIN_CONTAINER_NAME:-bot-hermes-main}
+      - HERMES_MANAGER_GATEWAY_HEALTH_HOST=host.docker.internal
+      - HERMES_MANAGER_PROFILES=chat,ai-command
       - HERMES_MANAGER_PROFILE_PORTS=chat:8643,ai-command:8645
       - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_MAIN_TOKEN:-${HERMES_MANAGER_TOKEN}}
       - HERMES_MANAGER_LOCAL_VALIDATION_TIMEOUT_SECONDS=${HERMES_MANAGER_LOCAL_VALIDATION_TIMEOUT_SECONDS:-180}
@@ -175,18 +182,20 @@ services:
     container_name: bot-hermes-manager-develop
     restart: unless-stopped
     user: "${PUID:-1002}:${PGID:-1002}"
-    group_add:
-      - "${DOCKER_GID:-989}"
-    network_mode: host
+    ports:
+      - "127.0.0.1:8652:8652"
+      - "${HERMES_MANAGER_BIND_ADDRESS:-192.168.0.11}:8652:8652"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${HERMES_MANAGER_DEVELOP_STATE_DIR:-/home/hokan/bot-hermes/data-develop}:/hermes-data-dev
       - ${HERMES_DEVELOP_PROFILES_DIR:-/home/hokan/bot-hermes/develop/data/profiles}:/hermes-data-dev/profiles
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - TZ=Europe/Helsinki
-      - SERVER_PORT=${HERMES_MANAGER_DEVELOP_SERVER_PORT:-8652}
+      - SERVER_PORT=8652
       - HERMES_MANAGER_DATA_DIR=/hermes-data-dev
-      - HERMES_CONTAINER_NAME=${HERMES_DEVELOP_CONTAINER_NAME:-bot-hermes-develop}
+      - HERMES_MANAGER_GATEWAY_HEALTH_HOST=host.docker.internal
+      - HERMES_MANAGER_PROFILES=chat,ai-command
       - HERMES_MANAGER_PROFILE_PORTS=chat:8663,ai-command:8665
       - HERMES_MANAGER_TOKEN=${HERMES_MANAGER_DEVELOP_TOKEN:-${HERMES_MANAGER_TOKEN}}
       - HERMES_MANAGER_LOCAL_VALIDATION_TIMEOUT_SECONDS=${HERMES_MANAGER_LOCAL_VALIDATION_TIMEOUT_SECONDS:-180}

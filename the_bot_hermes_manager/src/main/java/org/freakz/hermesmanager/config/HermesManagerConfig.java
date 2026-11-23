@@ -1,9 +1,5 @@
 package org.freakz.hermesmanager.config;
 
-import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,14 +19,4 @@ public class HermesManagerConfig {
     return new RestTemplate(requestFactory);
   }
 
-  @Bean
-  public DockerClient dockerClient() {
-    var config = DefaultDockerClientConfig.createDefaultConfigBuilder()
-        .withDockerHost("unix:///var/run/docker.sock")
-        .build();
-    var httpClient = new ZerodepDockerHttpClient.Builder()
-        .dockerHost(config.getDockerHost())
-        .build();
-    return DockerClientImpl.getInstance(config, httpClient);
-  }
 }

@@ -8,6 +8,7 @@ import org.freakz.io.connections.ConnectionManager;
 import org.freakz.io.connections.WacliWebhookMessageEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,16 +33,19 @@ public class WhatsAppWebhookController {
   private final ConnectionManager connectionManager;
   private final ConfigService configService;
   private final ObjectMapper objectMapper;
+  private final String deploymentSecret;
 
-  public WhatsAppWebhookController(ConnectionManager connectionManager, ConfigService configService, ObjectMapper objectMapper) {
+  public WhatsAppWebhookController(ConnectionManager connectionManager, ConfigService configService, ObjectMapper objectMapper,
+      @Value("${WHATSAPP_WEBHOOK_SECRET:}") String deploymentSecret) {
     this.connectionManager = connectionManager;
     this.configService = configService;
     this.objectMapper = objectMapper;
+    this.deploymentSecret = deploymentSecret;
   }
 
   @PostMapping("/webhook")
   public ResponseEntity<?> webhook(
-      @RequestBody String body,
+      @RequestBody byte[] body,
       @RequestHeader(value = "X-Wacli-Signature", required = false) String signature) {
     try {
       verifySignature(body, signature);
@@ -81,10 +85,10 @@ public class WhatsAppWebhookController {
     }
   }
 
-  private void verifySignature(String body, String signature) throws Exception {
+  private void verifySignature(byte[] body, String signature) throws Exception {
     String secret = webhookSecret();
     if (secret == null || secret.isBlank()) {
-      return;
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "WhatsApp webhook authentication is not configured");
     }
     if (signature == null || signature.isBlank()) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing WhatsApp webhook signature");
@@ -96,14 +100,17 @@ public class WhatsAppWebhookController {
   }
 
   private String webhookSecret() throws Exception {
+    if (!deploymentSecret.isBlank()) {
+      return deploymentSecret;
+    }
     WhatsAppConfig config = configService.readBotConfig().getWhatsappConfig();
     return config == null ? null : config.getWebhookSecret();
   }
 
-  private String hmacSha256(String secret, String body) throws Exception {
+  private String hmacSha256(String secret, byte[] body) throws Exception {
     Mac mac = Mac.getInstance("HmacSHA256");
     mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-    return HexFormat.of().formatHex(mac.doFinal(body.getBytes(StandardCharsets.UTF_8)));
+    return HexFormat.of().formatHex(mac.doFinal(body));
   }
 
   private boolean looksLikeMediaPayload(JsonNode node) {

@@ -9,7 +9,14 @@ public record HermesBackendConfigUpdateRequest(
     List<HermesProfileUpdate> profiles,
     HermesFallbackUpdateRequest fallback,
     HermesGlobalOverrideUpdate globalOverride,
-    String requestedBy) {
+    String requestedBy,
+    Boolean purgeState) {
+
+  public HermesBackendConfigUpdateRequest(String systemMode, List<HermesBackendUpdate> backends,
+      List<HermesRouteUpdate> routes, List<HermesProfileUpdate> profiles, HermesFallbackUpdateRequest fallback,
+      HermesGlobalOverrideUpdate globalOverride, String requestedBy) {
+    this(systemMode, backends, routes, profiles, fallback, globalOverride, requestedBy, null);
+  }
 
   public HermesBackendConfigUpdateRequest(List<HermesProfileUpdate> profiles) {
     this(null, null, null, profiles, null, null, null);
@@ -37,6 +44,6 @@ public record HermesBackendConfigUpdateRequest(
   }
 
   public HermesBackendConfigUpdateRequest withRequestedBy(String username) {
-    return new HermesBackendConfigUpdateRequest(systemMode, backends, routes, profiles, fallback, globalOverride, username);
+    return new HermesBackendConfigUpdateRequest(systemMode, backends, routes, profiles, fallback, globalOverride, username, purgeState);
   }
 }

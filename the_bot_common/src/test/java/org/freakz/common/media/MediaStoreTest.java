@@ -36,7 +36,23 @@ class MediaStoreTest {
           assertThat(result.record().getSourceProtocol()).isEqualTo("discord");
           assertThat(result.file()).exists();
         });
-    assertThat(created.shortCode()).matches("[a-zA-Z0-9]{5}");
+    assertThat(created.shortCode()).matches("[a-zA-Z0-9]{10}");
+  }
+
+  @Test
+  void migratesExistingFiveCharacterCodesAcrossInstances() throws Exception {
+    JsonMapper mapper = new JsonMapper();
+    MediaStore writer = new MediaStore(tempDir, mapper);
+    MediaStoreCreated created = writer.create(new byte[] {1}, "image/png", "legacy.png", Duration.ofDays(1), null);
+    var metadata = tempDir.resolve("metadata").resolve(created.id() + ".json");
+    java.nio.file.Files.writeString(metadata,
+        java.nio.file.Files.readString(metadata).replace(created.shortCode(), "old55"));
+
+    MediaStore reader = new MediaStore(tempDir, mapper);
+    assertThat(reader.readPublicByShortCode("old55")).isPresent();
+    assertThat(reader.readPublicByShortCode(created.shortCode())).isEmpty();
+    writer.delete(created.id());
+    assertThat(reader.readPublicByShortCode("old55")).isEmpty();
   }
 
   @Test

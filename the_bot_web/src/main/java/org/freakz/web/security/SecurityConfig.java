@@ -12,6 +12,11 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
+import java.time.Clock;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.http.HttpStatus;
 import tools.jackson.databind.DeserializationFeature;
@@ -56,8 +61,19 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       WebLoginFailureHandler webLoginFailureHandler,
-      MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter) throws Exception {
+      MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter,
+      @Value("${the.bot.web.trusted-proxy-addresses:${THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:}}") String trustedProxies,
+      @Value("${the.bot.web.csp-report-only:${THE_BOT_WEB_CSP_REPORT_ONLY:true}}") boolean cspReportOnly) throws Exception {
+    var proxyAddresses = Arrays.stream(trustedProxies.split(",")).map(String::strip)
+        .filter(address -> !address.isEmpty()).collect(Collectors.toUnmodifiableSet());
+    var policy = new ContentSecurityPolicyHeaderWriter(
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; "
+            + "base-uri 'self'; frame-ancestors 'none'");
+    policy.setReportOnly(cspReportOnly);
     http
+        .headers(headers -> headers.addHeaderWriter(policy))
+        .addFilterAfter(new RequestRateLimitFilter(proxyAddresses, webLoginFailureHandler, jsonMapper(), Clock.systemUTC()),
+            CsrfFilter.class)
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             .ignoringRequestMatchers(

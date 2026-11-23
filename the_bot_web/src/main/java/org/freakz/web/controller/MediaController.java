@@ -8,6 +8,7 @@ import org.freakz.common.model.engine.system.MediaStorageSettingsResponse;
 import org.freakz.common.spring.rest.RestEngineClient;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +55,9 @@ public class MediaController {
       }
       return ResponseEntity.ok()
           .contentType(MediaType.parseMediaType(result.record().getContentType()))
-          .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + result.record().getOriginalFileName() + "\"")
+          .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+              .filename(result.record().getOriginalFileName(), java.nio.charset.StandardCharsets.UTF_8)
+              .build().toString())
           .header("Referrer-Policy", "no-referrer")
           .cacheControl(CacheControl.noStore())
           .body(new FileSystemResource(result.file()));

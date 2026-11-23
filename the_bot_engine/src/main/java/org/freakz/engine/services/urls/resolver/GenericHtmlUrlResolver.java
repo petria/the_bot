@@ -31,7 +31,7 @@ public class GenericHtmlUrlResolver implements UrlResolver {
   public GenericHtmlUrlResolver(
       org.freakz.engine.services.urls.UrlResolverProperties properties,
       UrlSecurityValidator securityValidator) {
-    this(new SafeUrlDocumentFetcher(properties, securityValidator), securityValidator);
+    this(new SafeUrlDocumentFetcher(properties), securityValidator);
   }
 
   @Override

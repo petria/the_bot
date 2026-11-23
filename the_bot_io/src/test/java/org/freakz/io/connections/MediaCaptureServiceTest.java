@@ -201,7 +201,7 @@ class MediaCaptureServiceTest {
   private void capture() {
     service.captureAndSend(manager, channel, connection, "Telegram", "Alice", "caption",
         downloadUrl, "image/jpeg", "photo.jpg", Map.of(),
-        new MediaCaptureService.ReplyContext("-123", "42", "7", "sender-id"));
+        new MediaCaptureService.ReplyContext("-123", "42", "7", "sender-id"), true);
   }
 
   private static class RecordingConnection extends BotConnection {

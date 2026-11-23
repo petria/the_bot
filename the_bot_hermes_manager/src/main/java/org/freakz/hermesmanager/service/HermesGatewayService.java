@@ -1,51 +1,84 @@
 package org.freakz.hermesmanager.service;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.util.UUID;
 
-import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.model.Frame;
-import com.github.dockerjava.core.command.ExecStartResultCallback;
 import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.springframework.stereotype.Service;
 
+/** Signals the gateway's own supervisor through the shared profile directory. */
 @Service
 public class HermesGatewayService {
 
-  private final DockerClient dockerClient;
+  private static final Duration TIMEOUT = Duration.ofSeconds(20);
+  private static final String REQUEST = ".the-bot-gateway-request";
+  private static final String RESULT = ".the-bot-gateway-result";
+
   private final HermesManagerProperties properties;
 
-  public HermesGatewayService(DockerClient dockerClient, HermesManagerProperties properties) {
-    this.dockerClient = dockerClient;
+  public HermesGatewayService(HermesManagerProperties properties) {
     this.properties = properties;
   }
 
   public void restart(String profile) {
-    String service = "/run/service/gateway-" + profile;
-    var exec = dockerClient.execCreateCmd(properties.containerName())
-        .withAttachStderr(true)
-        .withAttachStdout(true)
-        .withCmd("/package/admin/s6-2.15.0.0/command/s6-svc", "-r", service)
-        .exec();
-    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    request(profile, "restart");
+  }
+
+  public void stop(String profile) {
+    request(profile, "stop");
+  }
+
+  public void start(String profile) {
+    request(profile, "start");
+  }
+
+  private void request(String profile, String operation) {
+    if (!profile.matches("[a-z0-9-]+") || !properties.ports().containsKey(profile)) {
+      throw new IllegalArgumentException("Unknown Hermes gateway profile");
+    }
+    Path directory = properties.dataDir().resolve("profiles").resolve(profile);
+    Path request = directory.resolve(REQUEST);
+    String id = UUID.randomUUID().toString();
     try {
-      dockerClient.execStartCmd(exec.getId())
-          .exec(new ExecStartResultCallback() {
-            @Override
-            public void onNext(Frame frame) {
-              output.writeBytes(frame.getPayload());
-              super.onNext(frame);
-            }
-          })
-          .awaitCompletion();
-      Long exitCode = dockerClient.inspectExecCmd(exec.getId()).exec().getExitCodeLong();
-      if (exitCode == null || exitCode != 0) {
-        throw new IllegalStateException("Could not restart Hermes profile " + profile + ": "
-            + output.toString(StandardCharsets.UTF_8));
+      Path temp = Files.createTempFile(directory, REQUEST, ".tmp");
+      try {
+        Files.writeString(temp, id + " " + operation + "\n");
+        Files.move(temp, request, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+      } finally {
+        Files.deleteIfExists(temp);
       }
+      long deadline = System.nanoTime() + TIMEOUT.toNanos();
+      Path result = directory.resolve(RESULT);
+      while (System.nanoTime() < deadline) {
+        if (Files.isRegularFile(result) && Files.size(result) <= 64) {
+          String value = Files.readString(result).strip();
+          if (value.equals(id + " ok")) {
+            return;
+          }
+          if (value.equals(id + " failed")) {
+            throw new IllegalStateException("Hermes gateway supervisor rejected " + operation + " for " + profile);
+          }
+        }
+        Thread.sleep(200);
+      }
+      throw new IllegalStateException("Hermes gateway supervisor timed out during " + operation + " for " + profile);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while restarting Hermes profile " + profile, e);
+      throw new IllegalStateException("Interrupted waiting for Hermes gateway supervisor", e);
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not communicate with Hermes gateway supervisor", e);
+    } finally {
+      try {
+        if (Files.isRegularFile(request) && Files.size(request) <= 64 && Files.readString(request).startsWith(id + " ")) {
+          Files.deleteIfExists(request);
+        }
+      } catch (IOException ignored) {
+        // An outstanding request is identified by its operation ID.
+      }
     }
   }
 }

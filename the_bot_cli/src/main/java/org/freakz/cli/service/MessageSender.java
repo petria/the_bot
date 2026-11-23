@@ -33,6 +33,7 @@ public class MessageSender {
 
   private String baseUrl;
   private String loggedInUsername;
+  private Csrf csrf;
 
   public LoginSession login(String target, String username, String password) {
     List<String> candidates = resolveCandidates(target);
@@ -98,6 +99,7 @@ public class MessageSender {
       cookieManager.getCookieStore().removeAll();
       baseUrl = null;
       loggedInUsername = null;
+      csrf = null;
     }
   }
 
@@ -129,15 +131,17 @@ public class MessageSender {
 
   private LoginSession tryLogin(String candidateBaseUrl, String username, String password) {
     cookieManager.getCookieStore().removeAll();
-    HttpRequest request = HttpRequest.newBuilder(uri(candidateBaseUrl + "/api/web/cli/login"))
-        .timeout(Duration.ofSeconds(10))
-        .header("Content-Type", "application/json")
-        .header("Accept", "application/json")
-        .POST(HttpRequest.BodyPublishers.ofString("""
-            {"username":%s,"password":%s}
-            """.formatted(jsonString(username), jsonString(password))))
-        .build();
     try {
+      Csrf loginToken = fetchCsrf(candidateBaseUrl);
+      HttpRequest request = HttpRequest.newBuilder(uri(candidateBaseUrl + "/api/web/cli/login"))
+          .timeout(Duration.ofSeconds(10))
+          .header("Content-Type", "application/json")
+          .header("Accept", "application/json")
+          .header(loginToken.headerName(), loginToken.token())
+          .POST(HttpRequest.BodyPublishers.ofString("""
+              {"username":%s,"password":%s}
+              """.formatted(jsonString(username), jsonString(password))))
+          .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 401) {
         throw new InvalidCredentialsException("Invalid username or password");
@@ -149,6 +153,7 @@ public class MessageSender {
         throw new CliClientException("Login failed with HTTP " + response.statusCode());
       }
       JsonNode body = jsonMapper.readTree(response.body());
+      csrf = fetchCsrf(candidateBaseUrl);
       return new LoginSession(
           body.path("username").asText(username),
           body.path("name").asText(null),
@@ -163,12 +168,34 @@ public class MessageSender {
     }
   }
 
+  private Csrf fetchCsrf(String target) throws IOException, InterruptedException {
+    HttpRequest request = HttpRequest.newBuilder(uri(target + "/api/web/cli/csrf"))
+        .timeout(Duration.ofSeconds(10))
+        .header("Accept", "application/json")
+        .GET()
+        .build();
+    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new CliClientException("Could not initialize CLI login security at " + target);
+    }
+    JsonNode body = jsonMapper.readTree(response.body());
+    String name = body.path("headerName").asText("");
+    String token = body.path("token").asText("");
+    if (!"X-XSRF-TOKEN".equals(name) || token.isBlank()) {
+      throw new CliClientException("Invalid CLI CSRF response at " + target);
+    }
+    return new Csrf(name, token);
+  }
+
+  private record Csrf(String headerName, String token) {}
+
   private HttpRequest jsonPost(String path, String body) {
     ensureLoggedIn();
     return HttpRequest.newBuilder(uri(baseUrl + path))
         .timeout(Duration.ofSeconds(30))
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
+        .header(csrf.headerName(), csrf.token())
         .POST(HttpRequest.BodyPublishers.ofString(body))
         .build();
   }

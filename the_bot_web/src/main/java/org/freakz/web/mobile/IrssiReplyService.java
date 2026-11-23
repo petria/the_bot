@@ -113,7 +113,8 @@ public class IrssiReplyService {
     presence.put(agent.id(),new Presence(now(),safe));
     for(int i=0;i<jobs.size();i++) {
       Job j=jobs.get(i);
-      if(j.agentId().equals(agent.id()) && "QUEUED".equals(j.status())) {
+      if(j.agentId().equals(agent.id()) && "QUEUED".equals(j.status())
+          && notifications.hasVerifiedDraft(j.owner(), j.draftId())) {
         Job claimed=j.status("CLAIMED",null); jobs.set(i,claimed); save(); return new Poll(claimed);
       }
     }
