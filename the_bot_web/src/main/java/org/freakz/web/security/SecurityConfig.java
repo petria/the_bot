@@ -78,7 +78,6 @@ public class SecurityConfig {
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             .ignoringRequestMatchers(
                 PathPatternRequestMatcher.pathPattern("/logout"),
-                PathPatternRequestMatcher.pathPattern("/api/web/cli/**"),
                 PathPatternRequestMatcher.pathPattern("/api/mobile/**"),
                 PathPatternRequestMatcher.pathPattern("/api/irssi/**"))
         )
@@ -89,7 +88,7 @@ public class SecurityConfig {
             .requestMatchers("/media/**").permitAll()
             .requestMatchers("/m/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
-            .requestMatchers("/api/web/cli/login").permitAll()
+            .requestMatchers("/api/web/cli/login", "/api/web/cli/csrf").permitAll()
             .requestMatchers("/api/mobile/auth/**").permitAll()
             .requestMatchers("/api/irssi/**").permitAll()
             .requestMatchers("/api/mobile/**").authenticated()
