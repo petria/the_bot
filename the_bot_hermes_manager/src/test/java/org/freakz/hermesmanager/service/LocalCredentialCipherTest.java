@@ -41,7 +41,7 @@ class LocalCredentialCipherTest {
         "model",
         "token",
         encryptionKey,
-        null);
+        null, List.of("http://llama.local:8081", "http://192.168.0.111:11434"));
   }
 
   private String key() {

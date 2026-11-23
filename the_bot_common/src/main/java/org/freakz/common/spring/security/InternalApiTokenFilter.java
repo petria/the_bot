@@ -3,7 +3,6 @@ package org.freakz.common.spring.security;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.List;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,26 +14,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.freakz.common.spring.rest.InternalApiTokenInterceptor;
 
 /** Protects private service endpoints from callers outside the trusted service clients. */
-public final class InternalApiTokenFilter extends OncePerRequestFilter {
+public class InternalApiTokenFilter extends OncePerRequestFilter {
 
-  private final String expectedToken;
-  private final List<String> protectedPrefixes;
-  private final List<String> excludedPrefixes;
+  private final String header;
+  private final boolean configured;
+  private final byte[] expectedToken;
 
-  public InternalApiTokenFilter(
-      String expectedToken,
-      List<String> protectedPrefixes,
-      List<String> excludedPrefixes) {
-    this.expectedToken = expectedToken == null ? "" : expectedToken.trim();
-    this.protectedPrefixes = List.copyOf(protectedPrefixes);
-    this.excludedPrefixes = List.copyOf(excludedPrefixes);
+  public InternalApiTokenFilter(String expectedToken) {
+    this(InternalApiTokenInterceptor.HEADER, "", expectedToken == null ? "" : expectedToken.trim());
   }
 
-  @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) {
-    String path = request.getRequestURI();
-    return protectedPrefixes.stream().noneMatch(path::startsWith)
-        || excludedPrefixes.stream().anyMatch(path::startsWith);
+  protected InternalApiTokenFilter(String header, String prefix, String token) {
+    this.header = header;
+    this.configured = token != null && !token.isBlank();
+    this.expectedToken = configured ? (prefix + token).getBytes(StandardCharsets.UTF_8) : new byte[0];
   }
 
   @Override
@@ -42,25 +35,22 @@ public final class InternalApiTokenFilter extends OncePerRequestFilter {
       HttpServletRequest request,
       HttpServletResponse response,
       FilterChain filterChain) throws ServletException, IOException {
-    if (expectedToken.isBlank()) {
-      response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value(), "Internal API authentication is not configured");
+    if (!configured) {
+      response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
       return;
     }
 
-    String suppliedToken = request.getHeader(InternalApiTokenInterceptor.HEADER);
-    if (!matches(expectedToken, suppliedToken)) {
-      response.sendError(HttpStatus.UNAUTHORIZED.value(), "Invalid internal API token");
+    String suppliedToken = request.getHeader(header);
+    if (suppliedToken == null || !MessageDigest.isEqual(
+        expectedToken, suppliedToken.trim().getBytes(StandardCharsets.UTF_8))) {
+      response.setStatus(HttpStatus.UNAUTHORIZED.value());
       return;
     }
-    filterChain.doFilter(request, response);
+    authenticated(request, response, filterChain);
   }
 
-  private boolean matches(String expected, String supplied) {
-    if (supplied == null) {
-      return false;
-    }
-    return MessageDigest.isEqual(
-        expected.getBytes(StandardCharsets.UTF_8),
-        supplied.trim().getBytes(StandardCharsets.UTF_8));
+  protected void authenticated(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+      throws IOException, ServletException {
+    chain.doFilter(request, response);
   }
 }

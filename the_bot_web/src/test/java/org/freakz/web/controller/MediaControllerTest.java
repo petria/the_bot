@@ -75,8 +75,8 @@ class MediaControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
-    assertThat(response.getHeaders().getFirst("Content-Disposition"))
-        .isEqualTo("inline; filename=\"document.pdf\"");
+    assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("inline");
+    assertThat(response.getHeaders().getContentDisposition().getFilename()).isEqualTo("document.pdf");
     assertThat(response.getBody()).isInstanceOf(FileSystemResource.class);
   }
 

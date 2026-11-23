@@ -3,6 +3,9 @@ package org.freakz.common.media;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
@@ -22,13 +25,14 @@ import tools.jackson.databind.json.JsonMapper;
 public class MediaStore {
 
   private static final char[] SHORT_CODE_ALPHABET = "23456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray();
-  private static final int SHORT_CODE_LENGTH = 5;
+  private static final int SHORT_CODE_LENGTH = 10;
   private static final int MAX_SHORT_CODE_ATTEMPTS = 32;
   private static final SecureRandomHolder RANDOM = new SecureRandomHolder();
 
   private final Path mediaDir;
   private final Path fileDir;
   private final Path metadataDir;
+  private final Path shortCodesDir;
   private final JsonMapper jsonMapper;
   private final Clock clock;
 
@@ -40,6 +44,7 @@ public class MediaStore {
     this.mediaDir = mediaDir;
     this.fileDir = mediaDir.resolve("files");
     this.metadataDir = mediaDir.resolve("metadata");
+    this.shortCodesDir = mediaDir.resolve("short-codes");
     this.jsonMapper = jsonMapper;
     this.clock = clock;
   }
@@ -63,32 +68,41 @@ public class MediaStore {
 
     String id = UUID.randomUUID().toString();
     String token = createToken();
-    String shortCode = createUniqueShortCode();
+
     String fileName = id + extensionFor(normalizedContentType);
     Instant createdAt = Instant.now(clock);
     Instant expiresAt = createdAt.plus(ttl);
 
-    Path tempFile = Files.createTempFile(fileDir, id, ".tmp");
-    Files.write(tempFile, bytes);
-    Files.move(tempFile, fileDir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    String shortCode = reserveShortCode(id);
+    Path tempFile = null;
+    try {
+      tempFile = Files.createTempFile(fileDir, id, ".tmp");
+      Files.write(tempFile, bytes);
+      Files.move(tempFile, fileDir.resolve(fileName), StandardCopyOption.ATOMIC_MOVE);
 
-    MediaStoreRecord record = new MediaStoreRecord(
-        id,
-        tokenHash(token),
-        shortCode,
-        normalizedContentType,
-        safeOriginalFileName(originalFileName, normalizedContentType),
-        fileName,
-        bytes.length,
-        createdAt,
-        expiresAt,
-        source == null ? null : source.protocol(),
-        source == null ? null : source.network(),
-        source == null ? null : source.channelAlias(),
-        source == null ? null : source.channelName(),
-        source == null ? null : source.sender());
-    writeRecord(record);
-    return new MediaStoreCreated(id, token, shortCode, normalizedContentType, record.getOriginalFileName(), bytes.length, expiresAt);
+      MediaStoreRecord record = new MediaStoreRecord(
+          id,
+          tokenHash(token),
+          shortCode,
+          normalizedContentType,
+          safeOriginalFileName(originalFileName, normalizedContentType),
+          fileName,
+          bytes.length,
+          createdAt,
+          expiresAt,
+          source == null ? null : source.protocol(),
+          source == null ? null : source.network(),
+          source == null ? null : source.channelAlias(),
+          source == null ? null : source.channelName(),
+          source == null ? null : source.sender());
+      writeRecord(record);
+      return new MediaStoreCreated(id, token, shortCode, normalizedContentType, record.getOriginalFileName(), bytes.length, expiresAt);
+    } catch (IOException | RuntimeException e) {
+      deleteQuietly(shortCodesDir.resolve(shortCode));
+      deleteQuietly(fileDir.resolve(fileName));
+      if (tempFile != null) deleteQuietly(tempFile);
+      throw e;
+    }
   }
 
   public Optional<MediaStoreReadResult> readPublic(String id, String token) throws IOException {
@@ -103,6 +117,7 @@ public class MediaStore {
     if (isExpired(media)) {
       deleteQuietly(recordPath(id));
       deleteQuietly(fileDir.resolve(media.getFileName()));
+      removeShortCode(media);
       return Optional.empty();
     }
     if (!constantTimeEquals(media.getTokenHash(), tokenHash(token))) {
@@ -120,29 +135,29 @@ public class MediaStore {
     if (normalizedCode == null || !Files.isDirectory(metadataDir)) {
       return Optional.empty();
     }
-    try (var paths = Files.list(metadataDir)) {
-      for (Path path : paths.filter(path -> path.getFileName().toString().endsWith(".json")).toList()) {
-        try {
-          MediaStoreRecord media = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
-          if (!normalizedCode.equals(media.getShortCode())) {
-            continue;
-          }
-          if (isExpired(media)) {
-            deleteQuietly(path);
-            deleteQuietly(fileDir.resolve(media.getFileName()));
-            return Optional.empty();
-          }
-          Path file = fileDir.resolve(media.getFileName());
-          if (!Files.isRegularFile(file)) {
-            return Optional.empty();
-          }
-          return Optional.of(new MediaStoreReadResult(media, file));
-        } catch (Exception ignored) {
-          // Keep unreadable metadata for manual inspection.
-        }
-      }
+    if (normalizedCode.length() == 5) {
+      indexLegacyCodes();
     }
-    return Optional.empty();
+    String id;
+    try {
+      id = readShortCode(shortCodesDir.resolve(normalizedCode));
+    } catch (NoSuchFileException e) {
+      return Optional.empty();
+    }
+    if (id == null || !id.matches("[a-zA-Z0-9-]+")) {
+      return Optional.empty();
+    }
+    Optional<MediaStoreRecord> record = readRecord(id);
+    if (record.isEmpty() || !normalizedCode.equals(record.get().getShortCode())) {
+      return Optional.empty();
+    }
+    MediaStoreRecord media = record.get();
+    if (isExpired(media)) {
+      delete(id);
+      return Optional.empty();
+    }
+    Path path = fileDir.resolve(media.getFileName());
+    return Files.isRegularFile(path) ? Optional.of(new MediaStoreReadResult(media, path)) : Optional.empty();
   }
 
   public void delete(String id) throws IOException {
@@ -155,7 +170,10 @@ public class MediaStore {
     }
     Optional<MediaStoreRecord> record = readRecord(id);
     deleteQuietly(metadataPath);
-    record.ifPresent(value -> deleteQuietly(fileDir.resolve(value.getFileName())));
+    record.ifPresent(value -> {
+      deleteQuietly(fileDir.resolve(value.getFileName()));
+      removeShortCode(value);
+    });
   }
 
   public void cleanupExpired() throws IOException {
@@ -169,6 +187,7 @@ public class MediaStore {
           if (isExpired(record)) {
             deleteQuietly(path);
             deleteQuietly(fileDir.resolve(record.getFileName()));
+            removeShortCode(record);
           }
         } catch (Exception ignored) {
           // Keep unreadable metadata for manual inspection.
@@ -200,6 +219,7 @@ public class MediaStore {
       if (isExpired(record)) {
         deleteQuietly(path);
         deleteQuietly(fileDir.resolve(record.getFileName()));
+        removeShortCode(record);
         return Optional.empty();
       }
       if (!Files.isRegularFile(fileDir.resolve(record.getFileName()))) {
@@ -315,14 +335,74 @@ public class MediaStore {
     Files.move(tempFile, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
-  private String createUniqueShortCode() throws IOException {
+  private String reserveShortCode(String id) throws IOException {
+    Files.createDirectories(shortCodesDir);
     for (int attempt = 0; attempt < MAX_SHORT_CODE_ATTEMPTS; attempt++) {
       String code = createShortCode();
-      if (!shortCodeExists(code)) {
+      try {
+        writeShortCode(code, id);
         return code;
+      } catch (FileAlreadyExistsException ignored) {
+        // Another record already reserved this code.
       }
     }
     throw new IOException("Unable to allocate unique media short code");
+  }
+
+  private void indexLegacyCodes() throws IOException {
+    Path indexed = shortCodesDir.resolve(".legacy-indexed");
+    if (Files.exists(indexed)) {
+      return;
+    }
+    Files.createDirectories(shortCodesDir);
+    try (var paths = Files.list(metadataDir)) {
+      for (Path path : paths.filter(path -> path.getFileName().toString().endsWith(".json")).toList()) {
+        MediaStoreRecord record;
+        try {
+          record = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
+        } catch (RuntimeException ignored) {
+          continue;
+        }
+        String code = normalizeShortCode(record.getShortCode());
+        if (code != null && code.length() == 5 && !isExpired(record)) {
+          try {
+            writeShortCode(code, record.getId());
+          } catch (FileAlreadyExistsException ignored) {
+            // The entry is already available.
+          }
+        }
+      }
+    }
+    try {
+      Files.createFile(indexed);
+    } catch (FileAlreadyExistsException ignored) {
+      // A second reader also finished the migration.
+    }
+  }
+
+  private void removeShortCode(MediaStoreRecord record) {
+    String code = normalizeShortCode(record.getShortCode());
+    if (code == null) return;
+    Path index = shortCodesDir.resolve(code);
+    try {
+      if (record.getId().equals(readShortCode(index))) {
+        Files.deleteIfExists(index);
+      }
+    } catch (IOException ignored) {
+      // A missing or stale index entry cannot authorize a missing record.
+    }
+  }
+
+  private void writeShortCode(String code, String id) throws IOException {
+    Path index = shortCodesDir.resolve(code);
+    Files.writeString(index, id, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+  }
+
+  private String readShortCode(Path index) throws IOException {
+    if (Files.size(index) > 128) {
+      return null;
+    }
+    return Files.readString(index, StandardCharsets.US_ASCII);
   }
 
   private String createShortCode() {
@@ -333,31 +413,12 @@ public class MediaStore {
     return code.toString();
   }
 
-  private boolean shortCodeExists(String shortCode) throws IOException {
-    if (!Files.isDirectory(metadataDir)) {
-      return false;
-    }
-    try (var paths = Files.list(metadataDir)) {
-      for (Path path : paths.filter(path -> path.getFileName().toString().endsWith(".json")).toList()) {
-        try {
-          MediaStoreRecord media = jsonMapper.readValue(path.toFile(), MediaStoreRecord.class);
-          if (shortCode.equals(media.getShortCode())) {
-            return true;
-          }
-        } catch (Exception ignored) {
-          // Keep unreadable metadata for manual inspection.
-        }
-      }
-    }
-    return false;
-  }
-
   private String normalizeShortCode(String shortCode) {
     if (shortCode == null || shortCode.isBlank()) {
       return null;
     }
     String normalized = shortCode.trim();
-    return normalized.matches("[a-zA-Z0-9]+") ? normalized : null;
+    return normalized.matches("[a-zA-Z0-9]{5}|[a-zA-Z0-9]{10}") ? normalized : null;
   }
 
   private Path recordPath(String id) {

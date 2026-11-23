@@ -12,7 +12,6 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.core.Ordered;
 import org.freakz.common.spring.security.InternalApiTokenFilter;
 
-import java.util.List;
 import java.util.TimeZone;
 
 @SpringBootApplication
@@ -35,11 +34,8 @@ public class SpringApplicationBotIo {
   FilterRegistrationBean<InternalApiTokenFilter> internalApiTokenFilter(
       @Value("${the.bot.internal-api-token:}") String token) {
     FilterRegistrationBean<InternalApiTokenFilter> registration =
-        new FilterRegistrationBean<>(new InternalApiTokenFilter(
-            token,
-            List.of("/api/hokan/io/"),
-            List.of()));
-    registration.addUrlPatterns("/api/hokan/io/*");
+        new FilterRegistrationBean<>(new InternalApiTokenFilter(token));
+    registration.addUrlPatterns("/api/hokan/io/*", "/actuator/info", "/actuator/metrics/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
     return registration;
   }

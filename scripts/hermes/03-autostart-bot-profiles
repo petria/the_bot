@@ -52,6 +52,41 @@ IFS="$OLD_IFS"
       sed -n '1,120p' /tmp/bot-hermes-autostart-"$profile".log >>"$LOG_ERR" || true
     fi
   done
+
+  # Translate fixed requests from the shared profile volume to this
+  # container's own supervisors. The manager has no Docker socket.
+  while :; do
+    for profile in "$@"; do
+      case "$profile" in ''|*[!a-z0-9-]*) continue ;; esac
+      directory="$HERMES_HOME/profiles/$profile"
+      request="$directory/.the-bot-gateway-request"
+      [ -f "$request" ] || continue
+      command="$(timeout 1 s6-setuidgid hermes head -c 80 -- "$request" 2>/dev/null)" || continue
+      read -r id operation extra <<EOF
+$command
+EOF
+      case "$id" in *[!0-9a-f-]*|'') continue ;; esac
+      [ -z "$extra" ] && [ "${#id}" -eq 36 ] || continue
+      result="$directory/.the-bot-gateway-result"
+      previous="$(timeout 1 s6-setuidgid hermes head -c 80 -- "$result" 2>/dev/null)" || previous=""
+      [ "${previous%% *}" != "$id" ] || continue
+      service_dir="/run/service/gateway-$profile"
+      state=ok
+      case "$operation" in
+        restart) s6-svc -wr -T 12000 -r "$service_dir" || state=failed ;;
+        stop) s6-svc -wD -T 12000 -d "$service_dir" || state=failed ;;
+        start) s6-svc -wu -T 12000 -u "$service_dir" || state=failed ;;
+        *) continue ;;
+      esac
+      s6-setuidgid hermes sh -eu -c '
+        umask 077
+        temp=$(mktemp -- "$1/.the-bot-gateway-result.XXXXXX")
+        printf "%s %s\n" "$2" "$3" >"$temp"
+        mv -fT -- "$temp" "$1/.the-bot-gateway-result"
+      ' sh "$directory" "$id" "$state" || true
+    done
+    sleep 1
+  done
 ) &
 
 exit 0

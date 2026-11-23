@@ -1,54 +1,43 @@
 package org.freakz.hermesmanager.config;
 
-import java.io.IOException;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import org.freakz.common.spring.security.ServiceTokenAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 @Configuration
 public class SecurityConfig {
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http, HermesManagerProperties properties) throws Exception {
-    http.csrf(csrf -> csrf.disable())
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/actuator/health").permitAll()
-            .anyRequest().permitAll())
-        .addFilterBefore(new BearerTokenFilter(properties.token()), AbstractPreAuthenticatedProcessingFilter.class);
-    return http.build();
+  @Order(1)
+  SecurityFilterChain apiSecurity(HttpSecurity http, HermesManagerProperties properties) throws Exception {
+    return http
+        .securityMatcher(PathPatternRequestMatcher.pathPattern("/api/**"))
+        .csrf(AbstractHttpConfigurer::disable)
+        .requestCache(AbstractHttpConfigurer::disable)
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(errors -> errors.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority(ServiceTokenAuthenticationFilter.AUTHORITY))
+        .addFilterBefore(new ServiceTokenAuthenticationFilter(
+            HttpHeaders.AUTHORIZATION, "Bearer ", properties.token(), "bot-engine"),
+            AnonymousAuthenticationFilter.class)
+        .build();
   }
 
-  static class BearerTokenFilter extends OncePerRequestFilter {
-    private final String token;
-
-    BearerTokenFilter(String token) {
-      this.token = token;
-    }
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-        throws ServletException, IOException {
-      if (!request.getRequestURI().startsWith("/api/")) {
-        chain.doFilter(request, response);
-        return;
-      }
-      if (token == null || token.isBlank()) {
-        response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "HERMES_MANAGER_TOKEN is not configured");
-        return;
-      }
-      if (!("Bearer " + token).equals(request.getHeader("Authorization"))) {
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-        return;
-      }
-      chain.doFilter(request, response);
-    }
+  @Bean
+  SecurityFilterChain healthSecurity(HttpSecurity http) throws Exception {
+    return http.authorizeHttpRequests(auth -> auth
+        .requestMatchers("/actuator/health").permitAll()
+        .anyRequest().denyAll())
+        .build();
   }
 }

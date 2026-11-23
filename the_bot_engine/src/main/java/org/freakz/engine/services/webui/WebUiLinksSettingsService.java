@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
+import java.util.Arrays;
 
 /**
  * Web UI links for the main and develop bot instances, stored in the shared runtime settings store
@@ -49,10 +50,10 @@ public class WebUiLinksSettingsService {
     String main = normalize(request.mainUrl());
     String develop = normalize(request.developUrl());
     if (!main.isEmpty()) {
-      requireHttpUrl("Main instance URL", main);
+      requireAllowedUrl("Main instance URL", main);
     }
     if (!develop.isEmpty()) {
-      requireHttpUrl("Develop instance URL", develop);
+      requireAllowedUrl("Develop instance URL", develop);
     }
 
     store(MAIN_URL_KEY, main);
@@ -62,7 +63,7 @@ public class WebUiLinksSettingsService {
 
   private WebUiLinksSettings.WebUiLink link(String key, String defaultUrl) {
     String override = normalize(envValues.getKeyValueOrDefault(key, ""));
-    if (override.isEmpty()) {
+    if (override.isEmpty() || !isAllowed(override)) {
       return new WebUiLinksSettings.WebUiLink(defaultUrl, false);
     }
     return new WebUiLinksSettings.WebUiLink(override, true);
@@ -103,7 +104,7 @@ public class WebUiLinksSettingsService {
   }
 
   private boolean isPublicHttps(String url) {
-    return url.toLowerCase(Locale.ROOT).startsWith("https://");
+    return secureUrl(url) != null;
   }
 
   private String normalize(String value) {
@@ -114,18 +115,38 @@ public class WebUiLinksSettingsService {
     return normalized;
   }
 
-  private void requireHttpUrl(String label, String url) {
-    URI uri;
-    try {
-      uri = new URI(url);
-    } catch (URISyntaxException e) {
-      throw new IllegalArgumentException(label + " must be a valid URL: " + e.getMessage());
+  private void requireAllowedUrl(String label, String url) {
+    if (!isAllowed(url)) {
+      throw new IllegalArgumentException(label + " must be HTTPS and use an approved host");
     }
+  }
 
-    String scheme = uri.getScheme();
-    boolean httpScheme = "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
-    if (!httpScheme || uri.getHost() == null || uri.getHost().isBlank()) {
-      throw new IllegalArgumentException(label + " must be an absolute http or https URL");
+  private boolean isAllowed(String value) {
+    URI url = secureUrl(value);
+    if (url == null) {
+      return false;
+    }
+    String host = url.getHost().toLowerCase(Locale.ROOT);
+    URI own = secureUrl(ownPublicBaseUrl());
+    if (host.equals(URI.create(DEFAULT_MAIN_URL).getHost())
+        || host.equals(URI.create(DEFAULT_DEVELOP_URL).getHost())
+        || (own != null && host.equalsIgnoreCase(own.getHost()))) {
+      return true;
+    }
+    String configured = configService.getConfigValue(
+        "the.bot.webui-links.allowed-hosts", "THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS", "");
+    return configured != null && Arrays.stream(configured.split(","))
+        .map(String::strip)
+        .anyMatch(host::equalsIgnoreCase);
+  }
+
+  private URI secureUrl(String value) {
+    try {
+      URI uri = new URI(value);
+      return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getRawUserInfo() == null
+          ? uri : null;
+    } catch (URISyntaxException e) {
+      return null;
     }
   }
 }

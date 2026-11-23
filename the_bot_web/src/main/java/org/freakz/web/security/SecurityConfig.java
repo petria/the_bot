@@ -12,6 +12,13 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
+import java.net.URI;
+import java.time.Clock;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.http.HttpStatus;
 import tools.jackson.databind.DeserializationFeature;
@@ -19,6 +26,13 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import jakarta.servlet.DispatcherType;
+import org.freakz.common.spring.rest.InternalApiTokenInterceptor;
+import org.freakz.common.spring.security.ServiceTokenAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.freakz.common.users.BotPermission;
@@ -29,19 +43,47 @@ import org.freakz.web.mobile.MobileBearerAuthenticationFilter;
 public class SecurityConfig {
 
   @Bean
+  @Order(1)
+  SecurityFilterChain internalApiSecurity(HttpSecurity http,
+      @Value("${the.bot.internal-api-token:}") String token) throws Exception {
+    return http
+        .securityMatcher(PathPatternRequestMatcher.pathPattern("/internal/**"))
+        .csrf(AbstractHttpConfigurer::disable)
+        .requestCache(AbstractHttpConfigurer::disable)
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(errors -> errors.authenticationEntryPoint(apiAuthenticationEntryPoint()))
+        .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority(ServiceTokenAuthenticationFilter.AUTHORITY))
+        .addFilterBefore(new ServiceTokenAuthenticationFilter(
+            InternalApiTokenInterceptor.HEADER, "", token == null ? "" : token.trim(), "bot-internal-service"),
+            AnonymousAuthenticationFilter.class)
+        .build();
+  }
+
+  @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
       WebLoginFailureHandler webLoginFailureHandler,
-      MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter) throws Exception {
+      MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter,
+      @Value("${the.bot.web.trusted-proxy-addresses:${THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:}}") String trustedProxies,
+      @Value("${the.bot.webPublicBaseUrl:${THE_BOT_WEB_PUBLIC_BASE_URL:}}") String publicBaseUrl,
+      @Value("${the.bot.web.csp-report-only:${THE_BOT_WEB_CSP_REPORT_ONLY:true}}") boolean cspReportOnly) throws Exception {
+    var proxyAddresses = Arrays.stream(trustedProxies.split(",")).map(String::strip)
+        .filter(address -> !address.isEmpty()).collect(Collectors.toUnmodifiableSet());
+    var policy = new ContentSecurityPolicyHeaderWriter(
+        "default-src 'self'; img-src 'self' data:" + publicImageOrigin(publicBaseUrl)
+            + "; style-src 'self' 'unsafe-inline'; object-src 'none'; "
+            + "base-uri 'self'; frame-ancestors 'none'");
+    policy.setReportOnly(cspReportOnly);
     http
+        .headers(headers -> headers.addHeaderWriter(policy))
+        .addFilterAfter(new RequestRateLimitFilter(proxyAddresses, webLoginFailureHandler, jsonMapper(), Clock.systemUTC()),
+            CsrfFilter.class)
         .csrf(csrf -> csrf
             .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
             .ignoringRequestMatchers(
                 PathPatternRequestMatcher.pathPattern("/logout"),
-                PathPatternRequestMatcher.pathPattern("/api/web/cli/**"),
                 PathPatternRequestMatcher.pathPattern("/api/mobile/**"),
-                PathPatternRequestMatcher.pathPattern("/api/irssi/**"),
-                PathPatternRequestMatcher.pathPattern("/internal/mobile/**"))
+                PathPatternRequestMatcher.pathPattern("/api/irssi/**"))
         )
         .authorizeHttpRequests(authorize -> authorize
             .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
@@ -49,12 +91,10 @@ public class SecurityConfig {
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/media/**").permitAll()
             .requestMatchers("/m/**").permitAll()
-            .requestMatchers("/internal/system/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
-            .requestMatchers("/api/web/cli/login").permitAll()
+            .requestMatchers("/api/web/cli/login", "/api/web/cli/csrf").permitAll()
             .requestMatchers("/api/mobile/auth/**").permitAll()
             .requestMatchers("/api/irssi/**").permitAll()
-            .requestMatchers("/internal/mobile/**").permitAll()
             .requestMatchers("/api/mobile/**").authenticated()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)
@@ -82,6 +122,23 @@ public class SecurityConfig {
         .addFilterBefore(mobileBearerAuthenticationFilter,
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     return http.build();
+  }
+
+  private String publicImageOrigin(String publicBaseUrl) {
+    try {
+      URI uri = URI.create(publicBaseUrl.trim());
+      if (uri.getHost() == null || uri.getRawUserInfo() != null) {
+        return "";
+      }
+      String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+      if (!"http".equals(scheme) && !"https".equals(scheme)) {
+        return "";
+      }
+      int port = uri.getPort();
+      return " " + scheme + "://" + uri.getHost() + (port == -1 ? "" : ":" + port);
+    } catch (IllegalArgumentException e) {
+      return "";
+    }
   }
 
   @Bean

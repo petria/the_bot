@@ -1,11 +1,7 @@
 package org.freakz.io.connections;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import org.freakz.common.net.PublicHttpFetcher;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +28,6 @@ public class MediaCaptureService {
 
   private final RestEngineClient engineClient;
   private final JsonMapper jsonMapper;
-  private final HttpClient httpClient = HttpClient.newBuilder()
-      .connectTimeout(Duration.ofSeconds(10))
-      .followRedirects(HttpClient.Redirect.NORMAL)
-      .build();
 
   private volatile MediaStorageSettingsResponse cachedSettings;
   private volatile long cachedSettingsAt;
@@ -88,6 +80,14 @@ public class MediaCaptureService {
       String fileName,
       Map<String, String> requestHeaders,
       ReplyContext replyContext) {
+    captureAndSend(connectionManager, sourceChannel, connection, sourceProtocol, sender, caption,
+        imageUrl, contentType, fileName, requestHeaders, replyContext, false);
+  }
+
+  void captureAndSend(
+      ConnectionManager connectionManager, Channel sourceChannel, BotConnection connection,
+      String sourceProtocol, String sender, String caption, String imageUrl, String contentType, String fileName,
+      Map<String, String> requestHeaders, ReplyContext replyContext, boolean configuredService) {
     if (connectionManager == null) {
       log.debug("Media capture skipped because connection manager is unavailable sourceProtocol={} sender={}", sourceProtocol, sender);
       return;
@@ -117,7 +117,7 @@ public class MediaCaptureService {
         log.debug("Media capture skipped because media storage is disabled");
         return;
       }
-      DownloadedMedia downloaded = download(imageUrl, settings.maxFileSizeMb() == null ? 25 : settings.maxFileSizeMb(), requestHeaders);
+      DownloadedMedia downloaded = download(imageUrl, settings.maxFileSizeMb() == null ? 25 : settings.maxFileSizeMb(), requestHeaders, configuredService);
       String effectiveContentType = MediaStore.normalizeContentType(contentType, fileName);
       if (effectiveContentType == null) {
         effectiveContentType = MediaStore.normalizeContentType(downloaded.contentType(), fileName);
@@ -168,7 +168,7 @@ public class MediaCaptureService {
         }
       }
     } catch (Exception e) {
-      log.warn("Media capture failed for sourceAlias={} url={}: {}", sourceChannel.getEchoToAlias(), imageUrl, e.getMessage());
+      log.warn("Media capture failed for sourceAlias={} errorType={}", sourceChannel.getEchoToAlias(), e.getClass().getSimpleName());
       log.debug("Media capture failure", e);
     }
   }
@@ -185,49 +185,18 @@ public class MediaCaptureService {
     return settings;
   }
 
-  private DownloadedMedia download(String imageUrl, int maxFileSizeMb, Map<String, String> requestHeaders) throws Exception {
+  private DownloadedMedia download(String imageUrl, int maxFileSizeMb, Map<String, String> requestHeaders,
+      boolean configuredService) throws java.io.IOException {
     if (imageUrl == null || imageUrl.isBlank()) {
       throw new IllegalArgumentException("Missing image URL");
     }
-    long maxBytes = Math.max(1, maxFileSizeMb) * 1024L * 1024L;
-    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(imageUrl))
-        .timeout(Duration.ofSeconds(30))
-        .GET();
-    if (requestHeaders != null) {
-      requestHeaders.forEach((name, value) -> {
-        if (name != null && !name.isBlank() && value != null && !value.isBlank()) {
-          requestBuilder.header(name, value);
-        }
-      });
-    }
-    HttpRequest request = requestBuilder.build();
-    HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-    if (response.statusCode() < 200 || response.statusCode() >= 300) {
-      throw new IllegalStateException("Image download failed: HTTP " + response.statusCode());
-    }
-    String responseContentType = response.headers().firstValue("content-type").orElse(null);
-    String lengthHeader = response.headers().firstValue("content-length").orElse(null);
-    if (lengthHeader != null) {
-      try {
-        if (Long.parseLong(lengthHeader) > maxBytes) {
-          throw new IllegalArgumentException("Media is larger than configured media limit");
-        }
-      } catch (NumberFormatException ignored) {
-      }
-    }
-    try (InputStream input = response.body(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-      byte[] buffer = new byte[8192];
-      long total = 0;
-      int read;
-      while ((read = input.read(buffer)) != -1) {
-        total += read;
-        if (total > maxBytes) {
-          throw new IllegalArgumentException("Media is larger than configured media limit");
-        }
-        output.write(buffer, 0, read);
-      }
-      return new DownloadedMedia(output.toByteArray(), responseContentType);
-    }
+    int maxBytes = (int) Math.min(Integer.MAX_VALUE - 1L, Math.max(1, maxFileSizeMb) * 1024L * 1024L);
+    URI uri = URI.create(imageUrl);
+    var headers = requestHeaders == null ? Map.<String, String>of() : requestHeaders;
+    var result = configuredService
+        ? PublicHttpFetcher.getConfiguredService(uri, headers, 10000, 30000, maxBytes)
+        : PublicHttpFetcher.get(uri, headers, 10000, 30000, maxBytes, 5);
+    return new DownloadedMedia(result.body(), result.contentType());
   }
 
   static Message capturedLinkMessage(BotConnection connection, String channelId, String channelName,

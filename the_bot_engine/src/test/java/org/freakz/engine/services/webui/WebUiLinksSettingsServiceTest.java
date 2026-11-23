@@ -30,6 +30,8 @@ class WebUiLinksSettingsServiceTest {
         .thenAnswer(inv -> publicBaseUrl != null ? publicBaseUrl : inv.getArgument(2));
     when(config.getConfigValue(eq("hokan.bot.instance-id"), anyString(), anyString()))
         .thenAnswer(inv -> instanceId != null ? instanceId : inv.getArgument(2));
+    when(config.getConfigValue(eq("the.bot.webui-links.allowed-hosts"), anyString(), anyString()))
+        .thenReturn("custom.example,dev.example");
     return new WebUiLinksSettingsService(store, config);
   }
 
@@ -79,7 +81,7 @@ class WebUiLinksSettingsServiceTest {
 
   @Test void nonHttpAndHostlessValuesAreRejectedWithoutStoring() {
     var service = service("hokan-main", "http://hokan-main.local:8091");
-    for (String bad : new String[]{"javascript:alert(1)", "/relative/path", "https://", "ftp://example", "not a url"}) {
+    for (String bad : new String[]{"javascript:alert(1)", "/relative/path", "https://", "ftp://example", "http://custom.example", "https://unapproved.example", "not a url"}) {
       assertThatThrownBy(() -> service.update(new WebUiLinksUpdateRequest(bad, "")))
           .as(bad).isInstanceOf(IllegalArgumentException.class);
       assertThatThrownBy(() -> service.update(new WebUiLinksUpdateRequest("", bad)))

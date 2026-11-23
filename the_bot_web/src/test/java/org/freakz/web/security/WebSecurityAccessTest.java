@@ -7,21 +7,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(
     useDefaultFilters = false,
+    properties = "the.bot.webPublicBaseUrl=https://public.example.test/bot",
     includeFilters = @Filter(Controller.class),
     controllers = WebSecurityAccessTest.TestController.class
 )
@@ -39,6 +44,30 @@ class WebSecurityAccessTest {
     mockMvc.perform(get("/generated/test")).andExpect(status().isOk());
     mockMvc.perform(get("/api/web/generated-pages/test")).andExpect(status().isOk());
     mockMvc.perform(get("/m/test")).andExpect(status().isOk());
+  }
+
+  @Test
+  void cspAllowsImagesFromTheConfiguredPublicOrigin() throws Exception {
+    mockMvc.perform(get("/generated/test"))
+        .andExpect(header().string("Content-Security-Policy-Report-Only",
+            containsString("img-src 'self' data: https://public.example.test;")));
+  }
+
+  @Test
+  void cliLoginRequiresCsrfAndAllowsAnonymousTokenBootstrap() throws Exception {
+    var bootstrap = mockMvc.perform(get("/api/web/cli/csrf"))
+        .andExpect(status().isOk())
+        .andReturn();
+    var token = new JsonMapper().readTree(bootstrap.getResponse().getContentAsByteArray());
+    mockMvc.perform(post("/api/web/cli/login")).andExpect(status().isForbidden());
+    var login = post("/api/web/cli/login").header(token.get("headerName").asText(), token.get("token").asText());
+    var cookie = bootstrap.getResponse().getCookie("XSRF-TOKEN");
+    if (cookie != null) {
+      login.cookie(cookie);
+    } else {
+      login.session((MockHttpSession) bootstrap.getRequest().getSession(false));
+    }
+    mockMvc.perform(login).andExpect(status().isBadRequest());
   }
 
   @Test

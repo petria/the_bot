@@ -62,7 +62,7 @@ class HermesFallbackServiceTest {
         });
     assertThat(response.profiles()).allSatisfy(profile -> assertThat(profile.provider()).isEqualTo("llamacpp"));
     String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
-    assertThat(yaml).contains("provider: \"custom\"", "chat_completions", "swift-model", "http://llama.local:8081/v1", "secret-key")
+    assertThat(yaml).contains("provider: \"custom\"", "chat_completions", "swift-model", "http://llama.local:8081/v1", "${THE_BOT_HERMES_MANAGED_API_KEY}")
         .doesNotContain("reasoning_effort", "extra_body");
     verify(client).validateToolCall("llamacpp", URI.create("http://llama.local:8081/v1"), "swift-model", "secret-key", false);
     verify(client).validateChat("llamacpp", URI.create("http://llama.local:8081/v1"), "swift-model", "secret-key", false);
@@ -144,7 +144,7 @@ class HermesFallbackServiceTest {
         List.of(
             new HermesRouteUpdate("chat", "Hermes chat", "openai"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "openai")))))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported OpenAI model: gpt-5.5")
         .hasMessageContaining("gpt-6-luna, gpt-6-sol, gpt-6-astra, gpt-6.1-sol");
 
@@ -241,8 +241,8 @@ class HermesFallbackServiceTest {
             new HermesRouteUpdate("chat", "Hermes chat", "local"),
             new HermesRouteUpdate("ai-command", "Hermes AI command", "local")))))
         .isInstanceOf(HermesValidationException.class)
-        .satisfies(error -> assertThat(((HermesValidationException) error).getDetail())
-            .contains("backend=local-0", "model=bad-model", "Read timed out"));
+        .hasMessage("Hermes local backend validation failed")
+        .satisfies(error -> assertThat(((HermesValidationException) error).getDetail()).isNull());
 
     assertThat(service.getBackendConfig().routes()).allMatch(route -> "openai".equals(route.backendId()));
     assertThat(Files.readString(tempDir.resolve("profiles/chat/config.yaml"))).contains("gpt-6.1-sol");
@@ -302,7 +302,8 @@ class HermesFallbackServiceTest {
         .contains("custom_providers:")
         .contains("extra_body:")
         .contains("reasoning_effort: \"none\"")
-        .contains("api_key: \"secret-key\"");
+        .contains("api_key: \"${THE_BOT_HERMES_MANAGED_API_KEY}\"")
+        .doesNotContain("secret-key");
     verify(gatewayService, atLeastOnce()).restart("chat");
   }
 
@@ -363,8 +364,17 @@ class HermesFallbackServiceTest {
 
     String stored = Files.readString(tempDir.resolve("the_bot_hermes_backends.json"));
     String yaml = Files.readString(tempDir.resolve("profiles/chat/config.yaml"));
+    assertThatThrownBy(() -> service.getModels(new HermesModelDiscoveryRequest(
+        "ollama", "http://ollama.local:11434/other", null, "local-0")))
+        .hasMessage("Stored credentials require the saved provider and base URL");
+    assertThatThrownBy(() -> service.getModels(new HermesModelDiscoveryRequest(
+        "ollama", "http://unlisted.invalid:11434/v1", "explicit-test-key", null)))
+        .hasMessage("Backend origin is not allowed on this instance");
+    assertThat(service.getModels(new HermesModelDiscoveryRequest(
+        "ollama", "http://OLLAMA.local:11434/v1/", null, "local-0")).models()).isNotEmpty();
     assertThat(stored).contains("aesgcm:").doesNotContain("secret-key");
-    assertThat(yaml).contains("api_key: \"secret-key\"");
+    assertThat(yaml).contains("api_key: \"${THE_BOT_HERMES_MANAGED_API_KEY}\"")
+        .doesNotContain("secret-key");
     assertThat(response.backends().stream()
         .filter(backend -> "local-0".equals(backend.id()))
         .findFirst()
@@ -410,14 +420,44 @@ class HermesFallbackServiceTest {
         .contains("custom_providers:")
         .contains("extra_body:")
         .contains("reasoning_effort: \"none\"")
-        .contains("api_key: \"secret-key\"")
+        .contains("api_key: \"${THE_BOT_HERMES_MANAGED_API_KEY}\"")
+        .doesNotContain("secret-key")
         .contains("api_server:")
         .contains("- \"no_mcp\"")
         .contains("disabled_toolsets:");
-    assertThat(sessionFile).doesNotExist();
-    assertThat(stateDb).doesNotExist();
-    assertThat(responseStore).doesNotExist();
+    Path profileEnv = tempDir.resolve("profiles/ai-command/.env");
+    assertThat(Files.readString(profileEnv)).contains("THE_BOT_HERMES_MANAGED_API_KEY=secret-key");
+    assertThat(Files.getPosixFilePermissions(profileEnv)).containsExactlyInAnyOrder(
+        java.nio.file.attribute.PosixFilePermission.OWNER_READ, java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
+    assertThat(sessionFile).exists();
+    assertThat(stateDb).exists();
+    assertThat(responseStore).exists();
     verify(gatewayService, atLeastOnce()).restart("ai-command");
+  }
+
+  @Test
+  void explicitlyRequestedPurgeBacksUpRuntimeStateAndRollsBackFailure() throws Exception {
+    createProfiles("chat", "ai-command");
+    Path profile = tempDir.resolve("profiles/chat");
+    Path state = profile.resolve("state.db");
+    Files.writeString(state, "fixture state");
+    HermesGatewayService gateway = mock(HermesGatewayService.class);
+    HermesFallbackService service = service(healthyRestTemplate(), gateway, localClient(), properties());
+    service.run(new DefaultApplicationArguments());
+    var request = new HermesBackendConfigUpdateRequest(null, null, null, null, null, null, null, true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("fixture supervisor failure"))
+        .doNothing().when(gateway).start("chat");
+
+    assertThatThrownBy(() -> service.updateBackendConfig(request))
+        .hasMessage("Could not apply Hermes backend configuration");
+    assertThat(Files.readString(state)).isEqualTo("fixture state");
+
+    service.updateBackendConfig(request);
+    assertThat(state).doesNotExist();
+    try (var files = Files.walk(profile.resolve("state-backup"))) {
+      assertThat(files.filter(path -> path.getFileName().toString().equals("state.db")).toList())
+          .singleElement().satisfies(path -> assertThat(Files.readString(path)).isEqualTo("fixture state"));
+    }
   }
 
   @Test
@@ -561,40 +601,40 @@ class HermesFallbackServiceTest {
   private HermesManagerProperties properties() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
         "",
-        null);
+        null, List.of("http://llama.local:8081", "http://192.168.0.111:11434"));
   }
 
   private HermesManagerProperties propertiesWithKey() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
         Base64.getEncoder().encodeToString(new byte[32]),
-        null);
+        null, List.of("http://llama.local:8081", "http://192.168.0.111:11434"));
   }
 
   private HermesManagerProperties propertiesWithAiCommandPort() {
     return new HermesManagerProperties(
         tempDir,
-        "bot-hermes-test",
+        "127.0.0.1",
         List.of("chat", "ai-command"),
         "chat:8643,ai-command:8645",
         "http://ollama.local:11434/v1",
         "qwen3.5:27b",
         "token",
         Base64.getEncoder().encodeToString(new byte[32]),
-        null);
+        null, List.of("http://llama.local:8081", "http://192.168.0.111:11434"));
   }
 
   private LocalLlmClient localClient() {

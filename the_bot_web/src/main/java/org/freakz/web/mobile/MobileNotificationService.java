@@ -1,5 +1,7 @@
 package org.freakz.web.mobile;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -20,6 +22,8 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +36,9 @@ public class MobileNotificationService {
   private final List<NotificationRecord> notifications;
   private final List<DeviceRecord> devices;
   private FirebaseMessaging firebaseMessaging;
+  private long pushMinute;
+  private final Map<String, Integer> pushCounts = new HashMap<>();
+  private final Map<String, Instant> receivedEvents = new HashMap<>();
 
   public MobileNotificationService(@Qualifier("jsonMapper") JsonMapper mapper, TheBotWebProperties properties) {
     this.mapper = mapper;
@@ -47,8 +54,11 @@ public class MobileNotificationService {
 
   public synchronized void registerDevice(String username, String token, String deviceName, String platform) {
     if (blank(username) || blank(token)) throw new IllegalArgumentException("FCM token is required");
+    if (devices.stream().anyMatch(device -> token.equals(device.fcmToken()) && !username.equals(device.username()))) {
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Device token is already registered");
+    }
     Instant now = Instant.now();
-    devices.removeIf(device -> token.equals(device.fcmToken()));
+    devices.removeIf(device -> username.equals(device.username()) && token.equals(device.fcmToken()));
     devices.add(new DeviceRecord(UUID.randomUUID().toString(), username, token, deviceName, platform, now, now, false));
     save();
   }
@@ -64,21 +74,35 @@ public class MobileNotificationService {
 
   public synchronized void accept(MobileNotificationEvent event) {
     if (event == null || blank(event.username()) || blank(event.body())) return;
-    if (!blank(event.eventId()) && notifications.stream().anyMatch(item -> event.eventId().equals(item.eventId()))) return;
+    if (blank(event.eventId())) return;
+    Instant now = Instant.now();
+    receivedEvents.values().removeIf(expiry -> !expiry.isAfter(now));
+    if (receivedEvents.containsKey(event.eventId())
+        || notifications.stream().anyMatch(item -> event.eventId().equals(item.eventId()))) return;
+    if (receivedEvents.size() >= 20000) {
+      throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS);
+    }
     NotificationRecord record = new NotificationRecord(
         event.eventId(), event.username(), event.type(), event.title(), event.body(),
         event.connectionType(), event.channelAlias(), event.command(),
-        event.occurredAt() == null ? Instant.now() : event.occurredAt(), false, event.replyDraft());
+        event.occurredAt() == null ? now : event.occurredAt(), false, event.replyDraft(), true);
     if ("WATER_WATCH".equals(record.type())) notifications.removeIf(item -> item.username().equals(record.username()) && "WATER_WATCH".equals(item.type()));
     notifications.add(record);
     trimUser(event.username());
     save();
+    receivedEvents.put(event.eventId(), record.occurredAt().plusSeconds(300));
     sendFcm(record);
   }
 
   public synchronized List<NotificationRecord> list(String username) {
     return notifications.stream().filter(item -> username.equals(item.username()))
+        .map(item -> item.verified() || item.replyDraft() == null ? item : item.withoutReplyDraft())
         .sorted(Comparator.comparing(NotificationRecord::occurredAt).reversed()).toList();
+  }
+
+  public synchronized boolean hasVerifiedDraft(String owner, String draftId) {
+    return notifications.stream().anyMatch(item -> item.verified() && owner.equals(item.username())
+        && item.replyDraft() != null && draftId.equals(item.replyDraft().id()));
   }
 
   public synchronized void markRead(String username, String eventId) {
@@ -113,6 +137,14 @@ public class MobileNotificationService {
 
   private void sendFcm(NotificationRecord record) {
     if (!fcmEnabled || firebaseMessaging == null) return;
+    long minute = Instant.now().getEpochSecond() / 60;
+    if (minute != pushMinute) {
+      pushCounts.clear();
+      pushMinute = minute;
+    }
+    int sent = pushCounts.getOrDefault(record.username(), 0);
+    if (sent >= 10 || (sent == 0 && pushCounts.size() >= 10000)) return;
+    pushCounts.put(record.username(), sent + 1);
     for (DeviceRecord device : devices(record.username())) {
       try {
         Message.Builder builder = Message.builder().setToken(device.fcmToken())
@@ -170,13 +202,17 @@ public class MobileNotificationService {
                              String platform, Instant createdAt, Instant lastSeenAt, boolean revoked) {}
   public record NotificationRecord(String eventId, String username, String type, String title, String body,
                                    String connectionType, String channelAlias, String command,
-                                   Instant occurredAt, boolean read, org.freakz.common.model.mobile.ReplyDraft replyDraft) {
+                                   Instant occurredAt, boolean read, org.freakz.common.model.mobile.ReplyDraft replyDraft, boolean verified) {
     public NotificationRecord(String eventId, String username, String type, String title, String body,
         String connectionType, String channelAlias, String command, Instant occurredAt, boolean read) {
-      this(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, read, null);
+      this(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, read, null, false);
+    }
+    NotificationRecord withoutReplyDraft() {
+      return new NotificationRecord(eventId, username, type, title, body, connectionType, channelAlias, command,
+          occurredAt, read, null, verified);
     }
     NotificationRecord withRead(boolean value) {
-      return new NotificationRecord(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, value, replyDraft);
+      return new NotificationRecord(eventId, username, type, title, body, connectionType, channelAlias, command, occurredAt, value, replyDraft, verified);
     }
   }
   private record State(List<NotificationRecord> notifications, List<DeviceRecord> devices) {}

@@ -266,9 +266,10 @@ public class WhatsAppConnection extends BotConnection {
           resolveMediaDownloadUrl(event),
           event.getMediaContentType(),
           event.getMediaFileName(),
-          mediaDownloadHeaders(),
+          event.hasDownloadableMediaUrl() ? Map.of() : mediaDownloadHeaders(),
           new MediaCaptureService.ReplyContext(event.getChatJid(), event.getMessageId(), null,
-              event.effectiveSenderJid()));
+              event.effectiveSenderJid()),
+          !event.hasDownloadableMediaUrl());
     }
   }
 

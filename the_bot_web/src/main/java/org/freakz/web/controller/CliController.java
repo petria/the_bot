@@ -18,6 +18,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +46,11 @@ public class CliController {
     this.engineClient = engineClient;
   }
 
+  @GetMapping("/csrf")
+  public CsrfResponse csrf(CsrfToken token) {
+    return new CsrfResponse(token.getHeaderName(), token.getToken());
+  }
+
   @PostMapping("/login")
   public LoginResponse login(
       @RequestBody LoginRequest request,
@@ -60,7 +68,11 @@ public class CliController {
       SecurityContext context = SecurityContextHolder.createEmptyContext();
       context.setAuthentication(authentication);
       SecurityContextHolder.setContext(context);
+      if (httpRequest.getSession(false) != null) {
+        httpRequest.changeSessionId();
+      }
       SECURITY_CONTEXT_REPOSITORY.saveContext(context, httpRequest, httpResponse);
+      CookieCsrfTokenRepository.withHttpOnlyFalse().saveToken(null, httpRequest, httpResponse);
       BotUserPrincipal principal = (BotUserPrincipal) authentication.getPrincipal();
       return new LoginResponse(principal.getUsername(), principal.getName());
     } catch (AuthenticationException e) {
@@ -110,6 +122,8 @@ public class CliController {
   private boolean isBlank(String value) {
     return value == null || value.isBlank();
   }
+
+  public record CsrfResponse(String headerName, String token) {}
 
   public record LoginRequest(String username, String password) {
   }

@@ -10,14 +10,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "hermes.manager")
 public record HermesManagerProperties(
     Path dataDir,
-    String containerName,
+    String gatewayHealthHost,
     List<String> profiles,
     String profilePorts,
     String defaultBaseUrl,
     String defaultModel,
     String token,
     String localCredentialKey,
-    Integer localValidationTimeoutSeconds) {
+    Integer localValidationTimeoutSeconds,
+    List<String> allowedBackendOrigins) {
+
 
   public int resolvedLocalValidationTimeoutSeconds() {
     return localValidationTimeoutSeconds == null || localValidationTimeoutSeconds <= 0

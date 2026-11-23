@@ -127,6 +127,24 @@ jobs:
           python3 -I integrations/irssi/test_irssi_agent.py
           perl integrations/irssi/test_bot_notify.pl
 
+      - name: Verify loopback publication for internal services
+        env:
+          PUID: '1000'
+          PGID: '1000'
+          THE_BOT_INTERNAL_API_TOKEN: ci-config-check
+          HERMES_MANAGER_TOKEN: ci-config-check
+        run: |
+          check_publication() {
+            docker compose -f docker-compose.yml "$@" config --format json |
+              jq -e '
+                [.services["bot-engine"], .services["bot-io"]] |
+                all(. != null and .network_mode != "host" and
+                    all(.ports[]?; .host_ip == "127.0.0.1" or .host_ip == "::1"))
+              ' >/dev/null
+          }
+          check_publication
+          check_publication -f docker-compose.develop-debug.yml
+
       - name: Run backend tests and generate JaCoCo reports
         id: backend_tests
         continue-on-error: true
@@ -201,7 +219,12 @@ jobs:
         id: changes
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            for component in engine io web whatsapp hermes_manager hermes_gateway; do
+              printf '%s=true\n' "$component"
+            done >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           else
@@ -224,27 +247,27 @@ jobs:
           hermes_manager_changed=false
           hermes_gateway_changed=false
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|docker-compose\.develop-debug\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|docker-compose\.develop-debug\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             engine_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_io/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_io/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             io_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_web/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_web/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             web_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_whatsapp/|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_whatsapp/|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             whatsapp_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_hermes_manager/|the_bot_common/|pom\.xml$|docker-compose\.hermes-manager\.yml$|scripts/setup-hermes-docker-instances\.sh$|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_hermes_manager/|the_bot_common/|pom\.xml$|docker-compose\.hermes-manager\.yml$|scripts/setup-hermes-docker-instances\.sh$|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             hermes_manager_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(scripts/setup-hermes-docker-instances\.sh$|scripts/hermes/|\.github/workflows/)'; then
+          if grep -Eq '^(scripts/setup-hermes-docker-instances\.sh$|scripts/hermes/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             hermes_gateway_changed=true
           fi
 
@@ -481,7 +504,6 @@ jobs:
           THE_BOT_IO_HOST_PORT: ${{ vars.THE_BOT_IO_HOST_PORT }}
           THE_BOT_WEB_HOST_PORT: ${{ vars.THE_BOT_WEB_HOST_PORT }}
           THE_BOT_WEB_BIND_ADDRESS: ${{ vars.THE_BOT_WEB_BIND_ADDRESS }}
-          THE_BOT_DEBUG_HOST_IP: ${{ vars.THE_BOT_DEBUG_HOST_IP }}
           THE_BOT_DEBUG_HOST_PORT: ${{ vars.THE_BOT_DEBUG_HOST_PORT }}
           THE_BOT_ENGINE_CONTAINER_NAME: ${{ vars.THE_BOT_ENGINE_CONTAINER_NAME }}
           THE_BOT_IO_CONTAINER_NAME: ${{ vars.THE_BOT_IO_CONTAINER_NAME }}
@@ -495,6 +517,10 @@ jobs:
           WEATHER_API_URL: ${{ vars.WEATHER_API_URL }}
           THE_BOT_WEB_PUBLIC_BASE_URL: ${{ vars.THE_BOT_WEB_PUBLIC_BASE_URL }}
           THE_BOT_MEDIA_STORAGE_HOST_DIR: ${{ vars.THE_BOT_MEDIA_STORAGE_HOST_DIR }}
+          THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES: ${{ vars.THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES }}
+          THE_BOT_WEB_CSP_REPORT_ONLY: ${{ vars.THE_BOT_WEB_CSP_REPORT_ONLY }}
+          THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS: ${{ vars.THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS }}
+          THE_BOT_NOTIFICATION_SIGNING_KEY: ${{ secrets.THE_BOT_NOTIFICATION_SIGNING_KEY }}
           THE_BOT_INTERNAL_API_TOKEN: ${{ secrets.THE_BOT_INTERNAL_API_TOKEN }}
           THE_BOT_WEB_MOBILE_FCM_ENABLED: ${{ vars.THE_BOT_WEB_MOBILE_FCM_ENABLED || 'false' }}
           FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
@@ -505,7 +531,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           command_timeout: 30m
-          envs: THE_BOT_WATER_WATCH_STATION,THE_BOT_WATER_WATCH_USERNAME,THE_BOT_WATER_WATCH_INTERVAL_MINUTES,DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,WEB_CHANGED,WHATSAPP_CHANGED,HOKAN_NODE_CONTEXT_SECRET,HERMES_CHAT_BASE_URL,HERMES_MAIN_CHAT_BASE_URL,HERMES_DEVELOP_CHAT_BASE_URL,HERMES_CHAT_API_KEY,HERMES_AI_COMMAND_BASE_URL,HERMES_MAIN_AI_COMMAND_BASE_URL,HERMES_DEVELOP_AI_COMMAND_BASE_URL,HERMES_AI_COMMAND_API_KEY,HERMES_AI_COMMAND_MODEL,HERMES_AI_COMMAND_TIMEOUT_SECONDS,HERMES_AI_COMMAND_API_MODE,HERMES_CHAT_MODEL,HERMES_CHAT_TIMEOUT_SECONDS,HERMES_CHAT_API_MODE,HERMES_BASE_URL,HERMES_API_KEY,HERMES_MODEL,HERMES_TIMEOUT_SECONDS,HERMES_API_MODE,HERMES_MANAGER_MAIN_BASE_URL,HERMES_MANAGER_DEVELOP_BASE_URL,HERMES_MANAGER_TOKEN,WEATHER_API_KEY,YOUTUBE_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,WHATSAPP_WEBHOOK_SECRET,WHATSAPP_SEND_TOKEN,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,COMPOSE_PROJECT_NAME,THE_BOT_ENGINE_HOST_PORT,THE_BOT_IO_HOST_PORT,THE_BOT_WEB_HOST_PORT,THE_BOT_WEB_BIND_ADDRESS,THE_BOT_DEBUG_HOST_IP,THE_BOT_DEBUG_HOST_PORT,THE_BOT_ENGINE_CONTAINER_NAME,THE_BOT_IO_CONTAINER_NAME,THE_BOT_WEB_CONTAINER_NAME,THE_BOT_WHATSAPP_CONTAINER_NAME,HOKAN_BOT_INSTANCE_ID,HOKAN_EXTERNAL_HOST_IP,WEATHER_API_URL,THE_BOT_WEB_PUBLIC_BASE_URL,THE_BOT_MEDIA_STORAGE_HOST_DIR,THE_BOT_INTERNAL_API_TOKEN,THE_BOT_WEB_MOBILE_FCM_ENABLED,FIREBASE_SERVICE_ACCOUNT_JSON_B64,WHATSAPP_WACLI_DIR,WACLI_SYNC_MAX_DB_SIZE
+          envs: THE_BOT_WATER_WATCH_STATION,THE_BOT_WATER_WATCH_USERNAME,THE_BOT_WATER_WATCH_INTERVAL_MINUTES,DEPLOY_SHA,DEPLOY_BRANCH,ENGINE_CHANGED,IO_CHANGED,WEB_CHANGED,WHATSAPP_CHANGED,HOKAN_NODE_CONTEXT_SECRET,HERMES_CHAT_BASE_URL,HERMES_MAIN_CHAT_BASE_URL,HERMES_DEVELOP_CHAT_BASE_URL,HERMES_CHAT_API_KEY,HERMES_AI_COMMAND_BASE_URL,HERMES_MAIN_AI_COMMAND_BASE_URL,HERMES_DEVELOP_AI_COMMAND_BASE_URL,HERMES_AI_COMMAND_API_KEY,HERMES_AI_COMMAND_MODEL,HERMES_AI_COMMAND_TIMEOUT_SECONDS,HERMES_AI_COMMAND_API_MODE,HERMES_CHAT_MODEL,HERMES_CHAT_TIMEOUT_SECONDS,HERMES_CHAT_API_MODE,HERMES_BASE_URL,HERMES_API_KEY,HERMES_MODEL,HERMES_TIMEOUT_SECONDS,HERMES_API_MODE,HERMES_MANAGER_MAIN_BASE_URL,HERMES_MANAGER_DEVELOP_BASE_URL,HERMES_MANAGER_TOKEN,WEATHER_API_KEY,YOUTUBE_API_KEY,DISCORD_SECRET,TELEGRAM_SECRET,WHATSAPP_WEBHOOK_SECRET,WHATSAPP_SEND_TOKEN,PUID,PGID,DEPLOY_WORKDIR,HOKAN_DATA_DIR,COMPOSE_PROJECT_NAME,THE_BOT_ENGINE_HOST_PORT,THE_BOT_IO_HOST_PORT,THE_BOT_WEB_HOST_PORT,THE_BOT_WEB_BIND_ADDRESS,THE_BOT_DEBUG_HOST_PORT,THE_BOT_ENGINE_CONTAINER_NAME,THE_BOT_IO_CONTAINER_NAME,THE_BOT_WEB_CONTAINER_NAME,THE_BOT_WHATSAPP_CONTAINER_NAME,HOKAN_BOT_INSTANCE_ID,HOKAN_EXTERNAL_HOST_IP,WEATHER_API_URL,THE_BOT_WEB_PUBLIC_BASE_URL,THE_BOT_MEDIA_STORAGE_HOST_DIR,THE_BOT_INTERNAL_API_TOKEN,THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES,THE_BOT_WEB_CSP_REPORT_ONLY,THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS,THE_BOT_NOTIFICATION_SIGNING_KEY,THE_BOT_WEB_MOBILE_FCM_ENABLED,FIREBASE_SERVICE_ACCOUNT_JSON_B64,WHATSAPP_WACLI_DIR,WACLI_SYNC_MAX_DB_SIZE
           script: |
             cd "${DEPLOY_WORKDIR:-/home/hokan/the_bot}"
 
@@ -531,7 +557,6 @@ jobs:
                 DEFAULT_THE_BOT_IO_HOST_PORT="8090"
                 DEFAULT_THE_BOT_WEB_HOST_PORT="8091"
                 DEFAULT_THE_BOT_WEB_BIND_ADDRESS="0.0.0.0"
-                DEFAULT_THE_BOT_DEBUG_HOST_IP="127.0.0.1"
                 DEFAULT_THE_BOT_DEBUG_HOST_PORT="5005"
                 DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME="bot-engine"
                 DEFAULT_THE_BOT_IO_CONTAINER_NAME="bot-io"
@@ -553,7 +578,6 @@ jobs:
                 DEFAULT_THE_BOT_IO_HOST_PORT="8093"
                 DEFAULT_THE_BOT_WEB_HOST_PORT="8092"
                 DEFAULT_THE_BOT_WEB_BIND_ADDRESS="0.0.0.0"
-                DEFAULT_THE_BOT_DEBUG_HOST_IP="192.168.0.33"
                 DEFAULT_THE_BOT_DEBUG_HOST_PORT="5005"
                 DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME="bot-develop-engine"
                 DEFAULT_THE_BOT_IO_CONTAINER_NAME="bot-develop-io"
@@ -609,7 +633,6 @@ jobs:
             CI_THE_BOT_IO_HOST_PORT="$THE_BOT_IO_HOST_PORT"
             CI_THE_BOT_WEB_HOST_PORT="$THE_BOT_WEB_HOST_PORT"
             CI_THE_BOT_WEB_BIND_ADDRESS="$THE_BOT_WEB_BIND_ADDRESS"
-            CI_THE_BOT_DEBUG_HOST_IP="$THE_BOT_DEBUG_HOST_IP"
             CI_THE_BOT_DEBUG_HOST_PORT="$THE_BOT_DEBUG_HOST_PORT"
             CI_THE_BOT_ENGINE_CONTAINER_NAME="$THE_BOT_ENGINE_CONTAINER_NAME"
             CI_THE_BOT_IO_CONTAINER_NAME="$THE_BOT_IO_CONTAINER_NAME"
@@ -618,6 +641,10 @@ jobs:
             CI_WEATHER_API_URL="$WEATHER_API_URL"
             CI_THE_BOT_WEB_PUBLIC_BASE_URL="$THE_BOT_WEB_PUBLIC_BASE_URL"
             CI_THE_BOT_MEDIA_STORAGE_HOST_DIR="$THE_BOT_MEDIA_STORAGE_HOST_DIR"
+            CI_THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES="$THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES"
+            CI_THE_BOT_WEB_CSP_REPORT_ONLY="$THE_BOT_WEB_CSP_REPORT_ONLY"
+            CI_THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS="$THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS"
+            CI_THE_BOT_NOTIFICATION_SIGNING_KEY="$THE_BOT_NOTIFICATION_SIGNING_KEY"
             CI_THE_BOT_INTERNAL_API_TOKEN="$THE_BOT_INTERNAL_API_TOKEN"
             CI_THE_BOT_WEB_MOBILE_FCM_ENABLED="$THE_BOT_WEB_MOBILE_FCM_ENABLED"
             CI_WHATSAPP_WACLI_DIR="$WHATSAPP_WACLI_DIR"
@@ -634,7 +661,6 @@ jobs:
             THE_BOT_IO_HOST_PORT="${CI_THE_BOT_IO_HOST_PORT:-${THE_BOT_IO_HOST_PORT:-$DEFAULT_THE_BOT_IO_HOST_PORT}}"
             THE_BOT_WEB_HOST_PORT="${CI_THE_BOT_WEB_HOST_PORT:-${THE_BOT_WEB_HOST_PORT:-$DEFAULT_THE_BOT_WEB_HOST_PORT}}"
             THE_BOT_WEB_BIND_ADDRESS="${CI_THE_BOT_WEB_BIND_ADDRESS:-${THE_BOT_WEB_BIND_ADDRESS:-$DEFAULT_THE_BOT_WEB_BIND_ADDRESS}}"
-            THE_BOT_DEBUG_HOST_IP="${CI_THE_BOT_DEBUG_HOST_IP:-${THE_BOT_DEBUG_HOST_IP:-$DEFAULT_THE_BOT_DEBUG_HOST_IP}}"
             THE_BOT_DEBUG_HOST_PORT="${CI_THE_BOT_DEBUG_HOST_PORT:-${THE_BOT_DEBUG_HOST_PORT:-$DEFAULT_THE_BOT_DEBUG_HOST_PORT}}"
             THE_BOT_ENGINE_CONTAINER_NAME="${CI_THE_BOT_ENGINE_CONTAINER_NAME:-${THE_BOT_ENGINE_CONTAINER_NAME:-$DEFAULT_THE_BOT_ENGINE_CONTAINER_NAME}}"
             THE_BOT_IO_CONTAINER_NAME="${CI_THE_BOT_IO_CONTAINER_NAME:-${THE_BOT_IO_CONTAINER_NAME:-$DEFAULT_THE_BOT_IO_CONTAINER_NAME}}"
@@ -712,6 +738,12 @@ jobs:
             WEATHER_API_URL="${CI_WEATHER_API_URL:-${WEATHER_API_URL:-http://api.weatherapi.com/v1}}"
             THE_BOT_WEB_PUBLIC_BASE_URL="${CI_THE_BOT_WEB_PUBLIC_BASE_URL:-${THE_BOT_WEB_PUBLIC_BASE_URL:-$DEFAULT_THE_BOT_WEB_PUBLIC_BASE_URL}}"
             THE_BOT_MEDIA_STORAGE_HOST_DIR="${CI_THE_BOT_MEDIA_STORAGE_HOST_DIR:-${THE_BOT_MEDIA_STORAGE_HOST_DIR:-$DEFAULT_THE_BOT_MEDIA_STORAGE_HOST_DIR}}"
+            THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES="${CI_THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:-${THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:-}}"
+            THE_BOT_WEB_CSP_REPORT_ONLY="${CI_THE_BOT_WEB_CSP_REPORT_ONLY:-${THE_BOT_WEB_CSP_REPORT_ONLY:-true}}"
+            THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS="${CI_THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS:-${THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS:-}}"
+            THE_BOT_NOTIFICATION_SIGNING_KEY="${CI_THE_BOT_NOTIFICATION_SIGNING_KEY:-${THE_BOT_NOTIFICATION_SIGNING_KEY:-}}"
+            export THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES THE_BOT_WEB_CSP_REPORT_ONLY
+            export THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS THE_BOT_NOTIFICATION_SIGNING_KEY
             THE_BOT_INTERNAL_API_TOKEN="${CI_THE_BOT_INTERNAL_API_TOKEN:-${THE_BOT_INTERNAL_API_TOKEN:-}}"
             if [ -z "$THE_BOT_INTERNAL_API_TOKEN" ]; then
               echo "THE_BOT_INTERNAL_API_TOKEN is required for internal service authentication."
@@ -754,7 +786,6 @@ jobs:
               echo "THE_BOT_IO_HOST_PORT=$THE_BOT_IO_HOST_PORT"
               echo "THE_BOT_WEB_HOST_PORT=$THE_BOT_WEB_HOST_PORT"
               echo "THE_BOT_WEB_BIND_ADDRESS=$THE_BOT_WEB_BIND_ADDRESS"
-              echo "THE_BOT_DEBUG_HOST_IP=$THE_BOT_DEBUG_HOST_IP"
               echo "THE_BOT_DEBUG_HOST_PORT=$THE_BOT_DEBUG_HOST_PORT"
               echo "THE_BOT_ENGINE_CONTAINER_NAME=$THE_BOT_ENGINE_CONTAINER_NAME"
               echo "THE_BOT_IO_CONTAINER_NAME=$THE_BOT_IO_CONTAINER_NAME"
@@ -790,6 +821,10 @@ jobs:
               echo "WEATHER_API_URL=$WEATHER_API_URL"
               echo "THE_BOT_WEB_PUBLIC_BASE_URL=$THE_BOT_WEB_PUBLIC_BASE_URL"
               echo "THE_BOT_MEDIA_STORAGE_HOST_DIR=$THE_BOT_MEDIA_STORAGE_HOST_DIR"
+              echo "THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES=$THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES"
+              echo "THE_BOT_WEB_CSP_REPORT_ONLY=$THE_BOT_WEB_CSP_REPORT_ONLY"
+              echo "THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS=$THE_BOT_WEBUI_LINKS_ALLOWED_HOSTS"
+              echo "THE_BOT_NOTIFICATION_SIGNING_KEY=$THE_BOT_NOTIFICATION_SIGNING_KEY"
               echo "THE_BOT_INTERNAL_API_TOKEN=$THE_BOT_INTERNAL_API_TOKEN"
               echo "THE_BOT_WEB_MOBILE_FCM_ENABLED=$THE_BOT_WEB_MOBILE_FCM_ENABLED"
               echo "THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE=$THE_BOT_WEB_MOBILE_FCM_CREDENTIALS_FILE"
@@ -901,6 +936,8 @@ jobs:
           HERMES_DEPLOY_WORKDIR: ${{ vars.HERMES_DEPLOY_WORKDIR || '/home/hokan/bot-hermes' }}
           VM_GH_TOKEN: ${{ secrets.VM_GH_TOKEN }}
           HERMES_MANAGER_TOKEN: ${{ secrets.HERMES_MANAGER_TOKEN }}
+          HERMES_MANAGER_ALLOWED_BACKEND_ORIGINS: ${{ vars.HERMES_MANAGER_ALLOWED_BACKEND_ORIGINS || 'http://192.168.0.60:8081' }}
+          HERMES_MANAGER_BIND_ADDRESS: ${{ vars.HERMES_MANAGER_BIND_ADDRESS || '192.168.0.11' }}
           HERMES_MANAGER_LOCAL_CREDENTIAL_KEY: ${{ secrets.HERMES_MANAGER_LOCAL_CREDENTIAL_KEY }}
         run: |
           case "$DEPLOY_BRANCH" in
@@ -924,9 +961,13 @@ jobs:
               ;;
           esac
 
+          printf -v QUOTED_BIND '%q' "$HERMES_MANAGER_BIND_ADDRESS"
+          printf -v QUOTED_ORIGINS '%q' "$HERMES_MANAGER_ALLOWED_BACKEND_ORIGINS"
           ssh "${HERMES_SHARED_USER}@${HERMES_SHARED_HOST}" "
             cd '${HERMES_DEPLOY_WORKDIR}' &&
             bash ./docker-maintenance.sh --cleanup &&
+            export HERMES_MANAGER_BIND_ADDRESS=$QUOTED_BIND &&
+            export HERMES_MANAGER_ALLOWED_BACKEND_ORIGINS=$QUOTED_ORIGINS &&
             export HERMES_MANAGER_IMAGE_TAG='${IMAGE_TAG}' &&
             export PUID=\"\$(id -u)\" &&
             export PGID=\"\$(id -g)\" &&

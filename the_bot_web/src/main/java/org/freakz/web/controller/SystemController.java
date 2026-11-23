@@ -22,6 +22,10 @@ import org.freakz.web.system.ContainerStatusProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.freakz.common.spring.rest.InternalApiTokenInterceptor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -470,7 +474,9 @@ public class SystemController {
         .build()
         .toUriString();
     try {
-      ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+      HttpHeaders headers = new HttpHeaders();
+      headers.set(InternalApiTokenInterceptor.HEADER, properties.getInternalApiToken().trim());
+      ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
       Map<?, ?> body = response.getBody();
       if (!response.getStatusCode().is2xxSuccessful() || body == null) {
         throw new IllegalStateException("Invalid response from " + path);
