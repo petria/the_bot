@@ -2,7 +2,6 @@ package org.freakz.common.spring.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,7 @@ class InternalApiTokenFilterTest {
   }
 
   @Test
-  void acceptsCorrectTokenAndSkipsExcludedPath() throws Exception {
+  void acceptsCorrectToken() throws Exception {
     InternalApiTokenFilter filter = filter();
     AtomicBoolean reached = new AtomicBoolean();
 
@@ -40,11 +39,17 @@ class InternalApiTokenFilterTest {
 
   }
 
+  @Test
+  void failsClosedWithoutConfiguredToken() throws Exception {
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    new InternalApiTokenFilter("  ").doFilter(request("secret"), response, (req, res) -> {
+      throw new AssertionError("request must not reach the controller");
+    });
+    assertThat(response.getStatus()).isEqualTo(503);
+  }
+
   private InternalApiTokenFilter filter() {
-    return new InternalApiTokenFilter(
-        "secret",
-        List.of("/api/hokan/engine/"),
-        List.of());
+    return new InternalApiTokenFilter("secret");
   }
 
   private MockHttpServletRequest request(String token) {

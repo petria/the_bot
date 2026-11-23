@@ -19,6 +19,13 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import jakarta.servlet.DispatcherType;
+import org.freakz.common.spring.rest.InternalApiTokenInterceptor;
+import org.freakz.common.spring.security.ServiceTokenAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.freakz.common.users.BotPermission;
@@ -27,6 +34,23 @@ import org.freakz.web.mobile.MobileBearerAuthenticationFilter;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  @Bean
+  @Order(1)
+  SecurityFilterChain internalApiSecurity(HttpSecurity http,
+      @Value("${the.bot.internal-api-token:}") String token) throws Exception {
+    return http
+        .securityMatcher(PathPatternRequestMatcher.pathPattern("/internal/**"))
+        .csrf(AbstractHttpConfigurer::disable)
+        .requestCache(AbstractHttpConfigurer::disable)
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(errors -> errors.authenticationEntryPoint(apiAuthenticationEntryPoint()))
+        .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority(ServiceTokenAuthenticationFilter.AUTHORITY))
+        .addFilterBefore(new ServiceTokenAuthenticationFilter(
+            InternalApiTokenInterceptor.HEADER, "", token == null ? "" : token.trim(), "bot-internal-service"),
+            AnonymousAuthenticationFilter.class)
+        .build();
+  }
 
   @Bean
   public SecurityFilterChain securityFilterChain(
@@ -40,8 +64,7 @@ public class SecurityConfig {
                 PathPatternRequestMatcher.pathPattern("/logout"),
                 PathPatternRequestMatcher.pathPattern("/api/web/cli/**"),
                 PathPatternRequestMatcher.pathPattern("/api/mobile/**"),
-                PathPatternRequestMatcher.pathPattern("/api/irssi/**"),
-                PathPatternRequestMatcher.pathPattern("/internal/mobile/**"))
+                PathPatternRequestMatcher.pathPattern("/api/irssi/**"))
         )
         .authorizeHttpRequests(authorize -> authorize
             .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
@@ -49,12 +72,10 @@ public class SecurityConfig {
             .requestMatchers("/generated/**").permitAll()
             .requestMatchers("/media/**").permitAll()
             .requestMatchers("/m/**").permitAll()
-            .requestMatchers("/internal/system/**").permitAll()
             .requestMatchers("/api/web/generated-pages/**").permitAll()
             .requestMatchers("/api/web/cli/login").permitAll()
             .requestMatchers("/api/mobile/auth/**").permitAll()
             .requestMatchers("/api/irssi/**").permitAll()
-            .requestMatchers("/internal/mobile/**").permitAll()
             .requestMatchers("/api/mobile/**").authenticated()
             .requestMatchers("/api/web/me", "/api/web/me/**", "/api/web/csrf", "/api/web/logout").authenticated()
             .requestMatchers("/api/web/admin/**").hasAuthority(BotPermission.WEB_ADMIN)

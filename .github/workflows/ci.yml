@@ -127,6 +127,20 @@ jobs:
           python3 -I integrations/irssi/test_irssi_agent.py
           perl integrations/irssi/test_bot_notify.pl
 
+      - name: Verify loopback publication for internal services
+        env:
+          PUID: '1000'
+          PGID: '1000'
+          THE_BOT_INTERNAL_API_TOKEN: ci-config-check
+          HERMES_MANAGER_TOKEN: ci-config-check
+        run: |
+          docker compose -f docker-compose.yml config --format json |
+            jq -e '
+              [.services["bot-engine"], .services["bot-io"]] |
+              all(. != null and .network_mode != "host" and
+                  all(.ports[]?; .host_ip == "127.0.0.1" or .host_ip == "::1"))
+            ' >/dev/null
+
       - name: Run backend tests and generate JaCoCo reports
         id: backend_tests
         continue-on-error: true
