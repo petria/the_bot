@@ -20,10 +20,13 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(
     useDefaultFilters = false,
+    properties = "the.bot.webPublicBaseUrl=https://public.example.test/bot",
     includeFilters = @Filter(Controller.class),
     controllers = WebSecurityAccessTest.TestController.class
 )
@@ -41,6 +44,13 @@ class WebSecurityAccessTest {
     mockMvc.perform(get("/generated/test")).andExpect(status().isOk());
     mockMvc.perform(get("/api/web/generated-pages/test")).andExpect(status().isOk());
     mockMvc.perform(get("/m/test")).andExpect(status().isOk());
+  }
+
+  @Test
+  void cspAllowsImagesFromTheConfiguredPublicOrigin() throws Exception {
+    mockMvc.perform(get("/generated/test"))
+        .andExpect(header().string("Content-Security-Policy-Report-Only",
+            containsString("img-src 'self' data: https://public.example.test;")));
   }
 
   @Test

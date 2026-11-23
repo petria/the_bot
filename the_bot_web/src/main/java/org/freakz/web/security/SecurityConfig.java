@@ -14,8 +14,10 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
+import java.net.URI;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.http.HttpStatus;
@@ -63,11 +65,13 @@ public class SecurityConfig {
       WebLoginFailureHandler webLoginFailureHandler,
       MobileBearerAuthenticationFilter mobileBearerAuthenticationFilter,
       @Value("${the.bot.web.trusted-proxy-addresses:${THE_BOT_WEB_TRUSTED_PROXY_ADDRESSES:}}") String trustedProxies,
+      @Value("${the.bot.webPublicBaseUrl:${THE_BOT_WEB_PUBLIC_BASE_URL:}}") String publicBaseUrl,
       @Value("${the.bot.web.csp-report-only:${THE_BOT_WEB_CSP_REPORT_ONLY:true}}") boolean cspReportOnly) throws Exception {
     var proxyAddresses = Arrays.stream(trustedProxies.split(",")).map(String::strip)
         .filter(address -> !address.isEmpty()).collect(Collectors.toUnmodifiableSet());
     var policy = new ContentSecurityPolicyHeaderWriter(
-        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; "
+        "default-src 'self'; img-src 'self' data:" + publicImageOrigin(publicBaseUrl)
+            + "; style-src 'self' 'unsafe-inline'; object-src 'none'; "
             + "base-uri 'self'; frame-ancestors 'none'");
     policy.setReportOnly(cspReportOnly);
     http
@@ -118,6 +122,23 @@ public class SecurityConfig {
         .addFilterBefore(mobileBearerAuthenticationFilter,
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     return http.build();
+  }
+
+  private String publicImageOrigin(String publicBaseUrl) {
+    try {
+      URI uri = URI.create(publicBaseUrl.trim());
+      if (uri.getHost() == null || uri.getRawUserInfo() != null) {
+        return "";
+      }
+      String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+      if (!"http".equals(scheme) && !"https".equals(scheme)) {
+        return "";
+      }
+      int port = uri.getPort();
+      return " " + scheme + "://" + uri.getHost() + (port == -1 ? "" : ":" + port);
+    } catch (IllegalArgumentException e) {
+      return "";
+    }
   }
 
   @Bean
