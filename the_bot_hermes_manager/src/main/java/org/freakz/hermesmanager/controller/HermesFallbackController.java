@@ -5,6 +5,10 @@ import org.freakz.common.model.engine.system.HermesFallbackSettingsResponse;
 import org.freakz.common.model.engine.system.HermesFallbackUpdateRequest;
 import org.freakz.common.model.engine.system.HermesModelDiscoveryRequest;
 import org.freakz.hermesmanager.service.HermesFallbackService;
+import org.freakz.hermesmanager.service.HermesValidationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -30,6 +34,12 @@ public class HermesFallbackController {
   @PostMapping("/models")
   public HermesFallbackModelsResponse getModels(@RequestBody HermesModelDiscoveryRequest request) {
     return service.getModels(request);
+  }
+
+  @ExceptionHandler(HermesValidationException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  public HermesBackendConfigController.ErrorResponse validationError(HermesValidationException e) {
+    return new HermesBackendConfigController.ErrorResponse(e.getMessage(), e.getDetail());
   }
 
   @PutMapping

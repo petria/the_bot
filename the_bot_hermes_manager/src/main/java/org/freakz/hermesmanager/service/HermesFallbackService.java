@@ -12,10 +12,10 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Stream;
 
 import org.freakz.common.model.engine.system.HermesBackend;
 import org.freakz.common.model.engine.system.HermesBackendConfigResponse;
@@ -91,7 +91,6 @@ public class HermesFallbackService implements ApplicationRunner {
     try {
       StoredConfig config = readConfig();
       applyHermesConfiguration(config);
-      writeConfig(config);
     } catch (Exception e) {
       log.warn("Could not reconcile Hermes backend configuration during startup: {}", e.getMessage());
     }
@@ -132,11 +131,13 @@ public class HermesFallbackService implements ApplicationRunner {
   public HermesFallbackSettingsResponse update(HermesFallbackUpdateRequest request) {
     StoredConfig config = readConfig();
     StoredBackend current = firstLocalBackend(config);
+    String provider = normalizeLocalProvider(firstNonBlank(request == null ? null : request.provider(), current.provider()));
+    String baseUrl = trimTrailingSlash(firstNonBlank(request == null ? null : request.baseUrl(), current.baseUrl()));
     StoredBackend updated = new StoredBackend(
         current.id(),
         current.label(),
-        normalizeLocalProvider(firstNonBlank(request == null ? null : request.provider(), current.provider())),
-        trimTrailingSlash(firstNonBlank(request == null ? null : request.baseUrl(), current.baseUrl())),
+        provider,
+        baseUrl,
         firstNonBlank(request == null ? null : request.model(), current.model()),
         firstNonBlank(current.apiMode(), RESPONSES),
         current.timeoutSeconds(),
@@ -145,8 +146,8 @@ public class HermesFallbackService implements ApplicationRunner {
         current.validationStatus(),
         current.toolCapable(),
         current.detail(),
-        updatedCredential(
-            current.encryptedApiKey(),
+        credentialForDestination(
+            current, provider, baseUrl,
             request == null ? null : request.apiKey(),
             request != null && Boolean.TRUE.equals(request.clearApiKey())),
         reasoningDisabled(
@@ -158,10 +159,11 @@ public class HermesFallbackService implements ApplicationRunner {
     try {
       validateBackend(updated);
       applyHermesConfiguration(saved);
-      writeConfig(saved);
       return getSettings();
+    } catch (HermesValidationException | IllegalArgumentException e) {
+      throw e;
     } catch (Exception e) {
-      throw new IllegalStateException("Could not update local Hermes backend: " + e.getMessage(), e);
+      throw new IllegalStateException("Could not update local Hermes backend", e);
     } finally {
       updateLock.unlock();
     }
@@ -180,7 +182,7 @@ public class HermesFallbackService implements ApplicationRunner {
           .toList());
     }
     URI uri = validatedBaseUrl(request == null ? null : request.baseUrl());
-    return localLlmClient.discover(provider, uri, discoveryApiKey(request));
+    return localLlmClient.discover(provider, uri, discoveryApiKey(request, provider, uri));
   }
 
   public HermesBackendConfigResponse getBackendConfig() {
@@ -188,17 +190,16 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   public HermesBackendConfigResponse updateBackendConfig(HermesBackendConfigUpdateRequest request) {
-    StoredConfig config = sanitizeConfig(request);
     updateLock.lock();
     try {
+      StoredConfig config = sanitizeConfig(request);
       validateConfig(config);
       applyHermesConfiguration(config);
-      writeConfig(config);
       return response(config);
-    } catch (HermesValidationException e) {
+    } catch (HermesValidationException | IllegalArgumentException e) {
       throw e;
     } catch (Exception e) {
-      throw new IllegalStateException("Could not apply Hermes backend configuration: " + e.getMessage(), e);
+      throw new IllegalStateException("Could not apply Hermes backend configuration", e);
     } finally {
       updateLock.unlock();
     }
@@ -334,11 +335,12 @@ public class HermesFallbackService implements ApplicationRunner {
     String provider = OPENAI.equals(id)
         ? OPENAI
         : normalizeLocalProvider(firstNonBlank(update.provider(), defaults.provider()));
+    String baseUrl = OPENAI.equals(id) ? null : trimTrailingSlash(firstNonBlank(update.baseUrl(), defaults.baseUrl()));
     return new StoredBackend(
         id,
         firstNonBlank(update.label(), defaults.label()),
         provider,
-        OPENAI.equals(id) ? null : trimTrailingSlash(firstNonBlank(update.baseUrl(), defaults.baseUrl())),
+        baseUrl,
         requireValue(firstNonBlank(update.model(), defaults.model()), id + " model"),
         firstNonBlank(update.apiMode(), defaults.apiMode(), RESPONSES),
         update.timeoutSeconds() == null ? defaults.timeoutSeconds() : update.timeoutSeconds(),
@@ -349,8 +351,8 @@ public class HermesFallbackService implements ApplicationRunner {
         defaults.validationStatus(),
         defaults.toolCapable(),
         defaults.detail(),
-        updatedCredential(
-            defaults.encryptedApiKey(),
+        credentialForDestination(
+            defaults, provider, baseUrl,
             update.apiKey(),
             Boolean.TRUE.equals(update.clearApiKey())),
         reasoningDisabled(provider, update.reasoningDisabled(), defaults.reasoningDisabled()));
@@ -363,6 +365,9 @@ public class HermesFallbackService implements ApplicationRunner {
     config.backends().stream()
         .filter(backend -> OPENAI.equals(backend.id()))
         .forEach(this::validateBackend);
+    config.backends().stream()
+        .filter(backend -> !OPENAI.equals(backend.id()))
+        .forEach(backend -> validatedBaseUrl(backend.baseUrl()));
     List<String> activeBackendIds = config.routes().stream()
         .map(StoredRoute::backendId)
         .distinct()
@@ -401,16 +406,7 @@ public class HermesFallbackService implements ApplicationRunner {
       localLlmClient.validateToolCall(backend.provider(), baseUrl, backend.model(), apiKey, backend.reasoningDisabled());
       localLlmClient.validateChat(backend.provider(), baseUrl, backend.model(), apiKey, backend.reasoningDisabled());
     } catch (HermesValidationException | IllegalArgumentException e) {
-      String detail = e instanceof HermesValidationException validationException
-          ? validationException.getDetail()
-          : e.getMessage();
-      throw new HermesValidationException(
-          "Hermes local backend validation failed",
-          "backend=" + backend.id() + ", provider=" + backend.provider()
-              + ", baseUrl=" + trimTrailingSlash(backend.baseUrl())
-              + ", model=" + backend.model()
-              + ", detail=" + detail,
-          e);
+      throw new HermesValidationException("Hermes local backend validation failed", null, null);
     }
   }
 
@@ -703,8 +699,9 @@ public class HermesFallbackService implements ApplicationRunner {
         gatewayService.restart(profile);
         waitForProfileHealth(profile);
       }
+      writeConfig(config);
     } catch (Exception e) {
-      rollbackProfiles(backups);
+      rollbackProfiles(backups, changedProfiles, e);
       throw e;
     }
   }
@@ -724,13 +721,40 @@ public class HermesFallbackService implements ApplicationRunner {
       return;
     }
     Path path = optionalPath.get();
-    backups.putIfAbsent(path, Files.readAllBytes(path));
+    byte[] previous = Files.readAllBytes(path);
     byte[] updated = updatedProfileYaml(profile, path, backend);
-    if (!java.util.Arrays.equals(backups.get(path), updated)) {
-      writeAtomically(path, updated);
-      clearProfileRuntimeState(profile);
+    Path envFile = path.resolveSibling(".env");
+    byte[] oldEnv = Files.exists(envFile) ? Files.readAllBytes(envFile) : null;
+    byte[] newEnv = updatedProfileEnv(oldEnv, decryptCredential(backend.encryptedApiKey()));
+    boolean envChanged = !java.util.Arrays.equals(oldEnv, newEnv);
+    boolean configChanged = !java.util.Arrays.equals(previous, updated);
+    if (envChanged || configChanged) {
       changedProfiles.add(profile);
+      if (envChanged) {
+        backups.put(envFile, oldEnv);
+        writeAtomically(envFile, newEnv);
+      }
+      if (configChanged) {
+        backups.put(path, previous);
+        writeAtomically(path, updated);
+      }
     }
+  }
+
+  private static final String PROFILE_API_KEY = "THE_BOT_HERMES_MANAGED_API_KEY";
+
+  private byte[] updatedProfileEnv(byte[] current, String key) {
+    String original = current == null ? "" : new String(current, java.nio.charset.StandardCharsets.UTF_8);
+    String retained = original.replaceAll("(?m)^[ \t]*(?:export[ \t]+)?" + PROFILE_API_KEY + "[ \t]*=.*(?:\\R|$)", "");
+    if (key == null || key.isBlank()) {
+      return retained.equals(original) ? current : retained.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+    if (!key.matches("[A-Za-z0-9._~+/-]+=*")) {
+      throw new HermesValidationException("Local API key must be a valid bearer token", null, null);
+    }
+    String newline = retained.isEmpty() || retained.endsWith("\n") ? "" : "\n";
+    return (retained + newline + PROFILE_API_KEY + "=" + key + "\n")
+        .getBytes(java.nio.charset.StandardCharsets.UTF_8);
   }
 
   private byte[] updatedProfileYaml(String profile, Path path, StoredBackend backend) throws IOException {
@@ -750,7 +774,7 @@ public class HermesFallbackService implements ApplicationRunner {
       removeAgentReasoningEffort(yaml);
     } else {
       model.put("provider", "custom");
-      model.put("base_url", trimTrailingSlash(backend.baseUrl()));
+      model.put("base_url", validatedBaseUrl(backend.baseUrl()).toString());
       model.put("default", backend.model());
       model.put("api_mode", "chat_completions");
       putOptionalApiKey(model, backend.encryptedApiKey());
@@ -792,7 +816,7 @@ public class HermesFallbackService implements ApplicationRunner {
   private List<Map<String, Object>> customProviders(StoredBackend backend) {
     Map<String, Object> provider = new LinkedHashMap<>();
     provider.put("name", "hermes-" + backend.id());
-    provider.put("base_url", trimTrailingSlash(backend.baseUrl()));
+    provider.put("base_url", validatedBaseUrl(backend.baseUrl()).toString());
     provider.put("model", backend.model());
     provider.put("api_mode", "chat_completions");
     if (backend.contextWindow() != null) {
@@ -865,34 +889,6 @@ public class HermesFallbackService implements ApplicationRunner {
         "yuanbao");
   }
 
-  private void clearProfileRuntimeState(String profile) throws IOException {
-    Path profileDir = properties.dataDir().resolve("profiles").resolve(profile);
-    for (String file : List.of(
-        "state.db",
-        "state.db-shm",
-        "state.db-wal",
-        "response_store.db",
-        "response_store.db-shm",
-        "response_store.db-wal")) {
-      Files.deleteIfExists(profileDir.resolve(file));
-    }
-
-    Path sessions = profileDir.resolve("sessions");
-    if (!Files.isDirectory(sessions)) {
-      return;
-    }
-    try (Stream<Path> paths = Files.walk(sessions)) {
-      List<Path> deleteOrder = paths
-          .sorted(Comparator.reverseOrder())
-          .toList();
-      for (Path path : deleteOrder) {
-        if (!path.equals(sessions)) {
-          Files.deleteIfExists(path);
-        }
-      }
-    }
-  }
-
   private Map<String, Object> mutableMap(Object value) {
     Map<String, Object> map = new LinkedHashMap<>();
     if (value instanceof Map<?, ?> values) {
@@ -951,31 +947,25 @@ public class HermesFallbackService implements ApplicationRunner {
     throw new IllegalStateException("Hermes profile " + profile + " did not become healthy");
   }
 
-  private void rollbackProfiles(Map<Path, byte[]> backups) {
+  private void rollbackProfiles(Map<Path, byte[]> backups, List<String> changedProfiles, Exception failure) {
     backups.forEach((path, bytes) -> {
       try {
-        writeAtomically(path, bytes);
-      } catch (IOException ignored) {
+        if (bytes == null) {
+          Files.deleteIfExists(path);
+        } else {
+          writeAtomically(path, bytes);
+        }
+      } catch (IOException e) {
+        failure.addSuppressed(e);
       }
     });
-    for (Path path : backups.keySet()) {
-      String profile = profileName(path);
-      if (profile != null) {
-        try {
-          gatewayService.restart(profile);
-        } catch (Exception ignored) {
-        }
+    for (String profile : changedProfiles) {
+      try {
+        gatewayService.restart(profile);
+      } catch (Exception e) {
+        failure.addSuppressed(e);
       }
     }
-  }
-
-  private String profileName(Path path) {
-    for (String profile : properties.profiles()) {
-      if (path.toString().contains("/" + profile + "/")) {
-        return profile;
-      }
-    }
-    return null;
   }
 
   private void putOptionalApiKey(Map<String, Object> model, String encryptedApiKey) {
@@ -983,7 +973,7 @@ public class HermesFallbackService implements ApplicationRunner {
     if (apiKey == null || apiKey.isBlank()) {
       model.remove("api_key");
     } else {
-      model.put("api_key", apiKey);
+      model.put("api_key", "${" + PROFILE_API_KEY + "}");
     }
   }
 
@@ -1006,10 +996,7 @@ public class HermesFallbackService implements ApplicationRunner {
     return credential != null && !credential.isBlank();
   }
 
-  private String discoveryApiKey(HermesModelDiscoveryRequest request) {
-    if (request == null) {
-      return null;
-    }
+  private String discoveryApiKey(HermesModelDiscoveryRequest request, String provider, URI destination) {
     String supplied = blankToNull(request.apiKey());
     if (supplied != null) {
       return supplied;
@@ -1019,14 +1006,30 @@ public class HermesFallbackService implements ApplicationRunner {
       return null;
     }
     StoredConfig config = readConfig();
-    Optional<StoredBackend> backend = existingBackendById(config, profileId);
-    if (backend.isPresent()) {
-      return decryptCredential(backend.get().encryptedApiKey());
-    }
-    Optional<StoredRoute> route = existingRouteById(config, profileId);
-    return route
-        .map(storedRoute -> decryptCredential(backendById(config, storedRoute.backendId()).encryptedApiKey()))
+    StoredBackend backend = existingBackendById(config, profileId)
+        .or(() -> existingRouteById(config, profileId).map(route -> backendById(config, route.backendId())))
         .orElse(null);
+    if (backend == null || blankToNull(backend.encryptedApiKey()) == null) {
+      return null;
+    }
+    if (!sameBackendDestination(backend, provider, destination.toString())) {
+      throw new HermesValidationException("Stored credentials require the saved provider and base URL", null, null);
+    }
+    return decryptCredential(backend.encryptedApiKey());
+  }
+
+  private boolean sameBackendDestination(StoredBackend backend, String provider, String baseUrl) {
+    return provider.equals(backend.provider())
+        && canonicalBaseUrl(backend.baseUrl()).equals(canonicalBaseUrl(baseUrl));
+  }
+
+  private String credentialForDestination(StoredBackend existing, String provider, String baseUrl,
+      String supplied, boolean clear) {
+    if (!OPENAI.equals(provider) && blankToNull(existing.encryptedApiKey()) != null
+        && !clear && blankToNull(supplied) == null && !sameBackendDestination(existing, provider, baseUrl)) {
+      throw new HermesValidationException("Supply or clear the stored credential when changing the backend destination", null, null);
+    }
+    return updatedCredential(existing.encryptedApiKey(), supplied, clear);
   }
 
   private StoredBackend firstLocalBackend(StoredConfig config) {
@@ -1085,16 +1088,39 @@ public class HermesFallbackService implements ApplicationRunner {
   }
 
   private URI validatedBaseUrl(String value) {
-    String trimmed = requireValue(value, "baseUrl");
-    try {
-      URI uri = URI.create(trimmed);
-      if (uri.getScheme() == null || uri.getHost() == null) {
-        throw new IllegalArgumentException("baseUrl must be absolute");
-      }
-      return uri;
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid baseUrl: " + value, e);
+    URI uri = canonicalBaseUrl(value);
+    String origin = origin(uri);
+    boolean isDefault = properties.defaultBaseUrl() != null
+        && origin.equals(origin(canonicalBaseUrl(properties.defaultBaseUrl())));
+    List<String> allowed = properties.allowedBackendOrigins();
+    if (!isDefault && (allowed == null || allowed.stream().noneMatch(
+        entry -> !entry.isBlank() && origin.equals(origin(canonicalBaseUrl(entry)))))) {
+      throw new HermesValidationException("Backend origin is not allowed on this instance", null, null);
     }
+    return uri;
+  }
+
+  private URI canonicalBaseUrl(String value) {
+    try {
+      URI uri = URI.create(requireValue(value, "baseUrl"));
+      String scheme = uri.getScheme();
+      if (!("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          || uri.getHost() == null || uri.getRawUserInfo() != null || uri.getRawQuery() != null
+          || uri.getRawFragment() != null || uri.getPort() == 0 || uri.getPort() > 65535) {
+        throw new IllegalArgumentException();
+      }
+      String path = uri.normalize().getRawPath().replaceFirst("/+$", "");
+      return URI.create(origin(uri) + path);
+    } catch (IllegalArgumentException e) {
+      throw new HermesValidationException("Provide an absolute HTTP or HTTPS backend URL without user details, query or fragment", null, null);
+    }
+  }
+
+  private String origin(URI uri) {
+    String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+    int port = uri.getPort();
+    boolean defaultPort = port == -1 || ("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443);
+    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + (defaultPort ? "" : ":" + port);
   }
 
   private Integer normalizeContextWindow(Integer contextWindow) {
@@ -1282,13 +1308,18 @@ public class HermesFallbackService implements ApplicationRunner {
 
   private void writeAtomically(Path path, byte[] bytes) throws IOException {
     Files.createDirectories(path.getParent());
-    Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
-    Files.write(tmp, bytes);
+    Path tmp = Files.createTempFile(path.getParent(), path.getFileName().toString(), ".tmp");
     try {
-      Files.setPosixFilePermissions(tmp, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-    } catch (UnsupportedOperationException ignored) {
+      Files.write(tmp, bytes);
+      try {
+        Files.setPosixFilePermissions(tmp, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+      } catch (UnsupportedOperationException ignored) {
+        // Non-POSIX local test systems use the platform temporary-file permissions.
+      }
+      Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    } finally {
+      Files.deleteIfExists(tmp);
     }
-    Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
   private record StoredConfig(

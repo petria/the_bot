@@ -1,21 +1,21 @@
 package org.freakz.hermesmanager.service;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.freakz.common.model.engine.system.HermesFallbackModel;
 import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.web.client.RestClientException;
+import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
@@ -26,20 +26,18 @@ public class LocalLlmClient {
   public static final String VLLM = "vllm";
   public static final String LLAMA_CPP = "llamacpp";
 
-  private final RestTemplate restTemplate;
+  private static final int MAX_RESPONSE_BYTES = 64 * 1024;
+
+  private final int readTimeoutMillis;
   private final JsonMapper jsonMapper;
 
-  public LocalLlmClient(RestTemplate restTemplate, JsonMapper jsonMapper) {
-    this.restTemplate = restTemplate;
+  public LocalLlmClient(HermesManagerProperties properties, JsonMapper jsonMapper) {
+    this.readTimeoutMillis = Math.multiplyExact(properties.resolvedLocalValidationTimeoutSeconds(), 1000);
     this.jsonMapper = jsonMapper;
   }
 
   public HermesFallbackModelsResponse discover(String provider, URI baseUrl, String apiKey) {
-    Map<?, ?> response = restTemplate.exchange(
-        endpoint(baseUrl, "models"),
-        HttpMethod.GET,
-        entity(null, apiKey),
-        Map.class).getBody();
+    Map<?, ?> response = requestJson(endpoint(baseUrl, "models"), null, apiKey);
     List<String> models = new ArrayList<>();
     Object data = response == null ? null : response.get("data");
     if (data instanceof List<?> values) {
@@ -69,7 +67,7 @@ public class LocalLlmClient {
     request.put("max_tokens", 8);
     request.put("stream", false);
     addReasoningControl(request, provider, reasoningDisabled);
-    Map<?, ?> response = postChat(baseUrl, request, apiKey, "chat completion validation", model);
+    Map<?, ?> response = requestJson(endpoint(baseUrl, "chat/completions"), request, apiKey);
     if (response == null || !response.containsKey("choices")) {
       throw new IllegalArgumentException("Selected local model did not return a chat completion");
     }
@@ -86,7 +84,7 @@ public class LocalLlmClient {
     request.put("tool_choice", "required");
     request.put("stream", false);
     addReasoningControl(request, provider, reasoningDisabled);
-    Map<?, ?> response = postChat(baseUrl, request, apiKey, "tool-call validation", model);
+    Map<?, ?> response = requestJson(endpoint(baseUrl, "chat/completions"), request, apiKey);
     if (response == null || !response.toString().contains("tool_calls")) {
       throw new IllegalArgumentException("Selected local model did not produce a tool call");
     }
@@ -98,41 +96,55 @@ public class LocalLlmClient {
     }
   }
 
-  private Map<?, ?> postChat(URI baseUrl, Map<String, Object> request, String apiKey, String validationType, String model) {
-    URI endpoint = endpoint(baseUrl, "chat/completions");
+  private Map<?, ?> requestJson(URI endpoint, Object body, String apiKey) {
+    HttpURLConnection connection = null;
     try {
-      return restTemplate.exchange(
-          endpoint,
-          HttpMethod.POST,
-          entity(request, apiKey),
-          Map.class).getBody();
-    } catch (RestClientException e) {
-      throw new HermesValidationException(
-          "Local LLM " + validationType + " failed",
-          "provider endpoint=" + endpoint + ", model=" + model + ", error=" + e.getMessage(),
-          e);
+      connection = (HttpURLConnection) endpoint.toURL().openConnection(Proxy.NO_PROXY);
+      connection.setConnectTimeout(3000);
+      connection.setReadTimeout(readTimeoutMillis);
+      connection.setInstanceFollowRedirects(false);
+      connection.setRequestProperty("Accept", "application/json");
+      if (apiKey != null && !apiKey.isBlank()) {
+        connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+      }
+      if (body != null) {
+        byte[] json = jsonMapper.writeValueAsBytes(body);
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type", "application/json");
+        connection.setDoOutput(true);
+        connection.setFixedLengthStreamingMode(json.length);
+        try (var output = connection.getOutputStream()) {
+          output.write(json);
+        }
+      }
+      int status = connection.getResponseCode();
+      if (status < 200 || status >= 300 || connection.getContentLengthLong() > MAX_RESPONSE_BYTES) {
+        throw unavailable();
+      }
+      try (InputStream input = connection.getInputStream()) {
+        byte[] response = input.readNBytes(MAX_RESPONSE_BYTES + 1);
+        if (response.length > MAX_RESPONSE_BYTES) {
+          throw unavailable();
+        }
+        return jsonMapper.readValue(response, Map.class);
+      }
+    } catch (IOException | IllegalArgumentException | tools.jackson.core.JacksonException e) {
+      throw unavailable();
+    } finally {
+      if (connection != null) {
+        connection.disconnect();
+      }
     }
   }
 
-  private HttpEntity<?> entity(Object body, String apiKey) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    if (apiKey != null && !apiKey.isBlank()) {
-      headers.setBearerAuth(apiKey);
-    }
-    if (body != null) {
-      // Buffer JSON so servers that reject chunked requests receive a known byte length.
-      byte[] json = jsonMapper.writeValueAsBytes(body);
-      headers.setContentLength(json.length);
-      return new HttpEntity<>(json, headers);
-    }
-    return new HttpEntity<>(null, headers);
+  private HermesValidationException unavailable() {
+    return new HermesValidationException("Local LLM request failed", null, null);
   }
 
   private Map<String, HermesFallbackModel> ollamaMetadata(URI baseUrl) {
     try {
       URI nativeApi = URI.create(baseUrl.getScheme() + "://" + baseUrl.getAuthority() + "/api/tags");
-      Map<?, ?> response = restTemplate.getForObject(nativeApi, Map.class);
+      Map<?, ?> response = requestJson(nativeApi, null, null);
       Object data = response == null ? null : response.get("models");
       if (!(data instanceof List<?> values)) {
         return Map.of();
@@ -189,7 +201,7 @@ public class LocalLlmClient {
   }
 
   public static String normalizeProvider(String provider) {
-    String normalized = provider == null ? "" : provider.trim().toLowerCase();
+    String normalized = provider == null ? "" : provider.trim().toLowerCase(Locale.ROOT);
     if (!isLocal(normalized)) {
       throw new IllegalArgumentException("local provider must be ollama, lmstudio, vllm, or llamacpp");
     }
@@ -211,10 +223,10 @@ public class LocalLlmClient {
   }
 
   private URI endpoint(URI baseUrl, String suffix) {
-    String path = baseUrl.getPath();
+    String path = baseUrl.getRawPath();
     String root = path == null || path.isBlank() || "/".equals(path)
         ? "/v1/"
         : path.endsWith("/") ? path : path + "/";
-    return baseUrl.resolve(root + suffix);
+    return URI.create(baseUrl.getScheme() + "://" + baseUrl.getRawAuthority() + root + suffix);
   }
 }

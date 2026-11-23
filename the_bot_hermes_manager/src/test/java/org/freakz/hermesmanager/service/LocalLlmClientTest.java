@@ -1,63 +1,88 @@
 package org.freakz.hermesmanager.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import java.net.URI;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
-import com.sun.net.httpserver.HttpServer;
-import tools.jackson.databind.json.JsonMapper;
-import java.util.List;
-import java.util.Map;
 
-import org.freakz.common.model.engine.system.HermesFallbackModelsResponse;
+import com.sun.net.httpserver.HttpServer;
+import org.freakz.hermesmanager.config.HermesManagerProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 class LocalLlmClientTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"vllm", "llamacpp"})
-  void discoversModelsUsingBearerAuthenticationWithoutOllamaMetadata(String provider) {
-    RestTemplate restTemplate = mock(RestTemplate.class);
-    when(restTemplate.exchange(
-        eq(URI.create("http://vllm.local:8000/v1/models")),
-        eq(HttpMethod.GET),
-        any(HttpEntity.class),
-        eq(Map.class)))
-        .thenReturn(ResponseEntity.ok(Map.of(
-            "data", List.of(Map.of("id", "Qwen/Qwen3-Coder")))));
-    LocalLlmClient client = new LocalLlmClient(restTemplate, JsonMapper.builder().build());
+  void discoversModelsUsingBearerAuthenticationWithoutOllamaMetadata(String provider) throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    AtomicInteger requests = new AtomicInteger();
+    server.createContext("/v1/models", exchange -> {
+      if ("Bearer token-123".equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
+        requests.incrementAndGet();
+      }
+      byte[] response = "{\"data\":[{\"id\":\"Qwen/Qwen3-Coder\"}]}".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(200, response.length);
+      exchange.getResponseBody().write(response);
+      exchange.close();
+    });
+    server.start();
+    try {
+      var response = client().discover(provider, baseUrl(server), "token-123");
+      assertThat(response.models()).containsExactly("Qwen/Qwen3-Coder");
+      assertThat(response.items().getFirst().toolCapable()).isNull();
+      assertThat(requests.get()).isEqualTo(1);
+      assertThat(LocalLlmClient.normalizeProvider(provider.toUpperCase())).isEqualTo(provider);
+    } finally {
+      server.stop(0);
+    }
+  }
 
-    HermesFallbackModelsResponse response = client.discover(
-        provider,
-        URI.create("http://vllm.local:8000/v1/"),
-        "token-123");
-
-    assertThat(response.models()).containsExactly("Qwen/Qwen3-Coder");
-    ArgumentCaptor<HttpEntity<?>> entity = ArgumentCaptor.forClass(HttpEntity.class);
-    verify(restTemplate).exchange(
-        eq(URI.create("http://vllm.local:8000/v1/models")),
-        eq(HttpMethod.GET),
-        entity.capture(),
-        eq(Map.class));
-    assertThat(entity.getValue().getHeaders().getFirst("Authorization"))
-        .isEqualTo("Bearer token-123");
-    assertThat(response.items().getFirst().toolCapable()).isNull();
-    assertThat(LocalLlmClient.normalizeProvider(provider.toUpperCase())).isEqualTo(provider);
-    verifyNoMoreInteractions(restTemplate);
+  @Test
+  void rejectsRedirectsAndOversizedResponsesWithoutExposingUpstreamText() throws Exception {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    AtomicInteger redirectRequests = new AtomicInteger();
+    server.createContext("/v1/models", exchange -> {
+      exchange.getResponseHeaders().add("Location", "/other");
+      exchange.sendResponseHeaders(302, -1);
+      exchange.close();
+    });
+    server.createContext("/other", exchange -> {
+      redirectRequests.incrementAndGet();
+      exchange.sendResponseHeaders(200, -1);
+      exchange.close();
+    });
+    server.createContext("/large/models", exchange -> {
+      exchange.sendResponseHeaders(200, 0);
+      exchange.getResponseBody().write(new byte[65537]);
+      exchange.close();
+    });
+    server.createContext("/error/models", exchange -> {
+      byte[] body = "upstream-only test message".getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(500, body.length);
+      exchange.getResponseBody().write(body);
+      exchange.close();
+    });
+    server.start();
+    try {
+      LocalLlmClient client = client();
+      for (String path : new String[]{"/v1", "/large", "/error"}) {
+        assertThatThrownBy(() -> client.discover("llamacpp", baseUrl(server).resolve(path), "test-token"))
+            .isInstanceOf(HermesValidationException.class)
+            .hasMessage("Local LLM request failed")
+            .hasNoCause();
+      }
+      assertThat(redirectRequests.get()).isZero();
+    } finally {
+      server.stop(0);
+    }
   }
 
   @Test
@@ -87,16 +112,22 @@ class LocalLlmClientTest {
     });
     server.start();
     try {
-      var properties = org.mockito.Mockito.mock(org.freakz.hermesmanager.config.HermesManagerProperties.class);
-      when(properties.resolvedLocalValidationTimeoutSeconds()).thenReturn(5);
-      RestTemplate template = new org.freakz.hermesmanager.config.HermesManagerConfig().restTemplate(properties);
-      LocalLlmClient client = new LocalLlmClient(template, JsonMapper.builder().build());
-      URI baseUrl = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
+      LocalLlmClient client = client();
+      URI baseUrl = baseUrl(server);
       client.validateChat("llamacpp", baseUrl, "model-\u00e9", "test-token", false);
       client.validateToolCall("llamacpp", baseUrl, "model-\u00e9", "test-token", false);
       assertThat(validRequests.get()).isEqualTo(2);
     } finally {
       server.stop(0);
     }
+  }
+  private static URI baseUrl(HttpServer server) {
+    return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/v1");
+  }
+
+  private static LocalLlmClient client() {
+    var properties = mock(HermesManagerProperties.class);
+    when(properties.resolvedLocalValidationTimeoutSeconds()).thenReturn(5);
+    return new LocalLlmClient(properties, JsonMapper.builder().build());
   }
 }

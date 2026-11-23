@@ -17,7 +17,9 @@ public record HermesManagerProperties(
     String defaultModel,
     String token,
     String localCredentialKey,
-    Integer localValidationTimeoutSeconds) {
+    Integer localValidationTimeoutSeconds,
+    List<String> allowedBackendOrigins) {
+
 
   public int resolvedLocalValidationTimeoutSeconds() {
     return localValidationTimeoutSeconds == null || localValidationTimeoutSeconds <= 0
