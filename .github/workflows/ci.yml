@@ -219,7 +219,12 @@ jobs:
         id: changes
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            for component in engine io web whatsapp hermes_manager hermes_gateway; do
+              printf '%s=true\n' "$component"
+            done >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           else
@@ -242,27 +247,27 @@ jobs:
           hermes_manager_changed=false
           hermes_gateway_changed=false
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|docker-compose\.develop-debug\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_engine/|the_bot_common/|pom\.xml$|docker-compose\.yml$|docker-compose\.develop-debug\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             engine_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_io/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_io/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             io_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_web/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_web/|the_bot_common/|pom\.xml$|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             web_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_whatsapp/|docker-compose\.yml$|env/|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_whatsapp/|docker-compose\.yml$|env/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             whatsapp_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(the_bot_hermes_manager/|the_bot_common/|pom\.xml$|docker-compose\.hermes-manager\.yml$|scripts/setup-hermes-docker-instances\.sh$|\.github/workflows/)'; then
+          if grep -Eq '^(the_bot_hermes_manager/|the_bot_common/|pom\.xml$|docker-compose\.hermes-manager\.yml$|scripts/setup-hermes-docker-instances\.sh$|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             hermes_manager_changed=true
           fi
 
-          if echo "$CHANGED_FILES" | grep -Eq '^(scripts/setup-hermes-docker-instances\.sh$|scripts/hermes/|\.github/workflows/)'; then
+          if grep -Eq '^(scripts/setup-hermes-docker-instances\.sh$|scripts/hermes/|\.github/workflows/)' <<< "$CHANGED_FILES"; then
             hermes_gateway_changed=true
           fi
 
