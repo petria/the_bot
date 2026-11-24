@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 
 class WaterWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result { return try {
-        val client = BotClient(applicationContext)
+        val client = BotClient.get(applicationContext)
         if (!client.isLoggedIn()) return Result.success()
         val latest = client.notifications().filter { it.type == "WATER_WATCH" }.maxByOrNull { it.occurredAt }
         val payload = JSONObject(latest?.body ?: "{}").put("updatedAt", System.currentTimeMillis()).toString()

@@ -19,7 +19,7 @@ class ForcedWaterWorker(context: Context, params: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
         val node = inputData.getString("node") ?: return Result.failure()
         val status = try {
-            val client = BotClient(applicationContext)
+            val client = BotClient.get(applicationContext)
             if (!client.isLoggedIn()) throw IllegalStateException("Sign in on your phone first")
             val payload = client.refreshWater().toString()
             val request = PutDataMapRequest.create("/water/latest").apply { dataMap.putString("water", payload) }

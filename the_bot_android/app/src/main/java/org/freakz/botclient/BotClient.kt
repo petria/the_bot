@@ -7,13 +7,12 @@ import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.HttpException
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
 
-class BotClient(private val context: Context) {
+class BotClient private constructor(private val context: Context) {
     private val prefs = EncryptedSharedPreferences.create(
         context, "bot-mobile-tokens", MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
@@ -28,8 +27,27 @@ class BotClient(private val context: Context) {
         .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
         .build().create(BotApi::class.java)
 
-    suspend fun login(username: String, password: String) { save(api.login(LoginRequest(username, password, "Android"))); WaterWatchWorker.start(context) }
-    suspend fun logout() { prefs.getString("refreshToken", null)?.let { api.logout(RefreshRequest(it)) }; clear(); runCatching { WaterWatchWorker.clear(context) } }
+    private val session = MobileSession(
+        accessToken = { prefs.getString("accessToken", null) },
+        refreshToken = { prefs.getString("refreshToken", null) },
+        save = { tokens ->
+            prefs.edit().putString("accessToken", tokens.accessToken).putString("refreshToken", tokens.refreshToken).apply()
+        },
+        clear = { prefs.edit().remove("accessToken").remove("refreshToken").apply() },
+        refresh = { api.refresh(RefreshRequest(it)) }
+    )
+    internal val sessionState = session.state
+
+    suspend fun login(username: String, password: String) {
+        session.signIn { api.login(LoginRequest(username, password, "Android")) }
+        WaterWatchWorker.start(context)
+    }
+
+    suspend fun logout() {
+        session.signOut { api.logout(RefreshRequest(it)) }
+        runCatching { WaterWatchWorker.clear(context) }
+    }
+
     suspend fun irssiPairing() = authenticated { api.irssiPairing() }
     suspend fun irssiAgents() = authenticated { api.irssiAgents() }
     suspend fun revokeIrssi(id: String) = authenticated { api.revokeIrssi(id) }
@@ -48,23 +66,16 @@ class BotClient(private val context: Context) {
     suspend fun command(command: String) = authenticated { api.command(CommandRequest(command)) }
     suspend fun markRead(id: String) = authenticated { api.markRead(id) }
     suspend fun markAllRead() = authenticated { api.markAllRead() }
-    fun isLoggedIn() = prefs.getString("refreshToken", null) != null
-    private fun save(tokens: TokenPair) { prefs.edit().putString("accessToken", tokens.accessToken).putString("refreshToken", tokens.refreshToken).apply() }
-    private fun clear() { prefs.edit().clear().apply() }
+    fun isLoggedIn() = sessionState.value == MobileSession.State.SignedIn
 
-    private suspend fun refreshAccessToken() {
-        val refreshToken = prefs.getString("refreshToken", null)
-            ?: throw IllegalStateException("Mobile session has expired; please log in again")
-        save(api.refresh(RefreshRequest(refreshToken)))
-    }
+    private suspend fun <T> authenticated(request: suspend () -> T): T = session.authenticated(request)
 
-    private suspend fun <T> authenticated(request: suspend () -> T): T {
-        return try {
-            request()
-        } catch (error: HttpException) {
-            if (error.code() != 401) throw error
-            refreshAccessToken()
-            request()
+    companion object {
+        @Volatile
+        private var instance: BotClient? = null
+
+        fun get(context: Context): BotClient = instance ?: synchronized(this) {
+            instance ?: BotClient(context.applicationContext).also { instance = it }
         }
     }
 }
